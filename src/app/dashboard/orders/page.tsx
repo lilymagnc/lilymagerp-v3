@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -111,13 +111,11 @@ export default function OrdersPage() {
         </CardContent>
       </Card>
       
-      {isPrintDialogOpen && (
-        <OrderPrintDialog
-            isOpen={isPrintDialogOpen}
-            onOpenChange={handleClosePrintDialog}
-            order={selectedOrder}
-        />
-      )}
+      <OrderPrintDialog
+          isOpen={isPrintDialogOpen}
+          onOpenChange={handleClosePrintDialog}
+          order={selectedOrder}
+      />
     </>
   );
 }
