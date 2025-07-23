@@ -62,12 +62,6 @@ export default function LoginPage() {
         <div className="flex justify-center py-6">
             <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={200} height={50} priority />
         </div>
-        <CardHeader className="pt-0">
-          <CardTitle className="text-2xl font-bold font-headline text-center">꽃길 ERP 로그인</CardTitle>
-          <CardDescription className="text-center">
-            계정 정보를 입력하여 시스템에 접속하세요.
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
