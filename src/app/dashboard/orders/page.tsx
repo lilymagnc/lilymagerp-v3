@@ -58,11 +58,10 @@ export default function OrdersPage() {
       }
     };
   }, [branches]);
-
   
   const prepareAndPrint = (order: Order) => {
     setSelectedOrder(order);
-    // Use a timeout to allow the component to render before printing.
+    // Use a timeout to allow the component to re-render with the new data before printing
     setTimeout(() => {
         handlePrint();
     }, 100);
@@ -166,7 +165,7 @@ export default function OrdersPage() {
         </Card>
       </div>
       <div className="print-only">
-          {selectedOrder && <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />}
+          <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
       </div>
     </div>
   );
