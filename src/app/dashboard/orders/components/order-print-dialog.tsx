@@ -1,8 +1,7 @@
 
 "use client";
 
-import React, { useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,22 +25,18 @@ interface OrderPrintDialogProps {
 }
 
 export function OrderPrintDialog({ isOpen, onOpenChange, order, branches }: OrderPrintDialogProps) {
-    const printableComponentRef = useRef(null);
-    
-    const handlePrint = useReactToPrint({
-      content: () => printableComponentRef.current,
-    });
-
     if (!order) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col no-print">
                 <DialogHeader>
                     <DialogTitle>주문서 인쇄 미리보기</DialogTitle>
                 </DialogHeader>
                 <div className="flex-grow overflow-y-auto border rounded-md">
-                   <PrintableContent ref={printableComponentRef} order={order} branches={branches} />
+                   <div className="printable-area">
+                        <PrintableContent order={order} branches={branches} />
+                   </div>
                 </div>
                 <DialogFooter className="sm:justify-between mt-4">
                     <DialogClose asChild>
@@ -49,7 +44,7 @@ export function OrderPrintDialog({ isOpen, onOpenChange, order, branches }: Orde
                             닫기
                         </Button>
                     </DialogClose>
-                    <Button onClick={handlePrint}>
+                    <Button onClick={() => window.print()}>
                         <Printer className="mr-2 h-4 w-4" />
                         인쇄하기
                     </Button>
