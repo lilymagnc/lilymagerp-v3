@@ -26,7 +26,7 @@ const branchesContactInfo = [
 export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
   const printableComponentRef = useRef<HTMLDivElement>(null);
   const { branches } = useBranches();
-
+  
   const handlePrint = useReactToPrint({
     content: () => printableComponentRef.current,
     onAfterPrint: onClose,
