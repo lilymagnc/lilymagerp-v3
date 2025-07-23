@@ -6,10 +6,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, Flower2 } from 'lucide-react';
+import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import React from 'react';
+import Image from 'next/image';
 
 export default function DashboardLayout({
   children,
@@ -38,14 +39,8 @@ export default function DashboardLayout({
     <SidebarProvider>
         <Sidebar>
             <SidebarHeader className="p-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-accent">
-                        <Flower2 className="h-8 w-8 text-primary" />
-                    </div>
-                    <div className="flex flex-col">
-                        <h2 className="text-lg font-semibold font-headline">꽃길 ERP</h2>
-                        <p className="text-xs text-muted-foreground">가맹점 관리 시스템</p>
-                    </div>
+                <div className="flex items-center justify-center">
+                    <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={150} height={40} priority />
                 </div>
             </SidebarHeader>
             <SidebarContent>
