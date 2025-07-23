@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, Component, useEffect } from "react";
-import ReactToPrint, { useReactToPrint } from 'react-to-print';
+import { useReactToPrint } from 'react-to-print';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -119,7 +119,7 @@ class PrintableContent extends Component<PrintableContentProps> {
     
     render() {
         const data = this.getPrintableData();
-        if(!data) return null;
+        if(!data) return <div className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto"></div>;
 
         const branchesContactInfo = [
             { name: "릴리맥여의도점", tel: "010-8241-9518 / 010-2285-9518" },
@@ -166,6 +166,7 @@ export default function OrdersPage() {
   });
 
   useEffect(() => {
+    // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
     if (selectedOrder && handlePrint) {
       handlePrint();
     }
@@ -259,8 +260,10 @@ export default function OrdersPage() {
       
       {/* Hidden component for printing */}
       <div className="hidden">
-        <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />
+          <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />
       </div>
     </>
   );
 }
+
+    
