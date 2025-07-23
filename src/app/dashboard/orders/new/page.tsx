@@ -116,8 +116,8 @@ export default function NewOrderPage() {
   return (
     <div>
       <PageHeader
-        title="새 주문 접수"
-        description="태블릿에 최적화된 주문 접수 양식입니다."
+        title="릴리맥 주문테이블"
+        description=""
       />
       <Card className="mb-6">
           <CardHeader>
