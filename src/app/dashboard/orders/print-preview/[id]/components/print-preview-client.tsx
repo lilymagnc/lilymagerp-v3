@@ -92,7 +92,7 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
 
     const printData: OrderPrintData | null = targetBranch ? {
-        orderDate: new Date(order.orderDate.toDate()).toLocaleString(),
+        orderDate: new Date(order.orderDate).toLocaleString(),
         ordererName: order.orderer.name,
         ordererContact: order.orderer.contact,
         items: itemsText,
