@@ -113,6 +113,12 @@ export default function NewOrderPage() {
     setSelectedBranch(branch || null);
   }
 
+  const resetBranchSelection = () => {
+    setSelectedBranch(null);
+    setOrderItems([]);
+    setSelectedDistrict(null);
+  }
+
   return (
     <div>
       <PageHeader
@@ -126,25 +132,31 @@ export default function NewOrderPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                    <Store className="h-5 w-5 text-muted-foreground" />
-                    <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''} disabled={!!selectedBranch}>
-                        <SelectTrigger className="w-[300px]">
-                            <SelectValue placeholder="지점 선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {branches.filter(b => b.type !== '본사').map(branch => (
-                                <SelectItem key={branch.id} value={branch.id}>
-                                    {branch.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                {selectedBranch && (
+                {!selectedBranch ? (
+                  <div className="flex items-center gap-2">
+                      <Store className="h-5 w-5 text-muted-foreground" />
+                      <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''}>
+                          <SelectTrigger className="w-[300px]">
+                              <SelectValue placeholder="지점 선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {branches.filter(b => b.type !== '본사').map(branch => (
+                                  <SelectItem key={branch.id} value={branch.id}>
+                                      {branch.name}
+                                  </SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
                     <p className="text-lg font-medium">
                         안녕하세요, <span className="text-primary">{selectedBranch.name}</span>입니다.
                     </p>
+                    <Button variant="outline" size="sm" onClick={resetBranchSelection}>
+                        지점 변경
+                    </Button>
+                  </div>
                 )}
             </div>
           </CardContent>
