@@ -14,8 +14,9 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   const printInitiated = useRef(false);
   
   const getPrintableData = (order: Order) => {
+    const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
     return {
-      orderDate: format(order.orderDate, 'yyyy-MM-dd'),
+      orderDate: format(orderDate, 'yyyy-MM-dd'),
       ordererName: order.orderer.name,
       ordererContact: order.orderer.contact,
       items: order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n'),
@@ -46,10 +47,10 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   useEffect(() => {
     if (order && !printInitiated.current) {
       printInitiated.current = true;
-      setTimeout(() => window.print(), 500); // Allow images to load
+      window.print();
     }
   }, [order]);
-
+  
   useEffect(() => {
     const handleAfterPrint = () => {
       window.close();
@@ -82,7 +83,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 w-[130px]">{data.ordererContact}</td>
           </tr>
           <tr>
-            <td className="border border-black p-1 font-bold align-top h-20">항목/수량</td>
+            <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
           {!isReceipt && (
@@ -108,13 +109,13 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
           <tr>
-            <td className="border border-black p-1 font-bold align-top h-12">전달메세지<br/>(카드/리본)</td>
+            <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
             <tr>
               <td className="border border-black p-1 font-bold">인수자성명</td>
-              <td colSpan={5} className="border border-black p-1 h-8"></td>
+              <td colSpan={5} className="border border-black p-1 h-10"></td>
             </tr>
           )}
         </tbody>
@@ -124,25 +125,6 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
 
   return (
     <>
-      <style jsx global>
-        {`
-          @page {
-            size: A4;
-            margin: 0.5cm;
-          }
-          body {
-            font-family: 'PT Sans', sans-serif;
-            background-color: white;
-            margin: 0;
-          }
-          .printable-area {
-            width: 100%;
-            height: 100%;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-        `}
-      </style>
       <div className="bg-white text-black font-sans p-2 max-w-[210mm] mx-auto text-xs printable-area">
         {renderPrintSection('주문서', false, data)}
         <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
