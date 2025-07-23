@@ -1,0 +1,97 @@
+
+"use client";
+
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/use-auth';
+import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from '@/components/ui/button';
+import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, Flower2 } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import React from 'react';
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+
+  if (loading || !user) {
+    return null; // or a loading spinner
+  }
+
+  return (
+    <SidebarProvider>
+        <Sidebar>
+            <SidebarHeader className="p-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-accent">
+                        <Flower2 className="h-8 w-8 text-primary" />
+                    </div>
+                    <div className="flex flex-col">
+                        <h2 className="text-lg font-semibold font-headline">꽃길 ERP</h2>
+                        <p className="text-xs text-muted-foreground">가맹점 관리 시스템</p>
+                    </div>
+                </div>
+            </SidebarHeader>
+            <SidebarContent>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard')}><LayoutDashboard />대시보드</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/products')}><Boxes />상품 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/orders')}><ShoppingCart />주문 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/hr')}><Users />인사 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/users')}><UserCog />사용자 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarContent>
+            <SidebarFooter className="p-4">
+                <div className="flex items-center gap-3 mb-2">
+                    <Avatar>
+                        <AvatarImage src={user.photoURL ?? ''} />
+                        <AvatarFallback>{user.email?.[0].toUpperCase() ?? 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col overflow-hidden">
+                        <p className="text-sm font-medium truncate">{user.isAnonymous ? '익명 사용자' : user.email}</p>
+                        <p className="text-xs text-muted-foreground">역할: 관리자</p>
+                    </div>
+                </div>
+                <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />로그아웃</Button>
+            </SidebarFooter>
+        </Sidebar>
+        <main className="flex-1">
+             <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
+                <SidebarTrigger className="md:hidden" />
+                <div className="w-full flex-1">
+                    {/* Header content can go here if needed */}
+                </div>
+             </header>
+            <div className="p-4 lg:p-6">
+                {children}
+            </div>
+        </main>
+    </SidebarProvider>
+  );
+}
