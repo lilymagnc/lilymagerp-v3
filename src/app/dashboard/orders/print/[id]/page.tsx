@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Order } from '@/hooks/use-orders';
@@ -12,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 export default function PrintOrderPage({ params }: { params: { id: string } }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const printInitiated = useRef(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -37,7 +38,8 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   }, [params.id]);
 
   useEffect(() => {
-    if (!loading && order) {
+    if (!loading && order && !printInitiated.current) {
+      printInitiated.current = true; // Prevents multiple print dialogs
       window.print();
     }
   }, [loading, order]);
@@ -91,27 +93,27 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   
   const renderPrintSection = (title: string, isReceipt: boolean, data: NonNullable<ReturnType<typeof getPrintableData>>) => (
     <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
-      <div className="text-center mb-4">
+      <div className="text-center mb-2">
         { !isReceipt && (
           <>
           <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" unoptimized />
-          <h1 className="text-2xl font-bold mt-2">릴리맥 플라워앤가든 {title}</h1>
+          <h1 className="text-xl font-bold mt-1">릴리맥 플라워앤가든 {title}</h1>
           </>
         )}
-        { isReceipt && <h1 className="text-2xl font-bold mt-2">{title}</h1> }
+        { isReceipt && <h1 className="text-xl font-bold mt-2">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-sm">
+      <table className="w-full border-collapse border border-black text-[10px]">
         <tbody>
           <tr>
-            <td className="border border-black p-1 font-bold w-[100px]">주문일</td>
+            <td className="border border-black p-1 font-bold w-[70px]">주문일</td>
             <td className="border border-black p-1">{data.orderDate}</td>
-            <td className="border border-black p-1 font-bold w-[100px]">주문자성명</td>
+            <td className="border border-black p-1 font-bold w-[70px]">주문자성명</td>
             <td className="border border-black p-1 w-[120px]">{data.ordererName}</td>
-            <td className="border border-black p-1 font-bold w-[100px]">연락처</td>
-            <td className="border border-black p-1 w-[150px]">{data.ordererContact}</td>
+            <td className="border border-black p-1 font-bold w-[70px]">연락처</td>
+            <td className="border border-black p-1 w-[130px]">{data.ordererContact}</td>
           </tr>
           <tr>
-            <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
+            <td className="border border-black p-1 font-bold align-top h-20">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
           {!isReceipt && (
@@ -137,13 +139,13 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
           <tr>
-            <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
+            <td className="border border-black p-1 font-bold align-top h-12">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
             <tr>
               <td className="border border-black p-1 font-bold">인수자성명</td>
-              <td colSpan={5} className="border border-black p-1 h-10"></td>
+              <td colSpan={5} className="border border-black p-1 h-8"></td>
             </tr>
           )}
         </tbody>
@@ -152,12 +154,12 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   );
 
   return (
-    <div className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto">
+    <div className="bg-white text-black font-sans">
       {renderPrintSection('주문서', false, data)}
-      <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
+      <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
       {renderPrintSection('인수증', true, data)}
-      <div className="mt-8 text-center border-t border-black pt-4">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4 max-w-lg mx-auto">
+      <div className="mt-4 text-center border-t border-black pt-2 text-[9px]">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-2 max-w-md mx-auto">
           {branchesContactInfo.map(branch => (
             <div key={branch.name} className="text-left">
               <span className="font-bold">{branch.name}:</span>
