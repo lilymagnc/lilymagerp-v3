@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -32,6 +32,16 @@ export default function OrdersPage() {
     onAfterPrint,
   });
 
+  useEffect(() => {
+    if (selectedOrder && handlePrint) {
+      handlePrint();
+    }
+  }, [selectedOrder, handlePrint]);
+
+  const handlePrintClick = (order: Order) => {
+    setSelectedOrder(order);
+  }
+  
   const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
     if (!order) return null;
     
@@ -62,11 +72,6 @@ export default function OrdersPage() {
     };
   }, [branches]);
 
-  const handlePrintClick = (order: Order) => {
-    setSelectedOrder(order);
-    handlePrint();
-  }
-  
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -155,10 +160,8 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="hidden">
-        <div className="print:block">
-          <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
-        </div>
+      <div className="hidden print:block">
+        <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
       </div>
     </>
   );
