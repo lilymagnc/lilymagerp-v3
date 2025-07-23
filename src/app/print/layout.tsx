@@ -10,13 +10,23 @@ export default function PrintLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html>
+    <html lang="ko">
       <head>
         <title>주문서 인쇄</title>
         <style>{`
+          body {
+            margin: 0;
+            background-color: #fff;
+          }
           @page {
             size: A4;
             margin: 0;
+          }
+          @media print {
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
           }
         `}</style>
       </head>
