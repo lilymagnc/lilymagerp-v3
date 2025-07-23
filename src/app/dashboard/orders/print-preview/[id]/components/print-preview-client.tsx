@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef } from 'react';
@@ -27,12 +28,15 @@ const pageStyle = `
     .no-print {
         display: none !important;
     }
+    main {
+        padding: 0 !important;
+    }
   }
 `;
 
 export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
     const router = useRouter();
-    const componentRef = useRef<HTMLDivElement>(null);
+    const componentRef = useRef<PrintableOrder>(null);
     const { branches } = useBranches();
     
     const targetBranch = branches.find(b => b.id === order.branchId);
