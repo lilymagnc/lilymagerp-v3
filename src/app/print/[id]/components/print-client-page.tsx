@@ -46,10 +46,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   useEffect(() => {
     if (order && !printInitiated.current) {
       printInitiated.current = true;
-      // Timeout gives the browser a moment to render images before printing
-      setTimeout(() => {
-        window.print();
-      }, 500);
+      window.print();
     }
   }, [order]);
 
@@ -133,11 +130,9 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             size: A4;
             margin: 0;
           }
-          @media print {
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
+          body {
+            font-family: 'PT Sans', sans-serif;
+            background-color: white;
           }
         `}
       </style>
