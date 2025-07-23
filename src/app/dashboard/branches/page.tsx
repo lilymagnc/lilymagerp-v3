@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { BranchForm } from "./components/branch-form";
+import { BranchDetails } from "./components/branch-details";
 
 const initialBranches = [
   { id: "hq", name: "릴리맥 본사", type: "본사", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906", manager: "김대표", employeeCount: 10, businessNumber: "123-45-67890" },
@@ -24,6 +25,7 @@ const initialBranches = [
 export default function BranchesPage() {
   const [branches, setBranches] = useState(initialBranches);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
 
   const handleAdd = () => {
@@ -32,9 +34,15 @@ export default function BranchesPage() {
   };
   
   const handleEdit = (branch: any) => {
+    setIsDetailOpen(false); // Close detail view if open
     setSelectedBranch(branch);
     setIsFormOpen(true);
   };
+
+  const handleRowClick = (branch: any) => {
+    setSelectedBranch(branch);
+    setIsDetailOpen(true);
+  }
 
   const handleCloseForm = () => {
     setIsFormOpen(false);
@@ -80,7 +88,7 @@ export default function BranchesPage() {
           </TableHeader>
           <TableBody>
             {branches.map((branch) => (
-              <TableRow key={branch.id}>
+              <TableRow key={branch.id} onClick={() => handleRowClick(branch)} className="cursor-pointer">
                 <TableCell className="font-medium">{branch.name}</TableCell>
                 <TableCell>
                   <Badge variant={branch.type === '본사' ? 'default' : branch.type === '직영점' ? 'secondary' : 'outline'}>
@@ -90,7 +98,7 @@ export default function BranchesPage() {
                 <TableCell className="hidden sm:table-cell">{branch.manager}</TableCell>
                 <TableCell className="hidden md:table-cell">{branch.phone}</TableCell>
                 <TableCell className="hidden lg:table-cell">{branch.address}</TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <AlertDialog>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -136,6 +144,12 @@ export default function BranchesPage() {
         isOpen={isFormOpen}
         onOpenChange={handleCloseForm}
         branch={selectedBranch}
+      />
+      <BranchDetails 
+        isOpen={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        branch={selectedBranch}
+        onEdit={() => handleEdit(selectedBranch)}
       />
     </div>
   );
