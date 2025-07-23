@@ -13,12 +13,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { BranchForm } from "./components/branch-form";
 
 const initialBranches = [
-  { id: "hq", name: "릴리맥 본사", type: "본사", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906" },
-  { id: "gwanghwamun", name: "릴리맥 광화문점", type: "직영점", address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", phone: "010-2385-9518 / 010-2285-9518", account: "국민은행 407501-01-213500 이상원 (릴리맥 광화문점)" },
-  { id: "nceastpole", name: "릴리맥 NC이스트폴점", type: "직영점", address: "서울시 광진구 아차산로 402, G1층", phone: "010-2908-5459 / 010-2285-9518", account: "국민은행 400437-01-027411 이성원 (릴리맥NC이스트폴)" },
-  { id: "yeouido1", name: "릴리맥 여의도점", type: "직영점", address: "서울시 영등포구 여의나루로50 The-K타워 B1", phone: "010-8241-9518 / 010-2285-9518", account: "국민은행 92285951847 이진경 (릴리맥)" },
-  { id: "yeouido2", name: "릴리맥 여의도2호점", type: "직영점", address: "서울시 영등포구 국제금융로8길 31 SK증권빌딩 B1", phone: "010-7939-9518 / 010-2285-9518", account: "국민은행 400437-01-027255 이성원 (릴리맥여의도2호)" },
-  { id: "flowerlab", name: "릴리맥플라워랩", type: "기타", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906" },
+  { id: "hq", name: "릴리맥 본사", type: "본사", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906", manager: "김대표", employeeCount: 10, businessNumber: "123-45-67890" },
+  { id: "gwanghwamun", name: "릴리맥 광화문점", type: "직영점", address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", phone: "010-2385-9518 / 010-2285-9518", account: "국민은행 407501-01-213500 이상원 (릴리맥 광화문점)", manager: "이상원", employeeCount: 5, businessNumber: "110-12-34567" },
+  { id: "nceastpole", name: "릴리맥 NC이스트폴점", type: "직영점", address: "서울시 광진구 아차산로 402, G1층", phone: "010-2908-5459 / 010-2285-9518", account: "국민은행 400437-01-027411 이성원 (릴리맥NC이스트폴)", manager: "이성원", employeeCount: 4, businessNumber: "110-13-56789" },
+  { id: "yeouido1", name: "릴리맥 여의도점", type: "직영점", address: "서울시 영등포구 여의나루로50 The-K타워 B1", phone: "010-8241-9518 / 010-2285-9518", account: "국민은행 92285951847 이진경 (릴리맥)", manager: "이진경", employeeCount: 6, businessNumber: "110-14-78901" },
+  { id: "yeouido2", name: "릴리맥 여의도2호점", type: "직영점", address: "서울시 영등포구 국제금융로8길 31 SK증권빌딩 B1", phone: "010-7939-9518 / 010-2285-9518", account: "국민은행 400437-01-027255 이성원 (릴리맥여의도2호)", manager: "이성원", employeeCount: 5, businessNumber: "110-15-90123" },
+  { id: "flowerlab", name: "릴리맥플라워랩", type: "기타", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906", manager: "김대표", employeeCount: 2, businessNumber: "123-45-67891" },
 ];
 
 export default function BranchesPage() {
@@ -42,8 +42,6 @@ export default function BranchesPage() {
   };
   
   const handleDelete = (branchId: string) => {
-    // In a real app, you'd call an API to delete the branch.
-    // Here, we're just filtering it out of the local state.
     setBranches(branches.filter(branch => branch.id !== branchId));
     console.log(`Branch ${branchId} deleted.`);
   };
@@ -72,8 +70,9 @@ export default function BranchesPage() {
             <TableRow>
               <TableHead>지점명</TableHead>
               <TableHead>유형</TableHead>
-              <TableHead className="hidden md:table-cell">주소</TableHead>
-              <TableHead className="hidden sm:table-cell">연락처</TableHead>
+              <TableHead className="hidden sm:table-cell">점장</TableHead>
+              <TableHead className="hidden md:table-cell">연락처</TableHead>
+              <TableHead className="hidden lg:table-cell">주소</TableHead>
               <TableHead>
                 <span className="sr-only">작업</span>
               </TableHead>
@@ -88,8 +87,9 @@ export default function BranchesPage() {
                     {branch.type}
                   </Badge>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{branch.address}</TableCell>
-                <TableCell className="hidden sm:table-cell">{branch.phone}</TableCell>
+                <TableCell className="hidden sm:table-cell">{branch.manager}</TableCell>
+                <TableCell className="hidden md:table-cell">{branch.phone}</TableCell>
+                <TableCell className="hidden lg:table-cell">{branch.address}</TableCell>
                 <TableCell>
                   <AlertDialog>
                     <DropdownMenu>

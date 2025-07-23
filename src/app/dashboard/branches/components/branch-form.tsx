@@ -29,6 +29,9 @@ import { Textarea } from "@/components/ui/textarea"
 const branchSchema = z.object({
   name: z.string().min(1, "지점명을 입력해주세요."),
   type: z.string().min(1, "유형을 선택해주세요."),
+  manager: z.string().optional(),
+  employeeCount: z.coerce.number().optional(),
+  businessNumber: z.string().optional(),
   address: z.string().min(1, "주소를 입력해주세요."),
   phone: z.string().min(1, "연락처를 입력해주세요."),
   account: z.string().optional(),
@@ -48,6 +51,9 @@ export function BranchForm({ isOpen, onOpenChange, branch }: BranchFormProps) {
     defaultValues: branch || {
       name: "",
       type: "",
+      manager: "",
+      employeeCount: 0,
+      businessNumber: "",
       address: "",
       phone: "",
       account: "",
@@ -61,43 +67,86 @@ export function BranchForm({ isOpen, onOpenChange, branch }: BranchFormProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>{branch ? "지점 정보 수정" : "새 지점 추가"}</DialogTitle>
           <DialogDescription>지점의 상세 정보를 입력하고 관리합니다.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>지점명</FormLabel>
-                  <FormControl>
-                    <Input placeholder="릴리맥 광화문점" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
                 control={form.control}
-                name="type"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>유형</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel>지점명</FormLabel>
+                    <FormControl>
+                      <Input placeholder="릴리맥 광화문점" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>유형</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                          <SelectTrigger><SelectValue placeholder="지점 유형 선택" /></SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              <SelectItem value="본사">본사</SelectItem>
+                              <SelectItem value="직영점">직영점</SelectItem>
+                              <SelectItem value="가맹점">가맹점</SelectItem>
+                              <SelectItem value="기타">기타</SelectItem>
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="manager"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>점장(책임자)</FormLabel>
                         <FormControl>
-                        <SelectTrigger><SelectValue placeholder="지점 유형 선택" /></SelectTrigger>
+                        <Input placeholder="홍길동" {...field} />
                         </FormControl>
-                        <SelectContent>
-                            <SelectItem value="본사">본사</SelectItem>
-                            <SelectItem value="직영점">직영점</SelectItem>
-                            <SelectItem value="가맹점">가맹점</SelectItem>
-                            <SelectItem value="기타">기타</SelectItem>
-                        </SelectContent>
-                    </Select>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="employeeCount"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>직원 수</FormLabel>
+                        <FormControl>
+                        <Input type="number" placeholder="5" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+             <FormField
+                control={form.control}
+                name="businessNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>사업자 등록번호</FormLabel>
+                    <FormControl>
+                      <Input placeholder="123-45-67890" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
