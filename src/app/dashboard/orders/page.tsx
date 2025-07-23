@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, forwardRef, useCallback, useEffect, Component } from "react";
+import { useState, useRef, Component, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -168,7 +168,7 @@ export default function OrdersPage() {
   useEffect(() => {
     // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
     if (selectedOrder && handlePrint) {
-      setTimeout(handlePrint, 0);
+      setTimeout(handlePrint, 50);
     }
   }, [selectedOrder, handlePrint]);
 
@@ -259,9 +259,11 @@ export default function OrdersPage() {
       </Card>
       
       {/* Hidden component for printing */}
-      <div className="hidden">
+      <div className="hidden print:block">
         {selectedOrder && <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />}
       </div>
     </>
   );
 }
+
+    
