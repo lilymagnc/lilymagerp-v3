@@ -139,52 +139,6 @@ export default function NewOrderPage() {
                                 </div>
                             </div>
                             <div>
-                                <Label>주문 상품</Label>
-                                <Card className="mt-2">
-                                    <CardContent className="p-2">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>상품</TableHead>
-                                                <TableHead className="w-[120px]">수량</TableHead>
-                                                <TableHead className="w-[120px] text-right">단가</TableHead>
-                                                <TableHead className="w-[120px] text-right">합계</TableHead>
-                                                <TableHead className="w-[50px]"></TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {orderItems.length > 0 ? (
-                                              orderItems.map(item => (
-                                                <TableRow key={item.id}>
-                                                  <TableCell>{item.name}</TableCell>
-                                                  <TableCell>
-                                                      <div className="flex items-center gap-2">
-                                                          <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
-                                                          <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
-                                                          <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
-                                                      </div>
-                                                  </TableCell>
-                                                  <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
-                                                  <TableCell className="text-right">₩{(item.price * item.quantity).toLocaleString()}</TableCell>
-                                                  <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
-                                                </TableRow>
-                                              ))
-                                            ) : (
-                                              <TableRow>
-                                                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                                                  상품을 추가해주세요.
-                                                </TableCell>
-                                              </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                    <Button variant="outline" className="mt-2 w-full" onClick={() => setIsAddProductDialogOpen(true)}>
-                                        <PlusCircle className="mr-2 h-4 w-4"/> 상품 추가
-                                    </Button>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                            <div>
                               <Label>배송 정보</Label>
                                 <Card className="mt-2">
                                     <CardContent className="p-4 space-y-4">
@@ -249,6 +203,52 @@ export default function NewOrderPage() {
                                     </CardContent>
                                 </Card>
                             </div>
+                            <div>
+                                <Label>주문 상품</Label>
+                                <Card className="mt-2">
+                                    <CardContent className="p-2">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>상품</TableHead>
+                                                <TableHead className="w-[120px]">수량</TableHead>
+                                                <TableHead className="w-[120px] text-right">단가</TableHead>
+                                                <TableHead className="w-[120px] text-right">합계</TableHead>
+                                                <TableHead className="w-[50px]"></TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {orderItems.length > 0 ? (
+                                              orderItems.map(item => (
+                                                <TableRow key={item.id}>
+                                                  <TableCell>{item.name}</TableCell>
+                                                  <TableCell>
+                                                      <div className="flex items-center gap-2">
+                                                          <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
+                                                          <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
+                                                          <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
+                                                      </div>
+                                                  </TableCell>
+                                                  <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
+                                                  <TableCell className="text-right">₩{(item.price * item.quantity).toLocaleString()}</TableCell>
+                                                  <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
+                                                </TableRow>
+                                              ))
+                                            ) : (
+                                              <TableRow>
+                                                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                                                  상품을 추가해주세요.
+                                                </TableCell>
+                                              </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                    <Button variant="outline" className="mt-2 w-full" onClick={() => setIsAddProductDialogOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4"/> 상품 추가
+                                    </Button>
+                                    </CardContent>
+                                </Card>
+                            </div>
                              <div className="space-y-2">
                                 <Label htmlFor="notes">메모</Label>
                                 <Textarea id="notes" placeholder="특별 요청사항을 입력하세요." />
@@ -308,5 +308,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
-    
