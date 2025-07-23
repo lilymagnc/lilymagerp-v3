@@ -67,32 +67,24 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                         </tr>
                         <tr>
                             <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
-                            <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={!isReceipt ? 1 : 5}>{data.items}</td>
-                            {!isReceipt && (
-                                <td colSpan={4}>
-                                    <table className="w-full h-full border-collapse">
-                                        <tbody>
-                                            <tr>
-                                                <td className="border border-black p-1 font-bold w-1/3">금액</td>
-                                                <td className="border border-black p-1 w-2/3">₩{data.totalAmount.toLocaleString()}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="border border-black p-1 font-bold">배송비</td>
-                                                <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="border border-black p-1 font-bold">결제수단</td>
-                                                <td className="border border-black p-1">{data.paymentMethod}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="border border-black p-1 font-bold">결제상태</td>
-                                                <td className="border border-black p-1">{data.paymentStatus}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </td>
-                            )}
+                            <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
                         </tr>
+                         {!isReceipt && (
+                            <tr>
+                                <td className="border border-black p-1 font-bold">금액</td>
+                                <td className="border border-black p-1">₩{data.totalAmount.toLocaleString()}</td>
+                                <td className="border border-black p-1 font-bold">배송비</td>
+                                <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
+                                <td className="border border-black p-1 font-bold">결제수단</td>
+                                <td className="border border-black p-1">{data.paymentMethod}</td>
+                            </tr>
+                        )}
+                        {!isReceipt && (
+                             <tr>
+                                <td className="border border-black p-1 font-bold" colSpan={1}>결제상태</td>
+                                <td className="border border-black p-1" colSpan={5}>{data.paymentStatus}</td>
+                            </tr>
+                        )}
                         <tr>
                             <td className="border border-black p-1 font-bold">배송일/시간</td>
                             <td className="border border-black p-1">{data.deliveryDate}</td>
