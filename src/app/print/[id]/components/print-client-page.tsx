@@ -15,7 +15,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   
   const getPrintableData = (order: Order) => {
     return {
-      orderDate: format(new Date(order.orderDate as unknown as string), 'yyyy-MM-dd'),
+      orderDate: format(order.orderDate, 'yyyy-MM-dd'),
       ordererName: order.orderer.name,
       ordererContact: order.orderer.contact,
       items: order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n'),
@@ -46,9 +46,19 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   useEffect(() => {
     if (order && !printInitiated.current) {
       printInitiated.current = true;
-      setTimeout(() => window.print(), 500); // Allow images to load
+      window.print();
     }
   }, [order]);
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      window.close();
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
   
   const renderPrintSection = (title: string, isReceipt: boolean, data: NonNullable<ReturnType<typeof getPrintableData>>) => (
     <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
@@ -114,29 +124,26 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
 
   return (
     <>
-      <div className="printable-area bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
-        <style jsx global>
-          {`
-            @media print {
-              body * {
-                visibility: hidden;
-              }
-              .printable-area, .printable-area * {
-                visibility: visible;
-              }
-              .printable-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-              }
-              @page {
-                size: A4;
-                margin: 0;
-              }
+      <style jsx global>
+        {`
+          @media print {
+            body > :not(.printable-area) {
+              visibility: hidden;
             }
-          `}
-        </style>
+            .printable-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+          }
+        `}
+      </style>
+      <div className="printable-area bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
         {renderPrintSection('주문서', false, data)}
         <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
         {renderPrintSection('인수증', true, data)}
@@ -155,15 +162,6 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
           </div>
         </div>
       </div>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            window.addEventListener('afterprint', (event) => {
-              window.close();
-            });
-          `,
-        }}
-      />
     </>
   );
 }
