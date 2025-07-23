@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useRef, Component, useEffect } from "react";
+import ReactToPrint, { useReactToPrint } from 'react-to-print';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
-import { useReactToPrint } from 'react-to-print';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -166,9 +166,8 @@ export default function OrdersPage() {
   });
 
   useEffect(() => {
-    // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
     if (selectedOrder && handlePrint) {
-      setTimeout(handlePrint, 50);
+      handlePrint();
     }
   }, [selectedOrder, handlePrint]);
 
@@ -260,12 +259,8 @@ export default function OrdersPage() {
       
       {/* Hidden component for printing */}
       <div className="hidden">
-        <div ref={printableComponentRef}>
-          {selectedOrder && <PrintableContent order={selectedOrder} branches={branches} />}
-        </div>
+        <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />
       </div>
     </>
   );
 }
-
-    
