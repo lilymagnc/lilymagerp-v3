@@ -87,3 +87,27 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  .printing-active body > *:not(#printable-area) {
+    display: none !important;
+  }
+
+  .printing-active #printable-area {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .printing-active #printable-area .shadow-sm {
+    box-shadow: none !important;
+  }
+}

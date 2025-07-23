@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Printer } from "lucide-react";
@@ -10,58 +10,41 @@ import type { Order } from '@/hooks/use-orders';
 import { PrintableOrder, OrderPrintData } from '@/app/dashboard/orders/new/components/printable-order';
 import { useBranches } from '@/hooks/use-branches';
 import { PageHeader } from '@/components/page-header';
+import { cn } from '@/lib/utils';
 
 export function PrintPreviewClient({ order }: { order: Order }) {
     const router = useRouter();
-    const componentRef = React.useRef<HTMLDivElement>(null);
+    const componentRef = useRef<HTMLDivElement>(null);
     const { branches } = useBranches();
-    
+    const [isPrinting, setIsPrinting] = useState(false);
+
     const targetBranch = branches.find(b => b.id === order.branchId);
+    
+    useEffect(() => {
+        if (isPrinting) {
+            window.print();
+        }
+    }, [isPrinting]);
 
     const handlePrint = () => {
-        const printStyleId = 'print-styles';
-        // If the style tag already exists, don't add it again.
-        if (document.getElementById(printStyleId)) {
-            window.print();
-            return;
-        }
-
-        const style = document.createElement('style');
-        style.id = printStyleId;
-        style.innerHTML = `
-            @page {
-                size: A4;
-                margin: 10mm;
-            }
-            @media print {
-                body > *:not(.printable-area-wrapper) {
-                    display: none !important;
-                }
-                .printable-area-wrapper {
-                    display: block !important;
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // Use a timeout to ensure styles are applied before printing
-        setTimeout(() => {
-            window.print();
-        }, 100);
-
-        // Clean up after printing
-        window.onafterprint = () => {
-            const styleElement = document.getElementById(printStyleId);
-            if (styleElement) {
-                styleElement.remove();
-            }
-        };
+        document.body.classList.add('printing-active');
+        setIsPrinting(true);
     };
     
+    // Detect when printing is done (either confirmed or cancelled)
+    useEffect(() => {
+        const afterPrint = () => {
+            document.body.classList.remove('printing-active');
+            setIsPrinting(false);
+        };
+        
+        window.addEventListener('afterprint', afterPrint);
+        
+        return () => {
+            window.removeEventListener('afterprint', afterPrint);
+        }
+    }, []);
+
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
 
     const printData: OrderPrintData | null = targetBranch ? {
@@ -77,8 +60,8 @@ export function PrintPreviewClient({ order }: { order: Order }) {
         items: itemsText,
         totalAmount: order.summary.total,
         deliveryFee: order.summary.deliveryFee,
-        paymentMethod: '카드결제', 
-        paymentStatus: '결제완료', 
+        paymentMethod: '카드결제',
+        paymentStatus: '결제완료',
         deliveryDate: order.deliveryInfo?.date ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` : '정보 없음',
         recipientName: order.deliveryInfo?.recipientName ?? '',
         recipientContact: order.deliveryInfo?.recipientContact ?? '',
@@ -93,29 +76,33 @@ export function PrintPreviewClient({ order }: { order: Order }) {
     } : null;
 
     return (
-        <div className="max-w-4xl mx-auto">
-             <PageHeader
-                title="주문서 인쇄 미리보기"
-                description={`주문 ID: ${order.id}`}
-             >
-                <div className="flex gap-2">
-                     <Button variant="outline" onClick={() => router.back()}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        목록으로 돌아가기
-                    </Button>
-                    <Button onClick={handlePrint} disabled={!printData}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        인쇄하기
-                    </Button>
+        <>
+            <div id="non-printable-ui" className={cn(isPrinting && 'hidden')}>
+                <div className="max-w-4xl mx-auto">
+                    <PageHeader
+                        title="주문서 인쇄 미리보기"
+                        description={`주문 ID: ${order.id}`}
+                    >
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => router.back()}>
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                목록으로 돌아가기
+                            </Button>
+                            <Button onClick={handlePrint} disabled={!printData || isPrinting}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                {isPrinting ? '인쇄 중...' : '인쇄하기'}
+                            </Button>
+                        </div>
+                    </PageHeader>
                 </div>
-            </PageHeader>
-            <div className="printable-area-wrapper">
-                <Card id="printable-area">
+            </div>
+            <div id="printable-area">
+                <Card>
                     <CardContent className="p-0">
                         {printData && <PrintableOrder ref={componentRef} data={printData} />}
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </>
     );
 }
