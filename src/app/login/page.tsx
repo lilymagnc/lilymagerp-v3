@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Ghost, Loader2, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,9 +59,12 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold font-headline">꽃길 ERP 로그인</CardTitle>
-          <CardDescription>
+        <div className="flex justify-center py-6">
+            <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={200} height={50} priority />
+        </div>
+        <CardHeader className="pt-0">
+          <CardTitle className="text-2xl font-bold font-headline text-center">꽃길 ERP 로그인</CardTitle>
+          <CardDescription className="text-center">
             계정 정보를 입력하여 시스템에 접속하세요.
           </CardDescription>
         </CardHeader>
