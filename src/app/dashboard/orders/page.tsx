@@ -26,9 +26,9 @@ export default function OrdersPage() {
 
   const handlePrint = useReactToPrint({
     content: () => printableComponentRef.current,
-    onAfterPrint: () => setSelectedOrder(null), // Reset after printing
+    onAfterPrint: () => setSelectedOrder(null),
   });
-  
+
   useEffect(() => {
     if (selectedOrder) {
       // Use timeout to ensure the component is rendered before printing
