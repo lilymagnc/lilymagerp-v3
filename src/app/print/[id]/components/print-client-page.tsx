@@ -98,7 +98,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         )}
         { isReceipt && <h1 className="text-xl font-bold mt-2">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-[11px]">
+      <table className="w-full border-collapse border border-black text-[12px]">
         <tbody>
           <tr>
             <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
@@ -108,7 +108,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold w-[12%]">연락처</td>
             <td className="border border-black p-1 w-[21%]">{data.ordererContact}</td>
           </tr>
-          <tr style={{height: '160px'}}>
+          <tr style={{height: '140px'}}>
             <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
@@ -134,14 +134,14 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '120px'}}>
+          <tr style={{height: '100px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
-            <tr style={{height: '40px'}}>
+            <tr style={{height: '50px'}}>
               <td className="border border-black p-1 font-bold">인수자성명</td>
-              <td colSpan={5} className="border border-black p-1 h-10"></td>
+              <td colSpan={5} className="border border-black p-1"></td>
             </tr>
           )}
         </tbody>
