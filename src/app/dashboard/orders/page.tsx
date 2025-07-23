@@ -163,6 +163,13 @@ export default function OrdersPage() {
     onAfterPrint: () => setSelectedOrder(null), // Clean up after printing
   });
 
+  useEffect(() => {
+    // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
+    if (selectedOrder && handlePrint) {
+      handlePrint();
+    }
+  }, [selectedOrder, handlePrint]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -178,7 +185,6 @@ export default function OrdersPage() {
 
   const triggerPrint = (order: Order) => {
     setSelectedOrder(order);
-    handlePrint();
   }
 
   return (
@@ -261,3 +267,5 @@ export default function OrdersPage() {
     </>
   );
 }
+
+    
