@@ -66,7 +66,7 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
   if (!data) return null;
 
   const renderSection = (title: string, isReceipt: boolean) => (
-    <div className="mb-4">
+    <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
         <div className="text-center mb-4">
             { !isReceipt && (
                 <>
@@ -147,6 +147,35 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
         </table>
     </div>
   );
+  
+  const PrintableContent = () => (
+    <div className="p-4 bg-white text-black font-sans">
+      {renderSection('주문서', false)}
+      
+      <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
+
+      {renderSection('인수증', true)}
+
+      <div className="mt-8">
+          <table className="w-full border-collapse border border-black text-xs">
+              <tbody>
+                  {branchesContactInfo.map(branch => (
+                      <tr key={branch.name}>
+                          <td className="border border-black p-1 font-bold w-1/5">{branch.name}</td>
+                          <td className="border border-black p-1 w-4/5">
+                              {branch.address}
+                              {branch.tel && <><br/>Tel) {branch.tel}</>}
+                              {branch.blog && <><br/>{branch.blog}</>}
+                              {branch.email && <> E-mail: {branch.email}</>}
+                              {branch.kakao && <> Kakao: {branch.kakao}</>}
+                          </td>
+                      </tr>
+                  ))}
+              </tbody>
+          </table>
+      </div>
+    </div>
+  );
 
   return (
     <Dialog open={!!order} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -157,39 +186,16 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
             
             {/* Hidden printable content */}
             <div className="hidden">
-                <div ref={printableComponentRef} className="p-4 bg-white text-black font-sans">
-                    {renderSection('주문서', false)}
-                    
-                    <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
-
-                    {renderSection('인수증', true)}
-
-                    <div className="mt-8">
-                        <table className="w-full border-collapse border border-black text-xs">
-                            <tbody>
-                                {branchesContactInfo.map(branch => (
-                                    <tr key={branch.name}>
-                                        <td className="border border-black p-1 font-bold w-1/5">{branch.name}</td>
-                                        <td className="border border-black p-1 w-4/5">
-                                            {branch.address}
-                                            {branch.tel && <><br/>Tel) {branch.tel}</>}
-                                            {branch.blog && <><br/>{branch.blog}</>}
-                                            {branch.email && <> E-mail: {branch.email}</>}
-                                            {branch.kakao && <> Kakao: {branch.kakao}</>}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                <div ref={printableComponentRef}>
+                    <PrintableContent />
                 </div>
             </div>
 
             {/* Visible content for preview */}
             <div className="max-h-[60vh] overflow-y-auto border rounded-md p-4">
-                 <div className="p-4 bg-white text-black font-sans scale-[0.9] origin-top">
-                      {renderSection('주문서', false)}
-                 </div>
+                <div className="scale-[0.9] origin-top">
+                    <PrintableContent />
+                </div>
             </div>
             
             <DialogFooter>
@@ -200,5 +206,3 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
     </Dialog>
   );
 }
-
-    
