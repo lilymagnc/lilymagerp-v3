@@ -23,6 +23,15 @@ export default function OrdersPage() {
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
 
+  const onAfterPrint = useCallback(() => {
+    setSelectedOrder(null);
+  }, []);
+  
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+    onAfterPrint,
+  });
+
   const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
     if (!order) return null;
     
@@ -52,22 +61,10 @@ export default function OrdersPage() {
       }
     };
   }, [branches]);
-  
-  const onAfterPrint = useCallback(() => {
-    setSelectedOrder(null);
-  }, []);
-
-  const handlePrint = useReactToPrint({
-    content: () => printableComponentRef.current,
-    onAfterPrint,
-  });
 
   const handlePrintClick = (order: Order) => {
     setSelectedOrder(order);
-    // Use a timeout to allow the component to re-render with the new data before printing
-    setTimeout(() => {
-        if(handlePrint) handlePrint();
-    }, 100);
+    handlePrint();
   }
   
   const getStatusBadge = (status: string) => {
@@ -158,8 +155,10 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="hidden print:block">
-        <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
+      <div className="hidden">
+        <div className="print:block">
+          <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
+        </div>
       </div>
     </>
   );
