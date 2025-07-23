@@ -2,16 +2,15 @@
 "use client";
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Ghost, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 
 export default function LoginPage() {
@@ -21,7 +20,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [anonymousLoading, setAnonymousLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,22 +35,6 @@ export default function LoginPage() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-  
-  const handleAnonymousLogin = async () => {
-    setAnonymousLoading(true);
-    try {
-      await signInAnonymously(auth);
-      router.push('/dashboard');
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: '익명 로그인 실패',
-        description: error.message,
-      });
-    } finally {
-      setAnonymousLoading(false);
     }
   };
 
@@ -102,17 +84,7 @@ export default function LoginPage() {
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               로그인
             </Button>
-            <Button variant="outline" className="w-full" onClick={handleAnonymousLogin} disabled={anonymousLoading}>
-              {anonymousLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ghost className="mr-2 h-4 w-4" />}
-              익명으로 계속하기
-            </Button>
           </form>
-          <div className="mt-4 text-center text-sm">
-            계정이 없으신가요?{' '}
-            <Link href="/signup" className="underline">
-              회원가입
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>
