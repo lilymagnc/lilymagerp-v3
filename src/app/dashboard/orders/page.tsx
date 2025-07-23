@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, MoreHorizontal, Printer } from "lucide-react";
@@ -26,15 +26,21 @@ export default function OrdersPage() {
 
   const handlePrint = useReactToPrint({
     content: () => printableComponentRef.current,
+    onAfterPrint: () => setSelectedOrder(null), // Reset after printing
   });
-
+  
+  useEffect(() => {
+    if (selectedOrder) {
+      // Use timeout to ensure the component is rendered before printing
+      const timer = setTimeout(() => {
+        handlePrint();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedOrder, handlePrint]);
+  
   const prepareAndPrint = (order: Order) => {
     setSelectedOrder(order);
-    // Setting state is async, so we use a timeout to wait for the next render cycle
-    // before triggering the print action.
-    setTimeout(() => {
-      handlePrint();
-    }, 0);
   }
 
   const getPrintableData = (order: Order | null): OrderPrintData | null => {
