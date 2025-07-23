@@ -82,6 +82,7 @@ export default function OrdersPage() {
 
   return (
     <div>
+      <div className="screen-only">
         <PageHeader
           title="주문 현황"
           description="모든 주문 내역을 확인하고 관리하세요."
@@ -152,7 +153,8 @@ export default function OrdersPage() {
           </Table>
           </CardContent>
         </Card>
-      <div className="hidden">
+      </div>
+      <div className="print-only">
         <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
       </div>
     </div>
