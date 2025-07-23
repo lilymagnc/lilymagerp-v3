@@ -43,12 +43,10 @@ export default function PrintOrderPage() {
   useEffect(() => {
     if (!loading && order && !printInitiated.current) {
       printInitiated.current = true; // Prevents multiple print dialogs
-      setTimeout(() => {
-        window.print();
-        window.onafterprint = () => {
-          window.close();
-        }
-      }, 500); // give a bit time for render
+      window.print();
+      window.onafterprint = () => {
+        window.close();
+      }
     }
   }, [loading, order]);
 
@@ -104,7 +102,7 @@ export default function PrintOrderPage() {
       <div className="text-center mb-2">
         { !isReceipt && (
           <>
-          <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" unoptimized />
+          <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" priority unoptimized />
           <h1 className="text-xl font-bold mt-1">릴리맥 플라워앤가든 {title}</h1>
           </>
         )}
