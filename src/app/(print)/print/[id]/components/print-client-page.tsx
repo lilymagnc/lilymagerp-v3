@@ -13,45 +13,45 @@ interface PrintClientPageProps {
 export function PrintClientPage({ order }: PrintClientPageProps) {
   const printInitiated = useRef(false);
 
-  // useEffect(() => {
-  //   if (order && !printInitiated.current) {
-  //     printInitiated.current = true;
+  useEffect(() => {
+    if (order && !printInitiated.current) {
+      printInitiated.current = true;
       
-  //     const images = Array.from(document.images);
-  //     const imageLoadPromises = images.map(img => {
-  //       if (img.complete) return Promise.resolve();
-  //       return new Promise(resolve => {
-  //         img.onload = resolve;
-  //         img.onerror = resolve; // Resolve on error too, to not block printing
-  //       });
-  //     });
+      const images = Array.from(document.images);
+      const imageLoadPromises = images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve; // Resolve on error too, to not block printing
+        });
+      });
 
-  //     const triggerPrint = () => {
-  //       // Delay slightly after image load to ensure rendering
-  //       setTimeout(() => {
-  //         window.print();
-  //       }, 100); 
-  //     };
+      const triggerPrint = () => {
+        // Delay slightly after image load to ensure rendering
+        setTimeout(() => {
+          window.print();
+        }, 100); 
+      };
       
-  //     // Failsafe timeout in case images take too long
-  //     const printTimeout = setTimeout(triggerPrint, 2000); 
+      // Failsafe timeout in case images take too long
+      const printTimeout = setTimeout(triggerPrint, 2000); 
 
-  //     Promise.all(imageLoadPromises).then(() => {
-  //       clearTimeout(printTimeout);
-  //       triggerPrint();
-  //     });
-  //   }
-  // }, [order]);
+      Promise.all(imageLoadPromises).then(() => {
+        clearTimeout(printTimeout);
+        triggerPrint();
+      });
+    }
+  }, [order]);
   
-  // useEffect(() => {
-  //   const handleAfterPrint = () => {
-  //     window.close();
-  //   };
-  //   window.addEventListener('afterprint', handleAfterPrint);
-  //   return () => {
-  //     window.removeEventListener('afterprint', handleAfterPrint);
-  //   };
-  // }, []);
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      window.close();
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
 
   if (!order) {
     return <div>주문 정보를 불러오는 중...</div>;
@@ -99,7 +99,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         )}
         { isReceipt && <h1 className="text-xl font-bold mt-2">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-[13px]">
+      <table className="w-full border-collapse border border-black text-[14px]">
         <tbody>
           <tr>
             <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
@@ -109,7 +109,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold w-[12%]">연락처</td>
             <td className="border border-black p-1 w-[21%]">{data.ordererContact}</td>
           </tr>
-          <tr style={{height: '110px'}}>
+          <tr style={{height: '140px'}}>
             <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
@@ -135,12 +135,12 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '95px'}}>
+          <tr style={{height: '120px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
-            <tr style={{height: '55px'}}>
+            <tr style={{height: '70px'}}>
               <td className="border border-black p-1 font-bold">인수자성명</td>
               <td colSpan={5} className="border border-black p-1"></td>
             </tr>
@@ -156,7 +156,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         {renderPrintSection('주문서', false, data)}
         <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
         {renderPrintSection('인수증', true, data)}
-        <div className="mt-4 text-center border-t border-black pt-2 text-[11px]">
+        <div className="mt-4 text-center border-t border-black pt-2 text-[12px]">
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-2 max-w-md mx-auto">
             {branchesContactInfo.map(branch => (
               <div key={branch.name} className="text-left">
