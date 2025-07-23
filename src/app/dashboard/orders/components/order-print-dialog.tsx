@@ -31,7 +31,7 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
     content: () => printableComponentRef.current,
     onAfterPrint: onClose,
   });
-
+  
   const getPrintableData = useCallback(() => {
     if (!order) return null;
     
@@ -79,30 +79,32 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
         <table className="w-full border-collapse border border-black text-sm">
             <tbody>
                 <tr>
-                    <td className="border border-black p-1 font-bold w-1/6">주문일</td>
-                    <td className="border border-black p-1 w-2/6">{data.orderDate}</td>
-                    <td className="border border-black p-1 font-bold w-1/6">주문자성명</td>
-                    <td className="border border-black p-1 w-1/6">{data.ordererName}</td>
-                    <td className="border border-black p-1 font-bold w-1/6">연락처</td>
-                    <td className="border border-black p-1 w-1/6">{data.ordererContact}</td>
+                    <td className="border border-black p-1 font-bold w-[100px]">주문일</td>
+                    <td className="border border-black p-1">{data.orderDate}</td>
+                    <td className="border border-black p-1 font-bold w-[100px]">주문자성명</td>
+                    <td className="border border-black p-1 w-[120px]">{data.ordererName}</td>
+                    <td className="border border-black p-1 font-bold w-[100px]">연락처</td>
+                    <td className="border border-black p-1 w-[150px]">{data.ordererContact}</td>
                 </tr>
                 <tr>
                     <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
-                    <td className="border border-black p-1 align-top whitespace-pre-wrap">{data.items}</td>
-                    <td colSpan={4}>
-                         <table className="w-full h-full border-collapse">
-                            <tbody>
-                                <tr>
-                                    <td className="border border-black p-1 font-bold w-1/3">금액</td>
-                                    <td className="border border-black p-1 w-2/3">₩{data.totalAmount.toLocaleString()}</td>
-                                </tr>
-                                <tr>
-                                    <td className="border border-black p-1 font-bold">배송비</td>
-                                    <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </td>
+                    <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={!isReceipt ? 1 : 5}>{data.items}</td>
+                    {!isReceipt && (
+                        <td colSpan={4}>
+                            <table className="w-full h-full border-collapse">
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-black p-1 font-bold w-[100px]">금액</td>
+                                        <td className="border border-black p-1">₩{data.totalAmount.toLocaleString()}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-black p-1 font-bold">배송비</td>
+                                        <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    )}
                 </tr>
                 { !isReceipt && (
                      <tr>
@@ -112,9 +114,9 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
                             <table className="w-full h-full border-collapse">
                                 <tbody>
                                     <tr>
-                                        <td className="border border-black p-1 font-bold w-1/3">결제수단</td>
-                                        <td className="border border-black p-1 w-1/3">{data.paymentMethod}</td>
-                                        <td className="border border-black p-1 w-1/3">{data.paymentStatus}</td>
+                                        <td className="border border-black p-1 font-bold w-[100px]">결제수단</td>
+                                        <td className="border border-black p-1">{data.paymentMethod}</td>
+                                        <td className="border border-black p-1 w-[100px]">{data.paymentStatus}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -124,7 +126,7 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
                 <tr>
                     <td className="border border-black p-1 font-bold">배송일/시간</td>
                     <td className="border border-black p-1">{data.deliveryDate}</td>
-                    <td className="border border-black p-1 font-bold">받으시는분 성함</td>
+                    <td className="border border-black p-1 font-bold">받으시는분</td>
                     <td className="border border-black p-1">{data.recipientName}</td>
                     <td className="border border-black p-1 font-bold">연락처</td>
                     <td className="border border-black p-1">{data.recipientContact}</td>
@@ -151,11 +153,8 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
   const PrintableContent = () => (
     <div className="p-4 bg-white text-black font-sans">
       {renderSection('주문서', false)}
-      
       <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
-
       {renderSection('인수증', true)}
-
       <div className="mt-8">
           <table className="w-full border-collapse border border-black text-xs">
               <tbody>
@@ -179,25 +178,20 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
 
   return (
     <Dialog open={!!order} onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-3xl">
             <DialogHeader>
                 <DialogTitle>주문서 인쇄 미리보기</DialogTitle>
             </DialogHeader>
-            
-            {/* Hidden printable content */}
             <div className="hidden">
                 <div ref={printableComponentRef}>
                     <PrintableContent />
                 </div>
             </div>
-
-            {/* Visible content for preview */}
-            <div className="max-h-[60vh] overflow-y-auto border rounded-md p-4">
-                <div className="scale-[0.9] origin-top">
+            <div className="max-h-[70vh] overflow-y-auto border rounded-md p-4 bg-gray-100">
+                <div className="scale-[0.8] origin-top bg-white shadow-lg mx-auto w-full" style={{width: '210mm', minHeight: '297mm'}}>
                     <PrintableContent />
                 </div>
             </div>
-            
             <DialogFooter>
                 <Button variant="outline" onClick={onClose}>닫기</Button>
                 <Button onClick={handlePrint}>인쇄</Button>
