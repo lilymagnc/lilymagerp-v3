@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useRef } from 'react';
@@ -24,6 +23,9 @@ const pageStyle = `
   @media print {
     body {
         -webkit-print-color-adjust: exact;
+    }
+    .no-print {
+        display: none !important;
     }
   }
 `;
@@ -69,6 +71,7 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
              <PageHeader
                 title="주문서 인쇄 미리보기"
                 description={`주문 ID: ${order.id}`}
+                className="no-print"
              >
                 <div className="flex gap-2">
                      <Button variant="outline" onClick={() => router.back()}>
