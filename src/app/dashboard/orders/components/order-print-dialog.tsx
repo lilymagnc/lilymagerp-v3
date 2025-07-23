@@ -184,4 +184,3 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
     </div>
   );
 }
-
