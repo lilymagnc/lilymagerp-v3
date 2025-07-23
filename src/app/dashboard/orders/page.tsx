@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -21,7 +21,6 @@ export default function OrdersPage() {
   const { orders, loading } = useOrders();
   const { branches } = useBranches();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isPrinting, setIsPrinting] = useState(false);
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
 
@@ -59,17 +58,13 @@ export default function OrdersPage() {
     content: () => printableComponentRef.current,
     onAfterPrint: () => setSelectedOrder(null),
   });
-
-  useEffect(() => {
-    if (isPrinting && handlePrint) {
-        handlePrint();
-        setIsPrinting(false);
-    }
-  }, [isPrinting, handlePrint]);
   
   const prepareAndPrint = (order: Order) => {
     setSelectedOrder(order);
-    setIsPrinting(true);
+    // Use a timeout to allow the component to render before printing.
+    setTimeout(() => {
+        handlePrint();
+    }, 100);
   }
 
   const getStatusBadge = (status: string) => {
