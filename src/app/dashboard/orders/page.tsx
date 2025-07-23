@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -53,17 +52,12 @@ export default function OrdersPage() {
     };
   }, [branches]);
 
-  const handlePrint = useReactToPrint({
-    content: () => printableComponentRef.current,
-    onAfterPrint: () => setSelectedOrder(null),
-  });
-
-  const prepareAndPrint = (order: Order) => {
+  const handlePrint = (order: Order) => {
     setSelectedOrder(order);
-    // Use a timeout to allow the component to re-render with the new data before printing
+    // Use a timeout to allow state to update and component to re-render before printing
     setTimeout(() => {
-        handlePrint();
-    }, 100);
+      window.print();
+    }, 0);
   }
   
   const getStatusBadge = (status: string) => {
@@ -81,7 +75,7 @@ export default function OrdersPage() {
 
 
   return (
-    <div>
+    <>
       <div className="screen-only">
         <PageHeader
           title="주문 현황"
@@ -140,7 +134,7 @@ export default function OrdersPage() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => prepareAndPrint(order)}
+                            onClick={() => handlePrint(order)}
                         >
                             <Printer className="h-4 w-4" />
                             <span className="sr-only">주문서 출력</span>
@@ -157,6 +151,6 @@ export default function OrdersPage() {
       <div className="print-only">
         <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
       </div>
-    </div>
+    </>
   );
 }

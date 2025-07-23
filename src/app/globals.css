@@ -89,10 +89,20 @@ body {
 }
 
 @media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   .print-only {
-    display: block;
+    display: block !important;
   }
   .screen-only {
+    display: none !important;
+  }
+}
+
+@layer utilities {
+  .print-only {
     display: none;
   }
 }
