@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -16,6 +17,75 @@ interface PrintPreviewClientProps {
 export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
   const router = useRouter();
 
+  const handlePrint = () => {
+    const printableArea = document.getElementById('printable-area');
+    if (!printableArea) return;
+
+    // Create a new iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentWindow?.document;
+    if (!iframeDoc) return;
+    
+    // Get all link tags from the main document's head
+    const linkElements = document.querySelectorAll('head link[rel="stylesheet"]');
+    linkElements.forEach(link => {
+      iframeDoc.head.appendChild(link.cloneNode(true));
+    });
+    
+    // Create a new style element for @page rules
+    const style = iframeDoc.createElement('style');
+    style.textContent = `
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+      body {
+        margin: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .print-card-content {
+        box-shadow: none !important;
+        border: none !important;
+      }
+    `;
+    iframeDoc.head.appendChild(style);
+
+    // Copy the printable content and our base classes
+    iframeDoc.body.innerHTML = printableArea.innerHTML;
+    iframeDoc.body.className = "bg-white text-black font-sans";
+
+    // Wait for images to load before printing
+    const images = iframeDoc.body.getElementsByTagName('img');
+    const promises = [];
+    for (let i = 0; i < images.length; i++) {
+        promises.push(new Promise<void>(resolve => {
+            if (images[i].complete) {
+                resolve();
+            } else {
+                images[i].onload = () => resolve();
+                images[i].onerror = () => resolve(); // Resolve even on error to not block printing
+            }
+        }));
+    }
+
+    Promise.all(promises).then(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        // Remove the iframe after printing is done or cancelled
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 500);
+    });
+  };
+
   if (!order) {
     return <div>주문 정보를 불러오는 중...</div>;
   }
@@ -29,8 +99,8 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
       items: order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n'),
       totalAmount: order.summary.subtotal,
       deliveryFee: order.summary.deliveryFee,
-      paymentMethod: "카드", // Mock data
-      paymentStatus: "완결", // Mock data
+      paymentMethod: "카드", 
+      paymentStatus: "완결", 
       deliveryDate: order.receiptType === 'delivery' && order.deliveryInfo 
         ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` 
         : "매장 픽업",
@@ -115,40 +185,21 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
 
   return (
     <>
-      <style>
-      {`
-        @page {
-          size: A4;
-          margin: 10mm;
-        }
-        @media print {
-          .no-print {
-            display: none;
-          }
-          .print-area {
-            margin: 0;
-            padding: 0;
-            box-shadow: none;
-            border: none;
-          }
-        }
-      `}
-      </style>
       <PageHeader title="주문서 인쇄 미리보기" description={`주문번호: ${order.id}`}>
-        <div className="flex items-center gap-2 no-print">
+        <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => router.back()}>
                 <ArrowLeft className="mr-2" />
                 목록으로 돌아가기
             </Button>
-            <Button onClick={() => window.print()}>
+            <Button onClick={handlePrint}>
                 <Printer className="mr-2" />
                 인쇄하기
             </Button>
         </div>
       </PageHeader>
-      <Card className="print-area">
-        <CardContent id="printable-area" className="bg-white text-black font-sans">
-            <div className="max-w-[190mm] mx-auto">
+      <Card>
+        <CardContent id="printable-area" className="bg-white text-black font-sans print-card-content">
+            <div className="max-w-[190mm] mx-auto p-4">
                 {renderPrintSection('주문서', false, data)}
                 <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
                 {renderPrintSection('인수증', true, data)}
@@ -172,3 +223,5 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
     </>
   );
 }
+
+    
