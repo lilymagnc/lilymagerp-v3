@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useRef, useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Printer, Loader2 } from "lucide-react";
@@ -14,35 +14,8 @@ import { format } from 'date-fns';
 
 export function PrintPreviewClient({ order }: { order: Order }) {
     const router = useRouter();
-    const componentRef = useRef<HTMLDivElement>(null);
     const { branches, loading: branchesLoading } = useBranches();
-    const [isPrinting, setIsPrinting] = useState(false);
     
-    useEffect(() => {
-        if (isPrinting) {
-            // Give the browser a moment to apply styles before printing
-            const timer = setTimeout(() => {
-                window.print();
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [isPrinting]);
-
-    useEffect(() => {
-        const handleAfterPrint = () => {
-            setIsPrinting(false);
-        };
-
-        window.addEventListener('afterprint', handleAfterPrint);
-        return () => {
-            window.removeEventListener('afterprint', handleAfterPrint);
-        };
-    }, []);
-
-    const handlePrintClick = () => {
-        setIsPrinting(true);
-    };
-
     if (branchesLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
@@ -81,7 +54,7 @@ export function PrintPreviewClient({ order }: { order: Order }) {
     } : null;
 
     return (
-        <div className={isPrinting ? 'printing-active' : ''}>
+        <div>
              <div className="max-w-4xl mx-auto no-print">
                 <PageHeader
                     title="주문서 인쇄 미리보기"
@@ -92,9 +65,9 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             목록으로 돌아가기
                         </Button>
-                        <Button onClick={handlePrintClick} disabled={!printData || isPrinting}>
-                           {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
-                           {isPrinting ? '인쇄중...' : '인쇄하기'}
+                        <Button onClick={() => window.print()} disabled={!printData}>
+                           <Printer className="mr-2 h-4 w-4" />
+                           인쇄하기
                         </Button>
                     </div>
                 </PageHeader>
@@ -102,7 +75,7 @@ export function PrintPreviewClient({ order }: { order: Order }) {
             <div id="printable-area">
                 <Card className="shadow-sm print:shadow-none print:border-none max-w-4xl mx-auto">
                     <CardContent className="p-0">
-                         {printData ? <div ref={componentRef}><PrintableOrder data={printData} /></div> : <p>주문 데이터를 불러오는 중입니다...</p>}
+                         {printData ? <PrintableOrder data={printData} /> : <p>주문 데이터를 불러오는 중입니다...</p>}
                     </CardContent>
                 </Card>
             </div>
