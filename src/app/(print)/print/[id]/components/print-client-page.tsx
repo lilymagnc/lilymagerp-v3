@@ -13,45 +13,45 @@ interface PrintClientPageProps {
 export function PrintClientPage({ order }: PrintClientPageProps) {
   const printInitiated = useRef(false);
 
-  useEffect(() => {
-    if (order && !printInitiated.current) {
-      printInitiated.current = true;
+  // useEffect(() => {
+  //   if (order && !printInitiated.current) {
+  //     printInitiated.current = true;
       
-      const images = Array.from(document.images);
-      const imageLoadPromises = images.map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = resolve; // Resolve on error too, to not block printing
-        });
-      });
+  //     const images = Array.from(document.images);
+  //     const imageLoadPromises = images.map(img => {
+  //       if (img.complete) return Promise.resolve();
+  //       return new Promise(resolve => {
+  //         img.onload = resolve;
+  //         img.onerror = resolve; // Resolve on error too, to not block printing
+  //       });
+  //     });
 
-      const triggerPrint = () => {
-        // Delay slightly after image load to ensure rendering
-        setTimeout(() => {
-          window.print();
-        }, 100); 
-      };
+  //     const triggerPrint = () => {
+  //       // Delay slightly after image load to ensure rendering
+  //       setTimeout(() => {
+  //         window.print();
+  //       }, 100); 
+  //     };
       
-      // Failsafe timeout in case images take too long
-      const printTimeout = setTimeout(triggerPrint, 2000); 
+  //     // Failsafe timeout in case images take too long
+  //     const printTimeout = setTimeout(triggerPrint, 2000); 
 
-      Promise.all(imageLoadPromises).then(() => {
-        clearTimeout(printTimeout);
-        triggerPrint();
-      });
-    }
-  }, [order]);
+  //     Promise.all(imageLoadPromises).then(() => {
+  //       clearTimeout(printTimeout);
+  //       triggerPrint();
+  //     });
+  //   }
+  // }, [order]);
   
-  useEffect(() => {
-    const handleAfterPrint = () => {
-      window.close();
-    };
-    window.addEventListener('afterprint', handleAfterPrint);
-    return () => {
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, []);
+  // useEffect(() => {
+  //   const handleAfterPrint = () => {
+  //     window.close();
+  //   };
+  //   window.addEventListener('afterprint', handleAfterPrint);
+  //   return () => {
+  //     window.removeEventListener('afterprint', handleAfterPrint);
+  //   };
+  // }, []);
 
   if (!order) {
     return <div>주문 정보를 불러오는 중...</div>;
