@@ -28,7 +28,7 @@ export function useBranches() {
     try {
       setLoading(true);
       const branchesCollection = collection(db, 'branches');
-      const querySnapshot = await getDocs(branchesCollection);
+      let querySnapshot = await getDocs(branchesCollection);
       
       if (querySnapshot.empty) {
         // Seed initial data if the collection is empty
@@ -39,13 +39,17 @@ export function useBranches() {
         });
         await batch.commit();
         // Fetch again after seeding
-        const seededSnapshot = await getDocs(branchesCollection);
-        const branchesData = seededSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
-        setBranches(branchesData);
-      } else {
-        const branchesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
-        setBranches(branchesData);
-      }
+        querySnapshot = await getDocs(branchesCollection);
+      } 
+      
+      const branchesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
+      branchesData.sort((a, b) => {
+        if (a.type === '본사') return -1;
+        if (b.type === '본사') return 1;
+        return a.name.localeCompare(b.name);
+      });
+      setBranches(branchesData);
+
     } catch (error) {
       console.error("Error fetching branches: ", error);
       toast({
