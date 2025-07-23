@@ -15,15 +15,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { useBranches } from "@/hooks/use-branches";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
+  const { branches } = useBranches();
   const { toast } = useToast();
   const [printableOrderData, setPrintableOrderData] = useState<OrderPrintData | null>(null);
   const printableComponentRef = useRef(null);
   
   const handlePrint = (order: Order) => {
-    
+    const branchInfo = branches.find(b => b.id === order.branchId);
+
     const printData: OrderPrintData = {
       orderDate: format(order.orderDate.toDate(), 'yyyy-MM-dd'),
       ordererName: order.orderer.name,
@@ -42,9 +45,9 @@ export default function OrdersPage() {
       message: `${order.message.type}: ${order.message.content}`,
       branchInfo: {
         name: order.branchName,
-        address: "불러오기 필요",
-        contact: "불러오기 필요",
-        account: "불러오기 필요"
+        address: branchInfo?.address || "정보 없음",
+        contact: branchInfo?.phone || "정보 없음",
+        account: branchInfo?.account || "정보 없음",
       }
     };
 
@@ -53,16 +56,18 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (printableOrderData) {
+      const print = () => {
+        window.print();
+      };
+      
+      // Delay printing slightly to ensure component has rendered with new data
+      const timer = setTimeout(print, 100);
+
       const handleAfterPrint = () => {
         setPrintableOrderData(null);
         window.removeEventListener('afterprint', handleAfterPrint);
       };
       window.addEventListener('afterprint', handleAfterPrint);
-      
-      // Delay printing slightly to ensure component has rendered
-      const timer = setTimeout(() => {
-        window.print();
-      }, 100);
 
       return () => {
         clearTimeout(timer);
