@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Order } from '@/hooks/use-orders';
@@ -9,16 +10,18 @@ import { format } from 'date-fns';
 import Image from 'next/image';
 import { Loader2 } from 'lucide-react';
 
-export default function PrintOrderPage({ params }: { params: { id: string } }) {
+export default function PrintOrderPage() {
+  const params = useParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const printInitiated = useRef(false);
 
   useEffect(() => {
     const fetchOrder = async () => {
-      if (params.id) {
+      const orderId = Array.isArray(params.id) ? params.id[0] : params.id;
+      if (orderId) {
         try {
-          const docRef = doc(db, 'orders', params.id);
+          const docRef = doc(db, 'orders', orderId);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
@@ -202,4 +205,3 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
-
