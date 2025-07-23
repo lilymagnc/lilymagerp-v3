@@ -46,7 +46,10 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   useEffect(() => {
     if (order && !printInitiated.current) {
       printInitiated.current = true;
-      window.print();
+      // Timeout gives the browser a moment to render images before printing
+      setTimeout(() => {
+        window.print();
+      }, 500);
     }
   }, [order]);
 
@@ -126,24 +129,19 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
     <>
       <style jsx global>
         {`
+          @page {
+            size: A4;
+            margin: 0;
+          }
           @media print {
-            body > :not(.printable-area) {
-              visibility: hidden;
-            }
-            .printable-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-            @page {
-              size: A4;
-              margin: 0;
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
           }
         `}
       </style>
-      <div className="printable-area bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
+      <div className="bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
         {renderPrintSection('주문서', false, data)}
         <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
         {renderPrintSection('인수증', true, data)}
