@@ -24,6 +24,11 @@ export default function OrdersPage() {
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
 
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+    onAfterPrint: () => setSelectedOrder(null),
+  });
+
   const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
     if (!order) return null;
     
@@ -54,10 +59,6 @@ export default function OrdersPage() {
     };
   }, [branches]);
 
-  const handlePrint = useReactToPrint({
-    content: () => printableComponentRef.current,
-    onAfterPrint: () => setSelectedOrder(null),
-  });
   
   const prepareAndPrint = (order: Order) => {
     setSelectedOrder(order);
