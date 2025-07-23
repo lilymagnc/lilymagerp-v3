@@ -156,8 +156,10 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="hidden print:block">
-        <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
+      <div className="hidden">
+        <div ref={printableComponentRef}>
+            <PrintableOrder data={getPrintableData(selectedOrder)} />
+        </div>
       </div>
     </>
   );
