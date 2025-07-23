@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useRef } from 'react';
-import { ReactToPrint } from 'react-to-print';
+import { useReactToPrint } from 'react-to-print';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +28,10 @@ interface OrderPrintDialogProps {
 export function OrderPrintDialog({ isOpen, onOpenChange, order, branches }: OrderPrintDialogProps) {
     const printableComponentRef = useRef(null);
 
+    const handlePrint = useReactToPrint({
+      content: () => printableComponentRef.current,
+    });
+
     if (!order) return null;
 
     return (
@@ -47,15 +51,10 @@ export function OrderPrintDialog({ isOpen, onOpenChange, order, branches }: Orde
                             닫기
                         </Button>
                     </DialogClose>
-                    <ReactToPrint
-                        trigger={() => (
-                            <Button>
-                                <Printer className="mr-2 h-4 w-4" />
-                                인쇄하기
-                            </Button>
-                        )}
-                        content={() => printableComponentRef.current}
-                    />
+                    <Button onClick={handlePrint}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        인쇄하기
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
