@@ -1,57 +1,21 @@
 
 "use client";
 
-import { useEffect, useRef } from 'react';
-import type { Order } from '@/hooks/use-orders';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft, Printer } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
+import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
+import type { Order } from '@/hooks/use-orders';
 import Image from 'next/image';
 
-interface PrintClientPageProps {
+interface PrintPreviewClientProps {
   order: Order | null;
 }
 
-export function PrintClientPage({ order }: PrintClientPageProps) {
-  const printInitiated = useRef(false);
-
-  useEffect(() => {
-    if (order && !printInitiated.current) {
-      printInitiated.current = true;
-      
-      const images = Array.from(document.images);
-      const imageLoadPromises = images.map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = resolve; // Resolve on error too, to not block printing
-        });
-      });
-
-      const triggerPrint = () => {
-        // Delay slightly after image load to ensure rendering
-        setTimeout(() => {
-          window.print();
-        }, 100); 
-      };
-      
-      // Failsafe timeout in case images take too long
-      const printTimeout = setTimeout(triggerPrint, 500); 
-
-      Promise.all(imageLoadPromises).then(() => {
-        clearTimeout(printTimeout);
-        triggerPrint();
-      });
-    }
-  }, [order]);
-  
-  useEffect(() => {
-    const handleAfterPrint = () => {
-      window.close();
-    };
-    window.addEventListener('afterprint', handleAfterPrint);
-    return () => {
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, []);
+export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
+  const router = useRouter();
 
   if (!order) {
     return <div>주문 정보를 불러오는 중...</div>;
@@ -151,30 +115,65 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   );
 
   return (
-    <div 
-      className="bg-white text-black font-sans max-w-[210mm] mx-auto"
-      style={{
-          padding: '10mm 10mm 0 10mm',
-          boxSizing: 'border-box'
-      }}
-    >
-      {renderPrintSection('주문서', false, data)}
-      <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
-      {renderPrintSection('인수증', true, data)}
-      <div className="mt-2 text-center border-t border-black pt-1 text-[10px]">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-0 mb-1 max-w-md mx-auto">
-          {branchesContactInfo.map(branch => (
-            <div key={branch.name} className="text-left">
-              <span className="font-bold">{branch.name}:</span>
-              <span className="ml-1">{branch.tel}</span>
+    <>
+      <PageHeader title="주문서 인쇄 미리보기" description={`주문번호: ${order.id}`}>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => router.back()}>
+                <ArrowLeft className="mr-2" />
+                목록으로 돌아가기
+            </Button>
+            <Button onClick={() => window.print()}>
+                <Printer className="mr-2" />
+                인쇄하기
+            </Button>
+        </div>
+      </PageHeader>
+      <Card>
+        <CardContent>
+            <style>
+            {`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #printable-area, #printable-area * {
+                        visibility: visible;
+                    }
+                    #printable-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        height: 100%;
+                    }
+                     @page {
+                        size: A4;
+                        margin: 0;
+                    }
+                }
+            `}
+            </style>
+             <div id="printable-area" className="bg-white text-black font-sans max-w-[210mm] mx-auto my-8 p-4 shadow-lg">
+                {renderPrintSection('주문서', false, data)}
+                <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
+                {renderPrintSection('인수증', true, data)}
+                <div className="mt-2 text-center border-t border-black pt-1 text-[10px]">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0 mb-1 max-w-md mx-auto">
+                    {branchesContactInfo.map(branch => (
+                        <div key={branch.name} className="text-left">
+                        <span className="font-bold">{branch.name}:</span>
+                        <span className="ml-1">{branch.tel}</span>
+                        </div>
+                    ))}
+                    </div>
+                    <div className="text-center">
+                    <span className="font-bold">[온라인쇼핑몰]:</span>
+                    <span className="ml-1">{onlineShopUrl}</span>
+                    </div>
+                </div>
             </div>
-          ))}
-        </div>
-        <div className="text-center">
-          <span className="font-bold">[온라인쇼핑몰]:</span>
-          <span className="ml-1">{onlineShopUrl}</span>
-        </div>
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }

@@ -1,13 +1,13 @@
+
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { OrderData } from '@/hooks/use-orders';
-import { PrintClientPage } from './components/print-client-page';
+import type { Order } from '@/hooks/use-orders';
+import { PrintPreviewClient } from './components/print-preview-client';
 
 // The Order type from use-orders uses Timestamp, but when we get it from Firestore
 // it's a plain object that needs to be converted.
 // We also need to make sure the orderDate is serializable.
-interface ServerOrder extends Omit<OrderData, 'orderDate'> {
-    id: string;
+interface ServerOrder extends Omit<Order, 'orderDate'> {
     orderDate: string; // ISO string
 }
 
@@ -19,11 +19,11 @@ async function getOrder(orderId: string): Promise<ServerOrder | null> {
         if (docSnap.exists()) {
             const data = docSnap.data();
             const orderDate = data.orderDate as Timestamp;
-            return { 
-                id: docSnap.id, 
+            return {
+                id: docSnap.id,
                 ...data,
                 orderDate: orderDate.toDate().toISOString(),
-            } as ServerOrder;
+            } as unknown as ServerOrder; // Cast to unknown first
         } else {
             console.error("No such document!");
             return null;
@@ -34,7 +34,7 @@ async function getOrder(orderId: string): Promise<ServerOrder | null> {
     }
 }
 
-export default async function PrintOrderPage({ params }: { params: { id: string } }) {
+export default async function PrintPreviewPage({ params }: { params: { id: string } }) {
   const order = await getOrder(params.id);
 
   if (!order) {
@@ -51,5 +51,5 @@ export default async function PrintOrderPage({ params }: { params: { id: string 
     orderDate: new Date(order.orderDate),
   };
 
-  return <PrintClientPage order={orderForClient as any} />;
+  return <PrintPreviewClient order={orderForClient as any} />;
 }

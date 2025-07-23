@@ -12,13 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
+  const router = useRouter();
   
-  const handlePrint = (orderId: string) => {
-    const url = `/print/${orderId}`;
-    window.open(url, '_blank', 'width=1000,height=800');
+  const handlePrintPreview = (orderId: string) => {
+    router.push(`/dashboard/orders/print-preview/${orderId}`);
   };
 
   const getStatusBadge = (status: string) => {
@@ -90,7 +91,7 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handlePrint(order.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => handlePrintPreview(order.id)}>
                       <Printer className="h-4 w-4" />
                       <span className="sr-only">주문서 출력</span>
                     </Button>
