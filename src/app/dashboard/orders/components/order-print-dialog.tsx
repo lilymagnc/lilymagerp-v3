@@ -34,8 +34,8 @@ const PrintableContent = React.forwardRef<HTMLDivElement, { order: Order | null 
           items: order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n'),
           totalAmount: order.summary.subtotal,
           deliveryFee: order.summary.deliveryFee,
-          paymentMethod: "카드",
-          paymentStatus: "완결",
+          paymentMethod: "카드", // This is mock data, to be replaced later
+          paymentStatus: "완결", // This is mock data, to be replaced later
           deliveryDate: order.receiptType === 'delivery' && order.deliveryInfo 
             ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` 
             : "매장 픽업",
