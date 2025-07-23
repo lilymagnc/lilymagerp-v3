@@ -17,7 +17,7 @@ export default function OrdersPage() {
   const { orders, loading } = useOrders();
   
   const handlePrint = (orderId: string) => {
-    const url = `/dashboard/orders/print/${orderId}`;
+    const url = `/print/${orderId}`;
     window.open(url, '_blank', 'width=1000,height=800');
   };
 

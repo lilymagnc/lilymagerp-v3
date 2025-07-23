@@ -40,7 +40,12 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (!loading && order && !printInitiated.current) {
       printInitiated.current = true; // Prevents multiple print dialogs
-      window.print();
+      setTimeout(() => {
+        window.print();
+        window.onafterprint = () => {
+          window.close();
+        }
+      }, 500); // give a bit time for render
     }
   }, [loading, order]);
 
@@ -154,7 +159,20 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   );
 
   return (
-    <div className="bg-white text-black font-sans">
+    <div className="bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
+        <style>
+          {`
+            @media print {
+              @page {
+                size: A4;
+                margin: 0;
+              }
+              body {
+                margin: 1.6cm;
+              }
+            }
+          `}
+        </style>
       {renderPrintSection('주문서', false, data)}
       <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
       {renderPrintSection('인수증', true, data)}
