@@ -20,7 +20,7 @@ export default function OrdersPage() {
   return (
     <div>
       <PageHeader
-        title="주문 관리"
+        title="주문 현황"
         description="모든 주문 내역을 확인하고 관리하세요."
       >
         <Button asChild>
