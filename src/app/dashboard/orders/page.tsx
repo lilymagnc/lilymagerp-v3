@@ -49,12 +49,28 @@ export default function OrdersPage() {
     };
 
     setPrintableOrderData(printData);
-    
-    setTimeout(() => {
-        window.print();
-        setPrintableOrderData(null);
-    }, 100);
   }
+
+  useEffect(() => {
+    if (printableOrderData) {
+      const handleAfterPrint = () => {
+        setPrintableOrderData(null);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
+      window.addEventListener('afterprint', handleAfterPrint);
+      
+      // Delay printing slightly to ensure component has rendered
+      const timer = setTimeout(() => {
+        window.print();
+      }, 100);
+
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
+    }
+  }, [printableOrderData]);
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
