@@ -21,6 +21,11 @@ const pageStyle = `
     size: A4;
     margin: 10mm;
   }
+  @media print {
+    body {
+        -webkit-print-color-adjust: exact;
+    }
+  }
 `;
 
 export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
