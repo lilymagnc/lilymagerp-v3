@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import Image from 'next/image';
 import { useBranches } from '@/hooks/use-branches';
@@ -63,35 +63,35 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
   }, [order, branches]);
 
   const data = getPrintableData();
-  if (!data) return null;
 
-  const renderSection = (title: string, isReceipt: boolean) => (
-    <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
-        <div className="text-center mb-4">
-            { !isReceipt && (
-                <>
-                <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" priority unoptimized />
-                <h1 className="text-2xl font-bold mt-2">릴리맥 플라워앤가든 {title}</h1>
-                </>
-            )}
-            { isReceipt && <h1 className="text-2xl font-bold mt-2">{title}</h1> }
-        </div>
-        <table className="w-full border-collapse border border-black text-sm">
-            <tbody>
-                <tr>
-                    <td className="border border-black p-1 font-bold w-[100px]">주문일</td>
-                    <td className="border border-black p-1">{data.orderDate}</td>
-                    <td className="border border-black p-1 font-bold w-[100px]">주문자성명</td>
-                    <td className="border border-black p-1 w-[120px]">{data.ordererName}</td>
-                    <td className="border border-black p-1 font-bold w-[100px]">연락처</td>
-                    <td className="border border-black p-1 w-[150px]">{data.ordererContact}</td>
-                </tr>
-                <tr>
-                    <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
-                    <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
-                </tr>
-                 {!isReceipt && (
+  const renderSection = (title: string, isReceipt: boolean) => {
+    if(!data) return null;
+    return (
+        <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
+            <div className="text-center mb-4">
+                { !isReceipt && (
                     <>
+                    <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" priority unoptimized />
+                    <h1 className="text-2xl font-bold mt-2">릴리맥 플라워앤가든 {title}</h1>
+                    </>
+                )}
+                { isReceipt && <h1 className="text-2xl font-bold mt-2">{title}</h1> }
+            </div>
+            <table className="w-full border-collapse border border-black text-sm">
+                <tbody>
+                    <tr>
+                        <td className="border border-black p-1 font-bold w-[100px]">주문일</td>
+                        <td className="border border-black p-1">{data.orderDate}</td>
+                        <td className="border border-black p-1 font-bold w-[100px]">주문자성명</td>
+                        <td className="border border-black p-1 w-[120px]">{data.ordererName}</td>
+                        <td className="border border-black p-1 font-bold w-[100px]">연락처</td>
+                        <td className="border border-black p-1 w-[150px]">{data.ordererContact}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
+                        <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
+                    </tr>
+                     {!isReceipt && (
                         <tr>
                             <td className="border border-black p-1 font-bold">금액</td>
                             <td className="border border-black p-1">₩{data.totalAmount.toLocaleString()}</td>
@@ -100,37 +100,37 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
                             <td className="border border-black p-1 font-bold">결제수단</td>
                             <td className="border border-black p-1">{data.paymentMethod} {data.paymentStatus}</td>
                         </tr>
-                    </>
-                )}
-                <tr>
-                    <td className="border border-black p-1 font-bold">배송일/시간</td>
-                    <td className="border border-black p-1">{data.deliveryDate}</td>
-                    <td className="border border-black p-1 font-bold">받으시는분</td>
-                    <td className="border border-black p-1">{data.recipientName}</td>
-                    <td className="border border-black p-1 font-bold">연락처</td>
-                    <td className="border border-black p-1">{data.recipientContact}</td>
-                </tr>
-                <tr>
-                    <td className="border border-black p-1 font-bold">배송지주소</td>
-                    <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
-                </tr>
-                <tr>
-                    <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
-                    <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
-                </tr>
-                {isReceipt && (
+                    )}
                     <tr>
-                        <td className="border border-black p-1 font-bold">인수자성명</td>
-                        <td colSpan={5} className="border border-black p-1 h-10"></td>
+                        <td className="border border-black p-1 font-bold">배송일/시간</td>
+                        <td className="border border-black p-1">{data.deliveryDate}</td>
+                        <td className="border border-black p-1 font-bold">받으시는분</td>
+                        <td className="border border-black p-1">{data.recipientName}</td>
+                        <td className="border border-black p-1 font-bold">연락처</td>
+                        <td className="border border-black p-1">{data.recipientContact}</td>
                     </tr>
-                )}
-            </tbody>
-        </table>
-    </div>
-  );
+                    <tr>
+                        <td className="border border-black p-1 font-bold">배송지주소</td>
+                        <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
+                    </tr>
+                    <tr>
+                        <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
+                        <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
+                    </tr>
+                    {isReceipt && (
+                        <tr>
+                            <td className="border border-black p-1 font-bold">인수자성명</td>
+                            <td colSpan={5} className="border border-black p-1 h-10"></td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+      );
+    }
   
-  const PrintableContent = () => (
-    <div className="p-4 bg-white text-black font-sans">
+  const PrintableContent = React.forwardRef<HTMLDivElement>((props, ref) => (
+    <div ref={ref} className="p-4 bg-white text-black font-sans">
       {renderSection('주문서', false)}
       <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
       {renderSection('인수증', true)}
@@ -149,7 +149,10 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
         </div>
       </div>
     </div>
-  );
+  ));
+  PrintableContent.displayName = 'PrintableContent';
+
+  if (!data) return null;
 
   return (
     <Dialog open={!!order} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -158,13 +161,29 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
                 <DialogTitle>주문서 인쇄 미리보기</DialogTitle>
             </DialogHeader>
             <div className="hidden">
-                <div ref={printableComponentRef}>
-                    <PrintableContent />
-                </div>
+                <PrintableContent ref={printableComponentRef} />
             </div>
             <div className="max-h-[70vh] overflow-y-auto border rounded-md p-4 bg-gray-100">
                 <div className="scale-[0.8] origin-top bg-white shadow-lg mx-auto w-full" style={{width: '210mm', minHeight: '297mm'}}>
-                    <PrintableContent />
+                  <div className="p-4 bg-white text-black font-sans">
+                    {renderSection('주문서', false)}
+                    <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
+                    {renderSection('인수증', true)}
+                     <div className="mt-8 text-xs text-center border-t border-black pt-4">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
+                          {branchesContactInfo.slice(0,4).map(branch => (
+                              <div key={branch.name} className="text-left">
+                                  <span className="font-bold">{branch.name}:</span>
+                                  <span className="ml-2">{branch.tel}</span>
+                              </div>
+                          ))}
+                      </div>
+                      <div className="text-center">
+                          <span className="font-bold">{branchesContactInfo[4].name}:</span>
+                          <span className="ml-2">{branchesContactInfo[4].address}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
             </div>
             <DialogFooter>
