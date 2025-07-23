@@ -159,20 +159,29 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   );
 
   return (
-    <div className="bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
-        <style>
-          {`
-            @media print {
-              @page {
-                size: A4;
-                margin: 0;
-              }
-              body {
-                margin: 1.6cm;
-              }
+    <div className="printable-area bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
+      <style jsx global>
+        {`
+          @media print {
+            body > *:not(.printable-area) {
+              display: none;
             }
-          `}
-        </style>
+            .printable-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              height: auto;
+              padding: 0;
+              margin: 0;
+            }
+            @page {
+              size: A4;
+              margin: 20mm;
+            }
+          }
+        `}
+      </style>
       {renderPrintSection('주문서', false, data)}
       <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
       {renderPrintSection('인수증', true, data)}
@@ -193,3 +202,4 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
+
