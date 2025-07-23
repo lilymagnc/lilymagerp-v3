@@ -116,6 +116,22 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
 
   return (
     <>
+      <style>
+      {`
+        @media print {
+          body > :not(#printable-area) {
+            display: none;
+          }
+          #printable-area {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+          }
+        }
+      `}
+      </style>
       <PageHeader title="주문서 인쇄 미리보기" description={`주문번호: ${order.id}`}>
         <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => router.back()}>
@@ -130,30 +146,7 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
       </PageHeader>
       <Card>
         <CardContent>
-            <style>
-            {`
-                @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    #printable-area, #printable-area * {
-                        visibility: visible;
-                    }
-                    #printable-area {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        height: 100%;
-                    }
-                     @page {
-                        size: A4;
-                        margin: 0;
-                    }
-                }
-            `}
-            </style>
-             <div id="printable-area" className="bg-white text-black font-sans max-w-[210mm] mx-auto my-8 p-4 shadow-lg">
+            <div id="printable-area" className="bg-white text-black font-sans max-w-[210mm] mx-auto my-8 p-4 shadow-lg">
                 {renderPrintSection('주문서', false, data)}
                 <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
                 {renderPrintSection('인수증', true, data)}
@@ -177,3 +170,4 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
     </>
   );
 }
+
