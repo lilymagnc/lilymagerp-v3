@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { useReactToPrint } from 'react-to-print';
 import { PrintableOrder, OrderPrintData } from "./new/components/printable-order";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +20,7 @@ export default function OrdersPage() {
   const { orders, loading } = useOrders();
   const { branches } = useBranches();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
 
@@ -52,13 +54,24 @@ export default function OrdersPage() {
     };
   }, [branches]);
 
-  const handlePrint = (order: Order) => {
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+    onAfterPrint: () => {
+      setIsPrinting(false);
+      setSelectedOrder(null);
+    }
+  });
+
+  const prepareForPrint = (order: Order) => {
     setSelectedOrder(order);
-    // Use a timeout to allow state to update and component to re-render before printing
-    setTimeout(() => {
-      window.print();
-    }, 0);
+    setIsPrinting(true);
   }
+
+  useEffect(() => {
+    if (isPrinting) {
+      handlePrint();
+    }
+  }, [isPrinting, handlePrint]);
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -76,7 +89,7 @@ export default function OrdersPage() {
 
   return (
     <>
-      <div className="screen-only">
+      <div className={isPrinting ? 'hidden' : ''}>
         <PageHeader
           title="주문 현황"
           description="모든 주문 내역을 확인하고 관리하세요."
@@ -134,7 +147,7 @@ export default function OrdersPage() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handlePrint(order)}
+                            onClick={() => prepareForPrint(order)}
                         >
                             <Printer className="h-4 w-4" />
                             <span className="sr-only">주문서 출력</span>
@@ -148,9 +161,11 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="print-only">
-        <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
-      </div>
+      {isPrinting && (
+        <div className="print-content">
+          <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
+        </div>
+      )}
     </>
   );
 }
