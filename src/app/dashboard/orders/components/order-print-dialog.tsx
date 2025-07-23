@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { useBranches } from '@/hooks/use-branches';
 import { format } from 'date-fns';
 import type { Order } from '@/hooks/use-orders';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface OrderPrintDialogProps {
   order: Order;
@@ -29,13 +31,6 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
     content: () => printableComponentRef.current,
     onAfterPrint: onClose,
   });
-
-  useEffect(() => {
-    // Component mounts, and all data is ready, trigger print
-    if (order && branches.length > 0) {
-        handlePrint();
-    }
-  }, [order, branches, handlePrint]);
 
   const getPrintableData = useCallback(() => {
     if (!order) return null;
@@ -154,33 +149,56 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
   );
 
   return (
-    <div className="hidden">
-      <div ref={printableComponentRef} className="p-4 bg-white text-black font-sans">
-        {renderSection('주문서', false)}
-        
-        <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
+    <Dialog open={!!order} onOpenChange={(isOpen) => !isOpen && onClose()}>
+        <DialogContent className="max-w-4xl">
+            <DialogHeader>
+                <DialogTitle>주문서 인쇄 미리보기</DialogTitle>
+            </DialogHeader>
+            
+            {/* Hidden printable content */}
+            <div className="hidden">
+                <div ref={printableComponentRef} className="p-4 bg-white text-black font-sans">
+                    {renderSection('주문서', false)}
+                    
+                    <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
 
-        {renderSection('인수증', true)}
+                    {renderSection('인수증', true)}
 
-         <div className="mt-8">
-            <table className="w-full border-collapse border border-black text-xs">
-                <tbody>
-                    {branchesContactInfo.map(branch => (
-                        <tr key={branch.name}>
-                            <td className="border border-black p-1 font-bold w-1/5">{branch.name}</td>
-                            <td className="border border-black p-1 w-4/5">
-                                {branch.address}
-                                {branch.tel && <><br/>Tel) {branch.tel}</>}
-                                {branch.blog && <><br/>{branch.blog}</>}
-                                {branch.email && <> E-mail: {branch.email}</>}
-                                {branch.kakao && <> Kakao: {branch.kakao}</>}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-      </div>
-    </div>
+                    <div className="mt-8">
+                        <table className="w-full border-collapse border border-black text-xs">
+                            <tbody>
+                                {branchesContactInfo.map(branch => (
+                                    <tr key={branch.name}>
+                                        <td className="border border-black p-1 font-bold w-1/5">{branch.name}</td>
+                                        <td className="border border-black p-1 w-4/5">
+                                            {branch.address}
+                                            {branch.tel && <><br/>Tel) {branch.tel}</>}
+                                            {branch.blog && <><br/>{branch.blog}</>}
+                                            {branch.email && <> E-mail: {branch.email}</>}
+                                            {branch.kakao && <> Kakao: {branch.kakao}</>}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {/* Visible content for preview */}
+            <div className="max-h-[60vh] overflow-y-auto border rounded-md p-4">
+                 <div className="p-4 bg-white text-black font-sans scale-[0.9] origin-top">
+                      {renderSection('주문서', false)}
+                 </div>
+            </div>
+            
+            <DialogFooter>
+                <Button variant="outline" onClick={onClose}>닫기</Button>
+                <Button onClick={handlePrint}>인쇄</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
   );
 }
+
+    
