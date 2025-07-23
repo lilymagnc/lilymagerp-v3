@@ -89,27 +89,15 @@ body {
 }
 
 @media print {
-  body * {
+  body {
     visibility: hidden;
   }
-  .print-only, .print-only * {
-    visibility: visible;
-  }
   .print-only {
+    visibility: visible;
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    height: 100%;
   }
-  .screen-only {
-    display: none;
-  }
-  @page {
-    size: A4;
-    margin: 1cm;
-  }
-}
-
-.print-only {
-  display: none;
 }

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, MoreHorizontal, Printer } from "lucide-react";
@@ -52,14 +53,12 @@ export default function OrdersPage() {
       }
     };
   }, [branches]);
-  
-  const handlePrint = (order: Order) => {
-    setSelectedOrder(order);
-    setTimeout(() => {
-      window.print();
-    }, 100); 
-  }
 
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+    onAfterPrint: () => setSelectedOrder(null),
+  });
+  
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -76,7 +75,7 @@ export default function OrdersPage() {
 
   return (
     <div>
-      <div className="screen-only">
+      <div>
         <PageHeader
           title="주문 현황"
           description="모든 주문 내역을 확인하고 관리하세요."
@@ -133,20 +132,24 @@ export default function OrdersPage() {
                     </TableCell>
                     <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">메뉴 토글</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>작업</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => handlePrint(order)}>
-                              <Printer className="mr-2 h-4 w-4" />
-                              주문서 출력
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
+                        <DropdownMenu onOpenChange={(open) => {
+                            if (open) {
+                                setSelectedOrder(order);
+                            }
+                        }}>
+                          <DropdownMenuTrigger asChild>
+                              <Button aria-haspopup="true" size="icon" variant="ghost">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">메뉴 토글</span>
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>작업</DropdownMenuLabel>
+                              <DropdownMenuItem onSelect={handlePrint}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                주문서 출력
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
                     </TableRow>
@@ -157,8 +160,8 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="print-only">
-          <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
+      <div className="hidden">
+        {selectedOrder && <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />}
       </div>
     </div>
   );
