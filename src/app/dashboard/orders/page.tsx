@@ -258,11 +258,9 @@ export default function OrdersPage() {
         </CardContent>
       </Card>
       
-      {/* Hidden component for printing */}
       <div className="hidden">
           <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />
       </div>
     </>
   );
 }
-
