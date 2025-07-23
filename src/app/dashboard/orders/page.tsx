@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -12,22 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { OrderPrintDialog } from "./components/order-print-dialog";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
-  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
-  const handleOpenPrintDialog = (order: Order) => {
-    setSelectedOrder(order);
-    setIsPrintDialogOpen(true);
-  }
-  
-  const handleClosePrintDialog = () => {
-    setIsPrintDialogOpen(false);
-    setSelectedOrder(null);
-  }
+  const handlePrint = (orderId: string) => {
+    const url = `/dashboard/orders/print/${orderId}`;
+    window.open(url, '_blank', 'width=1000,height=800');
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -98,7 +90,7 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenPrintDialog(order)}>
+                    <Button variant="ghost" size="icon" onClick={() => handlePrint(order.id)}>
                       <Printer className="h-4 w-4" />
                       <span className="sr-only">주문서 출력</span>
                     </Button>
@@ -110,12 +102,6 @@ export default function OrdersPage() {
         </Table>
         </CardContent>
       </Card>
-      
-      <OrderPrintDialog
-          isOpen={isPrintDialogOpen}
-          onOpenChange={handleClosePrintDialog}
-          order={selectedOrder}
-      />
     </>
   );
 }
