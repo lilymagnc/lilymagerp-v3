@@ -94,13 +94,11 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
                     <>
                         <tr>
                             <td className="border border-black p-1 font-bold">금액</td>
-                            <td className="border border-black p-1" colSpan={2}>₩{data.totalAmount.toLocaleString()}</td>
-                            <td className="border border-black p-1 font-bold">배송비</td>
-                            <td className="border border-black p-1" colSpan={2}>₩{data.deliveryFee.toLocaleString()}</td>
-                        </tr>
-                        <tr>
+                            <td className="border border-black p-1">₩{data.totalAmount.toLocaleString()}</td>
+                             <td className="border border-black p-1 font-bold">배송비</td>
+                            <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
                             <td className="border border-black p-1 font-bold">결제수단</td>
-                            <td className="border border-black p-1" colSpan={5}>{data.paymentMethod} {data.paymentStatus}</td>
+                            <td className="border border-black p-1">{data.paymentMethod} {data.paymentStatus}</td>
                         </tr>
                     </>
                 )}
@@ -137,13 +135,17 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
       <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
       {renderSection('인수증', true)}
        <div className="mt-8 text-xs text-center border-t border-black pt-4">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
             {branchesContactInfo.slice(0,4).map(branch => (
                 <div key={branch.name} className="text-left">
                     <span className="font-bold">{branch.name}:</span>
                     <span className="ml-2">{branch.tel}</span>
                 </div>
             ))}
+        </div>
+        <div className="text-center">
+            <span className="font-bold">{branchesContactInfo[4].name}:</span>
+            <span className="ml-2">{branchesContactInfo[4].address}</span>
         </div>
       </div>
     </div>
