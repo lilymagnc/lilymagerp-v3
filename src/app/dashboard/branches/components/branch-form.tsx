@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useEffect } from "react"
 
 const branchSchema = z.object({
   name: z.string().min(1, "지점명을 입력해주세요."),
@@ -59,6 +60,24 @@ export function BranchForm({ isOpen, onOpenChange, branch }: BranchFormProps) {
       account: "",
     },
   })
+
+  useEffect(() => {
+    if (branch) {
+      form.reset(branch);
+    } else {
+      form.reset({
+        name: "",
+        type: "",
+        manager: "",
+        employeeCount: 0,
+        businessNumber: "",
+        address: "",
+        phone: "",
+        account: "",
+      });
+    }
+  }, [branch, form]);
+
 
   const onSubmit = (data: BranchFormValues) => {
     console.log(data)
