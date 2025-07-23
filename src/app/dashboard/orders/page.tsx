@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useRef, Component, useEffect, forwardRef } from "react";
-import { useReactToPrint } from 'react-to-print';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
