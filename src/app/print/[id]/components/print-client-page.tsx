@@ -15,7 +15,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   
   const getPrintableData = (order: Order) => {
     return {
-      orderDate: format(order.orderDate, 'yyyy-MM-dd'),
+      orderDate: format(new Date(order.orderDate), 'yyyy-MM-dd'),
       ordererName: order.orderer.name,
       ordererContact: order.orderer.contact,
       items: order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n'),
@@ -133,10 +133,15 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
           body {
             font-family: 'PT Sans', sans-serif;
             background-color: white;
+            margin: 1cm;
+          }
+          .printable-area {
+            width: 100%;
+            height: 100%;
           }
         `}
       </style>
-      <div className="bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
+      <div className="bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs printable-area">
         {renderPrintSection('주문서', false, data)}
         <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
         {renderPrintSection('인수증', true, data)}

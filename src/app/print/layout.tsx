@@ -10,6 +10,9 @@ export default function PrintLayout({
 }) {
   return (
     <html>
+      <head>
+        <title>주문서 인쇄</title>
+      </head>
       <body>
         {children}
       </body>
