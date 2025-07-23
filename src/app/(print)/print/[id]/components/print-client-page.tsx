@@ -89,17 +89,17 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   const onlineShopUrl = "www.lilymagshop.co.kr";
   
   const renderPrintSection = (title: string, isReceipt: boolean, data: NonNullable<ReturnType<typeof getPrintableData>>) => (
-    <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
-      <div className="text-center mb-2">
+    <div className="mb-2" style={{ pageBreakInside: 'avoid' }}>
+      <div className="text-center mb-1">
         { !isReceipt && (
           <>
-          <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" priority unoptimized />
-          <h1 className="text-xl font-bold mt-1">릴리맥 플라워앤가든 {title}</h1>
+          <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={160} height={40} className="mx-auto" priority unoptimized />
+          <h1 className="text-lg font-bold">릴리맥 플라워앤가든 {title}</h1>
           </>
         )}
-        { isReceipt && <h1 className="text-xl font-bold mt-2">{title}</h1> }
+        { isReceipt && <h1 className="text-lg font-bold mt-1">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-[15px]">
+      <table className="w-full border-collapse border border-black text-[14px]">
         <tbody>
           <tr>
             <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
@@ -109,7 +109,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold w-[12%]">연락처</td>
             <td className="border border-black p-1 w-[21%]">{data.ordererContact}</td>
           </tr>
-          <tr style={{height: '140px'}}>
+          <tr style={{height: '110px'}}>
             <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
@@ -135,13 +135,13 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '130px'}}>
+          <tr style={{height: '100px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
-            <tr style={{height: '80px'}}>
-              <td className="border border-black p-1 font-bold">인수자성명</td>
+            <tr style={{height: '60px'}}>
+              <td className="border border-black p-1 font-bold align-top">인수자성명</td>
               <td colSpan={5} className="border border-black p-1"></td>
             </tr>
           )}
@@ -154,20 +154,20 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
     <>
       <div className="bg-white text-black font-sans p-2 max-w-[210mm] mx-auto printable-area">
         {renderPrintSection('주문서', false, data)}
-        <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
+        <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
         {renderPrintSection('인수증', true, data)}
-        <div className="mt-4 text-center border-t border-black pt-2 text-[12px]">
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-2 max-w-md mx-auto">
+        <div className="mt-2 text-center border-t border-black pt-1 text-[11px]">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0 mb-1 max-w-md mx-auto">
             {branchesContactInfo.map(branch => (
               <div key={branch.name} className="text-left">
                 <span className="font-bold">{branch.name}:</span>
-                <span className="ml-2">{branch.tel}</span>
+                <span className="ml-1">{branch.tel}</span>
               </div>
             ))}
           </div>
           <div className="text-center">
             <span className="font-bold">[온라인쇼핑몰]:</span>
-            <span className="ml-2">{onlineShopUrl}</span>
+            <span className="ml-1">{onlineShopUrl}</span>
           </div>
         </div>
       </div>
