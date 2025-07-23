@@ -4,7 +4,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import type { Order } from '@/hooks/use-orders';
 import { PrintableOrder, OrderPrintData } from '@/app/dashboard/orders/new/components/printable-order';
@@ -30,10 +30,18 @@ export function PrintPreviewClient({ order }: { order: Order }) {
         if (isPrinting) {
             const handleAfterPrint = () => {
                 setIsPrinting(false);
+            };
+
+            window.addEventListener('afterprint', handleAfterPrint, { once: true });
+            
+            const printTimeout = setTimeout(() => {
+                window.print();
+            }, 100);
+
+            return () => {
+                clearTimeout(printTimeout);
                 window.removeEventListener('afterprint', handleAfterPrint);
             };
-            window.addEventListener('afterprint', handleAfterPrint);
-            window.print();
         }
     }, [isPrinting]);
 
@@ -71,13 +79,22 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                         description={`주문 ID: ${order.id}`}
                     >
                         <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => router.back()}>
+                            <Button variant="outline" onClick={() => router.back()} disabled={isPrinting}>
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 목록으로 돌아가기
                             </Button>
                             <Button onClick={handlePrint} disabled={!printData || isPrinting}>
-                                <Printer className="mr-2 h-4 w-4" />
-                                {isPrinting ? '인쇄 중...' : '인쇄하기'}
+                                {isPrinting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        인쇄중...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Printer className="mr-2 h-4 w-4" />
+                                        인쇄하기
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </PageHeader>
