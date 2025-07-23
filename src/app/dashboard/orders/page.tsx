@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, forwardRef, useCallback, useEffect } from "react";
+import { useState, useRef, forwardRef, useCallback, useEffect, Component } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -16,15 +16,16 @@ import { useBranches } from "@/hooks/use-branches";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 
-// Printable Component
+// Printable Component as a Class Component
 interface PrintableContentProps {
   order: Order | null;
   branches: ReturnType<useBranches>['branches'];
 }
 
-const PrintableContent = forwardRef<HTMLDivElement, PrintableContentProps>(({ order, branches }, ref) => {
+class PrintableContent extends Component<PrintableContentProps> {
     
-    const getPrintableData = useCallback(() => {
+    getPrintableData = () => {
+        const { order, branches } = this.props;
         if (!order) return null;
         
         const branchInfo = branches.find(b => b.id === order.branchId);
@@ -52,12 +53,9 @@ const PrintableContent = forwardRef<HTMLDivElement, PrintableContentProps>(({ or
             account: branchInfo?.account || "정보 없음",
           }
         };
-      }, [order, branches]);
+    };
 
-    const data = getPrintableData();
-    if(!data) return null;
-
-    const renderSection = (title: string, isReceipt: boolean) => (
+    renderSection = (title: string, isReceipt: boolean, data: NonNullable<ReturnType<this['getPrintableData']>>) => (
         <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
             <div className="text-center mb-4">
                 { !isReceipt && (
@@ -117,46 +115,50 @@ const PrintableContent = forwardRef<HTMLDivElement, PrintableContentProps>(({ or
                 </tbody>
             </table>
         </div>
-      );
+    );
+    
+    render() {
+        const data = this.getPrintableData();
+        if(!data) return null;
 
-      const branchesContactInfo = [
-        { name: "릴리맥여의도점", tel: "010-8241-9518 / 010-2285-9518" },
-        { name: "릴리맥여의도2호점", tel: "010-7939-9518 / 010-2285-9518" },
-        { name: "릴리맥광화문점", tel: "010-2385-9518 / 010-2285-9518" },
-        { name: "릴리맥NC이스트폴점", tel: "010-2908-5459 / 010-2285-9518" },
-      ];
-      const onlineShopUrl = "www.lilymagshop.co.kr";
+        const branchesContactInfo = [
+            { name: "릴리맥여의도점", tel: "010-8241-9518 / 010-2285-9518" },
+            { name: "릴리맥여의도2호점", tel: "010-7939-9518 / 010-2285-9518" },
+            { name: "릴리맥광화문점", tel: "010-2385-9518 / 010-2285-9518" },
+            { name: "릴리맥NC이스트폴점", tel: "010-2908-5459 / 010-2285-9518" },
+        ];
+        const onlineShopUrl = "www.lilymagshop.co.kr";
 
-    return (
-        <div ref={ref} className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto">
-            {renderSection('주문서', false)}
-            <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
-            {renderSection('인수증', true)}
-             <div className="mt-8 text-center border-t border-black pt-4">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4 max-w-lg mx-auto">
-                    {branchesContactInfo.map(branch => (
-                        <div key={branch.name} className="text-left">
-                            <span className="font-bold">{branch.name}:</span>
-                            <span className="ml-2">{branch.tel}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="text-center">
-                    <span className="font-bold">[온라인쇼핑몰]:</span>
-                    <span className="ml-2">{onlineShopUrl}</span>
+        return (
+            <div className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto">
+                {this.renderSection('주문서', false, data)}
+                <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
+                {this.renderSection('인수증', true, data)}
+                <div className="mt-8 text-center border-t border-black pt-4">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4 max-w-lg mx-auto">
+                        {branchesContactInfo.map(branch => (
+                            <div key={branch.name} className="text-left">
+                                <span className="font-bold">{branch.name}:</span>
+                                <span className="ml-2">{branch.tel}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-center">
+                        <span className="font-bold">[온라인쇼핑몰]:</span>
+                        <span className="ml-2">{onlineShopUrl}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-});
-PrintableContent.displayName = 'PrintableContent';
+        );
+    }
+}
 
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
   const { branches } = useBranches();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const printableComponentRef = useRef<HTMLDivElement>(null);
+  const printableComponentRef = useRef<PrintableContent>(null);
 
   const handlePrint = useReactToPrint({
     content: () => printableComponentRef.current,
@@ -164,6 +166,7 @@ export default function OrdersPage() {
   });
 
   useEffect(() => {
+    // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
     if (selectedOrder && handlePrint) {
       setTimeout(handlePrint, 0);
     }
@@ -256,7 +259,7 @@ export default function OrdersPage() {
       </Card>
       
       {/* Hidden component for printing */}
-      <div className="hidden print:block">
+      <div className="hidden">
         {selectedOrder && <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />}
       </div>
     </>
