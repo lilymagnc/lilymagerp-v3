@@ -164,6 +164,9 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
   return (
     <Dialog open={!!order} onOpenChange={(isOpen) => !isOpen && onClose()}>
         <DialogContent className="max-w-3xl opacity-0">
+            <DialogHeader className="sr-only">
+              <DialogTitle>주문서 인쇄</DialogTitle>
+            </DialogHeader>
              {/* This content is not visible to the user, it is only for printing */}
              <div className="hidden">
                 <PrintableContent ref={printableComponentRef} />
