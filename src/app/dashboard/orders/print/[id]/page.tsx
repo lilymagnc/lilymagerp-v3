@@ -39,10 +39,6 @@ export default function PrintOrderPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (!loading && order) {
       window.print();
-      // Add a small delay for the print dialog to open, then close the window.
-      setTimeout(() => {
-        window.close();
-      }, 500);
     }
   }, [loading, order]);
 
