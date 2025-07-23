@@ -13,45 +13,45 @@ interface PrintClientPageProps {
 export function PrintClientPage({ order }: PrintClientPageProps) {
   const printInitiated = useRef(false);
 
-  // useEffect(() => {
-  //   if (order && !printInitiated.current) {
-  //     printInitiated.current = true;
+  useEffect(() => {
+    if (order && !printInitiated.current) {
+      printInitiated.current = true;
       
-  //     const images = Array.from(document.images);
-  //     const imageLoadPromises = images.map(img => {
-  //       if (img.complete) return Promise.resolve();
-  //       return new Promise(resolve => {
-  //         img.onload = resolve;
-  //         img.onerror = resolve; // Resolve on error too, to not block printing
-  //       });
-  //     });
+      const images = Array.from(document.images);
+      const imageLoadPromises = images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve; // Resolve on error too, to not block printing
+        });
+      });
 
-  //     const triggerPrint = () => {
-  //       // Delay slightly after image load to ensure rendering
-  //       setTimeout(() => {
-  //         window.print();
-  //       }, 100); 
-  //     };
+      const triggerPrint = () => {
+        // Delay slightly after image load to ensure rendering
+        setTimeout(() => {
+          window.print();
+        }, 100); 
+      };
       
-  //     // Failsafe timeout in case images take too long
-  //     const printTimeout = setTimeout(triggerPrint, 500); 
+      // Failsafe timeout in case images take too long
+      const printTimeout = setTimeout(triggerPrint, 500); 
 
-  //     Promise.all(imageLoadPromises).then(() => {
-  //       clearTimeout(printTimeout);
-  //       triggerPrint();
-  //     });
-  //   }
-  // }, [order]);
+      Promise.all(imageLoadPromises).then(() => {
+        clearTimeout(printTimeout);
+        triggerPrint();
+      });
+    }
+  }, [order]);
   
-  // useEffect(() => {
-  //   const handleAfterPrint = () => {
-  //     window.close();
-  //   };
-  //   window.addEventListener('afterprint', handleAfterPrint);
-  //   return () => {
-  //     window.removeEventListener('afterprint', handleAfterPrint);
-  //   };
-  // }, []);
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      window.close();
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
 
   if (!order) {
     return <div>주문 정보를 불러오는 중...</div>;
@@ -99,7 +99,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         )}
         { isReceipt && <h1 className="text-lg font-bold mt-1">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-[12px]">
+      <table className="w-full border-collapse border border-black text-[13px]">
         <tbody>
           <tr>
             <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
@@ -109,7 +109,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold w-[12%]">연락처</td>
             <td className="border border-black p-1 w-[21%]">{data.ordererContact}</td>
           </tr>
-          <tr style={{height: '90px'}}>
+          <tr style={{height: '145px'}}>
             <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
@@ -135,12 +135,12 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '80px'}}>
+          <tr style={{height: '115px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
-            <tr style={{height: '50px'}}>
+            <tr style={{height: '60px'}}>
               <td className="border border-black p-1 font-bold align-top">인수자성명</td>
               <td colSpan={5} className="border border-black p-1"></td>
             </tr>
@@ -151,32 +151,30 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   );
 
   return (
-    <>
-      <div 
-        className="bg-white text-black font-sans max-w-[210mm] mx-auto"
-        style={{
-            padding: '10mm 10mm 0 10mm',
-            boxSizing: 'border-box'
-        }}
-      >
-        {renderPrintSection('주문서', false, data)}
-        <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
-        {renderPrintSection('인수증', true, data)}
-        <div className="mt-2 text-center border-t border-black pt-1 text-[10px]">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0 mb-1 max-w-md mx-auto">
-            {branchesContactInfo.map(branch => (
-              <div key={branch.name} className="text-left">
-                <span className="font-bold">{branch.name}:</span>
-                <span className="ml-1">{branch.tel}</span>
-              </div>
-            ))}
-          </div>
-          <div className="text-center">
-            <span className="font-bold">[온라인쇼핑몰]:</span>
-            <span className="ml-1">{onlineShopUrl}</span>
-          </div>
+    <div 
+      className="bg-white text-black font-sans max-w-[210mm] mx-auto"
+      style={{
+          padding: '10mm 10mm 0 10mm',
+          boxSizing: 'border-box'
+      }}
+    >
+      {renderPrintSection('주문서', false, data)}
+      <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
+      {renderPrintSection('인수증', true, data)}
+      <div className="mt-2 text-center border-t border-black pt-1 text-[10px]">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-0 mb-1 max-w-md mx-auto">
+          {branchesContactInfo.map(branch => (
+            <div key={branch.name} className="text-left">
+              <span className="font-bold">{branch.name}:</span>
+              <span className="ml-1">{branch.tel}</span>
+            </div>
+          ))}
+        </div>
+        <div className="text-center">
+          <span className="font-bold">[온라인쇼핑몰]:</span>
+          <span className="ml-1">{onlineShopUrl}</span>
         </div>
       </div>
-    </>
+    </div>
   );
 }
