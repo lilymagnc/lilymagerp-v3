@@ -1,63 +1,29 @@
 
-"use client";
-
-import { useEffect, useState, useRef } from 'react';
-import { useParams } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Order } from '@/hooks/use-orders';
 import { format } from 'date-fns';
 import Image from 'next/image';
-import { Loader2 } from 'lucide-react';
 
-export default function PrintOrderPage() {
-  const params = useParams();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
-  const printInitiated = useRef(false);
+async function getOrder(orderId: string): Promise<Order | null> {
+    try {
+        const docRef = doc(db, 'orders', orderId);
+        const docSnap = await getDoc(docRef);
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      const orderId = Array.isArray(params.id) ? params.id[0] : params.id;
-      if (orderId) {
-        try {
-          const docRef = doc(db, 'orders', orderId);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-            setOrder({ id: docSnap.id, ...docSnap.data() } as Order);
-          } else {
+        if (docSnap.exists()) {
+            return { id: docSnap.id, ...docSnap.data() } as Order;
+        } else {
             console.error("No such document!");
-          }
-        } catch (error) {
-          console.error("Error fetching document:", error);
-        } finally {
-          setLoading(false);
+            return null;
         }
-      }
-    };
-
-    fetchOrder();
-  }, [params.id]);
-
-  useEffect(() => {
-    if (!loading && order && !printInitiated.current) {
-      printInitiated.current = true; // Prevents multiple print dialogs
-      window.print();
-      window.onafterprint = () => {
-        window.close();
-      }
+    } catch (error) {
+        console.error("Error fetching document:", error);
+        return null;
     }
-  }, [loading, order]);
+}
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="ml-2">주문 정보를 불러오는 중...</p>
-      </div>
-    );
-  }
+export default async function PrintOrderPage({ params }: { params: { id: string } }) {
+  const order = await getOrder(params.id);
 
   if (!order) {
     return (
@@ -160,46 +126,60 @@ export default function PrintOrderPage() {
   );
 
   return (
-    <div className="printable-area bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
-      <style jsx global>
-        {`
-          @media print {
-            body > *:not(.printable-area) {
-              display: none;
+    <>
+      <div className="printable-area bg-white text-black font-sans p-4 max-w-4xl mx-auto text-xs">
+        <style jsx global>
+          {`
+            @media print {
+              body * {
+                visibility: hidden;
+              }
+              .printable-area, .printable-area * {
+                visibility: visible;
+              }
+              .printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+              }
+              @page {
+                size: A4;
+                margin: 20mm;
+              }
             }
-            .printable-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              height: auto;
-              padding: 0;
-              margin: 0;
-            }
-            @page {
-              size: A4;
-              margin: 20mm;
-            }
-          }
-        `}
-      </style>
-      {renderPrintSection('주문서', false, data)}
-      <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
-      {renderPrintSection('인수증', true, data)}
-      <div className="mt-4 text-center border-t border-black pt-2 text-[9px]">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-2 max-w-md mx-auto">
-          {branchesContactInfo.map(branch => (
-            <div key={branch.name} className="text-left">
-              <span className="font-bold">{branch.name}:</span>
-              <span className="ml-2">{branch.tel}</span>
-            </div>
-          ))}
-        </div>
-        <div className="text-center">
-          <span className="font-bold">[온라인쇼핑몰]:</span>
-          <span className="ml-2">{onlineShopUrl}</span>
+          `}
+        </style>
+        {renderPrintSection('주문서', false, data)}
+        <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
+        {renderPrintSection('인수증', true, data)}
+        <div className="mt-4 text-center border-t border-black pt-2 text-[9px]">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-2 max-w-md mx-auto">
+            {branchesContactInfo.map(branch => (
+              <div key={branch.name} className="text-left">
+                <span className="font-bold">{branch.name}:</span>
+                <span className="ml-2">{branch.tel}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-center">
+            <span className="font-bold">[온라인쇼핑몰]:</span>
+            <span className="ml-2">{onlineShopUrl}</span>
+          </div>
         </div>
       </div>
-    </div>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            window.onload = () => {
+              window.print();
+              window.onafterprint = () => {
+                window.close();
+              }
+            }
+          `,
+        }}
+      />
+    </>
   );
 }
