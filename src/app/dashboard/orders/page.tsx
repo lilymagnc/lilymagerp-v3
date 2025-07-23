@@ -23,20 +23,16 @@ export default function OrdersPage() {
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
 
-  const onAfterPrint = useCallback(() => {
-    setSelectedOrder(null);
-  }, []);
-  
   const handlePrint = useReactToPrint({
     content: () => printableComponentRef.current,
-    onAfterPrint,
+    onAfterPrint: () => setSelectedOrder(null),
   });
 
   const handlePrintClick = (order: Order) => {
     setSelectedOrder(order);
-    // Use a timeout to allow the component to re-render with the new data before printing
+    // Use a timeout to allow state to update and component to re-render before printing
     setTimeout(() => {
-        if(handlePrint) handlePrint();
+        handlePrint();
     }, 100);
   }
   
@@ -158,8 +154,10 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="hidden print:block">
-        <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
+      <div className="hidden">
+        <div ref={printableComponentRef}>
+          <PrintableOrder data={getPrintableData(selectedOrder)} />
+        </div>
       </div>
     </>
   );
