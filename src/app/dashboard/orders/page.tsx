@@ -128,7 +128,7 @@ const PrintableContent = forwardRef<HTMLDivElement, PrintableContentProps>(({ or
       const onlineShopUrl = "www.lilymagshop.co.kr";
 
     return (
-        <div ref={ref} className="p-4 bg-white text-black font-sans text-xs">
+        <div ref={ref} className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto">
             {renderSection('주문서', false)}
             <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
             {renderSection('인수증', true)}
@@ -263,3 +263,5 @@ export default function OrdersPage() {
     </>
   );
 }
+
+    
