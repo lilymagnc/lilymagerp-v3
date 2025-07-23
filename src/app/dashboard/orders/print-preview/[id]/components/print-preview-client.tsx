@@ -19,48 +19,59 @@ export function PrintPreviewClient({ order }: { order: Order }) {
     const targetBranch = branches.find(b => b.id === order.branchId);
 
     const handlePrint = () => {
-        const printableArea = document.getElementById('printable-area');
-        if (!printableArea) return;
+        const printStyleId = 'print-styles';
+        // If the style tag already exists, don't add it again.
+        if (document.getElementById(printStyleId)) {
+            window.print();
+            return;
+        }
 
-        const printStyles = `
-          @page {
-            size: A4;
-            margin: 10mm;
-          }
-          @media print {
-            body * {
-              visibility: hidden;
+        const style = document.createElement('style');
+        style.id = printStyleId;
+        style.innerHTML = `
+            @page {
+                size: A4;
+                margin: 10mm;
             }
-            .printable-area, .printable-area * {
-              visibility: visible;
+            @media print {
+                body > *:not(.printable-area-wrapper) {
+                    display: none !important;
+                }
+                .printable-area-wrapper {
+                    display: block !important;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                }
             }
-            .printable-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-            }
-            .no-print {
-                display: none !important;
-            }
-          }
         `;
-
-        const styleSheet = document.createElement('style');
-        styleSheet.type = 'text/css';
-        styleSheet.innerText = printStyles;
-        document.head.appendChild(styleSheet);
+        document.head.appendChild(style);
         
-        window.print();
+        // Use a timeout to ensure styles are applied before printing
+        setTimeout(() => {
+            window.print();
+        }, 100);
 
-        document.head.removeChild(styleSheet);
+        // Clean up after printing
+        window.onafterprint = () => {
+            const styleElement = document.getElementById(printStyleId);
+            if (styleElement) {
+                styleElement.remove();
+            }
+        };
     };
     
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
 
-    // order.orderDate is already a Date object from the page component
     const printData: OrderPrintData | null = targetBranch ? {
-        orderDate: new Date(order.orderDate).toLocaleString(),
+        orderDate: new Date(order.orderDate).toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        }),
         ordererName: order.orderer.name,
         ordererContact: order.orderer.contact,
         items: itemsText,
@@ -86,7 +97,6 @@ export function PrintPreviewClient({ order }: { order: Order }) {
              <PageHeader
                 title="주문서 인쇄 미리보기"
                 description={`주문 ID: ${order.id}`}
-                className="no-print"
              >
                 <div className="flex gap-2">
                      <Button variant="outline" onClick={() => router.back()}>
@@ -99,12 +109,13 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                     </Button>
                 </div>
             </PageHeader>
-
-            <Card className="printable-area" id="printable-area">
-                <CardContent className="p-0">
-                    {printData && <PrintableOrder ref={componentRef} data={printData} />}
-                </CardContent>
-            </Card>
+            <div className="printable-area-wrapper">
+                <Card id="printable-area">
+                    <CardContent className="p-0">
+                        {printData && <PrintableOrder ref={componentRef} data={printData} />}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

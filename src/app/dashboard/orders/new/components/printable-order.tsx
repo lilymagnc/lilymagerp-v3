@@ -58,52 +58,45 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                 <table className="w-full border-collapse border border-black text-sm">
                     <tbody>
                         <tr>
-                            <td className="border border-black p-1 font-bold w-1/6">주문일</td>
-                            <td className="border border-black p-1 w-2/6">{data.orderDate}</td>
-                            <td className="border border-black p-1 font-bold w-1/6">주문자성명</td>
-                            <td className="border border-black p-1 w-1/6">{data.ordererName}</td>
-                            <td className="border border-black p-1 font-bold w-1/6">연락처</td>
-                            <td className="border border-black p-1 w-1/6">{data.ordererContact}</td>
+                            <td className="border border-black p-1 font-bold w-[15%]">주문일</td>
+                            <td className="border border-black p-1 w-[25%]">{data.orderDate}</td>
+                            <td className="border border-black p-1 font-bold w-[10%]">주문자</td>
+                            <td className="border border-black p-1 w-[15%]">{data.ordererName}</td>
+                            <td className="border border-black p-1 font-bold w-[10%]">연락처</td>
+                            <td className="border border-black p-1 w-[25%]">{data.ordererContact}</td>
                         </tr>
                         <tr>
                             <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
-                            <td className="border border-black p-1 align-top whitespace-pre-wrap">{data.items}</td>
-                            <td colSpan={4}>
-                                <table className="w-full h-full border-collapse">
-                                    <tbody>
-                                        <tr>
-                                            <td className="border border-black p-1 font-bold w-1/3">금액</td>
-                                            <td className="border border-black p-1 w-2/3">₩{data.totalAmount.toLocaleString()}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className="border border-black p-1 font-bold">배송비</td>
-                                            <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </td>
-                        </tr>
-                        { !isReceipt && (
-                            <tr>
-                                <td className="border-t-0"></td>
-                                <td className="border-t-0"></td>
+                            <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={!isReceipt ? 1 : 5}>{data.items}</td>
+                            {!isReceipt && (
                                 <td colSpan={4}>
                                     <table className="w-full h-full border-collapse">
                                         <tbody>
                                             <tr>
-                                                <td className="border border-black p-1 font-bold w-1/3">결제수단</td>
-                                                <td className="border border-black p-1 w-1/3">{data.paymentMethod}</td>
-                                                <td className="border border-black p-1 w-1/3">{data.paymentStatus}</td>
+                                                <td className="border border-black p-1 font-bold w-1/3">금액</td>
+                                                <td className="border border-black p-1 w-2/3">₩{data.totalAmount.toLocaleString()}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-black p-1 font-bold">배송비</td>
+                                                <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-black p-1 font-bold">결제수단</td>
+                                                <td className="border border-black p-1">{data.paymentMethod}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="border border-black p-1 font-bold">결제상태</td>
+                                                <td className="border border-black p-1">{data.paymentStatus}</td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </td>
-                            </tr>
-                        )}
+                            )}
+                        </tr>
                         <tr>
                             <td className="border border-black p-1 font-bold">배송일/시간</td>
                             <td className="border border-black p-1">{data.deliveryDate}</td>
-                            <td className="border border-black p-1 font-bold">받으시는분 성함</td>
+                            <td className="border border-black p-1 font-bold">받는 분</td>
                             <td className="border border-black p-1">{data.recipientName}</td>
                             <td className="border border-black p-1 font-bold">연락처</td>
                             <td className="border border-black p-1">{data.recipientContact}</td>
