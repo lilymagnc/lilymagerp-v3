@@ -64,21 +64,28 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
   })
 
   useEffect(() => {
-    if (branch) {
-      form.reset(branch);
-    } else {
-      form.reset({
-        name: "",
-        type: "",
-        manager: "",
-        employeeCount: 0,
-        businessNumber: "",
-        address: "",
-        phone: "",
-        account: "",
-      });
+    if (isOpen) {
+        if (branch) {
+          form.reset(branch);
+        } else {
+          form.reset({
+            name: "",
+            type: "",
+            manager: "",
+            employeeCount: 0,
+            businessNumber: "",
+            address: "",
+            phone: "",
+            account: "",
+          });
+        }
     }
-  }, [branch, form]);
+  }, [branch, form, isOpen]);
+  
+  const handleFormSubmit = (data: BranchFormValues) => {
+    onSubmit(data);
+    onOpenChange(false);
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -88,7 +95,7 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
           <DialogDescription>지점의 상세 정보를 입력하고 관리합니다.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -109,7 +116,7 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>유형</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                       <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                           <FormControl>
                           <SelectTrigger><SelectValue placeholder="지점 유형 선택" /></SelectTrigger>
                           </FormControl>

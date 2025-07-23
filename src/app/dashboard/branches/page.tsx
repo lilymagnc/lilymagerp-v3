@@ -38,7 +38,7 @@ export default function BranchesPage() {
   }
 
   const handleFormSubmit = async (data: BranchFormValues) => {
-    if (selectedBranch) {
+    if (selectedBranch?.id) {
       await updateBranch(selectedBranch.id, data);
     } else {
       await addBranch(data);
@@ -154,9 +154,9 @@ export default function BranchesPage() {
       </Card>
       <BranchForm 
         isOpen={isFormOpen}
-        onOpenChange={handleCloseForm}
-        branch={selectedBranch}
+        onOpenChange={setIsFormOpen}
         onSubmit={handleFormSubmit}
+        branch={selectedBranch}
       />
       <BranchDetails 
         isOpen={isDetailOpen}

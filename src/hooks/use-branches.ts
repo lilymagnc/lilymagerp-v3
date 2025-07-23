@@ -23,11 +23,10 @@ export function useBranches() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const branchesCollection = collection(db, 'branches');
-
   const fetchBranches = useCallback(async () => {
     try {
       setLoading(true);
+      const branchesCollection = collection(db, 'branches');
       const querySnapshot = await getDocs(branchesCollection);
       const branchesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
       setBranches(branchesData);
@@ -50,6 +49,7 @@ export function useBranches() {
   const addBranch = async (branch: Omit<Branch, 'id'>) => {
     try {
       setLoading(true);
+      const branchesCollection = collection(db, 'branches');
       const docRef = await addDoc(branchesCollection, branch);
       toast({
         title: '성공',
@@ -100,7 +100,7 @@ export function useBranches() {
         title: '성공',
         description: '지점이 성공적으로 삭제되었습니다.',
       });
-      fetchBranches(); // Re-fetch to update the list
+      await fetchBranches(); // Re-fetch to update the list
     } catch (error) {
       console.error("Error deleting branch: ", error);
       toast({
