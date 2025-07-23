@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useRef } from 'react';
@@ -25,7 +26,7 @@ interface OrderPrintDialogProps {
 }
 
 export function OrderPrintDialog({ isOpen, onOpenChange, order, branches }: OrderPrintDialogProps) {
-    const printableComponentRef = useRef<HTMLDivElement>(null);
+    const printableComponentRef = useRef(null);
 
     const handlePrint = useReactToPrint({
         content: () => printableComponentRef.current,
@@ -40,15 +41,7 @@ export function OrderPrintDialog({ isOpen, onOpenChange, order, branches }: Orde
                     <DialogTitle>주문서 인쇄 미리보기</DialogTitle>
                 </DialogHeader>
                 <div className="flex-grow overflow-y-auto border rounded-md p-4">
-                   <div ref={printableComponentRef}>
-                        {/* 
-                            Since PrintableContent is a class component, we can't directly use it here with a ref
-                            if it's not designed for it. A wrapper div is the simplest solution.
-                            Or, redesign PrintableContent to be a functional component that uses forwardRef.
-                            Given the history, a simple wrapper div is safest.
-                        */}
-                        <PrintableContent order={order} branches={branches} ref={el => (printableComponentRef.current as any) = el} />
-                   </div>
+                    <PrintableContent ref={printableComponentRef} order={order} branches={branches} />
                 </div>
                 <DialogFooter className="sm:justify-between mt-4">
                     <DialogClose asChild>
