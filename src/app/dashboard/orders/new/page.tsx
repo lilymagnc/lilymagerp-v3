@@ -121,24 +121,31 @@ export default function NewOrderPage() {
       />
       <Card className="mb-6">
           <CardHeader>
-              <CardTitle>출고 지점 선택</CardTitle>
+              <CardTitle>지점 선택</CardTitle>
               <CardDescription>주문을 처리할 지점을 선택해주세요.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-                <Store className="h-5 w-5 text-muted-foreground" />
-                <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''}>
-                    <SelectTrigger className="w-[300px]">
-                        <SelectValue placeholder="지점 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {branches.filter(b => b.type !== '본사').map(branch => (
-                            <SelectItem key={branch.id} value={branch.id}>
-                                {branch.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <Store className="h-5 w-5 text-muted-foreground" />
+                    <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''}>
+                        <SelectTrigger className="w-[300px]">
+                            <SelectValue placeholder="지점 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {branches.filter(b => b.type !== '본사').map(branch => (
+                                <SelectItem key={branch.id} value={branch.id}>
+                                    {branch.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                {selectedBranch && (
+                    <p className="text-lg font-medium">
+                        안녕하세요, <span className="text-primary">{selectedBranch.name}</span>입니다.
+                    </p>
+                )}
             </div>
           </CardContent>
       </Card>
