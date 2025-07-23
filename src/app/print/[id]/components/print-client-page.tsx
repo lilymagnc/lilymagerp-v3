@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useRef } from 'react';
@@ -93,14 +92,14 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
       <table className="w-full border-collapse border border-black text-[10px]">
         <tbody>
           <tr>
-            <td className="border border-black p-1 font-bold w-[70px]">주문일</td>
-            <td className="border border-black p-1">{data.orderDate}</td>
-            <td className="border border-black p-1 font-bold w-[70px]">주문자성명</td>
-            <td className="border border-black p-1 w-[120px]">{data.ordererName}</td>
-            <td className="border border-black p-1 font-bold w-[70px]">연락처</td>
-            <td className="border border-black p-1 w-[130px]">{data.ordererContact}</td>
+            <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
+            <td className="border border-black p-1 w-[21%]">{data.orderDate}</td>
+            <td className="border border-black p-1 font-bold w-[12%]">주문자성명</td>
+            <td className="border border-black p-1 w-[22%]">{data.ordererName}</td>
+            <td className="border border-black p-1 font-bold w-[12%]">연락처</td>
+            <td className="border border-black p-1 w-[21%]">{data.ordererContact}</td>
           </tr>
-          <tr style={{height: '100px'}}>
+          <tr style={{height: '140px'}}>
             <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
@@ -126,7 +125,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '80px'}}>
+          <tr style={{height: '100px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
