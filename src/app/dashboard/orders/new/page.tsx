@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { AddProductDialog } from "./components/add-product-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useOrders, OrderData } from "@/hooks/use-orders";
 
 
 interface OrderItem {
@@ -42,6 +44,9 @@ declare global {
 
 export default function NewOrderPage() {
   const { branches } = useBranches();
+  const { addOrder, loading: isSubmitting } = useOrders();
+  const router = useRouter();
+
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -51,7 +56,6 @@ export default function NewOrderPage() {
   const [manualDeliveryFee, setManualDeliveryFee] = useState(0);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   
-  // New state variables for the form overhaul
   const [ordererName, setOrdererName] = useState("");
   const [ordererContact, setOrdererContact] = useState("");
   const [ordererCompany, setOrdererCompany] = useState("");
@@ -60,8 +64,9 @@ export default function NewOrderPage() {
   const [orderType, setOrderType] = useState<OrderType>("phone");
   const [receiptType, setReceiptType] = useState<ReceiptType>("delivery");
   
-  const [pickupDate, setPickupDate] = useState<Date | undefined>(new Date());
-  const [pickupTime, setPickupTime] = useState("10:00");
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
+  const [scheduleTime, setScheduleTime] = useState("10:00");
+  
   const [pickerName, setPickerName] = useState("");
   const [pickerContact, setPickerContact] = useState("");
 
@@ -74,7 +79,6 @@ export default function NewOrderPage() {
   const [messageContent, setMessageContent] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
 
-  // Auto-fill picker info when orderer info changes
   useEffect(() => {
     if (receiptType === 'pickup') {
       setPickerName(ordererName);
@@ -112,7 +116,6 @@ export default function NewOrderPage() {
 
 
   useEffect(() => {
-    // Reset district and fee when branch changes
     setSelectedDistrict(null);
   }, [selectedBranch]);
 
@@ -152,7 +155,7 @@ export default function NewOrderPage() {
     return { subtotal, discount, total, deliveryFee };
   }, [orderItems, deliveryFee]);
 
-  const handleCompleteOrder = () => {
+  const handleCompleteOrder = async () => {
     if (orderItems.length === 0) {
       toast({ variant: 'destructive', title: '주문 오류', description: '주문할 상품을 추가해주세요.' });
       return;
@@ -161,22 +164,42 @@ export default function NewOrderPage() {
         toast({ variant: 'destructive', title: '주문 오류', description: '출고 지점을 선택해주세요.' });
         return;
     }
-    // In a real app, this would submit the order to the backend
-    console.log("Order completed:", { 
-      branch: selectedBranch.name,
-      items: orderItems, 
-      summary: orderSummary,
-      orderer: { name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
-      orderType,
-      receiptType,
-      pickupInfo: receiptType === 'pickup' ? { date: pickupDate, time: pickupTime, pickerName, pickerContact } : null,
-      deliveryInfo: receiptType === 'delivery' ? { recipientName, recipientContact, address: `${deliveryAddress} ${deliveryAddressDetail}`, date: pickupDate, time: pickupTime } : null,
-      message: { type: messageType, content: messageContent },
-      request: specialRequest,
-     });
-    toast({ title: '주문 완료', description: '주문이 성공적으로 접수되었습니다.' });
-    setOrderItems([]);
-    // Reset all form fields
+    
+    const newOrder: OrderData = {
+        branchId: selectedBranch.id,
+        branchName: selectedBranch.name,
+        orderDate: new Date(),
+        status: 'processing', // "processing", "completed", "canceled"
+        
+        items: orderItems.map(({id, name, quantity, price}) => ({id, name, quantity, price})),
+        summary: orderSummary,
+
+        orderer: { name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
+        orderType,
+        receiptType,
+
+        pickupInfo: receiptType === 'pickup' ? { 
+            date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
+            time: scheduleTime, 
+            pickerName, 
+            pickerContact 
+        } : null,
+        
+        deliveryInfo: receiptType === 'delivery' ? { 
+            date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
+            time: scheduleTime,
+            recipientName, 
+            recipientContact, 
+            address: `${deliveryAddress} ${deliveryAddressDetail}`,
+            district: selectedDistrict ?? '',
+        } : null,
+
+        message: { type: messageType, content: messageContent },
+        request: specialRequest,
+    };
+
+    await addOrder(newOrder);
+    router.push('/dashboard/orders');
   }
 
   const handleBranchChange = (branchId: string) => {
@@ -236,7 +259,7 @@ export default function NewOrderPage() {
                   {!selectedBranch ? (
                     <div className="flex items-center gap-2">
                         <Store className="h-5 w-5 text-muted-foreground" />
-                        <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''}>
+                        <Select onValueChange={handleBranchChange}>
                             <SelectTrigger className="w-[300px]">
                                 <SelectValue placeholder="지점 선택" />
                             </SelectTrigger>
@@ -374,17 +397,17 @@ export default function NewOrderPage() {
                                                   <PopoverTrigger asChild>
                                                   <Button
                                                       variant={"outline"}
-                                                      className={cn("w-full justify-start text-left font-normal", !pickupDate && "text-muted-foreground")}
+                                                      className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}
                                                   >
                                                       <CalendarIcon className="mr-2 h-4 w-4" />
-                                                      {pickupDate ? format(pickupDate, "PPP") : <span>날짜 선택</span>}
+                                                      {scheduleDate ? format(scheduleDate, "PPP") : <span>날짜 선택</span>}
                                                   </Button>
                                                   </PopoverTrigger>
                                                   <PopoverContent className="w-auto p-0">
-                                                  <Calendar mode="single" selected={pickupDate} onSelect={setPickupDate} initialFocus />
+                                                  <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
                                                   </PopoverContent>
                                               </Popover>
-                                              <Select value={pickupTime} onValueChange={setPickupTime}>
+                                              <Select value={scheduleTime} onValueChange={setScheduleTime}>
                                                   <SelectTrigger className="w-[120px]">
                                                       <SelectValue />
                                                   </SelectTrigger>
@@ -417,17 +440,17 @@ export default function NewOrderPage() {
                                                   <PopoverTrigger asChild>
                                                   <Button
                                                       variant={"outline"}
-                                                      className={cn("w-full justify-start text-left font-normal", !pickupDate && "text-muted-foreground")}
+                                                      className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}
                                                   >
                                                       <CalendarIcon className="mr-2 h-4 w-4" />
-                                                      {pickupDate ? format(pickupDate, "PPP") : <span>날짜 선택</span>}
+                                                      {scheduleDate ? format(scheduleDate, "PPP") : <span>날짜 선택</span>}
                                                   </Button>
                                                   </PopoverTrigger>
                                                   <PopoverContent className="w-auto p-0">
-                                                  <Calendar mode="single" selected={pickupDate} onSelect={setPickupDate} initialFocus />
+                                                  <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
                                                   </PopoverContent>
                                               </Popover>
-                                              <Select value={pickupTime} onValueChange={setPickupTime}>
+                                              <Select value={scheduleTime} onValueChange={setScheduleTime}>
                                                   <SelectTrigger className="w-[120px]">
                                                       <SelectValue />
                                                   </SelectTrigger>
@@ -541,7 +564,10 @@ export default function NewOrderPage() {
                         </div>
                     </CardContent>
                     <CardFooter className="flex-col gap-2 items-stretch">
-                        <Button className="w-full" size="lg" onClick={handleCompleteOrder} disabled={orderItems.length === 0 || !selectedBranch}>주문 완료</Button>
+                        <Button className="w-full" size="lg" onClick={handleCompleteOrder} disabled={orderItems.length === 0 || !selectedBranch || isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            주문 완료
+                        </Button>
                     </CardFooter>
                 </Card>
             </div>
