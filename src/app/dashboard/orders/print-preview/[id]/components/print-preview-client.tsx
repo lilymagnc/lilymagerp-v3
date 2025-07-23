@@ -11,45 +11,44 @@ import { PrintableOrder, OrderPrintData } from '@/app/dashboard/orders/new/compo
 import { useBranches } from '@/hooks/use-branches';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-
+import { format, toDate } from 'date-fns';
 
 export function PrintPreviewClient({ order }: { order: Order }) {
     const router = useRouter();
-    const componentRef = useRef<PrintableOrder>(null);
+    const componentRef = useRef<HTMLDivElement>(null);
     const { branches } = useBranches();
     const [isPrinting, setIsPrinting] = useState(false);
 
     const targetBranch = branches.find(b => b.id === order.branchId);
-
-    const handlePrint = () => {
-        setIsPrinting(true);
-    };
-
+    
     useEffect(() => {
         if (isPrinting) {
             const handleAfterPrint = () => {
                 setIsPrinting(false);
             };
 
-            window.addEventListener('afterprint', handleAfterPrint, { once: true });
+            window.addEventListener('afterprint', handleAfterPrint);
             
-            const printTimeout = setTimeout(() => {
+            requestAnimationFrame(() => {
                 window.print();
-            }, 100);
+            });
 
             return () => {
-                clearTimeout(printTimeout);
                 window.removeEventListener('afterprint', handleAfterPrint);
             };
         }
     }, [isPrinting]);
 
-
+    const handlePrintClick = () => {
+        setIsPrinting(true);
+    }
+    
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
+    
+    const orderDateObject = (order.orderDate as any).toDate ? (order.orderDate as any).toDate() : new Date(order.orderDate);
 
     const printData: OrderPrintData | null = targetBranch ? {
-        orderDate: format(new Date(order.orderDate), "yyyy-MM-dd HH:mm"),
+        orderDate: format(orderDateObject, "yyyy-MM-dd HH:mm"),
         ordererName: order.orderer.name,
         ordererContact: order.orderer.contact,
         items: itemsText,
@@ -83,7 +82,7 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                                 <ArrowLeft className="mr-2 h-4 w-4" />
                                 목록으로 돌아가기
                             </Button>
-                            <Button onClick={handlePrint} disabled={!printData || isPrinting}>
+                            <Button onClick={handlePrintClick} disabled={!printData || isPrinting}>
                                 {isPrinting ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -100,13 +99,15 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                     </PageHeader>
                 </div>
             </div>
-            <div id="printable-area">
+            <div id="printable-area" ref={componentRef}>
                 <Card className="shadow-sm">
                     <CardContent className="p-0">
-                         {printData && <PrintableOrder ref={componentRef} data={printData} />}
+                         {printData && <PrintableOrder data={printData} />}
                     </CardContent>
                 </Card>
             </div>
         </div>
     );
 }
+
+    

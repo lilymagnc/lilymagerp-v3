@@ -103,7 +103,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1">{data.recipientContact}</td>
                         </tr>
                         <tr>
-                            <td className="border border-black p-1 font-bold align-top h-12">배송지주소</td>
+                            <td className="border border-black p-1 font-bold align-top h-24">배송지주소</td>
                             <td colSpan={5} className="border border-black p-1 align-top">{data.deliveryAddress}</td>
                         </tr>
                         <tr>
@@ -159,3 +159,5 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
         );
     }
 }
+
+    
