@@ -1,14 +1,14 @@
 
 "use client";
 
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import Image from 'next/image';
 import { useBranches } from '@/hooks/use-branches';
 import { format } from 'date-fns';
 import type { Order } from '@/hooks/use-orders';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 interface OrderPrintDialogProps {
   order: Order;
@@ -31,6 +31,13 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
     content: () => printableComponentRef.current,
     onAfterPrint: onClose,
   });
+
+  useEffect(() => {
+    // Component mounts, and all data is ready, trigger print
+    if (order && branches.length > 0 && handlePrint) {
+        handlePrint();
+    }
+  }, [order, branches, handlePrint]);
   
   const getPrintableData = useCallback(() => {
     if (!order) return null;
@@ -156,40 +163,11 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
 
   return (
     <Dialog open={!!order} onOpenChange={(isOpen) => !isOpen && onClose()}>
-        <DialogContent className="max-w-3xl">
-            <DialogHeader>
-                <DialogTitle>주문서 인쇄 미리보기</DialogTitle>
-            </DialogHeader>
-            <div className="hidden">
+        <DialogContent className="max-w-3xl opacity-0">
+             {/* This content is not visible to the user, it is only for printing */}
+             <div className="hidden">
                 <PrintableContent ref={printableComponentRef} />
-            </div>
-            <div className="max-h-[70vh] overflow-y-auto border rounded-md p-4 bg-gray-100">
-                <div className="scale-[0.8] origin-top bg-white shadow-lg mx-auto w-full" style={{width: '210mm', minHeight: '297mm'}}>
-                  <div className="p-4 bg-white text-black font-sans">
-                    {renderSection('주문서', false)}
-                    <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
-                    {renderSection('인수증', true)}
-                     <div className="mt-8 text-xs text-center border-t border-black pt-4">
-                      <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-4">
-                          {branchesContactInfo.slice(0,4).map(branch => (
-                              <div key={branch.name} className="text-left">
-                                  <span className="font-bold">{branch.name}:</span>
-                                  <span className="ml-2">{branch.tel}</span>
-                              </div>
-                          ))}
-                      </div>
-                      <div className="text-center">
-                          <span className="font-bold">{branchesContactInfo[4].name}:</span>
-                          <span className="ml-2">{branchesContactInfo[4].address}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={onClose}>닫기</Button>
-                <Button onClick={handlePrint}>인쇄</Button>
-            </DialogFooter>
+             </div>
         </DialogContent>
     </Dialog>
   );
