@@ -8,5 +8,11 @@ export default function PrintLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <html>
+      <body style={{ margin: 0 }}>
+        {children}
+      </body>
+    </html>
+  );
 }

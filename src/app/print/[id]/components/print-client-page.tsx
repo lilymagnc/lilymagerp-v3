@@ -46,7 +46,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   useEffect(() => {
     if (order && !printInitiated.current) {
       printInitiated.current = true;
-      window.print();
+      setTimeout(() => window.print(), 500); // Allow images to load
     }
   }, [order]);
   
@@ -132,7 +132,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
               }
               @page {
                 size: A4;
-                margin: 20mm;
+                margin: 0;
               }
             }
           `}
@@ -158,9 +158,9 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
       <script
         dangerouslySetInnerHTML={{
           __html: `
-            window.onafterprint = () => {
+            window.addEventListener('afterprint', (event) => {
               window.close();
-            }
+            });
           `,
         }}
       />
