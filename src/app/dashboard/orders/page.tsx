@@ -18,7 +18,7 @@ import { format } from "date-fns";
 
 // Printable Component
 interface PrintableContentProps {
-  order: Order;
+  order: Order | null;
   branches: ReturnType<useBranches>['branches'];
 }
 
@@ -176,12 +176,10 @@ export default function OrdersPage() {
     }
   };
 
-  useEffect(() => {
-    // When selectedOrder is set, trigger the print dialog.
-    if (selectedOrder && handlePrint) {
-      handlePrint();
-    }
-  }, [selectedOrder, handlePrint]);
+  const triggerPrint = (order: Order) => {
+    setSelectedOrder(order);
+    handlePrint();
+  }
 
   return (
     <>
@@ -242,7 +240,7 @@ export default function OrdersPage() {
                       <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setSelectedOrder(order)}
+                          onClick={() => triggerPrint(order)}
                       >
                           <Printer className="h-4 w-4" />
                           <span className="sr-only">주문서 출력</span>
@@ -258,10 +256,8 @@ export default function OrdersPage() {
       
       {/* Hidden component for printing */}
       <div className="hidden print:block">
-        {selectedOrder && <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />}
+        <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />
       </div>
     </>
   );
 }
-
-    
