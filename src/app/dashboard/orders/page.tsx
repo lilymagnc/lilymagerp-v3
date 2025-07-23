@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, Component, useEffect, forwardRef } from "react";
+import { useState, useRef, Component } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -113,7 +113,9 @@ const renderPrintSection = (title: string, isReceipt: boolean, data: NonNullable
     </div>
 );
     
-export const PrintableContent = forwardRef<HTMLDivElement, PrintableContentProps>(({ order, branches }, ref) => {
+export class PrintableContent extends Component<PrintableContentProps> {
+  render() {
+    const { order, branches } = this.props;
     const data = getPrintableData(order, branches);
     if(!data) return null;
 
@@ -126,7 +128,7 @@ export const PrintableContent = forwardRef<HTMLDivElement, PrintableContentProps
     const onlineShopUrl = "www.lilymagshop.co.kr";
 
     return (
-        <div ref={ref} className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto">
+        <div className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto">
             {renderPrintSection('주문서', false, data)}
             <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
             {renderPrintSection('인수증', true, data)}
@@ -146,9 +148,8 @@ export const PrintableContent = forwardRef<HTMLDivElement, PrintableContentProps
             </div>
         </div>
     );
-});
-PrintableContent.displayName = "PrintableContent";
-
+  }
+}
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
