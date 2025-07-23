@@ -18,7 +18,7 @@ export default function OrdersPage() {
   const { orders, loading } = useOrders();
   const router = useRouter();
   
-  const handlePrintPreview = (orderId: string) => {
+  const handlePrint = (orderId: string) => {
     router.push(`/dashboard/orders/print-preview/${orderId}`);
   };
 
@@ -91,7 +91,7 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handlePrintPreview(order.id)}>
+                    <Button variant="ghost" size="icon" onClick={() => handlePrint(order.id)}>
                       <Printer className="h-4 w-4" />
                       <span className="sr-only">주문서 출력</span>
                     </Button>
