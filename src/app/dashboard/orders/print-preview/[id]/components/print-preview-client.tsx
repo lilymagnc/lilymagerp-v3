@@ -1,8 +1,7 @@
 
 "use client";
 
-import React, { useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Printer } from "lucide-react";
@@ -12,42 +11,54 @@ import { PrintableOrder, OrderPrintData } from '@/app/dashboard/orders/new/compo
 import { useBranches } from '@/hooks/use-branches';
 import { PageHeader } from '@/components/page-header';
 
-interface PrintPreviewClientProps {
-    order: Order;
-}
-
-const pageStyle = `
-  @page {
-    size: A4;
-    margin: 10mm;
-  }
-  @media print {
-    body {
-        -webkit-print-color-adjust: exact;
-    }
-    .no-print {
-        display: none !important;
-    }
-    main {
-        padding: 0 !important;
-    }
-  }
-`;
-
-export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
+export function PrintPreviewClient({ order }: { order: Order }) {
     const router = useRouter();
-    const componentRef = useRef<PrintableOrder>(null);
+    const componentRef = React.useRef<HTMLDivElement>(null);
     const { branches } = useBranches();
     
     const targetBranch = branches.find(b => b.id === order.branchId);
 
-    const handlePrint = useReactToPrint({
-        content: () => componentRef.current,
-        pageStyle: pageStyle,
-    });
+    const handlePrint = () => {
+        const printableArea = document.getElementById('printable-area');
+        if (!printableArea) return;
+
+        const printStyles = `
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .printable-area, .printable-area * {
+              visibility: visible;
+            }
+            .printable-area {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+          }
+        `;
+
+        const styleSheet = document.createElement('style');
+        styleSheet.type = 'text/css';
+        styleSheet.innerText = printStyles;
+        document.head.appendChild(styleSheet);
+        
+        window.print();
+
+        document.head.removeChild(styleSheet);
+    };
     
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
 
+    // order.orderDate is already a Date object from the page component
     const printData: OrderPrintData | null = targetBranch ? {
         orderDate: new Date(order.orderDate).toLocaleString(),
         ordererName: order.orderer.name,
@@ -89,11 +100,9 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
                 </div>
             </PageHeader>
 
-            <Card>
+            <Card className="printable-area" id="printable-area">
                 <CardContent className="p-0">
-                   <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg mx-auto my-8">
-                       {printData && <PrintableOrder ref={componentRef} data={printData} />}
-                    </div>
+                    {printData && <PrintableOrder ref={componentRef} data={printData} />}
                 </CardContent>
             </Card>
         </div>
