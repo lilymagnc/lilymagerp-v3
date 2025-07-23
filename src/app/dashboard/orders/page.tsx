@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, MoreHorizontal, Printer } from "lucide-react";
@@ -15,7 +16,6 @@ import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useBranches } from "@/hooks/use-branches";
-import { useReactToPrint } from "react-to-print";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
@@ -31,10 +31,9 @@ export default function OrdersPage() {
 
   useEffect(() => {
     if (selectedOrder) {
-      // Use timeout to ensure the component is rendered before printing
       const timer = setTimeout(() => {
         handlePrint();
-      }, 0);
+      }, 50); // A small delay to ensure the component is rendered
       return () => clearTimeout(timer);
     }
   }, [selectedOrder, handlePrint]);
@@ -171,8 +170,10 @@ export default function OrdersPage() {
         </Card>
       </div>
       <div className="print-only">
-          <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
+          {selectedOrder && <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />}
       </div>
     </div>
   );
 }
+
+    
