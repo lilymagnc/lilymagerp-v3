@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState, useRef, forwardRef, useCallback } from "react";
+import { useState, useRef, forwardRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
-import ReactToPrint from 'react-to-print';
+import { useReactToPrint } from 'react-to-print';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -158,6 +158,22 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const printableComponentRef = useRef<HTMLDivElement>(null);
 
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+    onAfterPrint: () => setSelectedOrder(null),
+  });
+
+  useEffect(() => {
+    // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
+    if (selectedOrder && handlePrint) {
+      handlePrint();
+    }
+  }, [selectedOrder, handlePrint]);
+
+  const triggerPrint = (order: Order) => {
+    setSelectedOrder(order);
+  }
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -227,16 +243,10 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                      <ReactToPrint
-                        trigger={() => (
-                           <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(order)}>
-                              <Printer className="h-4 w-4" />
-                              <span className="sr-only">주문서 출력</span>
-                          </Button>
-                        )}
-                        content={() => printableComponentRef.current}
-                        onAfterPrint={() => setSelectedOrder(null)}
-                      />
+                    <Button variant="ghost" size="icon" onClick={() => triggerPrint(order)}>
+                      <Printer className="h-4 w-4" />
+                      <span className="sr-only">주문서 출력</span>
+                    </Button>
                   </TableCell>
                   </TableRow>
               ))
@@ -247,7 +257,7 @@ export default function OrdersPage() {
       </Card>
       
       {/* Hidden component for printing */}
-      <div className="hidden">
+      <div className="hidden print:block">
         {selectedOrder && <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />}
       </div>
     </>
