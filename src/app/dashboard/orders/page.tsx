@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -22,7 +22,6 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
-  const printTriggerRef = useRef<HTMLButtonElement>(null);
 
   const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
     if (!order) return null;
@@ -54,10 +53,6 @@ export default function OrdersPage() {
     };
   }, [branches]);
   
-  const handlePrintClick = (order: Order) => {
-    setSelectedOrder(order);
-  }
-
   const onAfterPrint = useCallback(() => {
     setSelectedOrder(null);
   }, []);
@@ -65,16 +60,16 @@ export default function OrdersPage() {
   const handlePrint = useReactToPrint({
     content: () => printableComponentRef.current,
     onAfterPrint,
-    trigger: () => printTriggerRef.current,
   });
 
-  useEffect(() => {
-    if (selectedOrder) {
-      handlePrint();
-    }
-  }, [selectedOrder, handlePrint]);
-
-
+  const handlePrintClick = (order: Order) => {
+    setSelectedOrder(order);
+    // Use a timeout to allow the component to re-render with the new data before printing
+    setTimeout(() => {
+        if(handlePrint) handlePrint();
+    }, 100);
+  }
+  
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -91,7 +86,7 @@ export default function OrdersPage() {
 
   return (
     <>
-      <div className="screen-only">
+      <div>
         <PageHeader
           title="주문 현황"
           description="모든 주문 내역을 확인하고 관리하세요."
@@ -163,8 +158,7 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="hidden">
-        <button ref={printTriggerRef}>Print</button>
+      <div className="hidden print:block">
         <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
       </div>
     </>
