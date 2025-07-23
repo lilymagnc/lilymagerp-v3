@@ -7,12 +7,12 @@ import { PrintClientPage } from './components/print-client-page';
 // The Order type from use-orders uses Timestamp, but when we get it from Firestore
 // it's a plain object that needs to be converted.
 // We also need to make sure the orderDate is serializable.
-interface Order extends Omit<OrderData, 'orderDate'> {
+interface ServerOrder extends Omit<OrderData, 'orderDate'> {
     id: string;
     orderDate: string; // ISO string
 }
 
-async function getOrder(orderId: string): Promise<Order | null> {
+async function getOrder(orderId: string): Promise<ServerOrder | null> {
     try {
         const docRef = doc(db, 'orders', orderId);
         const docSnap = await getDoc(docRef);
@@ -24,7 +24,7 @@ async function getOrder(orderId: string): Promise<Order | null> {
                 id: docSnap.id, 
                 ...data,
                 orderDate: orderDate.toDate().toISOString(),
-            } as Order;
+            } as ServerOrder;
         } else {
             console.error("No such document!");
             return null;
