@@ -11,57 +11,44 @@ import { PrintableOrder, OrderPrintData } from '@/app/dashboard/orders/new/compo
 import { useBranches } from '@/hooks/use-branches';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+
 
 export function PrintPreviewClient({ order }: { order: Order }) {
     const router = useRouter();
-    const componentRef = useRef<HTMLDivElement>(null);
+    const componentRef = useRef<PrintableOrder>(null);
     const { branches } = useBranches();
     const [isPrinting, setIsPrinting] = useState(false);
 
     const targetBranch = branches.find(b => b.id === order.branchId);
-    
+
+    const handlePrint = () => {
+        setIsPrinting(true);
+    };
+
     useEffect(() => {
         if (isPrinting) {
+            const handleAfterPrint = () => {
+                setIsPrinting(false);
+                window.removeEventListener('afterprint', handleAfterPrint);
+            };
+            window.addEventListener('afterprint', handleAfterPrint);
             window.print();
         }
     }, [isPrinting]);
 
-    const handlePrint = () => {
-        document.body.classList.add('printing-active');
-        setIsPrinting(true);
-    };
-    
-    // Detect when printing is done (either confirmed or cancelled)
-    useEffect(() => {
-        const afterPrint = () => {
-            document.body.classList.remove('printing-active');
-            setIsPrinting(false);
-        };
-        
-        window.addEventListener('afterprint', afterPrint);
-        
-        return () => {
-            window.removeEventListener('afterprint', afterPrint);
-        }
-    }, []);
 
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
 
     const printData: OrderPrintData | null = targetBranch ? {
-        orderDate: new Date(order.orderDate).toLocaleString('ko-KR', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-        }),
+        orderDate: format(new Date(order.orderDate), "yyyy-MM-dd HH:mm"),
         ordererName: order.orderer.name,
         ordererContact: order.orderer.contact,
         items: itemsText,
         totalAmount: order.summary.total,
         deliveryFee: order.summary.deliveryFee,
-        paymentMethod: '카드결제',
-        paymentStatus: '결제완료',
+        paymentMethod: '카드결제', // Placeholder
+        paymentStatus: '완결', // Placeholder
         deliveryDate: order.deliveryInfo?.date ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` : '정보 없음',
         recipientName: order.deliveryInfo?.recipientName ?? '',
         recipientContact: order.deliveryInfo?.recipientContact ?? '',
@@ -76,8 +63,8 @@ export function PrintPreviewClient({ order }: { order: Order }) {
     } : null;
 
     return (
-        <>
-            <div id="non-printable-ui" className={cn(isPrinting && 'hidden')}>
+        <div className={cn(isPrinting && 'printing-active')}>
+            <div id="non-printable-ui">
                 <div className="max-w-4xl mx-auto">
                     <PageHeader
                         title="주문서 인쇄 미리보기"
@@ -97,12 +84,12 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                 </div>
             </div>
             <div id="printable-area">
-                <Card>
+                <Card className="shadow-sm">
                     <CardContent className="p-0">
-                        {printData && <PrintableOrder ref={componentRef} data={printData} />}
+                         {printData && <PrintableOrder ref={componentRef} data={printData} />}
                     </CardContent>
                 </Card>
             </div>
-        </>
+        </div>
     );
 }
