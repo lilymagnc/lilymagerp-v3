@@ -1,8 +1,6 @@
-
 import React from 'react';
 
-// This layout applies only to the print route.
-// It ensures that the print page doesn't inherit the main dashboard layout (sidebar, header, etc.)
+// This layout applies only to the print route group.
 // By providing its own <html> and <body>, it breaks away from the root layout.
 export default function PrintLayout({
   children,
@@ -23,7 +21,9 @@ export default function PrintLayout({
             margin: 0;
           }
           @media print {
-            body {
+            html, body {
+              width: 210mm;
+              height: 297mm;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }

@@ -1,4 +1,3 @@
-
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { OrderData } from '@/hooks/use-orders';
