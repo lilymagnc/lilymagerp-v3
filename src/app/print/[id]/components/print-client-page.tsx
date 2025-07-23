@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef } from 'react';
@@ -6,11 +7,54 @@ import { format } from 'date-fns';
 import Image from 'next/image';
 
 interface PrintClientPageProps {
-  order: Order;
+  order: Order | null;
 }
 
 export function PrintClientPage({ order }: PrintClientPageProps) {
   const printInitiated = useRef(false);
+
+  useEffect(() => {
+    if (order && !printInitiated.current) {
+      printInitiated.current = true;
+      
+      const images = Array.from(document.images);
+      const imageLoadPromises = images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve; // Resolve on error too, to not block printing
+        });
+      });
+
+      const triggerPrint = () => {
+        // Delay slightly after image load to ensure rendering
+        setTimeout(() => {
+          window.print();
+        }, 100); 
+      };
+      
+      const printTimeout = setTimeout(triggerPrint, 2000); // Failsafe timeout
+
+      Promise.all(imageLoadPromises).then(() => {
+        clearTimeout(printTimeout);
+        triggerPrint();
+      });
+    }
+  }, [order]);
+  
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      window.close();
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
+  if (!order) {
+    return <div>주문 정보를 불러오는 중...</div>;
+  }
   
   const getPrintableData = (order: Order) => {
     const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
@@ -43,41 +87,6 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   ];
   const onlineShopUrl = "www.lilymagshop.co.kr";
   
-  useEffect(() => {
-    if (order && !printInitiated.current) {
-      printInitiated.current = true;
-      
-      const images = Array.from(document.images);
-      const imageLoadPromises = images.map(img => {
-        if (img.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          img.onload = resolve;
-          img.onerror = resolve; // Resolve on error too, to not block printing
-        });
-      });
-
-      const triggerPrint = () => {
-        // Delay slightly after image load to ensure rendering
-        setTimeout(() => {
-            window.print();
-        }, 100); 
-      };
-
-      // Wait for all images to load, but with a timeout
-      Promise.all(imageLoadPromises).then(triggerPrint);
-    }
-  }, [order]);
-  
-  useEffect(() => {
-    const handleAfterPrint = () => {
-      window.close();
-    };
-    window.addEventListener('afterprint', handleAfterPrint);
-    return () => {
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-  }, []);
-  
   const renderPrintSection = (title: string, isReceipt: boolean, data: NonNullable<ReturnType<typeof getPrintableData>>) => (
     <div className="mb-4" style={{ pageBreakInside: 'avoid' }}>
       <div className="text-center mb-2">
@@ -89,7 +98,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         )}
         { isReceipt && <h1 className="text-xl font-bold mt-2">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-[10px]">
+      <table className="w-full border-collapse border border-black text-[11px]">
         <tbody>
           <tr>
             <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
@@ -99,7 +108,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold w-[12%]">연락처</td>
             <td className="border border-black p-1 w-[21%]">{data.ordererContact}</td>
           </tr>
-          <tr style={{height: '140px'}}>
+          <tr style={{height: '160px'}}>
             <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
@@ -125,7 +134,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '100px'}}>
+          <tr style={{height: '120px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
@@ -142,11 +151,11 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
 
   return (
     <>
-      <div className="bg-white text-black font-sans p-2 max-w-[210mm] mx-auto text-xs printable-area">
+      <div className="bg-white text-black font-sans p-2 max-w-[210mm] mx-auto printable-area">
         {renderPrintSection('주문서', false, data)}
         <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
         {renderPrintSection('인수증', true, data)}
-        <div className="mt-4 text-center border-t border-black pt-2 text-[9px]">
+        <div className="mt-4 text-center border-t border-black pt-2 text-[10px]">
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-2 max-w-md mx-auto">
             {branchesContactInfo.map(branch => (
               <div key={branch.name} className="text-left">
