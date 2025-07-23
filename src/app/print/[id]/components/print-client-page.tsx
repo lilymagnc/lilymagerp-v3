@@ -98,7 +98,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         )}
         { isReceipt && <h1 className="text-xl font-bold mt-2">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-[12px]">
+      <table className="w-full border-collapse border border-black text-[13px]">
         <tbody>
           <tr>
             <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
@@ -108,7 +108,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold w-[12%]">연락처</td>
             <td className="border border-black p-1 w-[21%]">{data.ordererContact}</td>
           </tr>
-          <tr style={{height: '140px'}}>
+          <tr style={{height: '90px'}}>
             <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
@@ -134,7 +134,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '100px'}}>
+          <tr style={{height: '80px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
@@ -155,7 +155,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         {renderPrintSection('주문서', false, data)}
         <div className="border-t-2 border-dashed border-gray-400 my-4"></div>
         {renderPrintSection('인수증', true, data)}
-        <div className="mt-4 text-center border-t border-black pt-2 text-[10px]">
+        <div className="mt-4 text-center border-t border-black pt-2 text-[11px]">
           <div className="grid grid-cols-2 gap-x-6 gap-y-1 mb-2 max-w-md mx-auto">
             {branchesContactInfo.map(branch => (
               <div key={branch.name} className="text-left">
