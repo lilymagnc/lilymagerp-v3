@@ -16,10 +16,10 @@ interface OrderPrintDialogProps {
 }
 
 const branchesContactInfo = [
-    { name: "릴리맥여의도점", address: "서울시 영등포구 여의나루로50 The-K타워 B1", tel: "010-8241-9518" },
-    { name: "릴리맥여의도2호점", address: "서울시 영등포구 국제금융로8길 31 SK증권빌딩 B1", tel: "010-7939-9518" },
-    { name: "릴리맥광화문점", address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", tel: "010-2385-9518" },
-    { name: "릴리맥NC이스트폴점", address: "서울시 광진구 아차산로 402, G1층", tel: "010-2908-5459" },
+    { name: "릴리맥여의도점", address: "서울시 영등포구 여의나루로50 The-K타워 B1", tel: "010-8241-9518 / 010-2285-9518" },
+    { name: "릴리맥여의도2호점", address: "서울시 영등포구 국제금융로8길 31 SK증권빌딩 B1", tel: "010-7939-9518 / 010-2285-9518" },
+    { name: "릴리맥광화문점", address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", tel: "010-2385-9518 / 010-2285-9518" },
+    { name: "릴리맥NC이스트폴점", address: "서울시 광진구 아차산로 402, G1층", tel: "010-2908-5459 / 010-2285-9518" },
     { name: "[온라인쇼핑몰]", address: "www.lilymagshop.co.kr", tel: "010-2285-9518" }
 ];
 
@@ -88,28 +88,22 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
                 </tr>
                 <tr>
                     <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
-                    <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={!isReceipt ? 1 : 5}>{data.items}</td>
-                    {!isReceipt && (
-                        <td colSpan={4}>
-                            <table className="w-full h-full border-collapse">
-                                <tbody>
-                                    <tr>
-                                        <td className="border border-black p-1 font-bold w-[100px]">금액</td>
-                                        <td className="border border-black p-1">₩{data.totalAmount.toLocaleString()}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="border border-black p-1 font-bold">배송비</td>
-                                        <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="border border-black p-1 font-bold w-[100px]">결제수단</td>
-                                        <td className="border border-black p-1">{data.paymentMethod} {data.paymentStatus}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </td>
-                    )}
+                    <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
                 </tr>
+                 {!isReceipt && (
+                    <>
+                        <tr>
+                            <td className="border border-black p-1 font-bold">금액</td>
+                            <td className="border border-black p-1" colSpan={2}>₩{data.totalAmount.toLocaleString()}</td>
+                            <td className="border border-black p-1 font-bold">배송비</td>
+                            <td className="border border-black p-1" colSpan={2}>₩{data.deliveryFee.toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td className="border border-black p-1 font-bold">결제수단</td>
+                            <td className="border border-black p-1" colSpan={5}>{data.paymentMethod} {data.paymentStatus}</td>
+                        </tr>
+                    </>
+                )}
                 <tr>
                     <td className="border border-black p-1 font-bold">배송일/시간</td>
                     <td className="border border-black p-1">{data.deliveryDate}</td>
@@ -144,10 +138,10 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
       {renderSection('인수증', true)}
        <div className="mt-8 text-xs text-center border-t border-black pt-4">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-            {branchesContactInfo.map(branch => (
-                <div key={branch.name} className="flex justify-center items-center gap-2">
+            {branchesContactInfo.slice(0,4).map(branch => (
+                <div key={branch.name} className="text-left">
                     <span className="font-bold">{branch.name}:</span>
-                    <span>{branch.tel}</span>
+                    <span className="ml-2">{branch.tel}</span>
                 </div>
             ))}
         </div>
