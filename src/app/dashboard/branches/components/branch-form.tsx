@@ -67,7 +67,8 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(branch || defaultValues);
+      const { deliveryFees, surcharges, ...formData } = branch || {};
+      form.reset(formData as BranchFormValues || defaultValues);
     }
   }, [branch, form, isOpen]);
   
@@ -212,3 +213,5 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
     </Dialog>
   )
 }
+
+    

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,9 @@ import { PageHeader } from "@/components/page-header";
 import { MinusCircle, PlusCircle, Trash2 } from "lucide-react";
 import { AddProductDialog } from "./components/add-product-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useBranches, Branch, DeliveryFee } from "@/hooks/use-branches";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface OrderItem {
   id: string;
@@ -24,9 +27,33 @@ interface OrderItem {
 }
 
 export default function NewOrderPage() {
+  const { branches } = useBranches();
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const { toast } = useToast();
+  
+  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [deliveryFeeType, setDeliveryFeeType] = useState<"auto" | "manual">("auto");
+  const [manualDeliveryFee, setManualDeliveryFee] = useState(0);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+
+  const deliveryFee = useMemo(() => {
+    if (deliveryFeeType === 'manual') {
+      return manualDeliveryFee;
+    }
+    if (!selectedBranch || !selectedDistrict) {
+      return 0;
+    }
+    const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
+    return feeInfo ? feeInfo.fee : 0;
+  }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict]);
+
+
+  useEffect(() => {
+    // Reset district and fee when branch changes
+    setSelectedDistrict(null);
+  }, [selectedBranch]);
+
 
   const handleAddProduct = (product: { id: string, name: string, price: number, stock: number }) => {
     const existingItem = orderItems.find(item => item.id === product.id);
@@ -59,9 +86,9 @@ export default function NewOrderPage() {
   const orderSummary = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const discount = 0; // Placeholder for discount logic
-    const total = subtotal - discount;
-    return { subtotal, discount, total };
-  }, [orderItems]);
+    const total = subtotal - discount + deliveryFee;
+    return { subtotal, discount, total, deliveryFee };
+  }, [orderItems, deliveryFee]);
 
   const handleCompleteOrder = () => {
     if (orderItems.length === 0) {
@@ -72,6 +99,14 @@ export default function NewOrderPage() {
     console.log("Order completed:", { orderItems, summary: orderSummary });
     toast({ title: '주문 완료', description: '주문이 성공적으로 접수되었습니다.' });
     setOrderItems([]);
+    setSelectedBranch(null);
+    setSelectedDistrict(null);
+    setManualDeliveryFee(0);
+  }
+
+  const handleBranchChange = (branchId: string) => {
+    const branch = branches.find(b => b.id === branchId);
+    setSelectedBranch(branch || null);
   }
 
   return (
@@ -149,6 +184,71 @@ export default function NewOrderPage() {
                                     </CardContent>
                                 </Card>
                             </div>
+                            <div>
+                              <Label>배송 정보</Label>
+                                <Card className="mt-2">
+                                    <CardContent className="p-4 space-y-4">
+                                      <div className="grid grid-cols-2 gap-4">
+                                          <div className="space-y-2">
+                                            <Label>출고 지점</Label>
+                                            <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="지점 선택" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {branches.filter(b => b.type !== '본사').map(branch => (
+                                                        <SelectItem key={branch.id} value={branch.id}>
+                                                            {branch.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div className="space-y-2">
+                                            <Label>배송지</Label>
+                                            <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="지역 선택" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  {selectedBranch?.deliveryFees?.map(df => (
+                                                    <SelectItem key={df.district} value={df.district}>
+                                                      {df.district}
+                                                    </SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                            </Select>
+                                          </div>
+                                      </div>
+                                       <div className="space-y-2">
+                                            <Label htmlFor="delivery-address">상세 주소</Label>
+                                            <Input id="delivery-address" placeholder="상세 주소 입력" />
+                                        </div>
+                                       <div className="space-y-2">
+                                          <Label>배송비</Label>
+                                          <RadioGroup defaultValue="auto" className="flex items-center gap-4" onValueChange={(value: "auto" | "manual") => setDeliveryFeeType(value)}>
+                                            <div className="flex items-center space-x-2">
+                                              <RadioGroupItem value="auto" id="auto" />
+                                              <Label htmlFor="auto">자동 계산</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                              <RadioGroupItem value="manual" id="manual" />
+                                              <Label htmlFor="manual">직접 입력</Label>
+                                            </div>
+                                          </RadioGroup>
+                                          {deliveryFeeType === 'manual' && (
+                                            <Input 
+                                              type="number" 
+                                              placeholder="배송비 직접 입력" 
+                                              value={manualDeliveryFee}
+                                              onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
+                                              className="mt-2"
+                                             />
+                                          )}
+                                       </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
                              <div className="space-y-2">
                                 <Label htmlFor="notes">메모</Label>
                                 <Textarea id="notes" placeholder="특별 요청사항을 입력하세요." />
@@ -181,6 +281,10 @@ export default function NewOrderPage() {
                         <span>₩{orderSummary.subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
+                        <span>배송비</span>
+                        <span>₩{orderSummary.deliveryFee.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
                         <span>할인</span>
                         <span className="text-destructive">-₩{orderSummary.discount.toLocaleString()}</span>
                     </div>
@@ -204,3 +308,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    

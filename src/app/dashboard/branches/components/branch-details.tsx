@@ -12,12 +12,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import { Branch } from "@/hooks/use-branches"
 
 interface BranchDetailsProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onEdit: () => void
-  branch: any | null
+  branch: Branch | null
 }
 
 export function BranchDetails({ isOpen, onOpenChange, onEdit, branch }: BranchDetailsProps) {
@@ -65,3 +66,5 @@ export function BranchDetails({ isOpen, onOpenChange, onEdit, branch }: BranchDe
     </Dialog>
   )
 }
+
+    

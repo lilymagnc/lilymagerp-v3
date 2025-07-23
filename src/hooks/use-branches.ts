@@ -7,16 +7,134 @@ import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { BranchFormValues } from '@/app/dashboard/branches/components/branch-form';
 
-export interface Branch extends BranchFormValues {
-  id: string;
+export interface DeliveryFee {
+    district: string;
+    fee: number;
 }
 
-const initialBranches: BranchFormValues[] = [
-    { name: "릴리맥광화문점", type: "직영점", address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", phone: "010-2385-9518 / 010-2285-9518", account: "국민은행 407501-01-213500 이상원 (릴리맥 광화문점)", manager: "이상원", businessNumber: "123-45-67890", employeeCount: 5 },
-    { name: "릴리맥NC이스트폴점", type: "직영점", address: "서울시 광진구 아차산로 402, G1층", phone: "010-2908-5459 / 010-2285-9518", account: "국민은행 400437-01-027411 이성원 (릴리맥NC이스트폴)", manager: "이성원", businessNumber: "123-45-67890", employeeCount: 4 },
-    { name: "릴리맥플라워랩", type: "본사", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906", manager: "김대표", businessNumber: "111-22-33333", employeeCount: 10 },
-    { name: "릴리맥여의도점", type: "직영점", address: "서울시 영등포구 여의나루로50 The-K타워 B1", phone: "010-8241-9518 / 010-2285-9518", account: "국민은행 92285951847 이진경 (릴리맥)", manager: "이진경", businessNumber: "123-45-67890", employeeCount: 6 },
-    { name: "릴리맥여의도2호점", type: "직영점", address: "서울시 영등포구 국제금융로8길 31 SK증권빌딩 B1", phone: "010-7939-9518 / 010-2285-9518", account: "국민은행 400437-01-027255 이성원 (릴리맥여의도2호)", manager: "이성원", businessNumber: "123-45-67890", employeeCount: 3 },
+export interface Surcharges {
+    mediumItem?: number;
+    largeItem?: number;
+    express?: number;
+}
+
+export interface Branch extends BranchFormValues {
+  id: string;
+  deliveryFees?: DeliveryFee[];
+  surcharges?: Surcharges;
+}
+
+const initialBranches: Omit<Branch, 'id'>[] = [
+    { 
+        name: "릴리맥광화문점", 
+        type: "직영점", 
+        address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", 
+        phone: "010-2385-9518 / 010-2285-9518", 
+        account: "국민은행 407501-01-213500 이상원 (릴리맥 광화문점)", 
+        manager: "이상원", 
+        businessNumber: "123-45-67890", 
+        employeeCount: 5,
+        deliveryFees: [
+            { district: "종로구", fee: 10000 }, { district: "동작구", fee: 18000 },
+            { district: "중구", fee: 10000 }, { district: "광진구", fee: 18000 },
+            { district: "서대문구", fee: 13000 }, { district: "중랑구", fee: 18000 },
+            { district: "성북구", fee: 13000 }, { district: "강북구", fee: 20000 },
+            { district: "성동구", fee: 13000 }, { district: "송파구", fee: 20000 },
+            { district: "용산구", fee: 14000 }, { district: "강동구", fee: 20000 },
+            { district: "동대문구", fee: 14000 }, { district: "구로구", fee: 20000 },
+            { district: "영등포구", fee: 15000 }, { district: "강서구", fee: 20000 },
+            { district: "은평구", fee: 15000 }, { district: "관악구", fee: 20000 },
+            { district: "마포구", fee: 16000 }, { district: "노원구", fee: 20000 },
+            { district: "양천구", fee: 18000 }, { district: "도봉구", fee: 20000 },
+            { district: "강남구", fee: 18000 }, { district: "금천구", fee: 20000 },
+            { district: "서초구", fee: 18000 },
+            { district: "기타", fee: 25000 }
+        ],
+        surcharges: { mediumItem: 3000, largeItem: 5000, express: 10000 }
+    },
+    { 
+        name: "릴리맥NC이스트폴점", 
+        type: "직영점", 
+        address: "서울시 광진구 아차산로 402, G1층", 
+        phone: "010-2908-5459 / 010-2285-9518", 
+        account: "국민은행 400437-01-027411 이성원 (릴리맥NC이스트폴)", 
+        manager: "이성원", 
+        businessNumber: "123-45-67890", 
+        employeeCount: 4,
+        deliveryFees: [
+            { district: "종로구", fee: 18000 }, { district: "동작구", fee: 21000 },
+            { district: "중구", fee: 17000 }, { district: "광진구", fee: 10000 },
+            { district: "서대문구", fee: 21000 }, { district: "중랑구", fee: 16000 },
+            { district: "성북구", fee: 17000 }, { district: "강북구", fee: 20000 },
+            { district: "성동구", fee: 14000 }, { district: "송파구", fee: 12000 },
+            { district: "용산구", fee: 17000 }, { district: "강동구", fee: 12000 },
+            { district: "동대문구", fee: 15000 }, { district: "구로구", fee: 24000 },
+            { district: "영등포구", fee: 23000 }, { district: "강서구", fee: 27000 },
+            { district: "은평구", fee: 22000 }, { district: "관악구", fee: 21000 },
+            { district: "마포구", fee: 23000 }, { district: "노원구", fee: 21000 },
+            { district: "양천구", fee: 25000 }, { district: "도봉구", fee: 22000 },
+            { district: "강남구", fee: 13000 }, { district: "금천구", fee: 25000 },
+            { district: "서초구", fee: 16000 },
+            { district: "기타", fee: 30000 }
+        ],
+        surcharges: { mediumItem: 2000, largeItem: 5000 }
+    },
+    { 
+        name: "릴리맥플라워랩", 
+        type: "본사", 
+        address: "서울특별시 영등포구 국제금융로6길 33 1002호", 
+        phone: "010-3911-8206", 
+        account: "국민은행 810-21-0609-906", 
+        manager: "김대표", 
+        businessNumber: "111-22-33333", 
+        employeeCount: 10 
+    },
+    { 
+        name: "릴리맥여의도점", 
+        type: "직영점", 
+        address: "서울시 영등포구 여의나루로50 The-K타워 B1", 
+        phone: "010-8241-9518 / 010-2285-9518", 
+        account: "국민은행 92285951847 이진경 (릴리맥)", 
+        manager: "이진경", 
+        businessNumber: "123-45-67890", 
+        employeeCount: 6,
+        deliveryFees: [
+            { district: "강남구", fee: 20000 }, { district: "도봉구", fee: 25000 }, { district: "송파구", fee: 23000 },
+            { district: "강동구", fee: 25000 }, { district: "동대문구", fee: 18000 }, { district: "양천구", fee: 13000 },
+            { district: "강북구", fee: 23000 }, { district: "동작구", fee: 13000 }, { district: "영등포구", fee: 10000 },
+            { district: "강서구", fee: 14000 }, { district: "마포구", fee: 13000 }, { district: "용산구", fee: 14000 },
+            { district: "관악구", fee: 13000 }, { district: "서대문구", fee: 15000 }, { district: "은평구", fee: 20000 },
+            { district: "광진구", fee: 20000 }, { district: "서초구", fee: 18000 }, { district: "종로구", fee: 16000 },
+            { district: "구로구", fee: 13000 }, { district: "성동구", fee: 18000 }, { district: "중구", fee: 16000 },
+            { district: "금천구", fee: 13000 }, { district: "성북구", fee: 20000 }, { district: "중랑구", fee: 23000 },
+            { district: "노원구", fee: 25000 },
+            { district: "기타", fee: 30000 }
+        ],
+        surcharges: { mediumItem: 2000, largeItem: 5000 }
+    },
+    { 
+        name: "릴리맥여의도2호점", 
+        type: "직영점", 
+        address: "서울시 영등포구 국제금융로8길 31 SK증권빌딩 B1", 
+        phone: "010-7939-9518 / 010-2285-9518", 
+        account: "국민은행 400437-01-027255 이성원 (릴리맥여의도2호)", 
+        manager: "이성원", 
+        businessNumber: "123-45-67890", 
+        employeeCount: 3,
+        deliveryFees: [
+            { district: "강남구", fee: 20000 }, { district: "도봉구", fee: 25000 }, { district: "송파구", fee: 23000 },
+            { district: "강동구", fee: 25000 }, { district: "동대문구", fee: 18000 }, { district: "양천구", fee: 13000 },
+            { district: "강북구", fee: 23000 }, { district: "동작구", fee: 13000 }, { district: "영등포구", fee: 10000 },
+            { district: "강서구", fee: 14000 }, { district: "마포구", fee: 13000 }, { district: "용산구", fee: 14000 },
+            { district: "관악구", fee: 13000 }, { district: "서대문구", fee: 15000 }, { district: "은평구", fee: 20000 },
+            { district: "광진구", fee: 20000 }, { district: "서초구", fee: 18000 }, { district: "종로구", fee: 16000 },
+            { district: "구로구", fee: 13000 }, { district: "성동구", fee: 18000 }, { district: "중구", fee: 16000 },
+            { district: "금천구", fee: 13000 }, { district: "성북구", fee: 20000 }, { district: "중랑구", fee: 23000 },
+            { district: "노원구", fee: 25000 },
+            { district: "기타", fee: 30000 }
+        ],
+        surcharges: { mediumItem: 2000, largeItem: 5000 }
+    },
 ];
 
 export function useBranches() {
@@ -134,3 +252,5 @@ export function useBranches() {
 
   return { branches, loading, addBranch, updateBranch, deleteBranch, fetchBranches };
 }
+
+    
