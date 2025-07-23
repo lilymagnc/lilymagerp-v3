@@ -48,43 +48,31 @@ interface BranchFormProps {
   branch?: Branch | null
 }
 
+const defaultValues = {
+  name: "",
+  type: "",
+  manager: "",
+  employeeCount: 0,
+  businessNumber: "",
+  address: "",
+  phone: "",
+  account: "",
+}
+
 export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFormProps) {
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(branchSchema),
-    defaultValues: branch || {
-      name: "",
-      type: "",
-      manager: "",
-      employeeCount: 0,
-      businessNumber: "",
-      address: "",
-      phone: "",
-      account: "",
-    },
+    defaultValues: branch || defaultValues,
   })
 
   useEffect(() => {
     if (isOpen) {
-        if (branch) {
-          form.reset(branch);
-        } else {
-          form.reset({
-            name: "",
-            type: "",
-            manager: "",
-            employeeCount: 0,
-            businessNumber: "",
-            address: "",
-            phone: "",
-            account: "",
-          });
-        }
+      form.reset(branch || defaultValues);
     }
   }, [branch, form, isOpen]);
   
   const handleFormSubmit = (data: BranchFormValues) => {
     onSubmit(data);
-    onOpenChange(false);
   }
 
   return (

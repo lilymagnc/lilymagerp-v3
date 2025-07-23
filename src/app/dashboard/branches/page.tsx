@@ -27,7 +27,7 @@ export default function BranchesPage() {
   };
   
   const handleEdit = (branch: Branch) => {
-    setIsDetailOpen(false); // Close detail view if open
+    setIsDetailOpen(false);
     setSelectedBranch(branch);
     setIsFormOpen(true);
   };
@@ -43,12 +43,7 @@ export default function BranchesPage() {
     } else {
       await addBranch(data);
     }
-    handleCloseForm();
-  };
-
-  const handleCloseForm = () => {
     setIsFormOpen(false);
-    setSelectedBranch(null);
   };
   
   const handleDelete = async (branchId: string) => {

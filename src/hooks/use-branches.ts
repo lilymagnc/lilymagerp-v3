@@ -2,20 +2,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
+import type { BranchFormValues } from '@/app/dashboard/branches/components/branch-form';
 
-export interface Branch {
+export interface Branch extends BranchFormValues {
   id: string;
-  name: string;
-  type: string;
-  manager?: string;
-  employeeCount?: number;
-  businessNumber?: string;
-  address: string;
-  phone: string;
-  account?: string;
 }
 
 export function useBranches() {
@@ -46,17 +39,16 @@ export function useBranches() {
     fetchBranches();
   }, [fetchBranches]);
 
-  const addBranch = async (branch: Omit<Branch, 'id'>) => {
+  const addBranch = async (branch: BranchFormValues) => {
     try {
       setLoading(true);
       const branchesCollection = collection(db, 'branches');
-      const docRef = await addDoc(branchesCollection, branch);
+      await addDoc(branchesCollection, branch);
       toast({
         title: '성공',
         description: '새 지점이 성공적으로 추가되었습니다.',
       });
-      await fetchBranches(); // Re-fetch to get the new list with ID
-      return docRef;
+      await fetchBranches();
     } catch (error) {
       console.error("Error adding branch: ", error);
       toast({
@@ -69,7 +61,7 @@ export function useBranches() {
     }
   };
 
-  const updateBranch = async (branchId: string, branch: Partial<Omit<Branch, 'id'>>) => {
+  const updateBranch = async (branchId: string, branch: BranchFormValues) => {
     try {
       setLoading(true);
       const branchDoc = doc(db, 'branches', branchId);
@@ -78,7 +70,7 @@ export function useBranches() {
         title: '성공',
         description: '지점 정보가 성공적으로 수정되었습니다.',
       });
-      await fetchBranches(); // Re-fetch to update the list
+      await fetchBranches();
     } catch (error) {
       console.error("Error updating branch: ", error);
       toast({
@@ -100,7 +92,7 @@ export function useBranches() {
         title: '성공',
         description: '지점이 성공적으로 삭제되었습니다.',
       });
-      await fetchBranches(); // Re-fetch to update the list
+      setBranches(prev => prev.filter(b => b.id !== branchId));
     } catch (error) {
       console.error("Error deleting branch: ", error);
       toast({
