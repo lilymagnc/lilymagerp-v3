@@ -128,7 +128,7 @@ export default function NewOrderPage() {
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <Store className="h-5 w-5 text-muted-foreground" />
-                    <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''}>
+                    <Select onValueChange={handleBranchChange} value={selectedBranch?.id ?? ''} disabled={!!selectedBranch}>
                         <SelectTrigger className="w-[300px]">
                             <SelectValue placeholder="지점 선택" />
                         </SelectTrigger>
