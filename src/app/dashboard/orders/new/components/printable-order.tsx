@@ -27,7 +27,7 @@ export interface OrderPrintData {
 }
 
 interface PrintableOrderProps {
-    data: OrderPrintData;
+    data: OrderPrintData | null;
 }
 
 const branchesContactInfo = [
@@ -40,6 +40,8 @@ const branchesContactInfo = [
 
 export const PrintableOrder = React.forwardRef<HTMLDivElement, PrintableOrderProps>(({ data }, ref) => {
     
+    if (!data) return null;
+
     const renderSection = (title: string, isReceipt: boolean) => (
         <div className="mb-4">
             <div className="text-center mb-4">

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, MoreHorizontal, Printer } from "lucide-react";
@@ -11,23 +11,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PrintableOrder, OrderPrintData } from "./new/components/printable-order";
-import { useToast } from "@/hooks/use-toast";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useBranches } from "@/hooks/use-branches";
+import { useReactToPrint } from "react-to-print";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
   const { branches } = useBranches();
-  const { toast } = useToast();
-  const [printableOrderData, setPrintableOrderData] = useState<OrderPrintData | null>(null);
-  const printableComponentRef = useRef(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
-  const handlePrint = (order: Order) => {
+  const printableComponentRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+  });
+
+  const prepareAndPrint = (order: Order) => {
+    setSelectedOrder(order);
+    // Setting state is async, so we use a timeout to wait for the next render cycle
+    // before triggering the print action.
+    setTimeout(() => {
+      handlePrint();
+    }, 0);
+  }
+
+  const getPrintableData = (order: Order | null): OrderPrintData | null => {
+    if (!order) return null;
+    
     const branchInfo = branches.find(b => b.id === order.branchId);
 
-    const printData: OrderPrintData = {
+    return {
       orderDate: format(order.orderDate.toDate(), 'yyyy-MM-dd'),
       ordererName: order.orderer.name,
       ordererContact: order.orderer.contact,
@@ -50,32 +65,7 @@ export default function OrdersPage() {
         account: branchInfo?.account || "정보 없음",
       }
     };
-
-    setPrintableOrderData(printData);
   }
-
-  useEffect(() => {
-    if (printableOrderData) {
-      const print = () => {
-        window.print();
-      };
-      
-      // Delay printing slightly to ensure component has rendered with new data
-      const timer = setTimeout(print, 100);
-
-      const handleAfterPrint = () => {
-        setPrintableOrderData(null);
-        window.removeEventListener('afterprint', handleAfterPrint);
-      };
-      window.addEventListener('afterprint', handleAfterPrint);
-
-      return () => {
-        clearTimeout(timer);
-        window.removeEventListener('afterprint', handleAfterPrint);
-      };
-    }
-  }, [printableOrderData]);
-
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -92,7 +82,7 @@ export default function OrdersPage() {
 
 
   return (
-    <div className="printable-area">
+    <div>
       <div className="screen-only">
         <PageHeader
           title="주문 현황"
@@ -159,9 +149,9 @@ export default function OrdersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>작업</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => handlePrint(order)}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            주문서 출력
+                            <DropdownMenuItem onSelect={() => prepareAndPrint(order)}>
+                              <Printer className="mr-2 h-4 w-4" />
+                              주문서 출력
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                         </DropdownMenu>
@@ -175,7 +165,7 @@ export default function OrdersPage() {
         </Card>
       </div>
       <div className="print-only">
-        {printableOrderData && <PrintableOrder ref={printableComponentRef} data={printableOrderData} />}
+          <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
       </div>
     </div>
   );

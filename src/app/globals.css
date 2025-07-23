@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -88,18 +89,20 @@ body {
 }
 
 @media print {
-  body {
-    background-color: white;
+  body * {
+    visibility: hidden;
+  }
+  .print-only, .print-only * {
+    visibility: visible;
+  }
+  .print-only {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
   }
   .screen-only {
     display: none;
-  }
-  .print-only {
-    display: block;
-  }
-  .printable-area {
-    padding: 0;
-    margin: 0;
   }
   @page {
     size: A4;
