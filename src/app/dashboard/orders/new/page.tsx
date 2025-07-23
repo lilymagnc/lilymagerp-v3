@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search } from "lucide-react";
 import { AddProductDialog } from "./components/add-product-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +26,12 @@ interface OrderItem {
   stock: number;
 }
 
+declare global {
+  interface Window {
+    daum: any;
+  }
+}
+
 export default function NewOrderPage() {
   const { branches } = useBranches();
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -36,6 +42,10 @@ export default function NewOrderPage() {
   const [deliveryFeeType, setDeliveryFeeType] = useState<"auto" | "manual">("auto");
   const [manualDeliveryFee, setManualDeliveryFee] = useState(0);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [deliveryAddressDetail, setDeliveryAddressDetail] = useState("");
+
 
   const deliveryFee = useMemo(() => {
     if (deliveryFeeType === 'manual') {
@@ -106,6 +116,8 @@ export default function NewOrderPage() {
     setSelectedBranch(null);
     setSelectedDistrict(null);
     setManualDeliveryFee(0);
+    setDeliveryAddress("");
+    setDeliveryAddressDetail("");
   }
 
   const handleBranchChange = (branchId: string) => {
@@ -117,6 +129,36 @@ export default function NewOrderPage() {
     setSelectedBranch(null);
     setOrderItems([]);
     setSelectedDistrict(null);
+  }
+
+  const handleAddressSearch = () => {
+    if (window.daum && window.daum.Postcode) {
+      new window.daum.Postcode({
+        oncomplete: function(data: any) {
+          let fullAddress = data.address;
+          let extraAddress = '';
+
+          if (data.addressType === 'R') {
+            if (data.bname !== '') {
+              extraAddress += data.bname;
+            }
+            if (data.buildingName !== '') {
+              extraAddress += (extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName);
+            }
+            fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
+          }
+          
+          setDeliveryAddress(fullAddress);
+
+          const district = data.sigungu;
+          if(selectedBranch?.deliveryFees?.some(df => df.district === district)) {
+            setSelectedDistrict(district);
+          } else {
+            setSelectedDistrict("기타");
+          }
+        }
+      }).open();
+    }
   }
 
   return (
@@ -190,26 +232,15 @@ export default function NewOrderPage() {
                                 <Label>배송 정보</Label>
                                   <Card className="mt-2">
                                       <CardContent className="p-4 space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                              <Label>배송지</Label>
-                                              <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch}>
-                                                  <SelectTrigger>
-                                                      <SelectValue placeholder="지역 선택" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                    {selectedBranch?.deliveryFees?.map(df => (
-                                                      <SelectItem key={df.district} value={df.district}>
-                                                        {df.district}
-                                                      </SelectItem>
-                                                    ))}
-                                                  </SelectContent>
-                                              </Select>
-                                            </div>
-                                             <div className="space-y-2">
-                                                  <Label htmlFor="delivery-address">상세 주소</Label>
-                                                  <Input id="delivery-address" placeholder="상세 주소 입력" />
-                                              </div>
+                                        <div className="space-y-2">
+                                          <Label>배송지</Label>
+                                          <div className="flex gap-2">
+                                            <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
+                                            <Button type="button" variant="outline" onClick={handleAddressSearch}>
+                                              <Search className="mr-2 h-4 w-4" /> 주소 검색
+                                            </Button>
+                                          </div>
+                                          <Input id="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
                                         </div>
                                          <div className="space-y-2">
                                             <Label>배송비</Label>
@@ -223,15 +254,28 @@ export default function NewOrderPage() {
                                                 <Label htmlFor="manual">직접 입력</Label>
                                               </div>
                                             </RadioGroup>
+                                            <div className="flex items-center gap-2 mt-2">
+                                            <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch || deliveryFeeType !== 'auto'}>
+                                                  <SelectTrigger>
+                                                      <SelectValue placeholder="지역 선택" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    {selectedBranch?.deliveryFees?.map(df => (
+                                                      <SelectItem key={df.district} value={df.district}>
+                                                        {df.district}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectContent>
+                                              </Select>
                                             {deliveryFeeType === 'manual' && (
                                               <Input 
                                                 type="number" 
                                                 placeholder="배송비 직접 입력" 
                                                 value={manualDeliveryFee}
                                                 onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
-                                                className="mt-2"
                                                />
                                             )}
+                                            </div>
                                          </div>
                                       </CardContent>
                                   </Card>
