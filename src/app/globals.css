@@ -94,11 +94,15 @@ body {
     margin: 10mm;
   }
 
-  .printing-active body > *:not(#printable-area) {
-    display: none !important;
+  body {
+    background-color: #fff !important;
   }
 
-  .printing-active #printable-area {
+  .no-print {
+    display: none !important;
+  }
+  
+  #printable-area {
     display: block !important;
     position: absolute;
     top: 0;
@@ -107,7 +111,7 @@ body {
     height: 100%;
   }
   
-  .printing-active #printable-area .shadow-sm {
+  #printable-area .shadow-sm {
     box-shadow: none !important;
   }
 }

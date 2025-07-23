@@ -1,8 +1,7 @@
 
 "use client";
 
-import React, { useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import React, { useRef, useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Printer, Loader2 } from "lucide-react";
@@ -17,16 +16,28 @@ export function PrintPreviewClient({ order }: { order: Order }) {
     const router = useRouter();
     const componentRef = useRef<HTMLDivElement>(null);
     const { branches } = useBranches();
-    
-    const handlePrint = useReactToPrint({
-        content: () => componentRef.current,
-    });
+    const [isPrinting, setIsPrinting] = useState(false);
 
+    useEffect(() => {
+        if (isPrinting) {
+            window.print();
+        }
+    }, [isPrinting]);
+
+    const handlePrint = () => {
+        setIsPrinting(true);
+    };
+
+    window.onafterprint = () => {
+        setIsPrinting(false);
+    };
+    
     const targetBranch = branches.find(b => b.id === order.branchId);
     
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
     
-    const orderDateObject = (order.orderDate as any).toDate ? (order.orderDate as any).toDate() : new Date(order.orderDate);
+    // The orderDate from server is already a Date object
+    const orderDateObject = order.orderDate;
 
     const printData: OrderPrintData | null = targetBranch ? {
         orderDate: format(orderDateObject, "yyyy-MM-dd HH:mm"),
@@ -52,7 +63,7 @@ export function PrintPreviewClient({ order }: { order: Order }) {
 
     return (
         <div>
-             <div className="max-w-4xl mx-auto">
+             <div className="max-w-4xl mx-auto no-print">
                 <PageHeader
                     title="주문서 인쇄 미리보기"
                     description={`주문 ID: ${order.id}`}
@@ -62,14 +73,14 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             목록으로 돌아가기
                         </Button>
-                        <Button onClick={handlePrint} disabled={!printData}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            인쇄하기
+                        <Button onClick={handlePrint} disabled={!printData || isPrinting}>
+                            {isPrinting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                            {isPrinting ? '인쇄중...' : '인쇄하기'}
                         </Button>
                     </div>
                 </PageHeader>
             </div>
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto" id="printable-area">
                 <Card className="shadow-sm">
                     <CardContent className="p-0">
                          {printData ? <PrintableOrder ref={componentRef} data={printData} /> : <p>주문 데이터를 불러오는 중입니다...</p>}
