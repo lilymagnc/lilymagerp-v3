@@ -31,11 +31,11 @@ export function OrderPrintDialog({ order, onClose }: OrderPrintDialogProps) {
   });
 
   useEffect(() => {
-    // Component mounts, trigger print
-    if (handlePrint) {
+    // Component mounts, and all data is ready, trigger print
+    if (order && branches.length > 0) {
         handlePrint();
     }
-  }, [handlePrint]);
+  }, [order, branches, handlePrint]);
 
   const getPrintableData = useCallback(() => {
     if (!order) return null;
