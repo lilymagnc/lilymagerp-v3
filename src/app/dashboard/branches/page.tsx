@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { BranchForm } from "./components/branch-form";
 
 const mockBranches = [
   { id: "hq", name: "릴리맥 본사", type: "본사", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906" },
@@ -20,13 +22,31 @@ const mockBranches = [
 ];
 
 export default function BranchesPage() {
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<any>(null);
+
+  const handleAdd = () => {
+    setSelectedBranch(null);
+    setIsFormOpen(true);
+  };
+  
+  const handleEdit = (branch: any) => {
+    setSelectedBranch(branch);
+    setIsFormOpen(true);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setSelectedBranch(null);
+  };
+
   return (
     <div>
       <PageHeader
         title="지점 관리"
         description="본사 및 직영, 가맹점 정보를 관리합니다."
       >
-        <Button>
+        <Button onClick={handleAdd}>
           <PlusCircle className="mr-2 h-4 w-4" />
           지점 추가
         </Button>
@@ -63,6 +83,7 @@ export default function BranchesPage() {
                 <TableCell className="hidden md:table-cell">{branch.address}</TableCell>
                 <TableCell className="hidden sm:table-cell">{branch.phone}</TableCell>
                 <TableCell>
+                  <AlertDialog>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -72,10 +93,25 @@ export default function BranchesPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>작업</DropdownMenuLabel>
-                        <DropdownMenuItem>수정</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">삭제</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(branch)}>수정</DropdownMenuItem>
+                        <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive">삭제</DropdownMenuItem>
+                        </AlertDialogTrigger>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>정말로 삭제하시겠습니까?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            이 작업은 되돌릴 수 없습니다. '{branch.name}' 지점 데이터가 서버에서 영구적으로 삭제됩니다.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90">삭제</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}
@@ -83,6 +119,11 @@ export default function BranchesPage() {
         </Table>
         </CardContent>
       </Card>
+      <BranchForm 
+        isOpen={isFormOpen}
+        onOpenChange={handleCloseForm}
+        branch={selectedBranch}
+      />
     </div>
   );
 }
