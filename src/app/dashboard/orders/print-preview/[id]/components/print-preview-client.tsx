@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -118,22 +117,25 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
     <>
       <style>
       {`
+        @page {
+          size: A4;
+          margin: 10mm;
+        }
         @media print {
-          body > :not(#printable-area) {
+          .no-print {
             display: none;
           }
-          #printable-area {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+          .print-area {
+            margin: 0;
+            padding: 0;
+            box-shadow: none;
+            border: none;
           }
         }
       `}
       </style>
       <PageHeader title="주문서 인쇄 미리보기" description={`주문번호: ${order.id}`}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 no-print">
             <Button variant="outline" onClick={() => router.back()}>
                 <ArrowLeft className="mr-2" />
                 목록으로 돌아가기
@@ -144,9 +146,9 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
             </Button>
         </div>
       </PageHeader>
-      <Card>
-        <CardContent>
-            <div id="printable-area" className="bg-white text-black font-sans max-w-[210mm] mx-auto my-8 p-4 shadow-lg">
+      <Card className="print-area">
+        <CardContent id="printable-area" className="bg-white text-black font-sans">
+            <div className="max-w-[190mm] mx-auto">
                 {renderPrintSection('주문서', false, data)}
                 <div className="border-t-2 border-dashed border-gray-400 my-2"></div>
                 {renderPrintSection('인수증', true, data)}
@@ -170,4 +172,3 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
     </>
   );
 }
-
