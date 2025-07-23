@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useRef } from 'react';
+import React, { useRef, useLayoutEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Printer } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import type { Order } from '@/hooks/use-orders';
@@ -22,71 +22,31 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
     const targetBranch = branches.find(b => b.id === order.branchId);
 
     const handlePrint = () => {
-        const printContent = printRef.current;
-        if (!printContent) return;
-
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        
-        document.body.appendChild(iframe);
-
-        const iframeDoc = iframe.contentWindow?.document;
-        if (!iframeDoc) return;
-
-        // Copy all link and style tags from the main document to the iframe
-        const headEls = document.querySelectorAll('link[rel="stylesheet"], style');
-        headEls.forEach(node => {
-            iframeDoc.head.appendChild(node.cloneNode(true));
-        });
-
-        const printStyles = iframeDoc.createElement('style');
-        printStyles.textContent = `
+        const printStyleSheet = document.createElement('style');
+        printStyleSheet.id = 'print-stylesheet';
+        printStyleSheet.innerHTML = `
             @media print {
+                body * {
+                    visibility: hidden;
+                }
+                #printable-area, #printable-area * {
+                    visibility: visible;
+                }
+                #printable-area {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                }
                 @page {
                     size: A4;
                     margin: 10mm;
                 }
-                body {
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
             }
         `;
-        iframeDoc.head.appendChild(printStyles);
-        
-        iframeDoc.body.innerHTML = printContent.innerHTML;
-
-        const images = iframeDoc.body.getElementsByTagName('img');
-        let imagesLoaded = 0;
-        const totalImages = images.length;
-
-        const triggerPrint = () => {
-            iframe.contentWindow?.focus();
-            iframe.contentWindow?.print();
-            document.body.removeChild(iframe);
-        };
-        
-        if (totalImages === 0) {
-            triggerPrint();
-        } else {
-            for (let i = 0; i < totalImages; i++) {
-                images[i].onload = () => {
-                    imagesLoaded++;
-                    if (imagesLoaded === totalImages) {
-                        triggerPrint();
-                    }
-                };
-                images[i].onerror = () => {
-                     imagesLoaded++;
-                    if (imagesLoaded === totalImages) {
-                        triggerPrint();
-                    }
-                }
-            }
-        }
+        document.head.appendChild(printStyleSheet);
+        window.print();
+        document.head.removeChild(printStyleSheet);
     };
     
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
@@ -115,27 +75,25 @@ export function PrintPreviewClient({ order }: PrintPreviewClientProps) {
 
     return (
         <div className="max-w-4xl mx-auto">
+             <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h1 className="text-2xl font-bold">주문서 인쇄 미리보기</h1>
+                    <p className="text-muted-foreground">주문 ID: {order.id}</p>
+                </div>
+                <div className="flex gap-2">
+                     <Button variant="outline" onClick={() => router.back()}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        목록으로 돌아가기
+                    </Button>
+                    <Button onClick={handlePrint}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        인쇄하기
+                    </Button>
+                </div>
+            </div>
             <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle>주문서 인쇄 미리보기</CardTitle>
-                            <CardDescription>주문 ID: {order.id}</CardDescription>
-                        </div>
-                        <div className="flex gap-2">
-                             <Button variant="outline" onClick={() => router.back()}>
-                                <ArrowLeft className="mr-2" />
-                                목록으로 돌아가기
-                            </Button>
-                            <Button onClick={handlePrint}>
-                                <Printer className="mr-2" />
-                                인쇄하기
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="bg-gray-100 p-8 flex justify-center">
-                    <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg p-4">
+                <CardContent id="printable-area" className="p-0">
+                   <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg mx-auto my-8">
                        {printData && <PrintableOrder ref={printRef} data={printData} />}
                     </div>
                 </CardContent>
