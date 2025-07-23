@@ -164,9 +164,8 @@ export default function OrdersPage() {
   });
 
   useEffect(() => {
-    // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
     if (selectedOrder && handlePrint) {
-      handlePrint();
+      setTimeout(handlePrint, 0);
     }
   }, [selectedOrder, handlePrint]);
 
@@ -263,5 +262,3 @@ export default function OrdersPage() {
     </>
   );
 }
-
-    
