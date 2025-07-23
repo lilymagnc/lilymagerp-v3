@@ -14,6 +14,7 @@ import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useBranches } from "@/hooks/use-branches";
+import { useReactToPrint } from "react-to-print";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
@@ -21,6 +22,7 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
+  const printTriggerRef = useRef<HTMLButtonElement>(null);
 
   const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
     if (!order) return null;
@@ -54,18 +56,24 @@ export default function OrdersPage() {
   
   const handlePrintClick = (order: Order) => {
     setSelectedOrder(order);
-    setTimeout(() => window.print(), 0);
   }
 
-  useEffect(() => {
-    const afterPrint = () => {
-      setSelectedOrder(null);
-    };
-    window.addEventListener('afterprint', afterPrint);
-    return () => {
-      window.removeEventListener('afterprint', afterPrint);
-    };
+  const onAfterPrint = useCallback(() => {
+    setSelectedOrder(null);
   }, []);
+
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+    onAfterPrint,
+    trigger: () => printTriggerRef.current,
+  });
+
+  useEffect(() => {
+    if (selectedOrder) {
+      handlePrint();
+    }
+  }, [selectedOrder, handlePrint]);
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -155,7 +163,8 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="print-only">
+      <div className="hidden">
+        <button ref={printTriggerRef}>Print</button>
         <PrintableOrder ref={printableComponentRef} data={getPrintableData(selectedOrder)} />
       </div>
     </>
