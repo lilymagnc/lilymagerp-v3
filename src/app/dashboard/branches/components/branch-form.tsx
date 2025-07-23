@@ -26,6 +26,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useEffect } from "react"
+import type { Branch } from "@/hooks/use-branches"
 
 const branchSchema = z.object({
   name: z.string().min(1, "지점명을 입력해주세요."),
@@ -38,15 +39,16 @@ const branchSchema = z.object({
   account: z.string().optional(),
 })
 
-type BranchFormValues = z.infer<typeof branchSchema>
+export type BranchFormValues = z.infer<typeof branchSchema>
 
 interface BranchFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  branch?: BranchFormValues & { id: string } | null
+  onSubmit: (data: BranchFormValues) => void
+  branch?: Branch | null
 }
 
-export function BranchForm({ isOpen, onOpenChange, branch }: BranchFormProps) {
+export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFormProps) {
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(branchSchema),
     defaultValues: branch || {
@@ -77,12 +79,6 @@ export function BranchForm({ isOpen, onOpenChange, branch }: BranchFormProps) {
       });
     }
   }, [branch, form]);
-
-
-  const onSubmit = (data: BranchFormValues) => {
-    console.log(data)
-    onOpenChange(false)
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
