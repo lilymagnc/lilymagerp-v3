@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Printer } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon } from "lucide-react";
 import { AddProductDialog } from "./components/add-product-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,7 +20,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { PrintableOrder, type OrderPrintData } from "./components/printable-order";
 
 
 interface OrderItem {
@@ -74,10 +73,6 @@ export default function NewOrderPage() {
   const [messageType, setMessageType] = useState<MessageType>("card");
   const [messageContent, setMessageContent] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
-
-  const [orderPrintData, setOrderPrintData] = useState<OrderPrintData | null>(null);
-  const printableComponentRef = useRef(null);
-
 
   // Auto-fill picker info when orderer info changes
   useEffect(() => {
@@ -184,41 +179,6 @@ export default function NewOrderPage() {
     // Reset all form fields
   }
 
-  const handlePrint = () => {
-    if (orderItems.length === 0 || !selectedBranch) {
-       toast({ variant: 'destructive', title: '출력 오류', description: '주문 내용이 없습니다.' });
-       return;
-    }
-
-    const data: OrderPrintData = {
-        orderDate: format(new Date(), "yyyy-MM-dd"),
-        ordererName: ordererName,
-        ordererContact: ordererContact,
-        items: orderItems.map(item => `${item.name} / ${item.quantity}개`).join('\n'),
-        totalAmount: orderSummary.subtotal,
-        deliveryFee: orderSummary.deliveryFee,
-        paymentMethod: "카드", // Placeholder
-        paymentStatus: "완결", // Placeholder
-        deliveryDate: pickupDate ? `${format(pickupDate, "yyyy-MM-dd")} ${pickupTime}` : "해당 없음",
-        recipientName: receiptType === 'delivery' ? recipientName : pickerName,
-        recipientContact: receiptType === 'delivery' ? recipientContact : pickerContact,
-        deliveryAddress: receiptType === 'delivery' ? `${deliveryAddress} ${deliveryAddressDetail}`: '매장 픽업',
-        message: `${messageType === 'card' ? '카드' : '리본'}: ${messageContent}`,
-        branchInfo: {
-            name: selectedBranch.name,
-            address: selectedBranch.address,
-            contact: selectedBranch.phone,
-            account: selectedBranch.account,
-        }
-    };
-    setOrderPrintData(data);
-    
-    // Allow state to update before printing
-    setTimeout(() => {
-        window.print();
-    }, 100);
-  }
-
   const handleBranchChange = (branchId: string) => {
     const branch = branches.find(b => b.id === branchId);
     setSelectedBranch(branch || null);
@@ -262,8 +222,7 @@ export default function NewOrderPage() {
   }
 
   return (
-    <div className="printable-area">
-      <div className="screen-only">
+    <div>
         <PageHeader
           title="릴리맥 주문테이블"
           description=""
@@ -583,19 +542,11 @@ export default function NewOrderPage() {
                     </CardContent>
                     <CardFooter className="flex-col gap-2 items-stretch">
                         <Button className="w-full" size="lg" onClick={handleCompleteOrder} disabled={orderItems.length === 0 || !selectedBranch}>주문 완료</Button>
-                        <Button className="w-full" variant="outline" onClick={handlePrint} disabled={orderItems.length === 0 || !selectedBranch}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            주문서 출력
-                        </Button>
                     </CardFooter>
                 </Card>
             </div>
           </div>
         </fieldset>
-      </div>
-      <div className="print-only">
-        {orderPrintData && <PrintableOrder ref={printableComponentRef} data={orderPrintData} />}
-      </div>
       <AddProductDialog 
         isOpen={isAddProductDialogOpen}
         onOpenChange={setIsAddProductDialogOpen}
@@ -604,5 +555,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
-    
