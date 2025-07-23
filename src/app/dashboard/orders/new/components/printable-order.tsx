@@ -12,7 +12,7 @@ export interface OrderPrintData {
     totalAmount: number;
     deliveryFee: number;
     paymentMethod: string;
-    paymentStatus: string;
+    paymentStatus: '미결' | '완결' | string;
     deliveryDate: string;
     recipientName: string;
     recipientContact: string;
@@ -31,18 +31,26 @@ interface PrintableOrderProps {
 }
 
 const branchesContactInfo = [
-    { name: "릴리맥여의도점", address: "서울시 영등포구 여의나루로50 The-K타워 B1", tel: "010-8241-9518 / Mob) 010-2285-9518", blog: "http://blog.naver.com/lilymag1", email: "lilymag3@naver.com", kakao: "릴리맥" },
-    { name: "릴리맥여의도2호점", address: "서울시 영등포구 국제금융로8길 31 SK증권빌딩 B1", tel: "010-7939-9518 / Mob) 010-2285-9518", blog: "http://blog.naver.com/lilymag1", email: "lilymag4@naver.com", kakao: "릴리맥여의도2호점" },
-    { name: "릴리맥NC이스트폴점", address: "서울시 광진구 아차산로 402, G1층", tel: "010-2908-5459 / Mob) 010-2285-9518", blog: "http://blog.naver.com/lilymag1", email: "lilymag5@naver.com", kakao: "릴리맥NC이스트폴" },
-    { name: "릴리맥광화문점", address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", tel: "010-2385-9518 / Mob) 010-2285-9518", blog: "http://blog.naver.com/lilymag1", email: "lilymag6@naver.com", kakao: "릴리맥광화문점" },
-    { name: "[온라인쇼핑몰]", address: "www.lilymagshop.co.kr", tel: "", blog: "", email: "", kakao: "" }
+    { name: "릴리맥여의도점", tel: "010-8241-9518 / Mob) 010-2285-9518" },
+    { name: "릴리맥여의도2호점", tel: "010-7939-9518 / Mob) 010-2285-9518" },
+    { name: "릴리맥NC이스트폴점", tel: "010-2908-5459 / Mob) 010-2285-9518" },
+    { name: "릴리맥광화문점", tel: "010-2385-9518 / Mob) 010-2285-9518" },
 ];
+const onlineShopUrl = "www.lilymagshop.co.kr";
+
 
 // Use a class component to ensure compatibility with react-to-print's ref handling.
 export class PrintableOrder extends React.Component<PrintableOrderProps> {
     render() {
         const { data } = this.props;
         if (!data) return null;
+
+        const Checkbox = ({ checked }: { checked: boolean }) => (
+            <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '1px solid black', marginRight: '4px', position: 'relative' }}>
+                {checked && <span style={{ position: 'absolute', top: '-3px', left: '2px', fontSize: '14px' }}>✔</span>}
+            </span>
+        );
+
 
         const renderSection = (title: string, isReceipt: boolean) => (
             <div className="mb-4">
@@ -75,14 +83,15 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                                 <td className="border border-black p-1">₩{data.totalAmount.toLocaleString()}</td>
                                 <td className="border border-black p-1 font-bold">배송비</td>
                                 <td className="border border-black p-1">₩{data.deliveryFee.toLocaleString()}</td>
-                                <td className="border border-black p-1 font-bold">결제수단</td>
-                                <td className="border border-black p-1">{data.paymentMethod}</td>
-                            </tr>
-                        )}
-                        {!isReceipt && (
-                             <tr>
-                                <td className="border border-black p-1 font-bold" colSpan={1}>결제상태</td>
-                                <td className="border border-black p-1" colSpan={5}>{data.paymentStatus}</td>
+                                <td className="border border-black p-1 font-bold" colSpan={2}>
+                                    <div className="flex items-center justify-between">
+                                        <span>결제수단: {data.paymentMethod}</span>
+                                        <div className="flex items-center gap-2 pr-2">
+                                            <span className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /> 미결</span>
+                                            <span className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /> 완결</span>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                         )}
                         <tr>
@@ -94,8 +103,8 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1">{data.recipientContact}</td>
                         </tr>
                         <tr>
-                            <td className="border border-black p-1 font-bold">배송지주소</td>
-                            <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
+                            <td className="border border-black p-1 font-bold align-top h-12">배송지주소</td>
+                            <td colSpan={5} className="border border-black p-1 align-top">{data.deliveryAddress}</td>
                         </tr>
                         <tr>
                             <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
@@ -123,18 +132,26 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                 <div className="mt-8">
                     <table className="w-full border-collapse border border-black text-xs">
                         <tbody>
-                            {branchesContactInfo.map(branch => (
-                                <tr key={branch.name}>
-                                    <td className="border border-black p-1 font-bold w-1/5">{branch.name}</td>
-                                    <td className="border border-black p-1 w-4/5">
-                                        {branch.address}
-                                        {branch.tel && <><br/>Tel) {branch.tel}</>}
-                                        {branch.blog && <><br/>{branch.blog}</>}
-                                        {branch.email && <> E-mail: {branch.email}</>}
-                                        {branch.kakao && <> Kakao: {branch.kakao}</>}
-                                    </td>
-                                </tr>
-                            ))}
+                            <tr>
+                                {branchesContactInfo.slice(0, 2).map(branch => (
+                                    <React.Fragment key={branch.name}>
+                                        <td className="border border-black p-1 font-bold w-[15%]">{branch.name}</td>
+                                        <td className="border border-black p-1 w-[35%]">Tel) {branch.tel}</td>
+                                    </React.Fragment>
+                                ))}
+                            </tr>
+                            <tr>
+                                {branchesContactInfo.slice(2, 4).map(branch => (
+                                     <React.Fragment key={branch.name}>
+                                        <td className="border border-black p-1 font-bold w-[15%]">{branch.name}</td>
+                                        <td className="border border-black p-1 w-[35%]">Tel) {branch.tel}</td>
+                                    </React.Fragment>
+                                ))}
+                            </tr>
+                            <tr>
+                                 <td className="border border-black p-1 font-bold w-[15%]">[온라인쇼핑몰]</td>
+                                 <td className="border border-black p-1 w-[85%]" colSpan={3}>{onlineShopUrl}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
