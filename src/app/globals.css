@@ -86,3 +86,27 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body {
+    background-color: white;
+  }
+  .screen-only {
+    display: none;
+  }
+  .print-only {
+    display: block;
+  }
+  .printable-area {
+    padding: 0;
+    margin: 0;
+  }
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+}
+
+.print-only {
+  display: none;
+}
