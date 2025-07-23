@@ -15,6 +15,7 @@ import { Printer } from 'lucide-react';
 import type { Order } from '@/hooks/use-orders';
 import { format } from "date-fns";
 import { useReactToPrint } from 'react-to-print';
+import Image from 'next/image';
 
 interface OrderPrintDialogProps {
     isOpen: boolean;
@@ -60,7 +61,7 @@ const PrintableContent = React.forwardRef<HTMLDivElement, { order: Order | null 
             <div className="text-center mb-4">
                 { !isReceipt && (
                     <>
-                    <img src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" />
+                    <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={180} height={45} className="mx-auto" unoptimized />
                     <h1 className="text-2xl font-bold mt-2">릴리맥 플라워앤가든 {title}</h1>
                     </>
                 )}
