@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { BranchForm } from "./components/branch-form";
 
-const mockBranches = [
+const initialBranches = [
   { id: "hq", name: "릴리맥 본사", type: "본사", address: "서울특별시 영등포구 국제금융로6길 33 1002호", phone: "010-3911-8206", account: "국민은행 810-21-0609-906" },
   { id: "gwanghwamun", name: "릴리맥 광화문점", type: "직영점", address: "서울시 중구 세종대로 136 서울파이낸스빌딩 B2", phone: "010-2385-9518 / 010-2285-9518", account: "국민은행 407501-01-213500 이상원 (릴리맥 광화문점)" },
   { id: "nceastpole", name: "릴리맥 NC이스트폴점", type: "직영점", address: "서울시 광진구 아차산로 402, G1층", phone: "010-2908-5459 / 010-2285-9518", account: "국민은행 400437-01-027411 이성원 (릴리맥NC이스트폴)" },
@@ -22,6 +22,7 @@ const mockBranches = [
 ];
 
 export default function BranchesPage() {
+  const [branches, setBranches] = useState(initialBranches);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<any>(null);
 
@@ -38,6 +39,13 @@ export default function BranchesPage() {
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setSelectedBranch(null);
+  };
+  
+  const handleDelete = (branchId: string) => {
+    // In a real app, you'd call an API to delete the branch.
+    // Here, we're just filtering it out of the local state.
+    setBranches(branches.filter(branch => branch.id !== branchId));
+    console.log(`Branch ${branchId} deleted.`);
   };
 
   return (
@@ -72,7 +80,7 @@ export default function BranchesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockBranches.map((branch) => (
+            {branches.map((branch) => (
               <TableRow key={branch.id}>
                 <TableCell className="font-medium">{branch.name}</TableCell>
                 <TableCell>
@@ -108,7 +116,12 @@ export default function BranchesPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>취소</AlertDialogCancel>
-                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90">삭제</AlertDialogAction>
+                          <AlertDialogAction 
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => handleDelete(branch.id)}
+                          >
+                            삭제
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
