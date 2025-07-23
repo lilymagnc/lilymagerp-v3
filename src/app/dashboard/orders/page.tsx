@@ -119,7 +119,7 @@ class PrintableContent extends Component<PrintableContentProps> {
     
     render() {
         const data = this.getPrintableData();
-        if(!data) return <div className="p-4 bg-white text-black font-sans text-xs max-w-3xl mx-auto"></div>;
+        if(!data) return null;
 
         const branchesContactInfo = [
             { name: "릴리맥여의도점", tel: "010-8241-9518 / 010-2285-9518" },
@@ -265,3 +265,4 @@ export default function OrdersPage() {
     </>
   );
 }
+
