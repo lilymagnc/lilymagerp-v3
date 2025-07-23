@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
 import { MinusCircle, PlusCircle, Trash2, Store, Search } from "lucide-react";
@@ -207,144 +206,125 @@ export default function NewOrderPage() {
       <fieldset disabled={!selectedBranch} className="disabled:opacity-50">
         <div className="grid gap-8 md:grid-cols-3">
           <div className="md:col-span-2">
-              <Tabs defaultValue="staff-input">
-                  <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="staff-input">직원 전체 입력</TabsTrigger>
-                      <TabsTrigger value="split-input" disabled>고객-직원 분리 입력</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="staff-input">
-                      <Card>
-                          <CardHeader>
-                              <CardTitle>주문 정보</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-6">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-2">
-                                      <Label htmlFor="customer-name">고객명</Label>
-                                      <Input id="customer-name" placeholder="고객명 입력" />
+              <Card>
+                  <CardHeader>
+                      <CardTitle>주문 정보</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                              <Label htmlFor="customer-name">고객명</Label>
+                              <Input id="customer-name" placeholder="고객명 입력" />
+                          </div>
+                          <div className="space-y-2">
+                              <Label htmlFor="customer-phone">연락처</Label>
+                              <Input id="customer-phone" placeholder="010-1234-5678" />
+                          </div>
+                      </div>
+                      <div>
+                        <Label>배송 정보</Label>
+                          <Card className="mt-2">
+                              <CardContent className="p-4 space-y-4">
+                                <div className="space-y-2">
+                                  <Label>배송지</Label>
+                                  <div className="flex gap-2">
+                                    <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
+                                    <Button type="button" variant="outline" onClick={handleAddressSearch}>
+                                      <Search className="mr-2 h-4 w-4" /> 주소 검색
+                                    </Button>
                                   </div>
-                                  <div className="space-y-2">
-                                      <Label htmlFor="customer-phone">연락처</Label>
-                                      <Input id="customer-phone" placeholder="010-1234-5678" />
-                                  </div>
-                              </div>
-                              <div>
-                                <Label>배송 정보</Label>
-                                  <Card className="mt-2">
-                                      <CardContent className="p-4 space-y-4">
-                                        <div className="space-y-2">
-                                          <Label>배송지</Label>
-                                          <div className="flex gap-2">
-                                            <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
-                                            <Button type="button" variant="outline" onClick={handleAddressSearch}>
-                                              <Search className="mr-2 h-4 w-4" /> 주소 검색
-                                            </Button>
-                                          </div>
-                                          <Input id="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
-                                        </div>
-                                         <div className="space-y-2">
-                                            <Label>배송비</Label>
-                                            <RadioGroup defaultValue="auto" className="flex items-center gap-4" onValueChange={(value: "auto" | "manual") => setDeliveryFeeType(value)}>
-                                              <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="auto" id="auto" />
-                                                <Label htmlFor="auto">자동 계산</Label>
-                                              </div>
-                                              <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="manual" id="manual" />
-                                                <Label htmlFor="manual">직접 입력</Label>
-                                              </div>
-                                            </RadioGroup>
-                                            <div className="flex items-center gap-2 mt-2">
-                                            <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch || deliveryFeeType !== 'auto'}>
-                                                  <SelectTrigger>
-                                                      <SelectValue placeholder="지역 선택" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                    {selectedBranch?.deliveryFees?.map(df => (
-                                                      <SelectItem key={df.district} value={df.district}>
-                                                        {df.district}
-                                                      </SelectItem>
-                                                    ))}
-                                                  </SelectContent>
-                                              </Select>
-                                            {deliveryFeeType === 'manual' && (
-                                              <Input 
-                                                type="number" 
-                                                placeholder="배송비 직접 입력" 
-                                                value={manualDeliveryFee}
-                                                onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
-                                               />
-                                            )}
-                                            </div>
-                                         </div>
-                                      </CardContent>
-                                  </Card>
-                              </div>
-                              <div>
-                                  <Label>주문 상품</Label>
-                                  <Card className="mt-2">
-                                      <CardContent className="p-2">
-                                      <Table>
-                                          <TableHeader>
-                                              <TableRow>
-                                                  <TableHead>상품</TableHead>
-                                                  <TableHead className="w-[120px]">수량</TableHead>
-                                                  <TableHead className="w-[120px] text-right">단가</TableHead>
-                                                  <TableHead className="w-[120px] text-right">합계</TableHead>
-                                                  <TableHead className="w-[50px]"></TableHead>
-                                              </TableRow>
-                                          </TableHeader>
-                                          <TableBody>
-                                              {orderItems.length > 0 ? (
-                                                orderItems.map(item => (
-                                                  <TableRow key={item.id}>
-                                                    <TableCell>{item.name}</TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
-                                                            <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
-                                                            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
-                                                    <TableCell className="text-right">₩{(item.price * item.quantity).toLocaleString()}</TableCell>
-                                                    <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
-                                                  </TableRow>
-                                                ))
-                                              ) : (
-                                                <TableRow>
-                                                  <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                                                    상품을 추가해주세요.
-                                                  </TableCell>
-                                                </TableRow>
-                                              )}
-                                          </TableBody>
-                                      </Table>
-                                      <Button variant="outline" className="mt-2 w-full" onClick={() => setIsAddProductDialogOpen(true)}>
-                                          <PlusCircle className="mr-2 h-4 w-4"/> 상품 추가
-                                      </Button>
-                                      </CardContent>
-                                  </Card>
-                              </div>
-                               <div className="space-y-2">
-                                  <Label htmlFor="notes">메모</Label>
-                                  <Textarea id="notes" placeholder="특별 요청사항을 입력하세요." />
-                              </div>
-                          </CardContent>
-                      </Card>
-                  </TabsContent>
-                  <TabsContent value="split-input">
-                      <Card>
-                           <CardHeader>
-                              <CardTitle>분리 입력 모드</CardTitle>
-                              <CardDescription>고객과 직원이 각자 정보를 입력합니다.</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                              <p className="text-muted-foreground">이 모드는 개발 예정입니다.</p>
-                          </CardContent>
-                      </Card>
-                  </TabsContent>
-              </Tabs>
+                                  <Input id="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label>배송비</Label>
+                                    <RadioGroup defaultValue="auto" className="flex items-center gap-4" onValueChange={(value: "auto" | "manual") => setDeliveryFeeType(value)}>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="auto" id="auto" />
+                                        <Label htmlFor="auto">자동 계산</Label>
+                                      </div>
+                                      <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="manual" id="manual" />
+                                        <Label htmlFor="manual">직접 입력</Label>
+                                      </div>
+                                    </RadioGroup>
+                                    <div className="flex items-center gap-2 mt-2">
+                                    <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch || deliveryFeeType !== 'auto'}>
+                                          <SelectTrigger>
+                                              <SelectValue placeholder="지역 선택" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {selectedBranch?.deliveryFees?.map(df => (
+                                              <SelectItem key={df.district} value={df.district}>
+                                                {df.district}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                      </Select>
+                                    {deliveryFeeType === 'manual' && (
+                                      <Input 
+                                        type="number" 
+                                        placeholder="배송비 직접 입력" 
+                                        value={manualDeliveryFee}
+                                        onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
+                                       />
+                                    )}
+                                    </div>
+                                 </div>
+                              </CardContent>
+                          </Card>
+                      </div>
+                      <div>
+                          <Label>주문 상품</Label>
+                          <Card className="mt-2">
+                              <CardContent className="p-2">
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead>상품</TableHead>
+                                          <TableHead className="w-[120px]">수량</TableHead>
+                                          <TableHead className="w-[120px] text-right">단가</TableHead>
+                                          <TableHead className="w-[120px] text-right">합계</TableHead>
+                                          <TableHead className="w-[50px]"></TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {orderItems.length > 0 ? (
+                                        orderItems.map(item => (
+                                          <TableRow key={item.id}>
+                                            <TableCell>{item.name}</TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
+                                                    <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
+                                                    <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
+                                            <TableCell className="text-right">₩{(item.price * item.quantity).toLocaleString()}</TableCell>
+                                            <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
+                                          </TableRow>
+                                        ))
+                                      ) : (
+                                        <TableRow>
+                                          <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                                            상품을 추가해주세요.
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                  </TableBody>
+                              </Table>
+                              <Button variant="outline" className="mt-2 w-full" onClick={() => setIsAddProductDialogOpen(true)}>
+                                  <PlusCircle className="mr-2 h-4 w-4"/> 상품 추가
+                              </Button>
+                              </CardContent>
+                          </Card>
+                      </div>
+                       <div className="space-y-2">
+                          <Label htmlFor="notes">메모</Label>
+                          <Textarea id="notes" placeholder="특별 요청사항을 입력하세요." />
+                      </div>
+                  </CardContent>
+              </Card>
           </div>
 
           <div className="md:col-span-1">
