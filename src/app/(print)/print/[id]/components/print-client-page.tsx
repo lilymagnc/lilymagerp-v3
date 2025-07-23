@@ -34,7 +34,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
       };
       
       // Failsafe timeout in case images take too long
-      const printTimeout = setTimeout(triggerPrint, 2000); 
+      const printTimeout = setTimeout(triggerPrint, 500); 
 
       Promise.all(imageLoadPromises).then(() => {
         clearTimeout(printTimeout);
@@ -99,7 +99,7 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
         )}
         { isReceipt && <h1 className="text-xl font-bold mt-2">{title}</h1> }
       </div>
-      <table className="w-full border-collapse border border-black text-[14px]">
+      <table className="w-full border-collapse border border-black text-[15px]">
         <tbody>
           <tr>
             <td className="border border-black p-1 font-bold w-[12%]">주문일</td>
@@ -135,12 +135,12 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr style={{height: '120px'}}>
+          <tr style={{height: '130px'}}>
             <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
-            <tr style={{height: '70px'}}>
+            <tr style={{height: '80px'}}>
               <td className="border border-black p-1 font-bold">인수자성명</td>
               <td colSpan={5} className="border border-black p-1"></td>
             </tr>
