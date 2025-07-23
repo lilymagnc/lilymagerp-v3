@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useRef, Component, useEffect } from "react";
-import { useReactToPrint } from 'react-to-print';
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -12,17 +11,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useOrders, Order } from "@/hooks/use-orders";
-import { useBranches } from "@/hooks/use-branches";
+import { useBranches, Branch } from "@/hooks/use-branches";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
+import { OrderPrintDialog } from "./components/order-print-dialog";
 
 // Printable Component as a Class Component
 interface PrintableContentProps {
   order: Order | null;
-  branches: ReturnType<useBranches>['branches'];
+  branches: Branch[];
 }
 
-class PrintableContent extends Component<PrintableContentProps> {
+export class PrintableContent extends Component<PrintableContentProps> {
     
     getPrintableData = () => {
         const { order, branches } = this.props;
@@ -157,23 +157,12 @@ class PrintableContent extends Component<PrintableContentProps> {
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
   const { branches } = useBranches();
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const printableComponentRef = useRef<PrintableContent>(null);
-
-  const handlePrint = useReactToPrint({
-    content: () => printableComponentRef.current,
-    onAfterPrint: () => setSelectedOrder(null),
-  });
-
-  useEffect(() => {
-    // When selectedOrder is set, and the component has re-rendered, trigger the print dialog.
-    if (selectedOrder && handlePrint) {
-      handlePrint();
-    }
-  }, [selectedOrder, handlePrint]);
 
   const triggerPrint = (order: Order) => {
     setSelectedOrder(order);
+    setIsPrintDialogOpen(true);
   }
 
   const getStatusBadge = (status: string) => {
@@ -258,9 +247,12 @@ export default function OrdersPage() {
         </CardContent>
       </Card>
       
-      <div className="hidden">
-          <PrintableContent ref={printableComponentRef} order={selectedOrder} branches={branches} />
-      </div>
+      <OrderPrintDialog
+        isOpen={isPrintDialogOpen}
+        onOpenChange={setIsPrintDialogOpen}
+        order={selectedOrder}
+        branches={branches}
+      />
     </>
   );
 }
