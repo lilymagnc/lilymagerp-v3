@@ -107,11 +107,11 @@ body {
   #printable-area {
     display: block !important;
   }
-  
-  .print\\:shadow-none {
-     box-shadow: none !important;
+
+  .printing-active .no-print {
+      display: none !important;
   }
-  .print\\:border-none {
-      border: none !important;
+  .printing-active #printable-area {
+      display: block !important;
   }
 }

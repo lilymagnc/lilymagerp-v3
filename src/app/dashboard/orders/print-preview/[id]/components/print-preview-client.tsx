@@ -20,9 +20,11 @@ export function PrintPreviewClient({ order }: { order: Order }) {
     
     useEffect(() => {
         if (isPrinting) {
-            setTimeout(() => {
+            // Give the browser a moment to apply styles before printing
+            const timer = setTimeout(() => {
                 window.print();
-            }, 100); 
+            }, 100);
+            return () => clearTimeout(timer);
         }
     }, [isPrinting]);
 
@@ -97,8 +99,8 @@ export function PrintPreviewClient({ order }: { order: Order }) {
                     </div>
                 </PageHeader>
             </div>
-            <div id="printable-area" className="max-w-4xl mx-auto">
-                <Card className="shadow-sm print:shadow-none print:border-none">
+            <div id="printable-area">
+                <Card className="shadow-sm print:shadow-none print:border-none max-w-4xl mx-auto">
                     <CardContent className="p-0">
                          {printData ? <div ref={componentRef}><PrintableOrder data={printData} /></div> : <p>주문 데이터를 불러오는 중입니다...</p>}
                     </CardContent>
