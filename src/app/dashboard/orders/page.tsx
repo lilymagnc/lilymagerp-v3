@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -24,25 +24,7 @@ export default function OrdersPage() {
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useReactToPrint({
-    content: () => printableComponentRef.current,
-    onAfterPrint: () => setSelectedOrder(null),
-  });
-
-  useEffect(() => {
-    if (selectedOrder) {
-      const timer = setTimeout(() => {
-        handlePrint();
-      }, 50); // A small delay to ensure the component is rendered
-      return () => clearTimeout(timer);
-    }
-  }, [selectedOrder, handlePrint]);
-  
-  const prepareAndPrint = (order: Order) => {
-    setSelectedOrder(order);
-  }
-
-  const getPrintableData = (order: Order | null): OrderPrintData | null => {
+  const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
     if (!order) return null;
     
     const branchInfo = branches.find(b => b.id === order.branchId);
@@ -70,6 +52,19 @@ export default function OrdersPage() {
         account: branchInfo?.account || "정보 없음",
       }
     };
+  }, [branches]);
+
+  const handlePrint = useReactToPrint({
+    content: () => printableComponentRef.current,
+    onAfterPrint: () => setSelectedOrder(null),
+  });
+
+  const prepareAndPrint = (order: Order) => {
+    setSelectedOrder(order);
+    // Use a timeout to allow the component to render before printing.
+    setTimeout(() => {
+        handlePrint();
+    }, 100);
   }
 
   const getStatusBadge = (status: string) => {
@@ -175,5 +170,3 @@ export default function OrdersPage() {
     </div>
   );
 }
-
-    
