@@ -87,6 +87,21 @@ export default function NewOrderPage() {
     }
   }, [ordererName, ordererContact, receiptType]);
 
+  const formatPhoneNumber = (value: string) => {
+    if (!value) return value;
+    const phoneNumber = value.replace(/[^\d]/g, '');
+    const phoneNumberLength = phoneNumber.length;
+    if (phoneNumberLength < 4) return phoneNumber;
+    if (phoneNumberLength < 8) {
+        return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3)}`;
+    }
+    return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 7)}-${phoneNumber.slice(7, 11)}`;
+  }
+
+  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+    const formattedPhoneNumber = formatPhoneNumber(e.target.value);
+    setter(formattedPhoneNumber);
+  }
 
   const deliveryFee = useMemo(() => {
     if (receiptType === 'pickup') return 0;
@@ -360,7 +375,7 @@ export default function NewOrderPage() {
                                   </div>
                                   <div className="space-y-2">
                                       <Label htmlFor="orderer-contact">연락처</Label>
-                                      <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={e => setOrdererContact(e.target.value)} />
+                                      <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={(e) => handleContactChange(e, setOrdererContact)} />
                                   </div>
                                   <div className="space-y-2">
                                       <Label htmlFor="orderer-email">이메일</Label>
@@ -427,7 +442,7 @@ export default function NewOrderPage() {
                                       </div>
                                       <div className="space-y-2">
                                           <Label htmlFor="picker-contact">픽업자 연락처</Label>
-                                          <Input id="picker-contact" value={pickerContact} onChange={e => setPickerContact(e.target.value)} />
+                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleContactChange(e, setPickerContact)} />
                                       </div>
                                   </CardContent>
                               </Card>
@@ -443,7 +458,7 @@ export default function NewOrderPage() {
                                           </div>
                                           <div className="space-y-2">
                                               <Label htmlFor="recipient-contact">받는 분 연락처</Label>
-                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={e => setRecipientContact(e.target.value)} />
+                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleContactChange(e, setRecipientContact)} />
                                           </div>
                                       </div>
                                       <div className="space-y-2">
