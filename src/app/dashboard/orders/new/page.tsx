@@ -175,7 +175,7 @@ export default function NewOrderPage() {
       orderType,
       receiptType,
       pickupInfo: receiptType === 'pickup' ? { date: pickupDate, time: pickupTime, pickerName, pickerContact } : null,
-      deliveryInfo: receiptType === 'delivery' ? { recipientName, recipientContact, address: `${deliveryAddress} ${deliveryAddressDetail}` } : null,
+      deliveryInfo: receiptType === 'delivery' ? { recipientName, recipientContact, address: `${deliveryAddress} ${deliveryAddressDetail}`, date: pickupDate, time: pickupTime } : null,
       message: { type: messageType, content: messageContent },
       request: specialRequest,
      });
@@ -199,7 +199,7 @@ export default function NewOrderPage() {
         deliveryFee: orderSummary.deliveryFee,
         paymentMethod: "카드", // Placeholder
         paymentStatus: "완결", // Placeholder
-        deliveryDate: receiptType === 'delivery' && pickupDate ? `${format(pickupDate, "yyyy-MM-dd")} ${pickupTime}` : (receiptType === 'pickup' && pickupDate) ? `${format(pickupDate, "yyyy-MM-dd")} ${pickupTime}`: "해당 없음",
+        deliveryDate: pickupDate ? `${format(pickupDate, "yyyy-MM-dd")} ${pickupTime}` : "해당 없음",
         recipientName: receiptType === 'delivery' ? recipientName : pickerName,
         recipientContact: receiptType === 'delivery' ? recipientContact : pickerContact,
         deliveryAddress: receiptType === 'delivery' ? `${deliveryAddress} ${deliveryAddressDetail}`: '매장 픽업',
@@ -451,6 +451,33 @@ export default function NewOrderPage() {
                           {receiptType === 'delivery' && (
                               <Card className="mt-2">
                                   <CardContent className="p-4 space-y-4">
+                                      <div className="space-y-2">
+                                          <Label>배송일시</Label>
+                                          <div className="flex gap-2">
+                                              <Popover>
+                                                  <PopoverTrigger asChild>
+                                                  <Button
+                                                      variant={"outline"}
+                                                      className={cn("w-full justify-start text-left font-normal", !pickupDate && "text-muted-foreground")}
+                                                  >
+                                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                                      {pickupDate ? format(pickupDate, "PPP") : <span>날짜 선택</span>}
+                                                  </Button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent className="w-auto p-0">
+                                                  <Calendar mode="single" selected={pickupDate} onSelect={setPickupDate} initialFocus />
+                                                  </PopoverContent>
+                                              </Popover>
+                                              <Select value={pickupTime} onValueChange={setPickupTime}>
+                                                  <SelectTrigger className="w-[120px]">
+                                                      <SelectValue />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                      {Array.from({length: 12}, (_, i) => `${10+i}:00`).map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+                                                  </SelectContent>
+                                              </Select>
+                                          </div>
+                                      </div>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div className="space-y-2">
                                               <Label htmlFor="recipient-name">받는 분 이름</Label>
@@ -577,3 +604,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    
