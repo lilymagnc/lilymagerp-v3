@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer } from "lucide-react";
@@ -32,14 +32,12 @@ export default function OrdersPage() {
     onAfterPrint,
   });
 
-  useEffect(() => {
-    if (selectedOrder && handlePrint) {
-      handlePrint();
-    }
-  }, [selectedOrder, handlePrint]);
-
   const handlePrintClick = (order: Order) => {
     setSelectedOrder(order);
+    // Use a timeout to allow the component to re-render with the new data before printing
+    setTimeout(() => {
+        if(handlePrint) handlePrint();
+    }, 100);
   }
   
   const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
