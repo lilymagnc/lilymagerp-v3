@@ -14,6 +14,7 @@ import {
 import { Printer } from 'lucide-react';
 import type { Order } from '@/hooks/use-orders';
 import { format } from "date-fns";
+import { useReactToPrint } from 'react-to-print';
 
 interface OrderPrintDialogProps {
     isOpen: boolean;
@@ -143,22 +144,26 @@ PrintableContent.displayName = 'PrintableContent';
 export function OrderPrintDialog({ isOpen, onOpenChange, order }: OrderPrintDialogProps) {
     const printableRef = useRef<HTMLDivElement>(null);
 
+    const handlePrint = useReactToPrint({
+        content: () => printableRef.current,
+    });
+
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
-                <DialogHeader className="no-print">
+                <DialogHeader>
                     <DialogTitle>주문서 인쇄 미리보기</DialogTitle>
                 </DialogHeader>
-                <div className="flex-grow overflow-y-auto border rounded-md printable-area">
+                <div className="flex-grow overflow-y-auto border rounded-md">
                    <PrintableContent ref={printableRef} order={order} />
                 </div>
-                <DialogFooter className="sm:justify-between mt-4 no-print">
+                <DialogFooter className="sm:justify-between mt-4">
                     <DialogClose asChild>
                         <Button type="button" variant="secondary">
                             닫기
                         </Button>
                     </DialogClose>
-                    <Button onClick={() => window.print()}>
+                    <Button onClick={handlePrint}>
                         <Printer className="mr-2 h-4 w-4" />
                         인쇄하기
                     </Button>
