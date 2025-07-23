@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { useReactToPrint } from "react-to-print";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, MoreHorizontal, Printer } from "lucide-react";
@@ -23,11 +22,6 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
   const printableComponentRef = useRef<HTMLDivElement>(null);
-
-  const handlePrint = useReactToPrint({
-    content: () => printableComponentRef.current,
-    onAfterPrint: () => setSelectedOrder(null),
-  });
 
   const getPrintableData = useCallback((order: Order | null): OrderPrintData | null => {
     if (!order) return null;
@@ -59,12 +53,11 @@ export default function OrdersPage() {
     };
   }, [branches]);
   
-  const prepareAndPrint = (order: Order) => {
+  const handlePrint = (order: Order) => {
     setSelectedOrder(order);
-    // Use a timeout to allow the component to re-render with the new data before printing
     setTimeout(() => {
-        handlePrint();
-    }, 100);
+      window.print();
+    }, 100); 
   }
 
   const getStatusBadge = (status: string) => {
@@ -149,7 +142,7 @@ export default function OrdersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>작업</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => prepareAndPrint(order)}>
+                            <DropdownMenuItem onSelect={() => handlePrint(order)}>
                               <Printer className="mr-2 h-4 w-4" />
                               주문서 출력
                             </DropdownMenuItem>
