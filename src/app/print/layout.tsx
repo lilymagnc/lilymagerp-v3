@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 // This layout applies only to the print route.
@@ -12,6 +13,12 @@ export default function PrintLayout({
     <html>
       <head>
         <title>주문서 인쇄</title>
+        <style>{`
+          @page {
+            size: A4;
+            margin: 0;
+          }
+        `}</style>
       </head>
       <body>
         {children}

@@ -47,7 +47,25 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
   useEffect(() => {
     if (order && !printInitiated.current) {
       printInitiated.current = true;
-      window.print();
+      
+      const images = Array.from(document.images);
+      const imageLoadPromises = images.map(img => {
+        if (img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.onload = resolve;
+          img.onerror = resolve; // Resolve on error too, to not block printing
+        });
+      });
+
+      const triggerPrint = () => {
+        // Delay slightly after image load to ensure rendering
+        setTimeout(() => {
+            window.print();
+        }, 100); 
+      };
+
+      // Wait for all images to load, but with a timeout
+      Promise.all(imageLoadPromises).then(triggerPrint);
     }
   }, [order]);
   
@@ -82,8 +100,8 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold w-[70px]">연락처</td>
             <td className="border border-black p-1 w-[130px]">{data.ordererContact}</td>
           </tr>
-          <tr>
-            <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
+          <tr style={{height: '100px'}}>
+            <td className="border border-black p-1 font-bold align-top">항목/수량</td>
             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
           </tr>
           {!isReceipt && (
@@ -108,12 +126,12 @@ export function PrintClientPage({ order }: PrintClientPageProps) {
             <td className="border border-black p-1 font-bold">배송지주소</td>
             <td colSpan={5} className="border border-black p-1">{data.deliveryAddress}</td>
           </tr>
-          <tr>
-            <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
+          <tr style={{height: '80px'}}>
+            <td className="border border-black p-1 font-bold align-top">전달메세지<br/>(카드/리본)</td>
             <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
           </tr>
           {isReceipt && (
-            <tr>
+            <tr style={{height: '40px'}}>
               <td className="border border-black p-1 font-bold">인수자성명</td>
               <td colSpan={5} className="border border-black p-1 h-10"></td>
             </tr>
