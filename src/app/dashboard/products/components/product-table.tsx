@@ -91,11 +91,11 @@ export function ProductTable() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>작업</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEdit(product)}>수정</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStockUpdate(product)}>재고 업데이트</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleEdit(product)}>수정</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleStockUpdate(product)}>재고 업데이트</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-destructive">삭제</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>
                           </AlertDialogTrigger>
                         </DropdownMenuContent>
                       </DropdownMenu>
