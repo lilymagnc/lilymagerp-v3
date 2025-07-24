@@ -11,12 +11,12 @@ import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
 
 const mockHistory: StockHistory[] = [
-  { id: "SH-001", date: "2023-11-01T10:00:00Z", type: "in", itemType: "material", itemName: "마르시아 장미", quantity: 50, branch: "릴리맥광화문점", operator: "김입고" },
-  { id: "SH-002", date: "2023-11-01T11:30:00Z", type: "out", itemType: "product", itemName: "레드로즈 꽃다발", quantity: 2, branch: "릴리맥NC이스트폴점", operator: "박출고" },
-  { id: "SH-003", date: "2023-11-02T14:00:00Z", type: "out", itemType: "material", itemName: "포장용 크라프트지", quantity: 10, branch: "릴리맥여의도점", operator: "이사용" },
-  { id: "SH-004", date: "2023-11-02T16:45:00Z", type: "in", itemType: "product", itemName: "맥 데님 팬츠", quantity: 20, branch: "릴리맥여의도점", operator: "최보충" },
-  { id: "SH-005", date: "2023-11-03T09:10:00Z", type: "in", itemType: "material", itemName: "만천홍", quantity: 15, branch: "릴리맥NC이스트폴점", operator: "김입고" },
-  { id: "SH-006", date: "2023-11-03T18:00:00Z", type: "out", itemType: "material", itemName: "마르시아 장미", quantity: 5, branch: "릴리맥광화문점", operator: "박출고" },
+  { id: "SH-001", date: "2023-11-01T10:00:00Z", type: "in", itemType: "material", itemName: "마르시아 장미", quantity: 50, resultingStock: 100, branch: "릴리맥광화문점", operator: "김입고" },
+  { id: "SH-002", date: "2023-11-01T11:30:00Z", type: "out", itemType: "product", itemName: "레드로즈 꽃다발", quantity: 2, resultingStock: 28, branch: "릴리맥NC이스트폴점", operator: "박출고" },
+  { id: "SH-003", date: "2023-11-02T14:00:00Z", type: "out", itemType: "material", itemName: "포장용 크라프트지", quantity: 10, resultingStock: 5, branch: "릴리맥여의도점", operator: "이사용" },
+  { id: "SH-004", date: "2023-11-02T16:45:00Z", type: "in", itemType: "product", itemName: "맥 데님 팬츠", quantity: 20, resultingStock: 100, branch: "릴리맥여의도점", operator: "최보충" },
+  { id: "SH-005", date: "2023-11-03T09:10:00Z", type: "in", itemType: "material", itemName: "만천홍", quantity: 15, resultingStock: 45, branch: "릴리맥NC이스트폴점", operator: "김입고" },
+  { id: "SH-006", date: "2023-11-03T18:00:00Z", type: "out", itemType: "material", itemName: "마르시아 장미", quantity: 5, resultingStock: 95, branch: "릴리맥광화문점", operator: "박출고" },
 ];
 
 export default function StockHistoryPage() {

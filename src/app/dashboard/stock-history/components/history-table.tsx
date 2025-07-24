@@ -13,6 +13,7 @@ export type StockHistory = {
   itemType: "product" | "material";
   itemName: string;
   quantity: number;
+  resultingStock: number;
   branch: string;
   operator: string;
 };
@@ -34,6 +35,7 @@ export function HistoryTable({ history }: HistoryTableProps) {
               <TableHead>품목</TableHead>
               <TableHead>유형</TableHead>
               <TableHead>수량</TableHead>
+              <TableHead>처리 후 재고</TableHead>
               <TableHead>처리자</TableHead>
             </TableRow>
           </TableHeader>
@@ -55,12 +57,13 @@ export function HistoryTable({ history }: HistoryTableProps) {
                   <TableCell className={`font-semibold ${item.type === 'in' ? 'text-blue-600' : 'text-red-600'}`}>
                     {item.type === 'in' ? '+' : '-'}{item.quantity}
                   </TableCell>
+                  <TableCell>{item.resultingStock}</TableCell>
                   <TableCell>{item.operator}</TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   조회된 기록이 없습니다.
                 </TableCell>
               </TableRow>
