@@ -2,7 +2,10 @@
 import { fetchItemsByIds, LabelItem } from '@/lib/data-fetch';
 import { LabelGrid } from './components/label-grid';
 import { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Printer, ArrowLeft } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 async function PrintLabels({
   searchParams,
@@ -39,11 +42,36 @@ export default function PrintLabelsPage({
   searchParams: { [key: string]: string | string[] | undefined }
 }) {
 
+  // This is a bit of a workaround to allow a Link component to go back.
+  // In a real app, you might use client-side state management or router history.
+  const backUrl = searchParams.type === 'products' ? '/dashboard/products' : '/dashboard/materials';
+
   return (
     <div className="max-w-6xl mx-auto">
-      <Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
-        <PrintLabels searchParams={searchParams} />
-      </Suspense>
+       <div className="no-print">
+             <PageHeader
+                title="라벨 인쇄"
+                description="선택한 항목의 바코드 라벨을 인쇄합니다. (폼텍 24칸 라벨 기준)"
+            >
+              <div className="flex gap-2">
+                <Button variant="outline" asChild>
+                  <Link href={backUrl}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    돌아가기
+                  </Link>
+                </Button>
+                <Button onClick={() => window.print()}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    인쇄하기
+                </Button>
+              </div>
+            </PageHeader>
+        </div>
+      <div className="printable-area p-[1.5mm]">
+        <Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+          <PrintLabels searchParams={searchParams} />
+        </Suspense>
+      </div>
     </div>
   );
 }
