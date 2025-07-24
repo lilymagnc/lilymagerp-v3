@@ -20,16 +20,18 @@ export function PrintLabelsClient({ searchParams }: { searchParams: { [key: stri
 
         let itemsToPrint: LabelItem[] = [];
         if (items.length > 0) {
+            // If only one item is selected, duplicate it by the number of copies.
             if (items.length === 1 && copies > 1) {
                 const item = items[0];
                 for (let i = 0; i < copies; i++) {
                     itemsToPrint.push(item);
                 }
-            } else {
+            } else { // Otherwise, print each selected item once.
                 itemsToPrint = items;
             }
         }
         
+        // Add empty items to the beginning of the array to offset the start position.
         const emptyLabels = Array.from({ length: Math.max(0, startPosition - 1) }, (_, i) => ({ id: `empty-${i}`, name: '' }));
         return [...emptyLabels, ...itemsToPrint];
 
