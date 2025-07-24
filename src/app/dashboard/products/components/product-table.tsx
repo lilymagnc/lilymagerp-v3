@@ -11,6 +11,7 @@ import { MoreHorizontal } from "lucide-react";
 import { ProductForm } from "./product-form";
 import { StockUpdateForm } from "./stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { ProductDetails } from "./product-details";
 
 const mockProducts = [
   { id: "PROD-001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
@@ -23,9 +24,11 @@ const mockProducts = [
 export function ProductTable() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const handleEdit = (product: any) => {
+    setIsDetailOpen(false);
     setSelectedProduct(product);
     setIsFormOpen(true);
   };
@@ -35,9 +38,15 @@ export function ProductTable() {
     setIsStockFormOpen(true);
   };
 
+  const handleRowClick = (product: any) => {
+    setSelectedProduct(product);
+    setIsDetailOpen(true);
+  }
+
   const handleCloseForms = () => {
     setIsFormOpen(false);
     setIsStockFormOpen(false);
+    setIsDetailOpen(false);
     setSelectedProduct(null);
   };
 
@@ -69,7 +78,7 @@ export function ProductTable() {
               {mockProducts.map((product) => {
                 const statusInfo = getStatus(product.status, product.stock);
                 return (
-                <TableRow key={product.id}>
+                <TableRow key={product.id} onClick={() => handleRowClick(product)} className="cursor-pointer">
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>
                     <Badge variant={statusInfo.variant}>
@@ -80,7 +89,7 @@ export function ProductTable() {
                   <TableCell className="hidden sm:table-cell">₩{product.price.toLocaleString()}</TableCell>
                   <TableCell className="hidden md:table-cell">{product.supplier}</TableCell>
                   <TableCell className="text-right">{product.stock}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -121,6 +130,12 @@ export function ProductTable() {
       </Card>
       {isFormOpen && <ProductForm isOpen={isFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
       {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
+      <ProductDetails
+        isOpen={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        product={selectedProduct}
+        onEdit={() => selectedProduct && handleEdit(selectedProduct)}
+      />
     </>
   );
 }

@@ -11,6 +11,7 @@ import { MoreHorizontal } from "lucide-react";
 import { MaterialForm } from "./material-form";
 import { StockUpdateForm } from "@/app/dashboard/products/components/stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { MaterialDetails } from "./material-details";
 
 const mockMaterials = [
   { id: "MAT-001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
@@ -23,9 +24,11 @@ const mockMaterials = [
 export function MaterialTable() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
 
   const handleEdit = (material: any) => {
+    setIsDetailOpen(false);
     setSelectedMaterial(material);
     setIsFormOpen(true);
   };
@@ -34,10 +37,16 @@ export function MaterialTable() {
     setSelectedMaterial(material);
     setIsStockFormOpen(true);
   };
+  
+  const handleRowClick = (material: any) => {
+    setSelectedMaterial(material);
+    setIsDetailOpen(true);
+  }
 
   const handleCloseForms = () => {
     setIsFormOpen(false);
     setIsStockFormOpen(false);
+    setIsDetailOpen(false);
     setSelectedMaterial(null);
   };
 
@@ -69,7 +78,7 @@ export function MaterialTable() {
               {mockMaterials.map((material) => {
                 const statusInfo = getStatus(material.status, material.stock);
                 return (
-                <TableRow key={material.id}>
+                <TableRow key={material.id} onClick={() => handleRowClick(material)} className="cursor-pointer">
                   <TableCell className="font-medium">{material.name}</TableCell>
                   <TableCell>
                     <Badge variant={statusInfo.variant}>
@@ -80,7 +89,7 @@ export function MaterialTable() {
                   <TableCell className="hidden sm:table-cell">₩{material.price.toLocaleString()}</TableCell>
                   <TableCell className="hidden md:table-cell">{material.supplier}</TableCell>
                   <TableCell className="text-right">{material.stock}</TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -121,6 +130,12 @@ export function MaterialTable() {
       </Card>
       {isFormOpen && <MaterialForm isOpen={isFormOpen} onOpenChange={handleCloseForms} material={selectedMaterial} />}
       {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedMaterial} />}
+      <MaterialDetails
+        isOpen={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        material={selectedMaterial}
+        onEdit={() => selectedMaterial && handleEdit(selectedMaterial)}
+      />
     </>
   );
 }
