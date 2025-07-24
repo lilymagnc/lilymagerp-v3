@@ -26,23 +26,37 @@ export default function MaterialsPage() {
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const [selectedMainCategory, setSelectedMainCategory] = useState("all");
+  const [selectedMidCategory, setSelectedMidCategory] = useState("all");
+
 
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
   const { materials, loading: materialsLoading, bulkAddMaterials, addMaterial, updateMaterial, deleteMaterial } = useMaterials();
 
+  const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
+  const midCategories = useMemo(() => {
+      if (selectedMainCategory === "all") {
+          return [...new Set(materials.map(m => m.midCategory))];
+      }
+      return [...new Set(materials.filter(m => m.mainCategory === selectedMainCategory).map(m => m.midCategory))];
+  }, [materials, selectedMainCategory]);
+
   const filteredMaterials = useMemo(() => {
     return materials
       .filter(material => 
-        (selectedBranch === "all" || material.branch === selectedBranch)
+        (selectedBranch === "all" || material.branch === selectedBranch) &&
+        (selectedMainCategory === "all" || material.mainCategory === selectedMainCategory) &&
+        (selectedMidCategory === "all" || material.midCategory === selectedMidCategory)
       )
       .filter(material => 
         material.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-  }, [materials, searchTerm, selectedBranch]);
+  }, [materials, searchTerm, selectedBranch, selectedMainCategory, selectedMidCategory]);
 
   const handleAdd = () => {
     setSelectedMaterial(null);
@@ -73,14 +87,14 @@ export default function MaterialsPage() {
       toast({
         variant: "destructive",
         title: "내보낼 데이터 없음",
-        description: "목록에 자재 데이터가 없습니다.",
+        description: "현재 필터에 맞는 자재 데이터가 없습니다.",
       });
       return;
     }
     const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
-      ({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch })
+      ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, current_stock: stock, quantity: '' })
     );
-    downloadXLSX(dataToExport, "materials");
+    downloadXLSX(dataToExport, "materials_update_template");
     toast({
       title: "내보내기 성공",
       description: `${dataToExport.length}개의 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
@@ -108,22 +122,22 @@ export default function MaterialsPage() {
         <CardHeader>
             <CardTitle>자재 목록</CardTitle>
             <CardDescription>
-                지점별 자재를 검색하고 관리하세요.
+                지점 및 카테고리별로 자재를 검색하고 관리하세요.
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="relative w-full sm:w-auto flex-1 sm:flex-initial">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         type="search"
                         placeholder="자재명 검색..."
-                        className="w-full rounded-lg bg-background pl-8 sm:w-[200px] lg:w-[300px]"
+                        className="w-full rounded-lg bg-background pl-8"
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                  <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[160px]">
                         <SelectValue placeholder="지점 선택" />
                     </SelectTrigger>
                     <SelectContent>
@@ -135,28 +149,56 @@ export default function MaterialsPage() {
                         ))}
                     </SelectContent>
                 </Select>
-                <div className="ml-auto flex items-center gap-2 mt-2 sm:mt-0 flex-wrap">
-                    {selectedMaterials.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
-                      <Printer className="mr-2 h-4 w-4" />
-                      라벨 인쇄 ({selectedMaterials.length})
+                 <Select value={selectedMainCategory} onValueChange={(value) => { setSelectedMainCategory(value); setSelectedMidCategory("all"); }}>
+                    <SelectTrigger className="w-full sm:w-[160px]">
+                        <SelectValue placeholder="대분류 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">모든 대분류</SelectItem>
+                        {mainCategories.map(category => (
+                            <SelectItem key={category} value={category}>
+                                {category}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                 <Select value={selectedMidCategory} onValueChange={setSelectedMidCategory}>
+                    <SelectTrigger className="w-full sm:w-[160px]">
+                        <SelectValue placeholder="중분류 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">모든 중분류</SelectItem>
+                        {midCategories.map(category => (
+                            <SelectItem key={category} value={category}>
+                                {category}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+                {selectedMaterials.length > 0 && (
+                <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
+                    <Printer className="mr-2 h-4 w-4" />
+                    라벨 인쇄 ({selectedMaterials.length})
+                </Button>
+                )}
+                <Button variant="outline" size="sm" asChild>
+                <Link href="/dashboard/materials/stock">
+                    <ArrowRightLeft className="mr-2 h-4 w-4" />
+                    재고 입출고
+                </Link>
+                </Button>
+                <ImportButton resourceName="자재" onImport={bulkAddMaterials} />
+                <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download className="mr-2 h-4 w-4" />
+                내보내기
+                </Button>
+                <div className="ml-auto">
+                    <Button size="sm" onClick={handleAdd}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        자재 추가
                     </Button>
-                  )}
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/dashboard/materials/stock">
-                      <ArrowRightLeft className="mr-2 h-4 w-4" />
-                      재고 입출고
-                    </Link>
-                  </Button>
-                  <ImportButton resourceName="자재" onImport={bulkAddMaterials} />
-                  <Button variant="outline" size="sm" onClick={handleExport}>
-                    <Download className="mr-2 h-4 w-4" />
-                    내보내기
-                  </Button>
-                  <Button size="sm" onClick={handleAdd}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    자재 추가
-                  </Button>
                 </div>
             </div>
         </CardContent>
@@ -207,5 +249,3 @@ export default function MaterialsPage() {
     </div>
   );
 }
-
-    
