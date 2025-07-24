@@ -142,10 +142,10 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {materials.length > 0 ? materials.map((material) => {
+              {materials.length > 0 ? materials.map((material, idx) => {
                 const statusInfo = getStatus(material.status, material.stock);
                 return (
-                <TableRow key={material.id}>
+                <TableRow key={`${material.id}-${idx}`}>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={!!selectedRows[material.id]}
@@ -156,7 +156,7 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
                   <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name}</TableCell>
                    <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
                     <Barcode 
-                      value={material.id}
+                      value={material.id} 
                       options={{ 
                         format: 'CODE39',
                         displayValue: true,
@@ -199,7 +199,7 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
                         <AlertDialogHeader>
                           <AlertDialogTitle>정말로 삭제하시겠습니까?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            이 작업은 되돌릴 수 없습니다. '{material.name}' 자재 데이터가 서버에서 영구적으로 삭제됩니다.
+                           이 작업은 되돌릴 수 없습니다. '{material.name}' ({material.branch}) 자재 데이터가 서버에서 영구적으로 삭제됩니다.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

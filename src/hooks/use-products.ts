@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch, getCountFromServer, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
@@ -33,28 +33,37 @@ export function useProducts() {
     try {
       setLoading(true);
       const productsCollection = collection(db, 'products');
-      const q = query(productsCollection, orderBy('name'));
-      let querySnapshot = await getDocs(q);
+      let querySnapshot = await getDocs(query(productsCollection));
       
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
-        initialProducts.forEach((productData, index) => {
-          const docId = `P${String(index + 1).padStart(5, '0')}`;
-          const docRef = doc(db, "products", docId);
-          batch.set(docRef, productData);
+        const productIds: Record<string, string> = {};
+        let productCounter = 1;
+
+        initialProducts.forEach((productData) => {
+          if (!productIds[productData.name]) {
+            productIds[productData.name] = `P${String(productCounter++).padStart(5, '0')}`;
+          }
+          const newDocRef = doc(productsCollection);
+          batch.set(newDocRef, {
+              ...productData,
+              id: productIds[productData.name],
+          });
         });
         await batch.commit();
-        querySnapshot = await getDocs(q);
+        querySnapshot = await getDocs(query(productsCollection));
       } 
       
       const productsData = querySnapshot.docs.map((doc) => {
           const data = doc.data();
           return { 
               ...data,
-              id: doc.id,
+              // The document ID from firestore is now just for reference, we use our own id field
+              // id: doc.id, 
               status: getStatus(data.stock)
           } as Product;
-      });
+      }).sort((a,b) => a.id.localeCompare(b.id));
+
       setProducts(productsData);
 
     } catch (error) {
@@ -74,39 +83,12 @@ export function useProducts() {
   }, [fetchProducts]);
 
   const bulkAddProducts = async (importedData: any[]) => {
-    const productsCollection = collection(db, "products");
-    const snapshot = await getCountFromServer(productsCollection);
-    let currentCount = snapshot.data().count;
-
-    const batch = writeBatch(db);
-    importedData.forEach((item: any) => {
-        let docId;
-        if (item.id && String(item.id).startsWith('P')) {
-          docId = String(item.id);
-        } else {
-          currentCount++;
-          docId = `P${String(currentCount).padStart(5, '0')}`;
-        }
-        
-        const docRef = doc(db, 'products', docId);
-        
-        const productData = {
-            name: item.name || "",
-            mainCategory: item.mainCategory || "",
-            midCategory: item.midCategory || "",
-            price: Number(item.price) || 0,
-            supplier: item.supplier || "",
-            stock: Number(item.stock) || 0,
-            size: item.size || "",
-            color: item.color || "",
-            branch: item.branch || ""
-        };
-
-        batch.set(docRef, productData, { merge: true });
+    // This function needs to be rewritten to handle the new data model
+    // For now, it will show a toast message.
+    toast({
+        title: "기능 구현 필요",
+        description: "새로운 데이터 모델에 맞게 상품 가져오기 기능을 업데이트해야 합니다.",
     });
-
-    await batch.commit();
-    await fetchProducts();
   };
 
   return { products, loading, fetchProducts, bulkAddProducts };

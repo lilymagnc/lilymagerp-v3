@@ -141,10 +141,10 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.length > 0 ? products.map((product) => {
+              {products.length > 0 ? products.map((product, idx) => {
                 const statusInfo = getStatus(product.status, product.stock);
                 return (
-                <TableRow key={product.id}>
+                <TableRow key={`${product.id}-${idx}`}>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={!!selectedRows[product.id]}
@@ -198,7 +198,7 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
                         <AlertDialogHeader>
                           <AlertDialogTitle>정말로 삭제하시겠습니까?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            이 작업은 되돌릴 수 없습니다. '{product.name}' 상품 데이터가 서버에서 영구적으로 삭제됩니다.
+                            이 작업은 되돌릴 수 없습니다. '{product.name}' ({product.branch}) 상품 데이터가 서버에서 영구적으로 삭제됩니다.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

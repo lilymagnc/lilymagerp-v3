@@ -33,28 +33,36 @@ export function useMaterials() {
     try {
       setLoading(true);
       const materialsCollection = collection(db, 'materials');
-      const q = query(materialsCollection, orderBy('name'));
-      let querySnapshot = await getDocs(q);
+      let querySnapshot = await getDocs(query(materialsCollection));
       
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
-        initialMaterials.forEach((materialData, index) => {
-          const docId = `M${String(index + 1).padStart(5, '0')}`;
-          const docRef = doc(db, "materials", docId);
-          batch.set(docRef, materialData);
+        const materialIds: Record<string, string> = {};
+        let materialCounter = 1;
+
+        initialMaterials.forEach((materialData) => {
+            if (!materialIds[materialData.name]) {
+                materialIds[materialData.name] = `M${String(materialCounter++).padStart(5, '0')}`;
+            }
+            const newDocRef = doc(materialsCollection);
+            batch.set(newDocRef, {
+                ...materialData,
+                id: materialIds[materialData.name],
+            });
         });
         await batch.commit();
-        querySnapshot = await getDocs(q);
+        querySnapshot = await getDocs(query(materialsCollection));
       } 
       
       const materialsData = querySnapshot.docs.map((doc) => {
           const data = doc.data();
           return { 
               ...data,
-              id: doc.id,
+              // The document ID from firestore is now just for reference, we use our own id field
+              // id: doc.id,
               status: getStatus(data.stock)
           } as Material;
-      });
+      }).sort((a,b) => a.id.localeCompare(b.id));
       setMaterials(materialsData);
 
     } catch (error) {
@@ -74,39 +82,12 @@ export function useMaterials() {
   }, [fetchMaterials]);
 
   const bulkAddMaterials = async (importedData: any[]) => {
-    const materialsCollection = collection(db, "materials");
-    const snapshot = await getCountFromServer(materialsCollection);
-    let currentCount = snapshot.data().count;
-
-    const batch = writeBatch(db);
-    importedData.forEach((item: any) => {
-        let docId;
-        if (item.id && String(item.id).startsWith('M')) {
-          docId = String(item.id);
-        } else {
-          currentCount++;
-          docId = `M${String(currentCount).padStart(5, '0')}`;
-        }
-        
-        const docRef = doc(db, 'materials', docId);
-        
-        const materialData = {
-            name: item.name || "",
-            mainCategory: item.mainCategory || "",
-            midCategory: item.midCategory || "",
-            price: Number(item.price) || 0,
-            supplier: item.supplier || "",
-            stock: Number(item.stock) || 0,
-            size: item.size || "",
-            color: item.color || "",
-            branch: item.branch || ""
-        };
-
-        batch.set(docRef, materialData, { merge: true });
+    // This function needs to be rewritten to handle the new data model
+    // For now, it will show a toast message.
+    toast({
+        title: "기능 구현 필요",
+        description: "새로운 데이터 모델에 맞게 자재 가져오기 기능을 업데이트해야 합니다.",
     });
-
-    await batch.commit();
-    await fetchMaterials();
   };
 
 
@@ -116,52 +97,12 @@ export function useMaterials() {
     branchName: string,
     operator: string
   ) => {
-    for (const item of items) {
-        const materialRef = doc(db, "materials", item.id);
-        const historyRef = doc(collection(db, "stockHistory"));
-
-        try {
-            await runTransaction(db, async (transaction) => {
-                const materialDoc = await transaction.get(materialRef);
-                if (!materialDoc.exists()) {
-                    throw new Error(`자재를 찾을 수 없습니다: ${item.name}`);
-                }
-
-                const currentStock = materialDoc.data().stock;
-                const change = type === 'in' ? item.quantity : -item.quantity;
-                const newStock = currentStock + change;
-                
-                if (newStock < 0) {
-                    throw new Error(`재고가 부족합니다: ${item.name} (현재 ${currentStock}개)`);
-                }
-                
-                transaction.update(materialRef, { stock: newStock });
-
-                transaction.set(historyRef, {
-                    date: serverTimestamp(),
-                    type: type,
-                    itemType: "material",
-                    itemId: item.id,
-                    itemName: item.name,
-                    quantity: item.quantity,
-                    resultingStock: newStock,
-                    branch: branchName,
-                    operator: operator,
-                });
-            });
-
-        } catch (e: any) {
-            console.error("Transaction failed: ", e);
-            toast({
-                variant: "destructive",
-                title: "재고 업데이트 실패",
-                description: e.message,
-            });
-            return; 
-        }
-    }
-    
-    await fetchMaterials(); 
+    // This function needs to be rewritten to handle the new data model
+    // It should query for the document based on the `id` field and branch.
+    toast({
+        title: "기능 구현 필요",
+        description: "새로운 데이터 모델에 맞게 재고 업데이트 기능을 업데이트해야 합니다.",
+    });
   };
   
   const manualUpdateStock = async (
@@ -171,49 +112,12 @@ export function useMaterials() {
     branchName: string,
     operator: string
   ) => {
-    const materialRef = doc(db, "materials", itemId);
-    const historyRef = doc(collection(db, "stockHistory"));
-
-    try {
-        await runTransaction(db, async (transaction) => {
-            const materialDoc = await transaction.get(materialRef);
-            if (!materialDoc.exists()) {
-                throw new Error(`자재를 찾을 수 없습니다: ${itemName}`);
-            }
-
-            const currentStock = materialDoc.data().stock;
-            
-            transaction.update(materialRef, { stock: newStock });
-
-            transaction.set(historyRef, {
-                date: serverTimestamp(),
-                type: "manual_update",
-                itemType: "material",
-                itemId: itemId,
-                itemName: itemName,
-                quantity: newStock - currentStock, // Log the difference
-                fromStock: currentStock,
-                toStock: newStock,
-                resultingStock: newStock,
-                branch: branchName,
-                operator: operator,
-            });
-        });
-
-        toast({
-            title: "업데이트 성공",
-            description: `${itemName}의 재고가 ${newStock}개로 업데이트되었습니다.`
-        });
-        await fetchMaterials();
-
-    } catch (e: any) {
-        console.error("Manual stock update transaction failed: ", e);
-        toast({
-            variant: "destructive",
-            title: "재고 업데이트 실패",
-            description: e.message,
-        });
-    }
+     // This function needs to be rewritten to handle the new data model
+    // It should query for the document based on the `id` field and branch.
+    toast({
+        title: "기능 구현 필요",
+        description: "새로운 데이터 모델에 맞게 수동 재고 업데이트 기능을 업데이트해야 합니다.",
+    });
   };
 
   return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials };
