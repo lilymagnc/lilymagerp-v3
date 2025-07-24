@@ -155,18 +155,16 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
                   </TableCell>
                   <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name}</TableCell>
                    <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
-                    <div className="flex flex-col items-center">
-                      <Barcode 
-                        value={material.id} 
-                        options={{ 
-                          format: 'CODE39',
-                          displayValue: false,
-                          height: 40,
-                          width: 1
-                        }} 
-                      />
-                      <p className="text-xs font-mono tracking-tighter mt-1">{material.id}</p>
-                    </div>
+                    <Barcode 
+                      value={material.id} 
+                      options={{ 
+                        format: 'CODE39',
+                        displayValue: true,
+                        fontSize: 14,
+                        height: 30,
+                        width: 1.5
+                      }} 
+                    />
                   </TableCell>
                   <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
                     <Badge variant={statusInfo.variant}>
