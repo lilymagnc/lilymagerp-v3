@@ -24,11 +24,11 @@ interface ImportDialogProps {
 export function ImportDialog({ isOpen, onOpenChange, resourceName }: ImportDialogProps) {
     const { toast } = useToast();
 
-    const handleUpload = () => {
+    const handleImport = () => {
         // In a real app, this would handle file parsing and submission.
         toast({
             title: "기능 구현 예정",
-            description: "파일 업로드 및 처리 기능은 현재 개발 중입니다.",
+            description: "구글 시트 연동 기능은 현재 개발 중입니다.",
         })
         onOpenChange(false);
     }
@@ -38,23 +38,23 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName }: ImportDialo
         <DialogHeader>
           <DialogTitle>{resourceName} 데이터 가져오기</DialogTitle>
           <DialogDescription>
-            엑셀(XLSX) 또는 CSV 파일을 업로드하여 {resourceName} 데이터를 한 번에 추가하세요.
+            연동할 구글 시트의 주소(URL)를 입력해주세요.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="import-file">파일 선택</Label>
-            <Input id="import-file" type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+          <div className="grid w-full items-center gap-1.5">
+            <Label htmlFor="sheet-url">구글 시트 URL</Label>
+            <Input id="sheet-url" type="url" placeholder="https://docs.google.com/spreadsheets/..." />
             <p className="text-xs text-muted-foreground">
-                필요한 컬럼: [컬럼1], [컬럼2], [컬럼3]...
+                시트의 첫 번째 행은 헤더(id, name, price 등)여야 합니다.
             </p>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={handleUpload}>
+          <Button onClick={handleImport}>
             <FileUp className="mr-2 h-4 w-4" />
-            업로드
+            가져오기
           </Button>
         </DialogFooter>
       </DialogContent>

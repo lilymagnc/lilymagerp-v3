@@ -17,7 +17,7 @@ export function ImportButton({ resourceName }: ImportButtonProps) {
         <>
             <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" />
-                가져오기
+                시트에서 가져오기
             </Button>
             <ImportDialog
                 isOpen={isDialogOpen}
