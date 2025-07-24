@@ -38,7 +38,7 @@ export function useMaterials() {
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
         const newInitialMaterials = initialMaterials.map((material, index) => ({
-            id: `M1000${index + 1}`,
+            id: `M${String(index + 1).padStart(5, '0')}`,
             ...material
         }));
 
@@ -54,11 +54,9 @@ export function useMaterials() {
       const materialsData = querySnapshot.docs.map(doc => {
           const data = doc.data();
           const id = doc.id;
-          // Fix for legacy numeric IDs.
-          const correctedId = /^\d+$/.test(id) ? `M${id}` : id;
           return { 
               ...data,
-              id: correctedId,
+              id: id,
               status: getStatus(data.stock)
           } as Material
       });
