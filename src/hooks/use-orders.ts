@@ -35,6 +35,7 @@ export interface OrderData {
     company: string;
     email: string;
   };
+  isAnonymous: boolean;
   orderType: "store" | "phone" | "naver" | "kakao" | "etc";
   receiptType: "pickup" | "delivery";
 

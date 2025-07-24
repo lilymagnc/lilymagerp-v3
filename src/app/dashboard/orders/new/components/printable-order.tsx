@@ -18,6 +18,7 @@ export interface OrderPrintData {
     recipientContact: string;
     deliveryAddress: string;
     message: string;
+    isAnonymous: boolean;
     branchInfo: {
         name: string;
         address: string;
@@ -60,9 +61,9 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1 font-bold w-[15%]">주문일</td>
                             <td className="border border-black p-1 w-[25%]">{data.orderDate}</td>
                             <td className="border border-black p-1 font-bold w-[10%]">주문자</td>
-                            <td className="border border-black p-1 w-[15%]">{data.ordererName}</td>
+                            <td className="border border-black p-1 w-[15%]">{data.isAnonymous && isReceipt ? '익명' : data.ordererName}</td>
                             <td className="border border-black p-1 font-bold w-[10%]">연락처</td>
-                            <td className="border border-black p-1 w-[25%]">{data.ordererContact}</td>
+                            <td className="border border-black p-1 w-[25%]">{data.isAnonymous && isReceipt ? '-' : data.ordererContact}</td>
                         </tr>
                         <tr>
                             <td className="border border-black p-1 font-bold align-top h-12">항목/수량</td>

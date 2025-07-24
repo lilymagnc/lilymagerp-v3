@@ -22,6 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useOrders, OrderData } from "@/hooks/use-orders";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 interface OrderItem {
@@ -60,6 +61,7 @@ export default function NewOrderPage() {
   const [ordererContact, setOrdererContact] = useState("");
   const [ordererCompany, setOrdererCompany] = useState("");
   const [ordererEmail, setOrdererEmail] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   
   const [orderType, setOrderType] = useState<OrderType>("phone");
   const [receiptType, setReceiptType] = useState<ReceiptType>("delivery");
@@ -175,6 +177,7 @@ export default function NewOrderPage() {
         summary: orderSummary,
 
         orderer: { name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
+        isAnonymous: isAnonymous,
         orderType,
         receiptType,
 
@@ -346,23 +349,34 @@ export default function NewOrderPage() {
                       <div>
                           <Label>주문자 정보</Label>
                           <Card className="mt-2">
-                              <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-2">
-                                      <Label htmlFor="orderer-company">회사명</Label>
-                                      <Input id="orderer-company" placeholder="회사명 입력" value={ordererCompany} onChange={e => setOrdererCompany(e.target.value)} />
-                                  </div>
-                                  <div className="space-y-2">
-                                      <Label htmlFor="orderer-name">주문자명</Label>
-                                      <Input id="orderer-name" placeholder="주문자명 입력" value={ordererName} onChange={e => setOrdererName(e.target.value)} />
-                                  </div>
-                                  <div className="space-y-2">
-                                      <Label htmlFor="orderer-contact">연락처</Label>
-                                      <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={(e) => handleContactChange(e, setOrdererContact)} />
-                                  </div>
-                                  <div className="space-y-2">
-                                      <Label htmlFor="orderer-email">이메일</Label>
-                                      <Input id="orderer-email" type="email" placeholder="email@example.com" value={ordererEmail} onChange={e => setOrdererEmail(e.target.value)} />
-                                  </div>
+                              <CardContent className="p-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="orderer-company">회사명</Label>
+                                        <Input id="orderer-company" placeholder="회사명 입력" value={ordererCompany} onChange={e => setOrdererCompany(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="orderer-name">주문자명</Label>
+                                        <Input id="orderer-name" placeholder="주문자명 입력" value={ordererName} onChange={e => setOrdererName(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="orderer-contact">연락처</Label>
+                                        <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={(e) => handleContactChange(e, setOrdererContact)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="orderer-email">이메일</Label>
+                                        <Input id="orderer-email" type="email" placeholder="email@example.com" value={ordererEmail} onChange={e => setOrdererEmail(e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2 mt-4">
+                                  <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={(checked) => setIsAnonymous(!!checked)} />
+                                  <label
+                                    htmlFor="anonymous"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                  >
+                                    익명으로 보내기 (인수증에 주문자 정보 미표시)
+                                  </label>
+                                </div>
                               </CardContent>
                           </Card>
                       </div>

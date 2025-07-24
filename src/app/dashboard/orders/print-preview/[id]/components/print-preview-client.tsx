@@ -45,6 +45,7 @@ export function PrintPreviewClient({ order }: { order: Order }) {
         recipientContact: order.deliveryInfo?.recipientContact ?? '',
         deliveryAddress: order.deliveryInfo?.address ?? '',
         message: order.message.content,
+        isAnonymous: order.isAnonymous || false,
         branchInfo: {
             name: targetBranch.name,
             address: targetBranch.address,
