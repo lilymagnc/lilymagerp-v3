@@ -17,12 +17,6 @@ interface LabelGridProps {
 export function LabelGrid({ items }: LabelGridProps) {
   return (
     <div>
-        <div className="flex justify-end mb-4 no-print">
-            <Button onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" />
-                인쇄하기
-            </Button>
-        </div>
         <div className="printable-area p-[1.5mm]">
              <div 
                 className="grid grid-cols-3 gap-x-[3.4mm] gap-y-0"
@@ -38,7 +32,7 @@ export function LabelGrid({ items }: LabelGridProps) {
                    item.name ? (
                      <LabelItem key={item.id} id={item.id} name={item.name} />
                    ) : (
-                     <div key={item.id} /> // Render an empty div for placeholder
+                     <div key={item.id} className="border border-dashed border-gray-300" />
                    )
                 ))}
             </div>
