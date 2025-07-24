@@ -30,14 +30,6 @@ interface PrintableOrderProps {
     data: OrderPrintData | null;
 }
 
-const branchesContactInfo = [
-    { name: "릴리맥여의도점", tel: "010-8241-9518 / Mob) 010-2285-9518" },
-    { name: "릴리맥여의도2호점", tel: "010-7939-9518 / Mob) 010-2285-9518" },
-    { name: "릴리맥NC이스트폴점", tel: "010-2908-5459 / Mob) 010-2285-9518" },
-    { name: "릴리맥광화문점", tel: "010-2385-9518 / Mob) 010-2285-9518" },
-];
-const onlineShopUrl = "www.lilymagshop.co.kr";
-
 
 // Use a class component to ensure compatibility with react-to-print's ref handling.
 export class PrintableOrder extends React.Component<PrintableOrderProps> {
@@ -73,7 +65,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1 w-[25%]">{data.ordererContact}</td>
                         </tr>
                         <tr>
-                            <td className="border border-black p-1 font-bold align-top h-20">항목/수량</td>
+                            <td className="border border-black p-1 font-bold align-top h-12">항목/수량</td>
                             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
                         </tr>
                          {!isReceipt && (
@@ -86,8 +78,8 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                                         <div className="flex items-center gap-2">
                                             <span>결제수단: {data.paymentMethod}</span>
                                             <div className="flex items-center gap-2 pr-2">
-                                                <span className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /> 미결</span>
-                                                <span className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /> 완결</span>
+                                                <div className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /><span>미결</span></div>
+                                                <div className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /><span>완결</span></div>
                                             </div>
                                         </div>
                                     </div>
@@ -103,7 +95,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1">{data.recipientContact}</td>
                         </tr>
                         <tr>
-                            <td className="border border-black p-1 font-bold align-top h-24">배송지주소</td>
+                            <td className="border border-black p-1 font-bold align-top h-16">배송지주소</td>
                             <td colSpan={5} className="border border-black p-1 align-top">{data.deliveryAddress}</td>
                         </tr>
                         <tr>
@@ -146,7 +138,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             </tr>
                             <tr>
                                  <td className="border border-black p-1 font-bold">[온라인쇼핑몰]</td>
-                                 <td className="border border-black p-1" colSpan={3}>{onlineShopUrl}</td>
+                                 <td className="border border-black p-1" colSpan={3}>www.lilymagshop.co.kr</td>
                             </tr>
                         </tbody>
                     </table>
