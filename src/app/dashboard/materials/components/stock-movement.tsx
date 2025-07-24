@@ -50,16 +50,26 @@ export function StockMovement() {
         return;
     }
     
-    const list = activeTab === 'stock-in' ? stockInList : stockOutList;
-    const setList = activeTab === 'stock-in' ? setStockInList : setStockOutList;
-    
-    const existingItem = list.find(item => item.id === barcode);
-
-    if (existingItem) {
-        setList(list.map(item => item.id === barcode ? { ...item, quantity: item.quantity + 1 } : item));
-    } else {
-        setList([...list, { id: material.id, name: material.name, quantity: 1, stock: material.stock }]);
+    if (activeTab === 'stock-in') {
+        setStockInList(prevList => {
+            const existingItem = prevList.find(item => item.id === barcode);
+            if (existingItem) {
+                return prevList.map(item => item.id === barcode ? { ...item, quantity: item.quantity + 1 } : item);
+            } else {
+                return [...prevList, { id: material.id, name: material.name, quantity: 1, stock: material.stock }];
+            }
+        });
+    } else { // stock-out
+        setStockOutList(prevList => {
+            const existingItem = prevList.find(item => item.id === barcode);
+            if (existingItem) {
+                return prevList.map(item => item.id === barcode ? { ...item, quantity: item.quantity + 1 } : item);
+            } else {
+                return [...prevList, { id: material.id, name: material.name, quantity: 1, stock: material.stock }];
+            }
+        });
     }
+
     setBarcode("");
     inputRef.current?.focus();
   }
@@ -72,7 +82,9 @@ export function StockMovement() {
   }
 
   const updateQuantity = (id: string, newQuantity: number) => {
+    const list = activeTab === 'stock-in' ? stockInList : stockOutList;
     const setList = activeTab === 'stock-in' ? setStockInList : setStockOutList;
+    
     if (newQuantity >= 1) {
         setList(prevList => prevList.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
     }
