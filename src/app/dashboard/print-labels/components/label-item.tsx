@@ -14,7 +14,7 @@ interface LabelItemProps {
 
 export function LabelItem({ item }: LabelItemProps) {
   return (
-    <div className="bg-white p-2 flex flex-col items-center justify-center text-center h-[135px]">
+    <div className="bg-white p-2 flex flex-col items-center justify-center text-center h-[33.8mm]">
        <div className="flex justify-center w-full">
          <Barcode 
           value={item.id} 
