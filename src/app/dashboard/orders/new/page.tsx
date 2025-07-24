@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { AddProductDialog } from "./components/add-product-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,8 +21,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useOrders, OrderData } from "@/hooks/use-orders";
+import { useOrders, OrderData, Order } from "@/hooks/use-orders";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 
 interface OrderItem {
@@ -48,7 +49,7 @@ declare global {
 
 export default function NewOrderPage() {
   const { branches } = useBranches();
-  const { addOrder, loading: isSubmitting } = useOrders();
+  const { orders, addOrder, loading: isSubmitting } = useOrders();
   const router = useRouter();
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -86,6 +87,18 @@ export default function NewOrderPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
+
+  const [showTodaysOrders, setShowTodaysOrders] = useState(false);
+
+  const todaysOrders = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return orders.filter(order => {
+        const orderDate = order.orderDate.toDate();
+        orderDate.setHours(0,0,0,0);
+        return orderDate.getTime() === today.getTime();
+    })
+  }, [orders])
 
   useEffect(() => {
     if (receiptType === 'pickup') {
@@ -257,6 +270,19 @@ export default function NewOrderPage() {
       }).open();
     }
   }
+  
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge variant="default">완료</Badge>;
+      case 'processing':
+        return <Badge variant="secondary">처리중</Badge>;
+      case 'canceled':
+        return <Badge variant="destructive">취소</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
     <div>
@@ -624,6 +650,54 @@ export default function NewOrderPage() {
                 </Card>
             </div>
           </div>
+          
+          <div className="mt-8">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>오늘 주문 현황</CardTitle>
+                        <CardDescription>오늘 접수된 주문 목록입니다.</CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={() => setShowTodaysOrders(prev => !prev)}>
+                        {showTodaysOrders ? <ChevronUp className="mr-2 h-4 w-4" /> : <ChevronDown className="mr-2 h-4 w-4" />}
+                        {showTodaysOrders ? "숨기기" : "오늘 주문 현황 보기"}
+                    </Button>
+                </CardHeader>
+                {showTodaysOrders && (
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>주문ID</TableHead>
+                                    <TableHead>주문자</TableHead>
+                                    <TableHead>받는분</TableHead>
+                                    <TableHead>상태</TableHead>
+                                    <TableHead className="text-right">총액</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {todaysOrders.length > 0 ? todaysOrders.map(order => (
+                                    <TableRow key={order.id}>
+                                        <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}...</TableCell>
+                                        <TableCell>{order.orderer.name}</TableCell>
+                                        <TableCell>{order.deliveryInfo?.recipientName || order.pickupInfo?.pickerName || '-'}</TableCell>
+                                        <TableCell>{getStatusBadge(order.status)}</TableCell>
+                                        <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                                            오늘 접수된 주문이 없습니다.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                )}
+            </Card>
+        </div>
+
         </fieldset>
       <AddProductDialog 
         isOpen={isAddProductDialogOpen}
