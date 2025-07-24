@@ -21,7 +21,11 @@ export function LabelGrid({ items }: LabelGridProps) {
         }}
     >
         {items.map((item, index) => (
-            <LabelItem key={`${item.id}-${index}`} id={item.id} name={item.name} />
+            item.name ? (
+                <LabelItem key={`${item.id}-${index}`} id={item.id} name={item.name} />
+            ) : (
+                <div key={`empty-${index}`} className="border border-dashed border-gray-300"></div>
+            )
         ))}
     </div>
   );

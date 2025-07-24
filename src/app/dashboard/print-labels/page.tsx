@@ -10,7 +10,7 @@ export default function PrintLabelsPage({
 }) {
   return (
     <div className="max-w-6xl mx-auto">
-      <Suspense fallback={<div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
         <PrintLabelsClient searchParams={searchParams} />
       </Suspense>
     </div>
