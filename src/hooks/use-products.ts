@@ -2,21 +2,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
 
 export type Product = ProductData;
 
-const initialProducts: Omit<Product, 'id' | 'status'>[] = [
-  { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, size: "M", color: "White", branch: "릴리맥광화문점" },
-  { id: "P00002", name: "맥 데님 팬츠", mainCategory: "완제품", midCategory: "꽃바구니", price: 78000, supplier: "데님월드", stock: 80, size: "28", color: "Blue", branch: "릴리맥여의도점" },
-  { id: "P00003", name: "오렌지 포인트 스커트", mainCategory: "완제품", midCategory: "꽃바구니", price: 62000, supplier: "꽃길 본사", stock: 0, size: "S", color: "Orange", branch: "릴리맥NC이스트폴점" },
-  { id: "P00004", name: "그린 스트라이프 티", mainCategory: "부자재", midCategory: "포장지", price: 32000, supplier: "티셔츠팩토리", stock: 250, size: "L", color: "Green/White", branch: "릴리맥광화문점" },
-  { id: "P00005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, size: "M", color: "Black", branch: "릴리맥여의도점" },
-  { id: "P00005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, size: "M", color: "Black", branch: "릴리맥광화문점" },
-  { id: "P00006", name: "레드로즈 꽃다발", mainCategory: "완제품", midCategory: "꽃다발", price: 55000, supplier: "꽃길 본사", stock: 30, size: "L", color: "Red", branch: "릴리맥NC이스트폴점" },
+const initialProducts: Product[] = [
+  { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, size: "M", color: "White", branch: "릴리맥광화문점", status: 'active' },
+  { id: "P00002", name: "맥 데님 팬츠", mainCategory: "완제품", midCategory: "꽃바구니", price: 78000, supplier: "데님월드", stock: 80, size: "28", color: "Blue", branch: "릴리맥여의도점", status: 'active' },
+  { id: "P00003", name: "오렌지 포인트 스커트", mainCategory: "완제품", midCategory: "꽃바구니", price: 62000, supplier: "꽃길 본사", stock: 0, size: "S", color: "Orange", branch: "릴리맥NC이스트폴점", status: 'out_of_stock' },
+  { id: "P00004", name: "그린 스트라이프 티", mainCategory: "부자재", midCategory: "포장지", price: 32000, supplier: "티셔츠팩토리", stock: 250, size: "L", color: "Green/White", branch: "릴리맥광화문점", status: 'active' },
+  { id: "P00005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, size: "M", color: "Black", branch: "릴리맥여의도점", status: 'low_stock' },
+  { id: "P00005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, size: "M", color: "Black", branch: "릴리맥광화문점", status: 'low_stock' },
+  { id: "P00006", name: "레드로즈 꽃다발", mainCategory: "완제품", midCategory: "꽃다발", price: 55000, supplier: "꽃길 본사", stock: 30, size: "L", color: "Red", branch: "릴리맥NC이스트폴점", status: 'active' },
 ];
 
 export function useProducts() {
@@ -39,8 +39,9 @@ export function useProducts() {
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
         initialProducts.forEach((productData) => {
+          const {status, ...dataToSave} = productData;
           const newDocRef = doc(productsCollection);
-          batch.set(newDocRef, productData);
+          batch.set(newDocRef, dataToSave);
         });
         await batch.commit();
         querySnapshot = await getDocs(query(productsCollection));
@@ -50,8 +51,6 @@ export function useProducts() {
           const data = doc.data();
           return { 
               ...data,
-              // The document ID is now the Firestore auto-ID, but we use the `id` field from our data
-              id: data.id,
               status: getStatus(data.stock)
           } as Product;
       }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
@@ -84,7 +83,9 @@ export function useProducts() {
     let lastIdNumber = 0;
     if (!querySnapshot.empty) {
         const lastId = querySnapshot.docs[0].data().id;
-        lastIdNumber = parseInt(lastId.replace('P', ''));
+        if(lastId && lastId.startsWith('P')) {
+            lastIdNumber = parseInt(lastId.replace('P', ''));
+        }
     }
 
     for (const item of importedData) {

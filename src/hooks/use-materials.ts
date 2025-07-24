@@ -9,14 +9,14 @@ import type { Material as MaterialData } from "@/app/dashboard/materials/compone
 
 export type Material = MaterialData;
 
-const initialMaterials: Omit<Material, 'status'>[] = [
-  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, size: "1단", color: "Pink", branch: "릴리맥광화문점" },
-  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 80, size: "1단", color: "Pink", branch: "릴리맥여의도점" },
-  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, size: "1단", color: "Red", branch: "릴리맥여의도점" },
-  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, size: "대", color: "Green", branch: "릴리맥광화문점" },
-  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, size: "특", color: "Purple", branch: "릴리맥NC이스트폴점" },
-  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
-  { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점" },
+const initialMaterials: Material[] = [
+  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, size: "1단", color: "Pink", branch: "릴리맥광화문점", status: 'active' },
+  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 80, size: "1단", color: "Pink", branch: "릴리맥여의도점", status: 'active' },
+  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, size: "1단", color: "Red", branch: "릴리맥여의도점", status: 'active' },
+  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, size: "대", color: "Green", branch: "릴리맥광화문점", status: 'out_of_stock' },
+  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, size: "특", color: "Purple", branch: "릴리맥NC이스트폴점", status: 'active' },
+  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점", status: 'low_stock' },
+  { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점", status: 'active' },
 ];
 
 export function useMaterials() {
@@ -39,8 +39,9 @@ export function useMaterials() {
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
         initialMaterials.forEach((materialData) => {
+            const {status, ...dataToSave} = materialData;
             const newDocRef = doc(materialsCollection);
-            batch.set(newDocRef, materialData);
+            batch.set(newDocRef, dataToSave);
         });
         await batch.commit();
         querySnapshot = await getDocs(query(materialsCollection));
@@ -50,7 +51,6 @@ export function useMaterials() {
           const data = doc.data();
           return { 
               ...data,
-              id: data.id, 
               status: getStatus(data.stock)
           } as Material;
       }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
@@ -82,7 +82,9 @@ export function useMaterials() {
     let lastIdNumber = 0;
     if (!querySnapshot.empty) {
         const lastId = querySnapshot.docs[0].data().id;
-        lastIdNumber = parseInt(lastId.replace('M', ''));
+        if(lastId && lastId.startsWith('M')) {
+            lastIdNumber = parseInt(lastId.replace('M', ''));
+        }
     }
 
     for (const item of importedData) {
@@ -121,6 +123,11 @@ export function useMaterials() {
                 
                 const materialDocRef = materialSnapshot.docs[0].ref;
                 const materialDoc = await transaction.get(materialDocRef);
+
+                if(!materialDoc.exists()) {
+                     throw new Error(`자재 문서를 찾을 수 없습니다: ${item.name} (${branchName})`);
+                }
+
                 const currentStock = materialDoc.data()?.stock || 0;
                 const change = type === 'in' ? item.quantity : -item.quantity;
                 const newStock = currentStock + change;
@@ -175,6 +182,11 @@ export function useMaterials() {
         
         const materialRef = materialSnapshot.docs[0].ref;
         const materialDoc = await transaction.get(materialRef);
+
+        if(!materialDoc.exists()) {
+            throw new Error(`자재 문서를 찾을 수 없습니다: ${itemName} (${branchName})`);
+        }
+        
         const currentStock = materialDoc.data()?.stock || 0;
 
         transaction.update(materialRef, { stock: newStock });
