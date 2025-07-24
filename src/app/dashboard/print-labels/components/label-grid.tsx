@@ -14,7 +14,7 @@ export function LabelGrid({ items }: LabelGridProps) {
         item ? (
           <LabelItem key={index} item={item} />
         ) : (
-          <div key={index} className="bg-transparent h-[33.8mm]"></div>
+          <div key={index} className="bg-transparent h-[33.8mm] border border-dashed border-gray-300"></div>
         )
       )}
     </div>
