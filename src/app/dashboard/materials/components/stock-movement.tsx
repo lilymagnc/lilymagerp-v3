@@ -14,16 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { processReceipt } from "@/ai/flows/receipt-processor";
-
-// Mock data, in a real app this would come from a database
-const mockMaterials = [
-  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink", branch: "릴리맥광화문점" },
-  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, status: "active", size: "1단", color: "Red", branch: "릴리맥여의도점" },
-  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, status: "out_of_stock", size: "대", color: "Green", branch: "릴리맥광화문점" },
-  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, status: "active", size: "특", color: "Purple", branch: "릴리맥NC이스트폴점" },
-  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, status: "low_stock", size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
-  { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, status: "active", size: "1단", color: "Green", branch: "릴리맥광화문점" },
-];
+import { useMaterials } from "@/hooks/use-materials";
+import { useAuth } from "@/hooks/use-auth";
 
 interface ScannedItem {
   id: string;
@@ -33,6 +25,8 @@ interface ScannedItem {
 
 export function StockMovement() {
   const { branches } = useBranches();
+  const { materials, loading: materialsLoading, updateStock } = useMaterials();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
@@ -62,7 +56,7 @@ export function StockMovement() {
     if (!barcode) return;
 
     const scannedId = barcode.trim();
-    const material = mockMaterials.find(m => m.id === scannedId);
+    const material = materials.find(m => m.id === scannedId);
 
     if (!material) {
       toast({
@@ -103,26 +97,32 @@ export function StockMovement() {
     setter(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     setIsProcessing(true);
     const list = activeTab === 'stock-in' ? stockInList : stockOutList;
+    const type = activeTab === 'stock-in' ? 'in' : 'out';
+
     if (list.length === 0) {
       toast({ variant: "destructive", title: "목록이 비어있음", description: "처리할 자재를 먼저 스캔해주세요." });
       setIsProcessing(false);
       return;
     }
+    if (!user) {
+        toast({ variant: "destructive", title: "인증 오류", description: "사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요."});
+        setIsProcessing(false);
+        return;
+    }
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log(`Processing ${activeTab} for branch ${selectedBranchName}:`, list);
-      toast({
-        title: "처리 완료",
-        description: `${selectedBranchName}의 ${activeTab === 'stock-in' ? '입고' : '출고'}가 성공적으로 처리되었습니다.`
-      });
-      if(activeTab === 'stock-in') setStockInList([]);
-      else setStockOutList([]);
-      setIsProcessing(false);
-    }, 1000);
+    await updateStock(list, type, selectedBranchName, user.email || "Unknown User");
+    
+    toast({
+      title: "처리 완료",
+      description: `${selectedBranchName}의 ${type === 'in' ? '입고' : '출고'}가 성공적으로 처리되었습니다.`
+    });
+    
+    if(type === 'in') setStockInList([]);
+    else setStockOutList([]);
+    setIsProcessing(false);
   };
   
   const handleAiProcess = async () => {
@@ -136,7 +136,7 @@ export function StockMovement() {
         const newItems: ScannedItem[] = [];
         
         result.items.forEach(processedItem => {
-            const material = mockMaterials.find(m => m.name === processedItem.itemName);
+            const material = materials.find(m => m.name === processedItem.itemName);
             if (material) {
                 newItems.push({
                     id: material.id,
@@ -246,7 +246,13 @@ export function StockMovement() {
           </CardContent>
         </Card>
 
-        <fieldset disabled={!selectedBranchId} className="space-y-6">
+        <fieldset disabled={!selectedBranchId || materialsLoading} className="space-y-6">
+           {materialsLoading && (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <p>자재 정보를 불러오는 중입니다...</p>
+                </div>
+            )}
           <Card>
             <CardHeader>
                 <CardTitle>AI 입고 도우미 (Beta)</CardTitle>
@@ -309,4 +315,3 @@ export function StockMovement() {
     </div>
   );
 }
-

@@ -17,7 +17,7 @@ interface OrderItemForm {
 export interface OrderData {
   branchId: string;
   branchName: string;
-  orderDate: Date;
+  orderDate: Date | Timestamp;
   status: 'processing' | 'completed' | 'canceled';
   
   items: OrderItemForm[];

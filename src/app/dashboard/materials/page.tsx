@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Download, Printer, Search, ArrowRightLeft } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
-import { MaterialTable, Material } from "./components/material-table";
+import { MaterialTable } from "./components/material-table";
 import { MaterialForm } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -16,15 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
 import Link from "next/link";
-
-const mockMaterials: Material[] = [
-  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink", branch: "릴리맥광화문점" },
-  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, status: "active", size: "1단", color: "Red", branch: "릴리맥여의도점" },
-  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, status: "out_of_stock", size: "대", color: "Green", branch: "릴리맥광화문점" },
-  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, status: "active", size: "특", color: "Purple", branch: "릴리맥NC이스트폴점" },
-  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, status: "low_stock", size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
-  { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, status: "active", size: "1단", color: "Green", branch: "릴리맥광화문점" },
-];
+import { useMaterials } from "@/hooks/use-materials";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export default function MaterialsPage() {
@@ -37,16 +30,17 @@ export default function MaterialsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
+  const { materials, loading: materialsLoading } = useMaterials();
 
   const filteredMaterials = useMemo(() => {
-    return mockMaterials
+    return materials
       .filter(material => 
         (selectedBranch === "all" || material.branch === selectedBranch)
       )
       .filter(material => 
         material.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-  }, [searchTerm, selectedBranch]);
+  }, [materials, searchTerm, selectedBranch]);
 
   const handleExport = () => {
     toast({
@@ -129,7 +123,26 @@ export default function MaterialsPage() {
             </div>
         </CardContent>
       </Card>
-      <MaterialTable materials={filteredMaterials} onSelectionChange={setSelectedMaterials} />
+      {materialsLoading ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-5 w-5 rounded-sm" />
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 flex-1" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <MaterialTable materials={filteredMaterials} onSelectionChange={setSelectedMaterials} />
+      )}
       <MaterialForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
       {isMultiPrintDialogOpen && (
         <MultiPrintOptionsDialog
@@ -143,4 +156,3 @@ export default function MaterialsPage() {
     </div>
   );
 }
-
