@@ -2,9 +2,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
+import { useAuth } from './use-auth';
 
 // Simplified version for the form
 interface OrderItemForm {
@@ -70,6 +71,7 @@ export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -98,28 +100,82 @@ export function useOrders() {
   }, [fetchOrders]);
 
   const addOrder = async (order: OrderData) => {
+    setLoading(true);
+    const orderTimestamp = serverTimestamp();
+    const orderToSave = { ...order, orderDate: orderTimestamp };
+
     try {
-      setLoading(true);
-      const ordersCollection = collection(db, 'orders');
+      // 1. Add the new order document
+      const orderRef = await addDoc(collection(db, 'orders'), orderToSave);
+
+      // 2. Update stock for each item in the order
+      const historyBatch = writeBatch(db);
+
+      for (const item of order.items) {
+        if (!item.id || item.quantity <= 0) continue;
+
+        await runTransaction(db, async (transaction) => {
+          const productQuery = query(
+            collection(db, "products"),
+            where("id", "==", item.id),
+            where("branch", "==", order.branchName)
+          );
+          const productSnapshot = await getDocs(productQuery);
+
+          if (productSnapshot.empty) {
+            throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${order.branchName}' 지점에서 찾을 수 없습니다.`);
+          }
+
+          const productDocRef = productSnapshot.docs[0].ref;
+          const productDoc = await transaction.get(productDocRef);
+
+          if (!productDoc.exists()) {
+            throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
+          }
+
+          const currentStock = productDoc.data().stock || 0;
+          const newStock = currentStock - item.quantity;
+
+          if (newStock < 0) {
+            throw new Error(`재고 부족: '${item.name}'의 재고가 부족하여 주문을 완료할 수 없습니다. (현재 재고: ${currentStock})`);
+          }
+
+          transaction.update(productDocRef, { stock: newStock });
+
+          const historyDocRef = doc(collection(db, "stockHistory"));
+          historyBatch.set(historyDocRef, {
+            date: orderTimestamp,
+            type: "out",
+            itemType: "product",
+            itemId: item.id,
+            itemName: item.name,
+            quantity: item.quantity,
+            fromStock: currentStock,
+            toStock: newStock,
+            resultingStock: newStock,
+            branch: order.branchName,
+            operator: `주문(${order.orderer.name})`,
+            price: item.price,
+            totalAmount: item.price * item.quantity,
+          });
+        });
+      }
+
+      await historyBatch.commit();
       
-      // Replace Date object with Firestore server timestamp
-      const orderToSave = {
-        ...order,
-        orderDate: serverTimestamp()
-      };
-      
-      await addDoc(ordersCollection, orderToSave);
       toast({
         title: '성공',
-        description: '새 주문이 성공적으로 추가되었습니다.',
+        description: '새 주문이 추가되고 재고가 업데이트되었습니다.',
       });
-      await fetchOrders(); // Refetch to update the list
+      await fetchOrders();
+      
     } catch (error) {
-      console.error("Error adding order: ", error);
+      console.error("Error adding order and updating stock: ", error);
       toast({
         variant: 'destructive',
-        title: '오류',
-        description: '주문 추가 중 오류가 발생했습니다.',
+        title: '주문 처리 오류',
+        description: error instanceof Error ? error.message : '주문 추가 중 오류가 발생했습니다.',
+        duration: 5000,
       });
     } finally {
       setLoading(false);

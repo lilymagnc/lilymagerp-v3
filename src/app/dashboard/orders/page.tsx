@@ -1,10 +1,10 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer } from "lucide-react";
+import { PlusCircle, Printer, Search } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,10 +13,17 @@ import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useBranches } from "@/hooks/use-branches";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
+  const { branches, loading: branchesLoading } = useBranches();
   const router = useRouter();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("all");
   
   const handlePrint = (orderId: string) => {
     router.push(`/dashboard/orders/print-preview/${orderId}`);
@@ -35,6 +42,18 @@ export default function OrdersPage() {
     }
   };
 
+  const filteredOrders = useMemo(() => {
+    return orders
+      .filter(order => 
+        (selectedBranch === "all" || order.branchName === selectedBranch)
+      )
+      .filter(order => 
+        order.orderer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  }, [orders, searchTerm, selectedBranch]);
+
+
   return (
     <>
       <PageHeader
@@ -51,9 +70,33 @@ export default function OrdersPage() {
       <Card>
         <CardHeader>
             <CardTitle>주문 내역</CardTitle>
-            <CardDescription>최근 주문 목록입니다.</CardDescription>
+            <CardDescription>최근 주문 목록을 검색하고 관리합니다.</CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
+              <div className="relative w-full sm:w-auto flex-1 sm:flex-initial">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                      type="search"
+                      placeholder="주문자명, 주문ID 검색..."
+                      className="w-full rounded-lg bg-background pl-8 sm:w-[200px] lg:w-[300px]"
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+              </div>
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="지점 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">모든 지점</SelectItem>
+                      {!branchesLoading && branches.map(branch => (
+                          <SelectItem key={branch.id} value={branch.name}>
+                              {branch.name}
+                          </SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+          </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -80,7 +123,7 @@ export default function OrdersPage() {
                   </TableRow>
               ))
             ) : (
-              orders.map((order) => (
+              filteredOrders.map((order) => (
                   <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
                   <TableCell>{order.orderer.name}</TableCell>
