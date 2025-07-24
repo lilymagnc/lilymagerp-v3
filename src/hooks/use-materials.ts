@@ -51,12 +51,13 @@ export function useMaterials() {
         querySnapshot = await getDocs(materialsCollection);
       } 
       
-      const materialsData = querySnapshot.docs.map(doc => {
+      const materialsData = querySnapshot.docs.map((doc, index) => {
           const data = doc.data();
-          const id = doc.id;
+          // This ensures all IDs are in the desired format, regardless of what's in Firestore.
+          const formattedId = `M${String(index + 1).padStart(5, '0')}`;
           return { 
               ...data,
-              id: id,
+              id: formattedId,
               status: getStatus(data.stock)
           } as Material
       });
@@ -85,8 +86,24 @@ export function useMaterials() {
     operator: string
   ) => {
     
+    // Since the UI now uses formatted IDs (M00001), we need to find the original document ID to update it.
+    // This is a workaround because we can't change existing document IDs in Firestore.
+    // In a real scenario, a migration script would fix the data in Firestore.
+    const querySnapshot = await getDocs(collection(db, 'materials'));
+    const idMap = new Map<string, string>();
+    querySnapshot.docs.forEach((doc, index) => {
+        const formattedId = `M${String(index + 1).padStart(5, '0')}`;
+        idMap.set(formattedId, doc.id);
+    });
+
     for (const item of items) {
-        const materialRef = doc(db, "materials", item.id);
+        const originalDocId = idMap.get(item.id);
+        if (!originalDocId) {
+            toast({ variant: "destructive", title: "오류", description: `데이터베이스에서 원본 자재 ID를 찾을 수 없습니다: ${item.name}` });
+            continue;
+        }
+
+        const materialRef = doc(db, "materials", originalDocId);
         const historyRef = doc(collection(db, "stockHistory"));
 
         try {
@@ -110,7 +127,7 @@ export function useMaterials() {
                     date: serverTimestamp(),
                     type: type,
                     itemType: "material",
-                    itemId: item.id,
+                    itemId: item.id, // Log the user-facing formatted ID
                     itemName: item.name,
                     quantity: item.quantity,
                     resultingStock: newStock,
