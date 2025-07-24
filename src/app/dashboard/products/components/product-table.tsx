@@ -133,6 +133,7 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
                 <TableHead className="hidden sm:table-cell">가격</TableHead>
+                <TableHead className="hidden md:table-cell">소속 지점</TableHead>
                 <TableHead className="text-right">재고</TableHead>
                 <TableHead>
                   <span className="sr-only">작업</span>
@@ -171,6 +172,7 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
                   </TableCell>
                   <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>{product.mainCategory} &gt; {product.midCategory}</TableCell>
                   <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>₩{product.price.toLocaleString()}</TableCell>
+                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>{product.branch}</TableCell>
                   <TableCell className="text-right cursor-pointer" onClick={() => handleRowClick(product)}>{product.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
@@ -209,7 +211,7 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
                 </TableRow>
               )}) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
+                  <TableCell colSpan={9} className="h-24 text-center">
                     조회된 상품이 없습니다.
                   </TableCell>
                 </TableRow>

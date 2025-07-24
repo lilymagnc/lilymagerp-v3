@@ -134,7 +134,7 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
                 <TableHead className="hidden sm:table-cell">가격</TableHead>
-                <TableHead className="hidden md:table-cell">공급업체</TableHead>
+                <TableHead className="hidden md:table-cell">소속 지점</TableHead>
                 <TableHead className="text-right">재고</TableHead>
                 <TableHead>
                   <span className="sr-only">작업</span>
@@ -173,7 +173,7 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
                   </TableCell>
                   <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>{material.mainCategory} &gt; {material.midCategory}</TableCell>
                   <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>₩{material.price.toLocaleString()}</TableCell>
-                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>{material.supplier}</TableCell>
+                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>{material.branch}</TableCell>
                   <TableCell className="text-right cursor-pointer" onClick={() => handleRowClick(material)}>{material.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
