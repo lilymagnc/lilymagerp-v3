@@ -53,9 +53,12 @@ export function useMaterials() {
       
       const materialsData = querySnapshot.docs.map(doc => {
           const data = doc.data();
+          const id = doc.id;
+          // Fix for legacy numeric IDs.
+          const correctedId = /^\d+$/.test(id) ? `M${id}` : id;
           return { 
-              id: doc.id, 
               ...data,
+              id: correctedId,
               status: getStatus(data.stock)
           } as Material
       });
