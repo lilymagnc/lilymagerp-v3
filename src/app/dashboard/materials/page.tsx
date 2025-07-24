@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search } from "lucide-react";
+import { PlusCircle, Download, Printer, Search, Barcode } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
 import { MaterialTable, Material } from "./components/material-table";
 import { MaterialForm } from "./components/material-form";
@@ -15,6 +15,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
+import Link from "next/link";
 
 const mockMaterials: Material[] = [
   { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink", branch: "릴리맥광화문점" },
@@ -102,13 +103,19 @@ export default function MaterialsPage() {
                         ))}
                     </SelectContent>
                 </Select>
-                <div className="ml-auto flex items-center gap-2 mt-2 sm:mt-0">
+                <div className="ml-auto flex items-center gap-2 mt-2 sm:mt-0 flex-wrap">
                     {selectedMaterials.length > 0 && (
                     <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
                       <Printer className="mr-2 h-4 w-4" />
                       라벨 인쇄 ({selectedMaterials.length})
                     </Button>
                   )}
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/dashboard/materials/stock">
+                        <Barcode className="mr-2 h-4 w-4" />
+                        재고 입출고
+                    </Link>
+                  </Button>
                   <ImportButton resourceName="자재" />
                   <Button variant="outline" size="sm" onClick={handleExport}>
                     <Download className="mr-2 h-4 w-4" />
