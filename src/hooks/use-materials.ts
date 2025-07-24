@@ -37,27 +37,20 @@ export function useMaterials() {
       
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
-        const newInitialMaterials = initialMaterials.map((material, index) => ({
-            id: `M${String(index + 1).padStart(5, '0')}`,
-            ...material
-        }));
-
-        newInitialMaterials.forEach(materialData => {
-          const docRef = doc(db, "materials", materialData.id);
-          const { id, ...dataToSet } = materialData;
-          batch.set(docRef, dataToSet);
+        initialMaterials.forEach((materialData, index) => {
+          const docId = `M${String(index + 1).padStart(5, '0')}`;
+          const docRef = doc(db, "materials", docId);
+          batch.set(docRef, materialData);
         });
         await batch.commit();
         querySnapshot = await getDocs(materialsCollection);
       } 
       
-      const materialsData = querySnapshot.docs.map((doc, index) => {
+      const materialsData = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          // This ensures all IDs are in the desired format, regardless of what's in Firestore.
-          const formattedId = `M${String(index + 1).padStart(5, '0')}`;
           return { 
+              id: doc.id,
               ...data,
-              id: formattedId,
               status: getStatus(data.stock)
           } as Material
       });
@@ -85,25 +78,8 @@ export function useMaterials() {
     branchName: string,
     operator: string
   ) => {
-    
-    // Since the UI now uses formatted IDs (M00001), we need to find the original document ID to update it.
-    // This is a workaround because we can't change existing document IDs in Firestore.
-    // In a real scenario, a migration script would fix the data in Firestore.
-    const querySnapshot = await getDocs(collection(db, 'materials'));
-    const idMap = new Map<string, string>();
-    querySnapshot.docs.forEach((doc, index) => {
-        const formattedId = `M${String(index + 1).padStart(5, '0')}`;
-        idMap.set(formattedId, doc.id);
-    });
-
     for (const item of items) {
-        const originalDocId = idMap.get(item.id);
-        if (!originalDocId) {
-            toast({ variant: "destructive", title: "오류", description: `데이터베이스에서 원본 자재 ID를 찾을 수 없습니다: ${item.name}` });
-            continue;
-        }
-
-        const materialRef = doc(db, "materials", originalDocId);
+        const materialRef = doc(db, "materials", item.id);
         const historyRef = doc(collection(db, "stockHistory"));
 
         try {
@@ -127,7 +103,7 @@ export function useMaterials() {
                     date: serverTimestamp(),
                     type: type,
                     itemType: "material",
-                    itemId: item.id, // Log the user-facing formatted ID
+                    itemId: item.id,
                     itemName: item.name,
                     quantity: item.quantity,
                     resultingStock: newStock,
@@ -149,6 +125,58 @@ export function useMaterials() {
     
     await fetchMaterials(); 
   };
+  
+  const manualUpdateStock = async (
+    itemId: string,
+    itemName: string,
+    newStock: number,
+    branchName: string,
+    operator: string
+  ) => {
+    const materialRef = doc(db, "materials", itemId);
+    const historyRef = doc(collection(db, "stockHistory"));
 
-  return { materials, loading, updateStock, fetchMaterials };
+    try {
+        await runTransaction(db, async (transaction) => {
+            const materialDoc = await transaction.get(materialRef);
+            if (!materialDoc.exists()) {
+                throw new Error(`자재를 찾을 수 없습니다: ${itemName}`);
+            }
+
+            const currentStock = materialDoc.data().stock;
+            
+            transaction.update(materialRef, { stock: newStock });
+
+            transaction.set(historyRef, {
+                date: serverTimestamp(),
+                type: "manual_update",
+                itemType: "material",
+                itemId: itemId,
+                itemName: itemName,
+                quantity: newStock - currentStock, // Log the difference
+                fromStock: currentStock,
+                toStock: newStock,
+                resultingStock: newStock,
+                branch: branchName,
+                operator: operator,
+            });
+        });
+
+        toast({
+            title: "업데이트 성공",
+            description: `${itemName}의 재고가 ${newStock}개로 업데이트되었습니다.`
+        });
+        await fetchMaterials();
+
+    } catch (e: any) {
+        console.error("Manual stock update transaction failed: ", e);
+        toast({
+            variant: "destructive",
+            title: "재고 업데이트 실패",
+            description: e.message,
+        });
+    }
+  };
+
+  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock };
 }

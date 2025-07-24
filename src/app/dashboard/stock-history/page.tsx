@@ -67,7 +67,7 @@ export default function StockHistoryPage() {
                 (!toDate || itemDate <= toDate);
             
             const branchMatch = filters.branch === 'all' || item.branch === filters.branch;
-            const typeMatch = filters.type === 'all' || item.type === filters.type;
+            const typeMatch = filters.type === 'all' || item.type === filters.type || (filters.type === "manual_update" && item.type === "manual_update");
             const itemTypeMatch = filters.itemType === 'all' || item.itemType === filters.itemType;
             const searchMatch = item.itemName.toLowerCase().includes(filters.search.toLowerCase());
 

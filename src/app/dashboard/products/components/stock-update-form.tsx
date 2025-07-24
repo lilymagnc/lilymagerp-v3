@@ -23,6 +23,11 @@ import {
   DialogClose,
   DialogDescription
 } from "@/components/ui/dialog"
+import { useMaterials } from "@/hooks/use-materials"
+import { useAuth } from "@/hooks/use-auth"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
+import { useState } from "react"
 
 const stockUpdateSchema = z.object({
   stock: z.coerce.number().int().min(0, "재고는 0 이상이어야 합니다."),
@@ -33,10 +38,15 @@ type StockUpdateFormValues = z.infer<typeof stockUpdateSchema>
 interface StockUpdateFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  product: { id: string; name: string; stock: number } | null
+  product: { id: string; name: string; stock: number; branch: string; } | null
 }
 
 export function StockUpdateForm({ isOpen, onOpenChange, product }: StockUpdateFormProps) {
+  const { manualUpdateStock } = useMaterials();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const form = useForm<StockUpdateFormValues>({
     resolver: zodResolver(stockUpdateSchema),
     defaultValues: {
@@ -44,9 +54,19 @@ export function StockUpdateForm({ isOpen, onOpenChange, product }: StockUpdateFo
     },
   })
 
-  const onSubmit = (data: StockUpdateFormValues) => {
-    console.log(`Updating stock for ${product?.name} to ${data.stock}`)
-    onOpenChange(false)
+  const onSubmit = async (data: StockUpdateFormValues) => {
+    if (!product || !user) {
+        toast({
+            variant: "destructive",
+            title: "오류",
+            description: "상품 또는 사용자 정보가 없어 업데이트할 수 없습니다.",
+        });
+        return;
+    }
+    setIsSubmitting(true);
+    await manualUpdateStock(product.id, product.name, data.stock, product.branch, user.email || "Unknown User");
+    setIsSubmitting(false);
+    onOpenChange(false);
   }
 
   return (
@@ -63,7 +83,7 @@ export function StockUpdateForm({ isOpen, onOpenChange, product }: StockUpdateFo
               name="stock"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>현재 재고</FormLabel>
+                  <FormLabel>변경할 재고</FormLabel>
                   <FormControl>
                     <Input type="number" {...field} />
                   </FormControl>
@@ -73,9 +93,12 @@ export function StockUpdateForm({ isOpen, onOpenChange, product }: StockUpdateFo
             />
             <DialogFooter>
                 <DialogClose asChild>
-                    <Button type="button" variant="secondary">취소</Button>
+                    <Button type="button" variant="secondary" disabled={isSubmitting}>취소</Button>
                 </DialogClose>
-                <Button type="submit">업데이트</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    업데이트
+                </Button>
             </DialogFooter>
           </form>
         </Form>

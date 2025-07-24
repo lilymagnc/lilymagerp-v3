@@ -97,6 +97,7 @@ export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFi
                     <SelectItem value="all">모든 유형</SelectItem>
                     <SelectItem value="in">입고</SelectItem>
                     <SelectItem value="out">출고</SelectItem>
+                    <SelectItem value="manual_update">수동 수정</SelectItem>
                 </SelectContent>
             </Select>
             
@@ -128,4 +129,3 @@ export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFi
     </Card>
   );
 }
-
