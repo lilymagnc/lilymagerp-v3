@@ -38,8 +38,8 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
 
     const handleDownloadTemplate = () => {
         const sampleData = [
-            { '자재명': '마르시아 장미', '수량': 10 },
-            { '자재명': '레드 카네이션', '수량': 20 },
+            { '자재명': '마르시아 장미', '수량': 10, '공급업체': '경부선꽃시장', '가격': 5000 },
+            { '자재명': '레드 카네이션', '수량': 20, '공급업체': '플라워팜', '가격': 4500 },
         ];
         downloadXLSX(sampleData, 'stock_in_template');
     }

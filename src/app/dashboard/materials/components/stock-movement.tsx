@@ -27,7 +27,7 @@ interface ScannedItem {
 
 export function StockMovement() {
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, updateStock } = useMaterials();
+  const { materials, loading: materialsLoading, updateStock, updateMaterial } = useMaterials();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -215,23 +215,41 @@ export function StockMovement() {
   const handleExcelImport = async (data: any[]) => {
      try {
         const newItems: ScannedItem[] = [];
-        data.forEach(row => {
+        let updatedCount = 0;
+
+        for (const row of data) {
             const name = row['자재명'] || row['name'];
             const quantity = row['수량'] || row['quantity'];
+            const supplier = row['공급업체'] || row['supplier'];
+            const price = row['가격'] || row['price'];
 
             if(name && quantity > 0) {
                 const material = materials.find(m => m.name === name && m.branch === selectedBranchName);
                 if (material) {
+                    // Add to stock-in list
                     newItems.push({
                         id: material.id,
                         name: material.name,
                         quantity: Number(quantity),
                     });
+
+                    // Check if supplier or price needs update
+                    const needsUpdate = (supplier && material.supplier !== supplier) || (price && material.price !== Number(price));
+                    if (needsUpdate) {
+                       const updatedData = {
+                           ...material,
+                           supplier: supplier || material.supplier,
+                           price: price ? Number(price) : material.price,
+                       };
+                       await updateMaterial(material.docId, material.id, updatedData);
+                       updatedCount++;
+                    }
+
                 } else {
                      toast({ variant: "destructive", title: "자재 없음", description: `'${name}' 자재를 '${selectedBranchName}'에서 찾을 수 없습니다.` });
                 }
             }
-        });
+        }
 
         setStockInList(prevList => {
             const updatedList = [...prevList];
@@ -247,9 +265,13 @@ export function StockMovement() {
         });
 
         if (newItems.length > 0) {
+            let description = `${newItems.length}개의 항목이 입고 목록에 추가되었습니다.`;
+            if (updatedCount > 0) {
+                description += ` ${updatedCount}개 항목의 공급처/가격 정보가 업데이트되었습니다.`
+            }
             toast({
                 title: "엑셀 가져오기 완료",
-                description: `${newItems.length}개의 항목이 입고 목록에 추가되었습니다.`,
+                description,
             });
         }
      } catch (e) {
