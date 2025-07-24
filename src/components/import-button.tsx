@@ -32,7 +32,10 @@ export function ImportButton({ resourceName, onImport, children, asDropdownMenuI
             <>
                  <DropdownMenuItem
                     className={cn("w-full cursor-pointer", className)}
-                    onSelect={() => setIsDialogOpen(true)}
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setIsDialogOpen(true);
+                    }}
                 >
                     {triggerContent}
                 </DropdownMenuItem>

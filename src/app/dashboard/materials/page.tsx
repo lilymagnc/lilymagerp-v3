@@ -201,11 +201,11 @@ export default function MaterialsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={handleExportTemplate}>
+                        <DropdownMenuItem onSelect={handleExportTemplate}>
                           <Download className="mr-2 h-4 w-4" />
                           1. 데이터 템플릿 다운로드
                         </DropdownMenuItem>
-                        <ImportButton resourceName="자재" onImport={bulkAddMaterials}>
+                        <ImportButton resourceName="자재" onImport={bulkAddMaterials} asDropdownMenuItem>
                            <Upload className="mr-2 h-4 w-4" />
                            2. 템플릿 파일로 자재 등록
                         </ImportButton>

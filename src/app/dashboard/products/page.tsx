@@ -5,7 +5,6 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Download, Printer, Search, FileSpreadsheet, Upload } from "lucide-react";
-import { ImportButton } from "@/components/import-button";
 import { ProductTable, Product } from "./components/product-table";
 import { ProductForm, ProductFormValues } from "./components/product-form";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +18,7 @@ import { downloadXLSX } from "@/lib/utils";
 import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ImportButton } from "@/components/import-button";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -156,7 +156,7 @@ export default function ProductsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={handleExport}>
+                        <DropdownMenuItem onSelect={handleExport}>
                           <Download className="mr-2 h-4 w-4" />
                           1. 데이터 템플릿 다운로드
                         </DropdownMenuItem>
