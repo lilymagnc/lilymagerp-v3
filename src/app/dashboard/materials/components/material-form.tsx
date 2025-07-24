@@ -25,8 +25,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const productSchema = z.object({
-  name: z.string().min(1, "상품명을 입력해주세요."),
+const materialSchema = z.object({
+  name: z.string().min(1, "자재명을 입력해주세요."),
   mainCategory: z.string().min(1, "대분류를 선택해주세요."),
   midCategory: z.string().min(1, "중분류를 선택해주세요."),
   price: z.coerce.number().min(0, "가격은 0 이상이어야 합니다."),
@@ -35,18 +35,18 @@ const productSchema = z.object({
   color: z.string().min(1, "색상을 입력해주세요."),
 })
 
-type ProductFormValues = z.infer<typeof productSchema>
+type MaterialFormValues = z.infer<typeof materialSchema>
 
-interface ProductFormProps {
+interface MaterialFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  product?: ProductFormValues & { id: string } | null
+  material?: MaterialFormValues & { id: string } | null
 }
 
-export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps) {
-  const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
-    defaultValues: product || {
+export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormProps) {
+  const form = useForm<MaterialFormValues>({
+    resolver: zodResolver(materialSchema),
+    defaultValues: material || {
       name: "",
       mainCategory: "",
       midCategory: "",
@@ -57,7 +57,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
     },
   })
 
-  const onSubmit = (data: ProductFormValues) => {
+  const onSubmit = (data: MaterialFormValues) => {
     console.log(data)
     onOpenChange(false)
   }
@@ -66,8 +66,8 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>{product ? "상품 정보 수정" : "새 상품 추가"}</DialogTitle>
-          <DialogDescription>상품의 상세 정보를 입력해주세요.</DialogDescription>
+          <DialogTitle>{material ? "자재 정보 수정" : "새 자재 추가"}</DialogTitle>
+          <DialogDescription>자재의 상세 정보를 입력해주세요.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -76,9 +76,9 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>상품명</FormLabel>
+                  <FormLabel>자재명</FormLabel>
                   <FormControl>
-                    <Input placeholder="릴리 화이트 셔츠" {...field} />
+                    <Input placeholder="마르시아 장미" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -96,8 +96,10 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                         <SelectTrigger><SelectValue placeholder="대분류 선택" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="완제품">완제품</SelectItem>
-                          <SelectItem value="부자재">부자재</SelectItem>
+                          <SelectItem value="생화">생화</SelectItem>
+                          <SelectItem value="조화">조화</SelectItem>
+                          <SelectItem value="화분">화분</SelectItem>
+                          <SelectItem value="기타자재">기타자재</SelectItem>
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -115,10 +117,10 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                         <SelectTrigger><SelectValue placeholder="중분류 선택" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="꽃다발">꽃다발</SelectItem>
-                          <SelectItem value="꽃바구니">꽃바구니</SelectItem>
-                          <SelectItem value="포장지">포장지</SelectItem>
-                          <SelectItem value="리본">리본</SelectItem>
+                          <SelectItem value="장미">장미</SelectItem>
+                          <SelectItem value="카네이션">카네이션</SelectItem>
+                          <SelectItem value="관엽식물">관엽식물</SelectItem>
+                          <SelectItem value="난">난</SelectItem>
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -133,7 +135,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                 <FormItem>
                   <FormLabel>가격</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="45000" {...field} />
+                    <Input type="number" placeholder="5000" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -147,7 +149,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                     <FormItem>
                         <FormLabel>규격</FormLabel>
                         <FormControl>
-                        <Input placeholder="S, M, L / 95, 100" {...field} />
+                        <Input placeholder="1단" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -160,7 +162,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                     <FormItem>
                         <FormLabel>색상</FormLabel>
                         <FormControl>
-                        <Input placeholder="White, Black" {...field} />
+                        <Input placeholder="Pink" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -178,10 +180,9 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                       <SelectTrigger><SelectValue placeholder="공급업체 선택" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="꽃길 본사">꽃길 본사</SelectItem>
-                      <SelectItem value="데님월드">데님월드</SelectItem>
-                      <SelectItem value="티셔츠팩토리">티셔츠팩토리</SelectItem>
-                      <SelectItem value="슬랙스하우스">슬랙스하우스</SelectItem>
+                      <SelectItem value="경부선꽃시장">경부선꽃시장</SelectItem>
+                      <SelectItem value="플라워팜">플라워팜</SelectItem>
+                      <SelectItem value="자재월드">자재월드</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

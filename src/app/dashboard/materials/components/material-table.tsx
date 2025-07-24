@@ -8,43 +8,43 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MoreHorizontal } from "lucide-react";
-import { ProductForm } from "./product-form";
-import { StockUpdateForm } from "./stock-update-form";
+import { MaterialForm } from "./material-form";
+import { StockUpdateForm } from "@/app/dashboard/products/components/stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-const mockProducts = [
-  { id: "PROD-001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
-  { id: "PROD-002", name: "맥 데님 팬츠", mainCategory: "완제품", midCategory: "꽃바구니", price: 78000, supplier: "데님월드", stock: 80, status: "active", size: "28", color: "Blue" },
-  { id: "PROD-003", name: "오렌지 포인트 스커트", mainCategory: "완제품", midCategory: "꽃바구니", price: 62000, supplier: "꽃길 본사", stock: 0, status: "out_of_stock", size: "S", color: "Orange" },
-  { id: "PROD-004", name: "그린 스트라이프 티", mainCategory: "부자재", midCategory: "포장지", price: 32000, supplier: "티셔츠팩토리", stock: 250, status: "active", size: "L", color: "Green/White" },
-  { id: "PROD-005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, status: "low_stock", size: "M", color: "Black" },
+const mockMaterials = [
+  { id: "MAT-001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
+  { id: "MAT-002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, status: "active", size: "1단", color: "Red" },
+  { id: "MAT-003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, status: "out_of_stock", size: "대", color: "Green" },
+  { id: "MAT-004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, status: "active", size: "특", color: "Purple" },
+  { id: "MAT-005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, status: "low_stock", size: "1롤", color: "Brown" },
 ];
 
-export function ProductTable() {
+export function MaterialTable() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
 
-  const handleEdit = (product: any) => {
-    setSelectedProduct(product);
+  const handleEdit = (material: any) => {
+    setSelectedMaterial(material);
     setIsFormOpen(true);
   };
   
-  const handleStockUpdate = (product: any) => {
-    setSelectedProduct(product);
+  const handleStockUpdate = (material: any) => {
+    setSelectedMaterial(material);
     setIsStockFormOpen(true);
   };
 
   const handleCloseForms = () => {
     setIsFormOpen(false);
     setIsStockFormOpen(false);
-    setSelectedProduct(null);
+    setSelectedMaterial(null);
   };
 
   const getStatus = (status: string, stock: number) => {
     if (status === 'out_of_stock' || stock === 0) return { text: '품절', variant: 'destructive' as const };
     if (status === 'low_stock' || stock < 20) return { text: '재고 부족', variant: 'secondary' as const };
-    return { text: '판매중', variant: 'default' as const };
+    return { text: '입고중', variant: 'default' as const };
   }
 
   return (
@@ -54,7 +54,7 @@ export function ProductTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[250px]">상품명</TableHead>
+                <TableHead className="w-[250px]">자재명</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
                 <TableHead className="hidden sm:table-cell">가격</TableHead>
@@ -66,20 +66,20 @@ export function ProductTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockProducts.map((product) => {
-                const statusInfo = getStatus(product.status, product.stock);
+              {mockMaterials.map((material) => {
+                const statusInfo = getStatus(material.status, material.stock);
                 return (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
+                <TableRow key={material.id}>
+                  <TableCell className="font-medium">{material.name}</TableCell>
                   <TableCell>
                     <Badge variant={statusInfo.variant}>
                       {statusInfo.text}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{product.mainCategory} &gt; {product.midCategory}</TableCell>
-                  <TableCell className="hidden sm:table-cell">₩{product.price.toLocaleString()}</TableCell>
-                  <TableCell className="hidden md:table-cell">{product.supplier}</TableCell>
-                  <TableCell className="text-right">{product.stock}</TableCell>
+                  <TableCell className="hidden md:table-cell">{material.mainCategory} &gt; {material.midCategory}</TableCell>
+                  <TableCell className="hidden sm:table-cell">₩{material.price.toLocaleString()}</TableCell>
+                  <TableCell className="hidden md:table-cell">{material.supplier}</TableCell>
+                  <TableCell className="text-right">{material.stock}</TableCell>
                   <TableCell>
                     <AlertDialog>
                       <DropdownMenu>
@@ -91,8 +91,8 @@ export function ProductTable() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>작업</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => handleEdit(product)}>수정</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleStockUpdate(product)}>재고 업데이트</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleEdit(material)}>수정</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleStockUpdate(material)}>재고 업데이트</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>
@@ -103,7 +103,7 @@ export function ProductTable() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>정말로 삭제하시겠습니까?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            이 작업은 되돌릴 수 없습니다. '{product.name}' 상품 데이터가 서버에서 영구적으로 삭제됩니다.
+                            이 작업은 되돌릴 수 없습니다. '{material.name}' 자재 데이터가 서버에서 영구적으로 삭제됩니다.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -119,8 +119,8 @@ export function ProductTable() {
           </Table>
         </CardContent>
       </Card>
-      {isFormOpen && <ProductForm isOpen={isFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
-      {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
+      {isFormOpen && <MaterialForm isOpen={isFormOpen} onOpenChange={handleCloseForms} material={selectedMaterial} />}
+      {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedMaterial} />}
     </>
   );
 }
