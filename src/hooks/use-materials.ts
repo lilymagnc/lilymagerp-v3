@@ -207,7 +207,8 @@ export function useMaterials() {
                      throw new Error(`자재 문서를 찾을 수 없습니다: ${item.name} (${branchName})`);
                 }
 
-                const currentStock = materialDoc.data()?.stock || 0;
+                const materialData = materialDoc.data();
+                const currentStock = materialData?.stock || 0;
                 const change = type === 'in' ? item.quantity : -item.quantity;
                 const newStock = currentStock + change;
 
@@ -226,6 +227,9 @@ export function useMaterials() {
                     resultingStock: newStock,
                     branch: branchName,
                     operator: operator,
+                    supplier: materialData?.supplier,
+                    price: materialData?.price,
+                    totalAmount: type === 'in' ? (materialData?.price || 0) * item.quantity : 0,
                 });
             });
         } catch (error) {
@@ -304,5 +308,3 @@ export function useMaterials() {
 
   return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials, addMaterial, updateMaterial, deleteMaterial };
 }
-
-    

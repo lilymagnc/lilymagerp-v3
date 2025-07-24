@@ -19,6 +19,9 @@ export type StockHistory = {
   resultingStock: number;
   branch: string;
   operator: string;
+  supplier?: string;
+  price?: number;
+  totalAmount?: number;
 };
 
 interface HistoryTableProps {
@@ -61,10 +64,12 @@ export function HistoryTable({ history }: HistoryTableProps) {
               <TableHead>날짜</TableHead>
               <TableHead>지점</TableHead>
               <TableHead>상품/자재명</TableHead>
-              <TableHead>품목</TableHead>
+              <TableHead>공급업체</TableHead>
               <TableHead>유형</TableHead>
-              <TableHead>변경 수량</TableHead>
-              <TableHead>처리 후 재고</TableHead>
+              <TableHead className="text-right">수량</TableHead>
+              <TableHead className="text-right">단가</TableHead>
+              <TableHead className="text-right">총액</TableHead>
+              <TableHead className="text-right">재고</TableHead>
               <TableHead>처리자</TableHead>
             </TableRow>
           </TableHeader>
@@ -75,22 +80,26 @@ export function HistoryTable({ history }: HistoryTableProps) {
                   <TableCell>{format(new Date(item.date), "yyyy-MM-dd HH:mm")}</TableCell>
                   <TableCell>{item.branch}</TableCell>
                   <TableCell className="font-medium">{item.itemName}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{item.itemType === 'product' ? '상품' : '자재'}</Badge>
-                  </TableCell>
+                  <TableCell>{item.supplier || "-"}</TableCell>
                   <TableCell>
                     {getTypeBadge(item.type)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">
                     {renderQuantity(item)}
                   </TableCell>
-                  <TableCell>{item.resultingStock}</TableCell>
+                  <TableCell className="text-right">
+                    {item.price ? `₩${item.price.toLocaleString()}` : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {item.totalAmount ? `₩${item.totalAmount.toLocaleString()}`: "-"}
+                  </TableCell>
+                  <TableCell className="text-right">{item.resultingStock}</TableCell>
                   <TableCell>{item.operator}</TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   조회된 기록이 없습니다.
                 </TableCell>
               </TableRow>

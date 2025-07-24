@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { downloadXLSX } from "@/lib/utils";
 
 export default function StockHistoryPage() {
     const { branches } = useBranches();
@@ -76,9 +77,32 @@ export default function StockHistoryPage() {
     }, [filters, history]);
 
     const handleExport = () => {
+        if (filteredHistory.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "내보낼 데이터 없음",
+                description: "목록에 데이터가 없습니다.",
+            });
+            return;
+        }
+
+        const dataToExport = filteredHistory.map(item => ({
+            '날짜': format(new Date(item.date), 'yyyy-MM-dd HH:mm'),
+            '지점': item.branch,
+            '품목명': item.itemName,
+            '공급업체': item.supplier || '',
+            '유형': item.type,
+            '수량': item.type === 'in' ? `+${item.quantity}` : item.type === 'out' ? `-${item.quantity}` : `${item.fromStock} -> ${item.toStock}`,
+            '단가': item.price || 0,
+            '총액': item.totalAmount || 0,
+            '처리 후 재고': item.resultingStock,
+            '처리자': item.operator,
+        }));
+
+        downloadXLSX(dataToExport, "stock_history");
         toast({
-            title: "기능 구현 예정",
-            description: "구글 시트로 내보내기 기능은 현재 개발 중입니다.",
+            title: "내보내기 성공",
+            description: `${dataToExport.length}개의 재고 기록이 XLSX 파일로 다운로드되었습니다.`,
         });
     }
 
