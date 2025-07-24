@@ -1,17 +1,11 @@
 
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
+import { LabelItem as LabelItemType } from "@/lib/data-fetch";
 import { LabelItem } from "./label-item";
 
-interface Item {
-    id: string;
-    name: string;
-}
-
 interface LabelGridProps {
-    items: Item[];
+    items: LabelItemType[];
 }
 
 export function LabelGrid({ items }: LabelGridProps) {
@@ -28,11 +22,11 @@ export function LabelGrid({ items }: LabelGridProps) {
                     gridTemplateRows: 'repeat(8, 33.9mm)',
                 }}
             >
-                {items.map(item => (
+                {items.map((item, index) => (
                    item.name ? (
-                     <LabelItem key={item.id} id={item.id} name={item.name} />
+                     <LabelItem key={`${item.id}-${index}`} id={item.id} name={item.name} />
                    ) : (
-                     <div key={item.id} className="border border-dashed border-gray-300" />
+                     <div key={`empty-${index}`} className="border border-dashed border-gray-300" />
                    )
                 ))}
             </div>

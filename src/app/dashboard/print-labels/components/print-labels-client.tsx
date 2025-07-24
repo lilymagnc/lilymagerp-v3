@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from "@/components/page-header";
 import { LabelGrid } from "./label-grid";
 import { fetchItemsByIds, LabelItem } from '@/lib/data-fetch';
@@ -25,13 +25,13 @@ export function PrintLabelsClient({ searchParams }: { searchParams: { [key: stri
             const fetchedItems = await fetchItemsByIds(type, ids);
 
             let itemsToPrint: LabelItem[] = [];
-            if (fetchedItems.length === 1) {
+            if (fetchedItems.length === 1 && copies > 1) {
                 const item = fetchedItems[0];
                 for (let i = 0; i < copies; i++) {
                     itemsToPrint.push(item);
                 }
             } else {
-                itemsToPrint = fetchedItems.slice(0, copies > 1 ? copies : fetchedItems.length);
+                 itemsToPrint = fetchedItems;
             }
 
             const emptyLabels = Array.from({ length: Math.max(0, startPosition - 1) }, (_, i) => ({ id: `empty-${i}`, name: '' }));
@@ -40,7 +40,12 @@ export function PrintLabelsClient({ searchParams }: { searchParams: { [key: stri
             setLoading(false);
         }
 
-        loadItems();
+        if (searchParams.ids) {
+            loadItems();
+        } else {
+            setLoading(false);
+            setItems([]);
+        }
 
     }, [searchParams]);
 

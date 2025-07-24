@@ -1,11 +1,6 @@
 
 import { Suspense } from 'react';
-import { PageHeader } from "@/components/page-header";
-import { LabelGrid } from "./components/label-grid";
-import { fetchItemsByIds, LabelItem } from '@/lib/data-fetch';
-import { Loader2, ArrowLeft, Printer } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import { PrintLabelsClient } from './components/print-labels-client';
 
 export default function PrintLabelsPage({
