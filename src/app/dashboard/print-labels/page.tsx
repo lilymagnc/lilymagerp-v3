@@ -1,6 +1,6 @@
 
 import { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Printer } from 'lucide-react';
 import { PrintLabelsClient } from './components/print-labels-client';
 
 export default function PrintLabelsPage({
