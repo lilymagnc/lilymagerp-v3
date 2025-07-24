@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useBranches, Branch } from "@/hooks/use-branches";
+import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2 } from "lucide-react";
+import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { processReceipt } from "@/ai/flows/receipt-processor";
 
 // Mock data, in a real app this would come from a database
 const mockMaterials = [
@@ -37,6 +39,8 @@ export function StockMovement() {
   const [activeTab, setActiveTab] = useState("stock-in");
   const [barcode, setBarcode] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [receiptText, setReceiptText] = useState("");
 
   const [stockInList, setStockInList] = useState<ScannedItem[]>([]);
   const [stockOutList, setStockOutList] = useState<ScannedItem[]>([]);
@@ -70,26 +74,20 @@ export function StockMovement() {
       return;
     }
 
+    const listUpdater = (list: ScannedItem[]): ScannedItem[] => {
+        const existingItem = list.find(item => item.id === scannedId);
+        if (existingItem) {
+            return list.map(item =>
+                item.id === scannedId ? { ...item, quantity: item.quantity + 1 } : item
+            );
+        }
+        return [...list, { id: scannedId, name: material.name, quantity: 1 }];
+    };
+
     if (activeTab === 'stock-in') {
-      setStockInList(prevList => {
-        const existingItem = prevList.find(item => item.id === scannedId);
-        if (existingItem) {
-          return prevList.map(item => 
-            item.id === scannedId ? { ...item, quantity: item.quantity + 1 } : item
-          );
-        }
-        return [...prevList, { id: scannedId, name: material.name, quantity: 1 }];
-      });
+      setStockInList(listUpdater);
     } else { // stock-out
-      setStockOutList(prevList => {
-        const existingItem = prevList.find(item => item.id === scannedId);
-        if (existingItem) {
-          return prevList.map(item => 
-            item.id === scannedId ? { ...item, quantity: item.quantity + 1 } : item
-          );
-        }
-        return [...prevList, { id: scannedId, name: material.name, quantity: 1 }];
-      });
+      setStockOutList(listUpdater);
     }
     setBarcode("");
   };
@@ -127,6 +125,59 @@ export function StockMovement() {
     }, 1000);
   };
   
+  const handleAiProcess = async () => {
+    if (!receiptText.trim()) {
+        toast({ variant: "destructive", title: "내용 없음", description: "분석할 영수증 내용을 입력해주세요." });
+        return;
+    }
+    setIsAiProcessing(true);
+    try {
+        const result = await processReceipt({ receiptText });
+        const newItems: ScannedItem[] = [];
+        
+        result.items.forEach(processedItem => {
+            const material = mockMaterials.find(m => m.name === processedItem.itemName);
+            if (material) {
+                newItems.push({
+                    id: material.id,
+                    name: material.name,
+                    quantity: processedItem.quantity,
+                });
+            }
+        });
+
+        setStockInList(prevList => {
+            const updatedList = [...prevList];
+            newItems.forEach(newItem => {
+                const existingItemIndex = updatedList.findIndex(item => item.id === newItem.id);
+                if (existingItemIndex > -1) {
+                    updatedList[existingItemIndex].quantity += newItem.quantity;
+                } else {
+                    updatedList.push(newItem);
+                }
+            });
+            return updatedList;
+        });
+
+        toast({
+            title: "AI 분석 완료",
+            description: `${newItems.length}개의 항목이 입고 목록에 추가되었습니다. 내용을 확인하고 입고 처리를 완료해주세요.`,
+        });
+        setReceiptText("");
+
+
+    } catch (error) {
+        console.error("AI processing error:", error);
+        toast({
+            variant: "destructive",
+            title: "AI 분석 오류",
+            description: "영수증 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        });
+    } finally {
+        setIsAiProcessing(false);
+    }
+  };
+
   const renderList = (list: ScannedItem[], type: 'in' | 'out') => (
     <Card>
       <CardContent className="p-0">
@@ -170,7 +221,7 @@ export function StockMovement() {
     <div>
       <PageHeader
         title="재고 입출고"
-        description="핸디 스캐너를 사용하여 자재 재고를 관리합니다."
+        description="핸디 스캐너 또는 AI를 사용하여 자재 재고를 관리합니다."
       />
       <div className="space-y-6">
         <Card>
@@ -198,7 +249,26 @@ export function StockMovement() {
         <fieldset disabled={!selectedBranchId} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>2. 바코드 스캔</CardTitle>
+                <CardTitle>AI 입고 도우미 (Beta)</CardTitle>
+                <CardDescription>거래명세서나 영수증 내용을 붙여넣고 분석 버튼을 누르면 입고 목록이 자동으로 채워집니다.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+                 <Textarea 
+                    placeholder="예시) 마르시아 장미 50단, 레드 카네이션 30단, 포장용 크라프트지 10롤"
+                    value={receiptText}
+                    onChange={(e) => setReceiptText(e.target.value)}
+                    rows={4}
+                />
+                <Button onClick={handleAiProcess} disabled={isAiProcessing}>
+                    {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                    AI로 분석하기
+                </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>바코드 스캔</CardTitle>
               <CardDescription>아래 입력란에 포커스를 맞추고 바코드를 스캔하세요.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -239,3 +309,4 @@ export function StockMovement() {
     </div>
   );
 }
+
