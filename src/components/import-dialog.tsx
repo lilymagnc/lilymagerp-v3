@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -76,8 +76,7 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
                     });
                 } finally {
                     reset();
-                    // This is handled by the onImport function now
-                    // onOpenChange(false);
+                    onOpenChange(false);
                 }
             };
             reader.readAsBinaryString(file);
