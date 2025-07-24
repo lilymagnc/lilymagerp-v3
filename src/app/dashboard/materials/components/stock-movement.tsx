@@ -11,11 +11,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2 } from "lucide-react";
+import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2, Upload, Paperclip } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { processReceipt } from "@/ai/flows/receipt-processor";
 import { useMaterials } from "@/hooks/use-materials";
 import { useAuth } from "@/hooks/use-auth";
+import { ImportButton } from "@/components/import-button";
+import { Label } from "@/components/ui/label";
 
 interface ScannedItem {
   id: string;
@@ -35,11 +37,14 @@ export function StockMovement() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [receiptText, setReceiptText] = useState("");
+  const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null);
+  const [receiptPhotoPreview, setReceiptPhotoPreview] = useState<string | null>(null);
 
   const [stockInList, setStockInList] = useState<ScannedItem[]>([]);
   const [stockOutList, setStockOutList] = useState<ScannedItem[]>([]);
   
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const selectedBranchName = useMemo(() => {
     return branches.find(b => b.id === selectedBranchId)?.name || "지점";
@@ -125,14 +130,41 @@ export function StockMovement() {
     setIsProcessing(false);
   };
   
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setReceiptPhoto(file);
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const fileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  }
+
   const handleAiProcess = async () => {
-    if (!receiptText.trim()) {
-        toast({ variant: "destructive", title: "내용 없음", description: "분석할 영수증 내용을 입력해주세요." });
+    if (!receiptText.trim() && !receiptPhoto) {
+        toast({ variant: "destructive", title: "내용 없음", description: "분석할 영수증 텍스트나 사진을 제공해주세요." });
         return;
     }
     setIsAiProcessing(true);
     try {
-        const result = await processReceipt({ receiptText });
+        let photoDataUri: string | undefined;
+        if (receiptPhoto) {
+            photoDataUri = await fileToDataUri(receiptPhoto);
+        }
+
+        const result = await processReceipt({ receiptText, photoDataUri });
         const newItems: ScannedItem[] = [];
         
         result.items.forEach(processedItem => {
@@ -164,6 +196,8 @@ export function StockMovement() {
             description: `${newItems.length}개의 항목이 입고 목록에 추가되었습니다. 내용을 확인하고 입고 처리를 완료해주세요.`,
         });
         setReceiptText("");
+        setReceiptPhoto(null);
+        setReceiptPhotoPreview(null);
 
 
     } catch (error) {
@@ -177,6 +211,52 @@ export function StockMovement() {
         setIsAiProcessing(false);
     }
   };
+
+  const handleExcelImport = async (data: any[]) => {
+     try {
+        const newItems: ScannedItem[] = [];
+        data.forEach(row => {
+            const name = row['자재명'] || row['name'];
+            const quantity = row['수량'] || row['quantity'];
+
+            if(name && quantity > 0) {
+                const material = materials.find(m => m.name === name && m.branch === selectedBranchName);
+                if (material) {
+                    newItems.push({
+                        id: material.id,
+                        name: material.name,
+                        quantity: Number(quantity),
+                    });
+                } else {
+                     toast({ variant: "destructive", title: "자재 없음", description: `'${name}' 자재를 '${selectedBranchName}'에서 찾을 수 없습니다.` });
+                }
+            }
+        });
+
+        setStockInList(prevList => {
+            const updatedList = [...prevList];
+            newItems.forEach(newItem => {
+                const existingItemIndex = updatedList.findIndex(item => item.id === newItem.id);
+                if (existingItemIndex > -1) {
+                    updatedList[existingItemIndex].quantity += newItem.quantity;
+                } else {
+                    updatedList.push(newItem);
+                }
+            });
+            return updatedList;
+        });
+
+        if (newItems.length > 0) {
+            toast({
+                title: "엑셀 가져오기 완료",
+                description: `${newItems.length}개의 항목이 입고 목록에 추가되었습니다.`,
+            });
+        }
+     } catch (e) {
+        toast({ variant: "destructive", title: "엑셀 처리 오류", description: "엑셀 파일을 처리하는 중 오류가 발생했습니다."});
+     }
+  }
+
 
   const renderList = (list: ScannedItem[], type: 'in' | 'out') => (
     <Card>
@@ -256,19 +336,51 @@ export function StockMovement() {
           <Card>
             <CardHeader>
                 <CardTitle>AI 입고 도우미 (Beta)</CardTitle>
-                <CardDescription>거래명세서나 영수증 내용을 붙여넣고 분석 버튼을 누르면 입고 목록이 자동으로 채워집니다.</CardDescription>
+                <CardDescription>거래명세서나 영수증 내용을 붙여넣거나, 사진을 업로드하여 입고 목록을 자동으로 채웁니다.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-4">
                  <Textarea 
-                    placeholder="예시) 마르시아 장미 50단, 레드 카네이션 30단, 포장용 크라프트지 10롤"
+                    placeholder="예시) 마르시아 장미 50단, 레드 카네이션 30단, 포장용 크라프트지 10롤..."
                     value={receiptText}
                     onChange={(e) => setReceiptText(e.target.value)}
-                    rows={4}
+                    rows={3}
                 />
-                <Button onClick={handleAiProcess} disabled={isAiProcessing}>
-                    {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                    AI로 분석하기
-                </Button>
+                <div>
+                  <Label htmlFor="receipt-photo">영수증 사진</Label>
+                  <div className="flex items-center gap-4 mt-1">
+                    <Input
+                      id="receipt-photo"
+                      type="file"
+                      ref={photoInputRef}
+                      onChange={handlePhotoChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <Button type="button" variant="outline" onClick={() => photoInputRef.current?.click()}>
+                      <Paperclip className="mr-2 h-4 w-4" />
+                      {receiptPhoto ? "사진 변경" : "사진 선택"}
+                    </Button>
+                    {receiptPhotoPreview && (
+                      <div className="flex items-center gap-2">
+                        <img src={receiptPhotoPreview} alt="영수증 미리보기" className="h-10 w-10 object-cover rounded-md" />
+                        <span className="text-sm text-muted-foreground truncate max-w-[200px]">{receiptPhoto?.name}</span>
+                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setReceiptPhoto(null); setReceiptPhotoPreview(null); }}>
+                           <Trash2 className="h-4 w-4 text-destructive"/>
+                         </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button onClick={handleAiProcess} disabled={isAiProcessing}>
+                        {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                        AI로 분석하기
+                    </Button>
+                     <ImportButton resourceName="엑셀로 입고" onImport={handleExcelImport}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        엑셀로 입고
+                    </ImportButton>
+                </div>
             </CardContent>
           </Card>
 

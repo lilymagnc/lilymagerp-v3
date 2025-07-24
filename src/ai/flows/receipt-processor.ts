@@ -2,7 +2,7 @@
 /**
  * @fileOverview An AI agent for processing receipts to update stock.
  *
- * - processReceipt - A function that handles parsing receipt text.
+ * - processReceipt - A function that handles parsing receipt text or image.
  * - ReceiptProcessInput - The input type for the processReceipt function.
  * - ReceiptProcessOutput - The return type for the processReceipt function.
  */
@@ -16,7 +16,8 @@ const AVAILABLE_MATERIALS = [
 ];
 
 const ReceiptProcessInputSchema = z.object({
-  receiptText: z.string().describe('The text content of a receipt or an order slip.'),
+  receiptText: z.string().optional().describe('The text content of a receipt or an order slip.'),
+  photoDataUri: z.string().optional().describe("A photo of a receipt, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type ReceiptProcessInput = z.infer<typeof ReceiptProcessInputSchema>;
 
@@ -37,16 +38,24 @@ export async function processReceipt(input: ReceiptProcessInput): Promise<Receip
 const prompt = ai.definePrompt({
   name: 'receiptProcessPrompt',
   input: { schema: z.object({
-      receiptText: z.string(),
+      receiptText: z.string().optional(),
+      photoDataUri: z.string().optional(),
       availableMaterials: z.array(z.string()),
   }) },
   output: { schema: ReceiptProcessOutputSchema },
   prompt: `You are an expert inventory manager for a flower shop.
-Your task is to parse the provided receipt text and identify the materials and quantities being stocked.
+Your task is to parse the provided receipt information and identify the materials and quantities being stocked.
 
-The receipt text is as follows:
+The receipt information is as follows:
 ---
+{{#if receiptText}}
+Receipt Text:
 {{{receiptText}}}
+{{/if}}
+{{#if photoDataUri}}
+Receipt Photo:
+{{media url=photoDataUri}}
+{{/if}}
 ---
 
 Here is a list of available materials in our inventory:
@@ -54,7 +63,7 @@ Here is a list of available materials in our inventory:
 - {{{this}}}
 {{/each}}
 
-Please analyze the receipt text and extract each material and its corresponding quantity.
+Please analyze the receipt information and extract each material and its corresponding quantity.
 The item name in your output MUST EXACTLY MATCH one of the names from the available materials list.
 If you cannot find a matching material or a quantity for an item, ignore it.
 Respond with a list of processed items in the specified JSON format.
@@ -68,6 +77,10 @@ const processReceiptFlow = ai.defineFlow(
     outputSchema: ReceiptProcessOutputSchema,
   },
   async (input) => {
+    if (!input.receiptText && !input.photoDataUri) {
+        throw new Error("Either receiptText or photoDataUri must be provided.");
+    }
+    
     const { output } = await prompt({
         ...input,
         availableMaterials: AVAILABLE_MATERIALS,
