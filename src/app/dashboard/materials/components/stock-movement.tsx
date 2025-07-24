@@ -82,7 +82,6 @@ export function StockMovement() {
   }
 
   const updateQuantity = (id: string, newQuantity: number) => {
-    const list = activeTab === 'stock-in' ? stockInList : stockOutList;
     const setList = activeTab === 'stock-in' ? setStockInList : setStockOutList;
     
     if (newQuantity >= 1) {
