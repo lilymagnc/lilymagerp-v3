@@ -23,7 +23,7 @@ export function LabelItem({ id, name }: LabelItemProps) {
       >
         {name}
       </p>
-      <div className="w-full">
+      <div className="w-full flex justify-center">
          <Barcode 
             value={id}
             options={{
