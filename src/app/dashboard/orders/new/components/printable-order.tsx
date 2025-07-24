@@ -31,6 +31,15 @@ interface PrintableOrderProps {
     data: OrderPrintData | null;
 }
 
+const paymentMethodMap = {
+    card: "카드",
+    cash: "현금",
+    transfer: "계좌이체",
+    mainpay: "메인페이",
+    shopping_mall: "쇼핑몰",
+    epay: "이페이"
+};
+
 
 // Use a class component to ensure compatibility with react-to-print's ref handling.
 export class PrintableOrder extends React.Component<PrintableOrderProps> {
@@ -43,6 +52,8 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                 {checked && <span style={{ position: 'absolute', top: '-3px', left: '2px', fontSize: '14px' }}>✔</span>}
             </span>
         );
+        
+        const paymentMethodText = paymentMethodMap[data.paymentMethod as keyof typeof paymentMethodMap] || data.paymentMethod;
 
         const renderSection = (title: string, isReceipt: boolean) => (
             <div className="mb-4">
@@ -77,7 +88,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                                         <span>금액: ₩{data.totalAmount.toLocaleString()}</span>
                                         <span>배송비: ₩{data.deliveryFee.toLocaleString()}</span>
                                         <div className="flex items-center gap-2">
-                                            <span>결제수단: {data.paymentMethod}</span>
+                                            <span>결제수단: {paymentMethodText}</span>
                                             <div className="flex items-center gap-2 pr-2">
                                                 <div className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /><span>미결</span></div>
                                                 <div className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /><span>완결</span></div>

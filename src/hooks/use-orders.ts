@@ -39,6 +39,11 @@ export interface OrderData {
   orderType: "store" | "phone" | "naver" | "kakao" | "etc";
   receiptType: "pickup" | "delivery";
 
+  payment: {
+    method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
+    status: "pending" | "completed";
+  };
+
   pickupInfo: {
     date: string;
     time: string;

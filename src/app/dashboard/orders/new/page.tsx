@@ -36,6 +36,9 @@ interface OrderItem {
 type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
 type ReceiptType = "pickup" | "delivery";
 type MessageType = "card" | "ribbon";
+type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
+type PaymentStatus = "pending" | "completed";
+
 
 declare global {
   interface Window {
@@ -80,6 +83,9 @@ export default function NewOrderPage() {
   const [messageType, setMessageType] = useState<MessageType>("card");
   const [messageContent, setMessageContent] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
+
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
 
   useEffect(() => {
     if (receiptType === 'pickup') {
@@ -180,6 +186,11 @@ export default function NewOrderPage() {
         isAnonymous: isAnonymous,
         orderType,
         receiptType,
+
+        payment: {
+            method: paymentMethod,
+            status: paymentStatus,
+        },
 
         pickupInfo: receiptType === 'pickup' ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
@@ -342,6 +353,33 @@ export default function NewOrderPage() {
                                   <PlusCircle className="mr-2 h-4 w-4"/> 상품 추가
                               </Button>
                               </CardContent>
+                          </Card>
+                      </div>
+
+                       {/* 결제 정보 */}
+                      <div>
+                          <Label>결제 정보</Label>
+                          <Card className="mt-2">
+                            <CardContent className="p-4 space-y-4">
+                                <div>
+                                    <Label className="text-xs text-muted-foreground">결제 수단</Label>
+                                    <RadioGroup value={paymentMethod} onValueChange={(v: PaymentMethod) => setPaymentMethod(v)} className="flex items-center flex-wrap gap-4 mt-2">
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="pay-card" /><Label htmlFor="pay-card">카드</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="cash" id="pay-cash" /><Label htmlFor="pay-cash">현금</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="transfer" id="pay-transfer" /><Label htmlFor="pay-transfer">계좌이체</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="mainpay" id="pay-mainpay" /><Label htmlFor="pay-mainpay">메인페이</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="shopping_mall" id="pay-mall" /><Label htmlFor="pay-mall">쇼핑몰</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="epay" id="pay-epay" /><Label htmlFor="pay-epay">이페이</Label></div>
+                                    </RadioGroup>
+                                </div>
+                                 <div>
+                                    <Label className="text-xs text-muted-foreground">결제 상태</Label>
+                                    <RadioGroup value={paymentStatus} onValueChange={(v: PaymentStatus) => setPaymentStatus(v)} className="flex items-center gap-4 mt-2">
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="pending" id="status-pending" /><Label htmlFor="status-pending">미결</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="completed" id="status-completed" /><Label htmlFor="status-completed">완결</Label></div>
+                                    </RadioGroup>
+                                </div>
+                            </CardContent>
                           </Card>
                       </div>
 
