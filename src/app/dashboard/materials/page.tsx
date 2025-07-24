@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search, ArrowRightLeft } from "lucide-react";
+import { PlusCircle, Printer, Search, ArrowRightLeft, Sheet } from "lucide-react";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,8 @@ import Link from "next/link";
 import { useMaterials } from "@/hooks/use-materials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
+import { ImportButton } from "@/components/import-button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function MaterialsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -30,11 +32,10 @@ export default function MaterialsPage() {
   const [selectedMainCategory, setSelectedMainCategory] = useState("all");
   const [selectedMidCategory, setSelectedMidCategory] = useState("all");
 
-
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial } = useMaterials();
+  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials } = useMaterials();
 
   const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
   const midCategories = useMemo(() => {
@@ -80,7 +81,7 @@ export default function MaterialsPage() {
     await deleteMaterial(docId);
   }
 
-  const handleExportTemplate = () => {
+  const handleDownloadCurrentList = () => {
     if (filteredMaterials.length === 0) {
       toast({
         variant: "destructive",
@@ -92,9 +93,9 @@ export default function MaterialsPage() {
     const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
       ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, current_stock: stock, quantity: '' })
     );
-    downloadXLSX(dataToExport, "materials_update_template");
+    downloadXLSX(dataToExport, "materials_stock_update");
     toast({
-      title: "템플릿 다운로드 성공",
+      title: "목록 다운로드 성공",
       description: `현재 필터링된 ${dataToExport.length}개 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
   }
@@ -109,6 +110,12 @@ export default function MaterialsPage() {
     router.push(`/dashboard/print-labels?${params.toString()}`);
     setIsMultiPrintDialogOpen(false);
   };
+  
+  const handleExcelImport = async (data: any[]) => {
+    await bulkAddMaterials(data, selectedBranch);
+    setIsFormOpen(false);
+  }
+
 
   return (
     <div>
@@ -190,10 +197,24 @@ export default function MaterialsPage() {
                     </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleExportTemplate}>
-                        <Download className="mr-2 h-4 w-4" />
-                        템플릿 다운로드
-                    </Button>
+                     <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Sheet className="mr-2 h-4 w-4" />
+                          엑셀 작업
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드 (입고용)</DropdownMenuItem>
+                         <ImportButton 
+                          resourceName="자재"
+                          onImport={handleExcelImport}
+                          asDropdownMenuItem
+                        >
+                          2. 파일로 자재 입고
+                        </ImportButton>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         자재 추가

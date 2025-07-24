@@ -68,7 +68,7 @@ export default function ProductsPage() {
     await deleteProduct(docId);
   }
 
-  const handleExportTemplate = () => {
+  const handleDownloadCurrentList = () => {
      if (filteredProducts.length === 0) {
       toast({
         variant: "destructive",
@@ -80,9 +80,9 @@ export default function ProductsPage() {
     const dataToExport = filteredProducts.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
       ({ id, name, mainCategory, midCategory, price, supplier, size, color, branch, quantity: '' })
     );
-    downloadXLSX(dataToExport, "products_update_template");
+    downloadXLSX(dataToExport, "products_stock_update");
     toast({
-      title: "템플릿 다운로드 성공",
+      title: "목록 다운로드 성공",
       description: `현재 필터링된 ${dataToExport.length}개 상품 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
   }
@@ -100,6 +100,7 @@ export default function ProductsPage() {
 
   const handleExcelImport = async (data: any[]) => {
     await bulkAddProducts(data, selectedBranch);
+    setIsFormOpen(false);
   }
 
   return (
@@ -158,13 +159,13 @@ export default function ProductsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleExportTemplate}>1. 데이터 템플릿 다운로드</DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드 (입고용)</DropdownMenuItem>
                        <ImportButton 
                         resourceName="상품"
                         onImport={handleExcelImport}
                         asDropdownMenuItem
                       >
-                        2. 템플릿 파일로 상품 등록
+                        2. 파일로 상품 입고
                       </ImportButton>
                     </DropdownMenuContent>
                   </DropdownMenu>
