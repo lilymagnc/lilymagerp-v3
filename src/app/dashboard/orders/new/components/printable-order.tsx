@@ -73,7 +73,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1 w-[25%]">{data.ordererContact}</td>
                         </tr>
                         <tr>
-                            <td className="border border-black p-1 font-bold align-top h-24">항목/수량</td>
+                            <td className="border border-black p-1 font-bold align-top h-20">항목/수량</td>
                             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
                         </tr>
                          {!isReceipt && (
@@ -83,10 +83,12 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                                     <div className="flex items-center justify-between">
                                         <span>금액: ₩{data.totalAmount.toLocaleString()}</span>
                                         <span>배송비: ₩{data.deliveryFee.toLocaleString()}</span>
-                                        <span>결제수단: {data.paymentMethod}</span>
-                                        <div className="flex items-center gap-2 pr-2">
-                                            <span className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /> 미결</span>
-                                            <span className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /> 완결</span>
+                                        <div className="flex items-center gap-2">
+                                            <span>결제수단: {data.paymentMethod}</span>
+                                            <div className="flex items-center gap-2 pr-2">
+                                                <span className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /> 미결</span>
+                                                <span className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /> 완결</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -101,7 +103,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1">{data.recipientContact}</td>
                         </tr>
                         <tr>
-                            <td className="border border-black p-1 font-bold align-top h-28">배송지주소</td>
+                            <td className="border border-black p-1 font-bold align-top h-24">배송지주소</td>
                             <td colSpan={5} className="border border-black p-1 align-top">{data.deliveryAddress}</td>
                         </tr>
                         <tr>
