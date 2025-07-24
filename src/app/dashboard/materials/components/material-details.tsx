@@ -46,17 +46,19 @@ export function MaterialDetails({ isOpen, onOpenChange, onEdit, material }: Mate
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
-          <div className="flex justify-center my-4">
+          <div className="flex flex-col items-center justify-center my-4">
             {isOpen && (
+               <>
                 <Barcode 
                   value={material.id} 
                   options={{ 
                     format: 'CODE39',
-                    displayValue: true,
-                    fontSize: 16,
+                    displayValue: false,
                     height: 80,
                   }} 
                 />
+                <p className="text-center text-sm mt-2 font-mono tracking-wider">{material.id} {material.name}</p>
+              </>
             )}
           </div>
           <Separator />
