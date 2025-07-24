@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, getCountFromServer } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, getCountFromServer, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Material as MaterialData } from "@/app/dashboard/materials/components/material-table";
@@ -33,7 +33,8 @@ export function useMaterials() {
     try {
       setLoading(true);
       const materialsCollection = collection(db, 'materials');
-      let querySnapshot = await getDocs(materialsCollection);
+      const q = query(materialsCollection, orderBy('name'));
+      let querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
@@ -43,7 +44,7 @@ export function useMaterials() {
           batch.set(docRef, materialData);
         });
         await batch.commit();
-        querySnapshot = await getDocs(materialsCollection);
+        querySnapshot = await getDocs(q);
       } 
       
       const materialsData = querySnapshot.docs.map((doc) => {
@@ -80,7 +81,7 @@ export function useMaterials() {
     const batch = writeBatch(db);
     importedData.forEach((item: any) => {
         let docId;
-        if (item.id) {
+        if (item.id && String(item.id).startsWith('M')) {
           docId = String(item.id);
         } else {
           currentCount++;

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch, getCountFromServer } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, getCountFromServer, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
@@ -33,7 +33,8 @@ export function useProducts() {
     try {
       setLoading(true);
       const productsCollection = collection(db, 'products');
-      let querySnapshot = await getDocs(productsCollection);
+      const q = query(productsCollection, orderBy('name'));
+      let querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
@@ -43,7 +44,7 @@ export function useProducts() {
           batch.set(docRef, productData);
         });
         await batch.commit();
-        querySnapshot = await getDocs(productsCollection);
+        querySnapshot = await getDocs(q);
       } 
       
       const productsData = querySnapshot.docs.map((doc) => {
@@ -80,7 +81,7 @@ export function useProducts() {
     const batch = writeBatch(db);
     importedData.forEach((item: any) => {
         let docId;
-        if (item.id) {
+        if (item.id && String(item.id).startsWith('P')) {
           docId = String(item.id);
         } else {
           currentCount++;
