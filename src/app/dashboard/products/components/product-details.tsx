@@ -48,19 +48,19 @@ export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: Produc
         <div className="py-4 space-y-4">
           <div className="flex flex-col items-center my-4">
             {isOpen && (
-              <>
-                <Barcode 
-                  value={product.id} 
-                  options={{ 
-                    format: 'CODE39',
-                    displayValue: true,
-                    fontSize: 16,
-                    height: 80,
-                  }} 
-                />
-                <p className="text-center font-semibold mt-2">{product.name}</p>
-              </>
+                <div className="flex items-center gap-4">
+                    <Barcode 
+                        value={product.id} 
+                        options={{ 
+                            format: 'CODE39',
+                            displayValue: true,
+                            fontSize: 16,
+                            height: 80,
+                        }} 
+                    />
+                </div>
             )}
+             <p className="text-center font-semibold mt-2">{product.id} {product.name}</p>
           </div>
           <Separator />
           <div className="grid grid-cols-3 items-center gap-4">
