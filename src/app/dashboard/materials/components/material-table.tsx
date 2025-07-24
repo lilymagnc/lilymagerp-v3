@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { MaterialDetails } from "./material-details";
 import { Barcode } from "@/components/barcode";
 import { PrintOptionsDialog } from "@/components/print-options-dialog";
 import { useRouter } from "next/navigation";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const mockMaterials = [
   { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
@@ -24,13 +25,40 @@ const mockMaterials = [
   { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, status: "low_stock", size: "1롤", color: "Brown" },
 ];
 
-export function MaterialTable() {
+interface MaterialTableProps {
+  onSelectionChange: (selectedIds: string[]) => void;
+}
+
+export function MaterialTable({ onSelectionChange }: MaterialTableProps) {
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
+  const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+
+  const handleSelectionChange = (id: string) => {
+    const newSelection = { ...selectedRows, [id]: !selectedRows[id] };
+    if (!newSelection[id]) {
+      delete newSelection[id];
+    }
+    setSelectedRows(newSelection);
+    onSelectionChange(Object.keys(newSelection));
+  };
+  
+  const handleSelectAll = (checked: boolean) => {
+    const newSelection: Record<string, boolean> = {};
+    if (checked) {
+      mockMaterials.forEach(m => newSelection[m.id] = true);
+    }
+    setSelectedRows(newSelection);
+    onSelectionChange(Object.keys(newSelection));
+  };
+
+  const isAllSelected = useMemo(() => {
+    return mockMaterials.length > 0 && Object.keys(selectedRows).length === mockMaterials.length;
+  }, [selectedRows]);
 
   const handleEdit = (material: any) => {
     setIsDetailOpen(false);
@@ -89,6 +117,13 @@ export function MaterialTable() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                   <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    aria-label="모두 선택"
+                  />
+                </TableHead>
                 <TableHead>자재명</TableHead>
                 <TableHead>바코드</TableHead>
                 <TableHead>상태</TableHead>
@@ -105,9 +140,16 @@ export function MaterialTable() {
               {mockMaterials.map((material) => {
                 const statusInfo = getStatus(material.status, material.stock);
                 return (
-                <TableRow key={material.id} onClick={() => handleRowClick(material)} className="cursor-pointer">
-                  <TableCell className="font-medium">{material.name}</TableCell>
-                   <TableCell>
+                <TableRow key={material.id}>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={!!selectedRows[material.id]}
+                      onCheckedChange={() => handleSelectionChange(material.id)}
+                      aria-label={`${material.name} 선택`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name}</TableCell>
+                   <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
                     <Barcode 
                       value={material.id} 
                       options={{ 
@@ -119,15 +161,15 @@ export function MaterialTable() {
                       }} 
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
                     <Badge variant={statusInfo.variant}>
                       {statusInfo.text}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{material.mainCategory} &gt; {material.midCategory}</TableCell>
-                  <TableCell className="hidden sm:table-cell">₩{material.price.toLocaleString()}</TableCell>
-                  <TableCell className="hidden md:table-cell">{material.supplier}</TableCell>
-                  <TableCell className="text-right">{material.stock}</TableCell>
+                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>{material.mainCategory} &gt; {material.midCategory}</TableCell>
+                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>₩{material.price.toLocaleString()}</TableCell>
+                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>{material.supplier}</TableCell>
+                  <TableCell className="text-right cursor-pointer" onClick={() => handleRowClick(material)}>{material.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <DropdownMenu>
@@ -187,4 +229,3 @@ export function MaterialTable() {
     </>
   );
 }
-

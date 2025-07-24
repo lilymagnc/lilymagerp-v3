@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { ProductDetails } from "./product-details";
 import { Barcode } from "@/components/barcode";
 import { PrintOptionsDialog } from "@/components/print-options-dialog";
 import { useRouter } from "next/navigation";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const mockProducts = [
   { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
@@ -24,13 +25,41 @@ const mockProducts = [
   { id: "P00005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, status: "low_stock", size: "M", color: "Black" },
 ];
 
-export function ProductTable() {
+interface ProductTableProps {
+  onSelectionChange: (selectedIds: string[]) => void;
+}
+
+export function ProductTable({ onSelectionChange }: ProductTableProps) {
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+
+  const handleSelectionChange = (id: string) => {
+    const newSelection = { ...selectedRows, [id]: !selectedRows[id] };
+    if (!newSelection[id]) {
+      delete newSelection[id];
+    }
+    setSelectedRows(newSelection);
+    onSelectionChange(Object.keys(newSelection));
+  };
+  
+  const handleSelectAll = (checked: boolean) => {
+    const newSelection: Record<string, boolean> = {};
+    if (checked) {
+      mockProducts.forEach(p => newSelection[p.id] = true);
+    }
+    setSelectedRows(newSelection);
+    onSelectionChange(Object.keys(newSelection));
+  };
+
+  const isAllSelected = useMemo(() => {
+    return mockProducts.length > 0 && Object.keys(selectedRows).length === mockProducts.length;
+  }, [selectedRows]);
+
 
   const handleEdit = (product: any) => {
     setIsDetailOpen(false);
@@ -88,6 +117,13 @@ export function ProductTable() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                   <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    aria-label="모두 선택"
+                  />
+                </TableHead>
                 <TableHead>상품명</TableHead>
                 <TableHead>바코드</TableHead>
                 <TableHead>상태</TableHead>
@@ -103,9 +139,16 @@ export function ProductTable() {
               {mockProducts.map((product) => {
                 const statusInfo = getStatus(product.status, product.stock);
                 return (
-                <TableRow key={product.id} onClick={() => handleRowClick(product)} className="cursor-pointer">
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                   <TableCell>
+                <TableRow key={product.id}>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={!!selectedRows[product.id]}
+                      onCheckedChange={() => handleSelectionChange(product.id)}
+                      aria-label={`${product.name} 선택`}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(product)}>{product.name}</TableCell>
+                   <TableCell className="cursor-pointer" onClick={() => handleRowClick(product)}>
                     <Barcode 
                       value={product.id} 
                       options={{ 
@@ -117,14 +160,14 @@ export function ProductTable() {
                       }} 
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="cursor-pointer" onClick={() => handleRowClick(product)}>
                     <Badge variant={statusInfo.variant}>
                       {statusInfo.text}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{product.mainCategory} &gt; {product.midCategory}</TableCell>
-                  <TableCell className="hidden sm:table-cell">₩{product.price.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{product.stock}</TableCell>
+                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>{product.mainCategory} &gt; {product.midCategory}</TableCell>
+                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>₩{product.price.toLocaleString()}</TableCell>
+                  <TableCell className="text-right cursor-pointer" onClick={() => handleRowClick(product)}>{product.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <DropdownMenu>
