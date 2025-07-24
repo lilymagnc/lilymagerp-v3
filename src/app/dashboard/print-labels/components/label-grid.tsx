@@ -9,12 +9,12 @@ interface LabelGridProps {
 
 export function LabelGrid({ items }: LabelGridProps) {
   return (
-    <div id="label-grid-container" className="grid grid-cols-3 gap-x-1 gap-y-[1.5px] bg-gray-200 p-[1px]">
+    <div id="label-grid-container" className="grid grid-cols-3 gap-x-[2.5mm] gap-y-0 h-full">
       {items.map((item, index) =>
         item ? (
           <LabelItem key={index} item={item} />
         ) : (
-          <div key={index} className="bg-white h-[33.8mm] border border-dashed border-gray-300"></div>
+          <div key={index} className="bg-transparent h-[33.8mm]"></div>
         )
       )}
     </div>
