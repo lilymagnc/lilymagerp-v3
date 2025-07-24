@@ -41,13 +41,14 @@ export function useProducts() {
         let productCounter = 1;
 
         initialProducts.forEach((productData) => {
-          if (!productIds[productData.name]) {
-            productIds[productData.name] = `P${String(productCounter++).padStart(5, '0')}`;
+          const productKey = `${productData.name}-${productData.size}-${productData.color}`;
+          if (!productIds[productKey]) {
+            productIds[productKey] = `P${String(productCounter++).padStart(5, '0')}`;
           }
           const newDocRef = doc(productsCollection);
           batch.set(newDocRef, {
               ...productData,
-              id: productIds[productData.name],
+              id: productIds[productKey],
           });
         });
         await batch.commit();
@@ -58,11 +59,10 @@ export function useProducts() {
           const data = doc.data();
           return { 
               ...data,
-              // The document ID from firestore is now just for reference, we use our own id field
-              // id: doc.id, 
+              id: data.id || doc.id, // Fallback to doc.id if id field is missing
               status: getStatus(data.stock)
           } as Product;
-      }).sort((a,b) => a.id.localeCompare(b.id));
+      }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
 
       setProducts(productsData);
 
@@ -83,12 +83,28 @@ export function useProducts() {
   }, [fetchProducts]);
 
   const bulkAddProducts = async (importedData: any[]) => {
-    // This function needs to be rewritten to handle the new data model
-    // For now, it will show a toast message.
-    toast({
-        title: "기능 구현 필요",
-        description: "새로운 데이터 모델에 맞게 상품 가져오기 기능을 업데이트해야 합니다.",
-    });
+    setLoading(true);
+    const batch = writeBatch(db);
+    const productsCollection = collection(db, 'products');
+    
+    // Get the current highest ID
+    const q = query(productsCollection);
+    const querySnapshot = await getDocs(q);
+    let productCounter = querySnapshot.size;
+
+    for (const item of importedData) {
+        const docRef = doc(productsCollection);
+        const newId = `P${String(++productCounter).padStart(5, '0')}`;
+        batch.set(docRef, {
+            ...item,
+            id: item.id || newId, // Use imported ID or generate new one
+            stock: Number(item.stock) || 0,
+            price: Number(item.price) || 0,
+        });
+    }
+
+    await batch.commit();
+    await fetchProducts(); // Refetch to show new data
   };
 
   return { products, loading, fetchProducts, bulkAddProducts };
