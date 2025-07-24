@@ -14,8 +14,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { FileUp, Loader2 } from "lucide-react"
+import { FileUp, Loader2, Download } from "lucide-react"
 import * as XLSX from "xlsx";
+import { downloadXLSX } from "@/lib/utils"
 
 interface ImportDialogProps {
     isOpen: boolean
@@ -33,6 +34,14 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
         if (e.target.files && e.target.files.length > 0) {
             setFile(e.target.files[0]);
         }
+    }
+
+    const handleDownloadTemplate = () => {
+        const sampleData = [
+            { '자재명': '마르시아 장미', '수량': 10 },
+            { '자재명': '레드 카네이션', '수량': 20 },
+        ];
+        downloadXLSX(sampleData, 'stock_in_template');
     }
 
     const handleImportClick = async () => {
@@ -103,9 +112,15 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
           <div className="grid w-full items-center gap-1.5">
             <Label htmlFor="file">파일 선택</Label>
             <Input id="file" type="file" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFileChange} />
-            <p className="text-xs text-muted-foreground">
-                파일의 첫 번째 행은 헤더(id, name, price 등)여야 합니다.
-            </p>
+            <div className="text-xs text-muted-foreground space-y-1">
+                <p>파일의 첫 번째 행은 헤더(id, name, price 등)여야 합니다.</p>
+                {resourceName === "엑셀로 입고" && (
+                     <Button variant="link" size="sm" onClick={handleDownloadTemplate} className="p-0 h-auto">
+                        <Download className="mr-1 h-3 w-3" />
+                        샘플 템플릿 다운로드
+                    </Button>
+                )}
+            </div>
           </div>
         </div>
         <DialogFooter>
