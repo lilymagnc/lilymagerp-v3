@@ -31,3 +31,9 @@ export async function getItemData(id: string, type: 'product' | 'material') {
   }
   return null;
 }
+
+export async function getItemsData(ids: string[], type: 'product' | 'material') {
+  await new Promise(resolve => setTimeout(resolve, 100));
+  const source = type === 'product' ? mockProducts : mockMaterials;
+  return ids.map(id => source.find(item => item.id === id)).filter(Boolean);
+}

@@ -10,10 +10,12 @@ import { ProductTable } from "./components/product-table";
 import { ProductForm } from "./components/product-form";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -24,23 +26,17 @@ export default function ProductsPage() {
     })
   }
 
-  const handlePrintSelected = () => {
-    if (selectedProducts.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "선택된 상품 없음",
-        description: "라벨을 인쇄할 상품을 하나 이상 선택해주세요.",
-      });
-      return;
-    }
+  const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
+    const itemsQuery = items.map(item => `${item.id}:${item.quantity}`).join(',');
     const params = new URLSearchParams({
-      ids: selectedProducts.join(','),
+      items: itemsQuery,
       type: 'product',
-      quantity: '1', // Each selected item prints once
-      start: '1', // Default start position
+      start: String(startPosition),
     });
     router.push(`/dashboard/print-labels?${params.toString()}`);
-  }
+    setIsMultiPrintDialogOpen(false);
+  };
+
 
   return (
     <div>
@@ -50,7 +46,7 @@ export default function ProductsPage() {
       >
         <div className="flex items-center gap-2">
           {selectedProducts.length > 0 && (
-            <Button variant="outline" onClick={handlePrintSelected}>
+            <Button variant="outline" onClick={() => setIsMultiPrintDialogOpen(true)}>
               <Printer className="mr-2 h-4 w-4" />
               선택 항목 라벨 인쇄 ({selectedProducts.length})
             </Button>
@@ -68,6 +64,15 @@ export default function ProductsPage() {
       </PageHeader>
       <ProductTable onSelectionChange={setSelectedProducts} />
       <ProductForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
+       {isMultiPrintDialogOpen && (
+        <MultiPrintOptionsDialog
+            isOpen={isMultiPrintDialogOpen}
+            onOpenChange={setIsMultiPrintDialogOpen}
+            itemIds={selectedProducts}
+            itemType="product"
+            onSubmit={handleMultiPrintSubmit}
+        />
+       )}
     </div>
   );
 }

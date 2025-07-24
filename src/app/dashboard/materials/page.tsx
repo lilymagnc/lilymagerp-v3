@@ -4,16 +4,19 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Upload, Download, Printer } from "lucide-react";
+import { PlusCircle, Download, Printer } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
 
 export default function MaterialsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
+
   const { toast } = useToast();
   const router = useRouter();
 
@@ -23,24 +26,17 @@ export default function MaterialsPage() {
         description: "구글 시트로 내보내기 기능은 현재 개발 중입니다.",
     })
   }
-
-  const handlePrintSelected = () => {
-    if (selectedMaterials.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "선택된 자재 없음",
-        description: "라벨을 인쇄할 자재를 하나 이상 선택해주세요.",
-      });
-      return;
-    }
+  
+  const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
+    const itemsQuery = items.map(item => `${item.id}:${item.quantity}`).join(',');
     const params = new URLSearchParams({
-      ids: selectedMaterials.join(','),
+      items: itemsQuery,
       type: 'material',
-      quantity: '1',
-      start: '1',
+      start: String(startPosition),
     });
     router.push(`/dashboard/print-labels?${params.toString()}`);
-  }
+    setIsMultiPrintDialogOpen(false);
+  };
 
   return (
     <div>
@@ -50,7 +46,7 @@ export default function MaterialsPage() {
       >
         <div className="flex items-center gap-2">
            {selectedMaterials.length > 0 && (
-            <Button variant="outline" onClick={handlePrintSelected}>
+            <Button variant="outline" onClick={() => setIsMultiPrintDialogOpen(true)}>
               <Printer className="mr-2 h-4 w-4" />
               선택 항목 라벨 인쇄 ({selectedMaterials.length})
             </Button>
@@ -68,6 +64,15 @@ export default function MaterialsPage() {
       </PageHeader>
       <MaterialTable onSelectionChange={setSelectedMaterials} />
       <MaterialForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
+      {isMultiPrintDialogOpen && (
+        <MultiPrintOptionsDialog
+            isOpen={isMultiPrintDialogOpen}
+            onOpenChange={setIsMultiPrintDialogOpen}
+            itemIds={selectedMaterials}
+            itemType="material"
+            onSubmit={handleMultiPrintSubmit}
+        />
+       )}
     </div>
   );
 }
