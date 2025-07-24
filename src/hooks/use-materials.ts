@@ -79,14 +79,15 @@ export function useMaterials() {
 
     const batch = writeBatch(db);
     importedData.forEach((item: any) => {
-        let docRef;
+        let docId;
         if (item.id) {
-          docRef = doc(db, 'materials', String(item.id));
+          docId = String(item.id);
         } else {
           currentCount++;
-          const newId = `M${String(currentCount).padStart(5, '0')}`;
-          docRef = doc(db, 'materials', newId);
+          docId = `M${String(currentCount).padStart(5, '0')}`;
         }
+        
+        const docRef = doc(db, 'materials', docId);
         
         const materialData = {
             name: item.name || "",

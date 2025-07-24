@@ -79,14 +79,15 @@ export function useProducts() {
 
     const batch = writeBatch(db);
     importedData.forEach((item: any) => {
-        let docRef;
+        let docId;
         if (item.id) {
-          docRef = doc(db, 'products', String(item.id));
+          docId = String(item.id);
         } else {
           currentCount++;
-          const newId = `P${String(currentCount).padStart(5, '0')}`;
-          docRef = doc(db, 'products', newId);
+          docId = `P${String(currentCount).padStart(5, '0')}`;
         }
+        
+        const docRef = doc(db, 'products', docId);
         
         const productData = {
             name: item.name || "",
