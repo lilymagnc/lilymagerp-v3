@@ -36,15 +36,16 @@ export function StockMovement() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleScan = () => {
-    if (!barcode) return;
+    const scannedBarcode = barcode.trim();
+    if (!scannedBarcode) return;
 
-    const material = mockMaterials.find(m => m.id === barcode);
+    const material = mockMaterials.find(m => m.id === scannedBarcode);
 
     if (!material) {
         toast({
             variant: 'destructive',
             title: '자재 없음',
-            description: `바코드 '${barcode}'에 해당하는 자재를 찾을 수 없습니다.`,
+            description: `바코드 '${scannedBarcode}'에 해당하는 자재를 찾을 수 없습니다.`,
         });
         setBarcode("");
         return;
@@ -52,21 +53,19 @@ export function StockMovement() {
     
     if (activeTab === 'stock-in') {
         setStockInList(prevList => {
-            const existingItem = prevList.find(item => item.id === barcode);
+            const existingItem = prevList.find(item => item.id === scannedBarcode);
             if (existingItem) {
-                return prevList.map(item => item.id === barcode ? { ...item, quantity: item.quantity + 1 } : item);
-            } else {
-                return [...prevList, { id: material.id, name: material.name, quantity: 1, stock: material.stock }];
+                return prevList.map(item => item.id === scannedBarcode ? { ...item, quantity: item.quantity + 1 } : item);
             }
+            return [...prevList, { id: material.id, name: material.name, quantity: 1, stock: material.stock }];
         });
     } else { // stock-out
         setStockOutList(prevList => {
-            const existingItem = prevList.find(item => item.id === barcode);
+            const existingItem = prevList.find(item => item.id === scannedBarcode);
             if (existingItem) {
-                return prevList.map(item => item.id === barcode ? { ...item, quantity: item.quantity + 1 } : item);
-            } else {
-                return [...prevList, { id: material.id, name: material.name, quantity: 1, stock: material.stock }];
+                return prevList.map(item => item.id === scannedBarcode ? { ...item, quantity: item.quantity + 1 } : item);
             }
+            return [...prevList, { id: material.id, name: material.name, quantity: 1, stock: material.stock }];
         });
     }
 
@@ -82,6 +81,7 @@ export function StockMovement() {
   }
 
   const updateQuantity = (id: string, newQuantity: number) => {
+    const list = activeTab === 'stock-in' ? stockInList : stockOutList;
     const setList = activeTab === 'stock-in' ? setStockInList : setStockOutList;
     
     if (newQuantity >= 1) {
@@ -120,7 +120,7 @@ export function StockMovement() {
     }
   }
 
-  const renderList = (list: ScannedItem[], type: 'stock-in' | 'stock-out') => (
+  const renderList = (list: ScannedItem[]) => (
     <div className="space-y-4">
         {list.length > 0 ? (
             <Card>
@@ -206,10 +206,10 @@ export function StockMovement() {
                     <TabsTrigger value="stock-out">출고</TabsTrigger>
                 </TabsList>
                 <TabsContent value="stock-in" className="mt-4">
-                    {renderList(stockInList, 'stock-in')}
+                    {renderList(stockInList)}
                 </TabsContent>
                 <TabsContent value="stock-out" className="mt-4">
-                    {renderList(stockOutList, 'stock-out')}
+                    {renderList(stockOutList)}
                 </TabsContent>
             </Tabs>
           </Card>
