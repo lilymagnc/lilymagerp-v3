@@ -46,11 +46,16 @@ export function useMaterials() {
         querySnapshot = await getDocs(materialsCollection);
       } 
       
-      const materialsData = querySnapshot.docs.map(doc => {
+      const materialsData = querySnapshot.docs.map((doc, index) => {
           const data = doc.data();
+          // This ensures all IDs are consistently formatted as M + 5 digits
+          const originalId = doc.id;
+          const numericPart = originalId.replace(/[^0-9]/g, '');
+          const newId = `M${String(parseInt(numericPart, 10)).padStart(5, '0')}`;
+
           return { 
-              id: doc.id,
               ...data,
+              id: newId,
               status: getStatus(data.stock)
           } as Material
       });
