@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search, ArrowRightLeft, Upload } from "lucide-react";
+import { PlusCircle, Download, Printer, Search, ArrowRightLeft, Upload, FileSpreadsheet } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useMaterials } from "@/hooks/use-materials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 export default function MaterialsPage() {
@@ -190,15 +191,27 @@ export default function MaterialsPage() {
                         재고 입출고 페이지
                     </Link>
                     </Button>
-                     <Button variant="outline" size="sm" onClick={handleExportTemplate}>
-                        <Download className="mr-2 h-4 w-4" />
-                        템플릿 다운로드
-                    </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <ImportButton resourceName="자재" onImport={bulkAddMaterials}>
-                       <Upload className="mr-2 h-4 w-4" />자재 가져오기
-                    </ImportButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <FileSpreadsheet className="mr-2 h-4 w-4" />
+                          엑셀 작업
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleExportTemplate}>
+                          <Download className="mr-2 h-4 w-4" />
+                          1. 데이터 템플릿 다운로드
+                        </DropdownMenuItem>
+                        <ImportButton resourceName="자재" onImport={bulkAddMaterials}>
+                           <Upload className="mr-2 h-4 w-4" />
+                           2. 템플릿 파일로 자재 등록
+                        </ImportButton>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         자재 추가

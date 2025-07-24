@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search } from "lucide-react";
+import { PlusCircle, Download, Printer, Search, FileSpreadsheet, Upload } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
 import { ProductTable, Product } from "./components/product-table";
 import { ProductForm, ProductFormValues } from "./components/product-form";
@@ -18,6 +18,7 @@ import { useBranches } from "@/hooks/use-branches";
 import { downloadXLSX } from "@/lib/utils";
 import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -80,7 +81,7 @@ export default function ProductsPage() {
     const dataToExport = filteredProducts.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
       ({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch })
     );
-    downloadXLSX(dataToExport, "products");
+    downloadXLSX(dataToExport, "products_template");
     toast({
       title: "내보내기 성공",
       description: `${dataToExport.length}개의 상품 정보가 XLSX 파일로 다운로드되었습니다.`,
@@ -136,18 +137,36 @@ export default function ProductsPage() {
                         ))}
                     </SelectContent>
                 </Select>
-                <div className="ml-auto flex items-center gap-2 mt-2 sm:mt-0 flex-wrap">
+            </div>
+             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                     {selectedProducts.length > 0 && (
                         <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
                           <Printer className="mr-2 h-4 w-4" />
                           라벨 인쇄 ({selectedProducts.length})
                         </Button>
                     )}
-                    <ImportButton resourceName="상품" onImport={bulkAddProducts} />
-                    <Button variant="outline" size="sm" onClick={handleExport}>
-                        <Download className="mr-2 h-4 w-4" />
-                        내보내기
-                    </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <FileSpreadsheet className="mr-2 h-4 w-4" />
+                          엑셀 작업
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={handleExport}>
+                          <Download className="mr-2 h-4 w-4" />
+                          1. 데이터 템플릿 다운로드
+                        </DropdownMenuItem>
+                        <ImportButton resourceName="상품" onImport={bulkAddProducts} asDropdownMenuItem>
+                           <Upload className="mr-2 h-4 w-4" />
+                           2. 템플릿 파일로 상품 등록
+                        </ImportButton>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         상품 추가
@@ -202,5 +221,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-
-    
