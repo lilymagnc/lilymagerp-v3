@@ -48,17 +48,11 @@ export function useMaterials() {
       
       const materialsData = querySnapshot.docs.map((doc) => {
           const data = doc.data();
-          const originalId = doc.id;
-          const numericPart = originalId.replace(/[^0-9]/g, '');
-          // This ensures the displayed ID is always in the M0000X format
-          const displayId = `M${String(parseInt(numericPart, 10)).padStart(5, '0')}`;
-
           return { 
               ...data,
-              id: displayId, // Use the consistent, short ID for the UI
-              originalId: originalId, // Keep track of the actual DB document ID
+              id: doc.id,
               status: getStatus(data.stock)
-          } as Material & { originalId: string };
+          } as Material;
       });
       setMaterials(materialsData);
 
@@ -78,6 +72,35 @@ export function useMaterials() {
     fetchMaterials();
   }, [fetchMaterials]);
 
+  const bulkAddMaterials = async (importedData: any[]) => {
+    const batch = writeBatch(db);
+    importedData.forEach((item: any) => {
+        // Assume 'id' column exists in XLSX for updating, otherwise creates new
+        // If 'id' is not provided, Firestore will auto-generate one.
+        const docRef = item.id 
+          ? doc(db, 'materials', String(item.id))
+          : doc(collection(db, 'materials'));
+        
+        const materialData = {
+            name: item.name || "",
+            mainCategory: item.mainCategory || "",
+            midCategory: item.midCategory || "",
+            price: Number(item.price) || 0,
+            supplier: item.supplier || "",
+            stock: Number(item.stock) || 0,
+            size: item.size || "",
+            color: item.color || "",
+            branch: item.branch || ""
+        };
+
+        batch.set(docRef, materialData, { merge: true }); // merge:true to update existing
+    });
+
+    await batch.commit();
+    await fetchMaterials(); // Refetch data to show updates
+  };
+
+
   const updateStock = async (
     items: { id: string; name: string; quantity: number }[],
     type: 'in' | 'out',
@@ -85,19 +108,7 @@ export function useMaterials() {
     operator: string
   ) => {
     for (const item of items) {
-        // When updating, we need to find the material with the matching display ID
-        // to get its original database ID.
-        const materialToUpdate = (materials as (Material & { originalId: string })[]).find(m => m.id === item.id);
-        if (!materialToUpdate) {
-             toast({
-                variant: "destructive",
-                title: "재고 업데이트 실패",
-                description: `자재를 찾을 수 없습니다: ${item.name}`,
-            });
-            continue;
-        }
-
-        const materialRef = doc(db, "materials", materialToUpdate.originalId);
+        const materialRef = doc(db, "materials", item.id);
         const historyRef = doc(collection(db, "stockHistory"));
 
         try {
@@ -121,7 +132,7 @@ export function useMaterials() {
                     date: serverTimestamp(),
                     type: type,
                     itemType: "material",
-                    itemId: materialToUpdate.originalId,
+                    itemId: item.id,
                     itemName: item.name,
                     quantity: item.quantity,
                     resultingStock: newStock,
@@ -145,23 +156,13 @@ export function useMaterials() {
   };
   
   const manualUpdateStock = async (
-    itemId: string, // This is the display ID (e.g., M00001)
+    itemId: string,
     itemName: string,
     newStock: number,
     branchName: string,
     operator: string
   ) => {
-    const materialToUpdate = (materials as (Material & { originalId: string })[]).find(m => m.id === itemId);
-    if (!materialToUpdate) {
-         toast({
-            variant: "destructive",
-            title: "재고 업데이트 실패",
-            description: `자재를 찾을 수 없습니다: ${itemName}`,
-        });
-        return;
-    }
-    
-    const materialRef = doc(db, "materials", materialToUpdate.originalId);
+    const materialRef = doc(db, "materials", itemId);
     const historyRef = doc(collection(db, "stockHistory"));
 
     try {
@@ -179,7 +180,7 @@ export function useMaterials() {
                 date: serverTimestamp(),
                 type: "manual_update",
                 itemType: "material",
-                itemId: materialToUpdate.originalId,
+                itemId: itemId,
                 itemName: itemName,
                 quantity: newStock - currentStock, // Log the difference
                 fromStock: currentStock,
@@ -206,5 +207,5 @@ export function useMaterials() {
     }
   };
 
-  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock };
+  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials };
 }

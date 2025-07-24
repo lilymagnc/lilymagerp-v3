@@ -16,16 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
 import { downloadXLSX } from "@/lib/utils";
-
-const mockProducts: Product[] = [
-  { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White", branch: "릴리맥광화문점" },
-  { id: "P00002", name: "맥 데님 팬츠", mainCategory: "완제품", midCategory: "꽃바구니", price: 78000, supplier: "데님월드", stock: 80, status: "active", size: "28", color: "Blue", branch: "릴리맥여의도점" },
-  { id: "P00003", name: "오렌지 포인트 스커트", mainCategory: "완제품", midCategory: "꽃바구니", price: 62000, supplier: "꽃길 본사", stock: 0, status: "out_of_stock", size: "S", color: "Orange", branch: "릴리맥NC이스트폴점" },
-  { id: "P00004", name: "그린 스트라이프 티", mainCategory: "부자재", midCategory: "포장지", price: 32000, supplier: "티셔츠팩토리", stock: 250, status: "active", size: "L", color: "Green/White", branch: "릴리맥광화문점" },
-  { id: "P00005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, status: "low_stock", size: "M", color: "Black", branch: "릴리맥여의도점" },
-  { id: "P00006", name: "레드로즈 꽃다발", mainCategory: "완제품", midCategory: "꽃다발", price: 55000, supplier: "꽃길 본사", stock: 30, status: "active", size: "L", color: "Red", branch: "릴리맥NC이스트폴점" },
-];
-
+import { useProducts } from "@/hooks/use-products";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -37,16 +29,17 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
+  const { products, loading: productsLoading, bulkAddProducts } = useProducts();
 
   const filteredProducts = useMemo(() => {
-    return mockProducts
+    return products
       .filter(product => 
         (selectedBranch === "all" || product.branch === selectedBranch)
       )
       .filter(product => 
         product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-  }, [searchTerm, selectedBranch]);
+  }, [products, searchTerm, selectedBranch]);
 
 
   const handleExport = () => {
@@ -117,14 +110,14 @@ export default function ProductsPage() {
                         ))}
                     </SelectContent>
                 </Select>
-                <div className="ml-auto flex items-center gap-2 mt-2 sm:mt-0">
+                <div className="ml-auto flex items-center gap-2 mt-2 sm:mt-0 flex-wrap">
                     {selectedProducts.length > 0 && (
                         <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
                           <Printer className="mr-2 h-4 w-4" />
                           라벨 인쇄 ({selectedProducts.length})
                         </Button>
                     )}
-                    <ImportButton resourceName="상품" />
+                    <ImportButton resourceName="상품" onImport={bulkAddProducts} />
                     <Button variant="outline" size="sm" onClick={handleExport}>
                         <Download className="mr-2 h-4 w-4" />
                         내보내기
@@ -137,8 +130,29 @@ export default function ProductsPage() {
             </div>
         </CardContent>
       </Card>
-
-      <ProductTable products={filteredProducts} onSelectionChange={setSelectedProducts} />
+      {productsLoading ? (
+        <Card>
+          <CardContent className="pt-6">
+             <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center space-x-4 p-2">
+                  <Skeleton className="h-5 w-5 rounded-sm" />
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-5 w-48" />
+                   <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-12" />
+                  <Skeleton className="h-8 w-8" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <ProductTable products={filteredProducts} onSelectionChange={setSelectedProducts} />
+      )}
       <ProductForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
        {isMultiPrintDialogOpen && (
         <MultiPrintOptionsDialog

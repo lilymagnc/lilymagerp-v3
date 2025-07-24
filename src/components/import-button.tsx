@@ -8,21 +8,23 @@ import { ImportDialog } from "./import-dialog";
 
 interface ImportButtonProps {
     resourceName: string;
+    onImport: (data: any[]) => Promise<void>;
 }
 
-export function ImportButton({ resourceName }: ImportButtonProps) {
+export function ImportButton({ resourceName, onImport }: ImportButtonProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     return (
         <>
             <Button variant="outline" onClick={() => setIsDialogOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" />
-                시트에서 가져오기
+                가져오기
             </Button>
             <ImportDialog
                 isOpen={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 resourceName={resourceName}
+                onImport={onImport}
             />
         </>
     )

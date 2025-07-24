@@ -31,7 +31,7 @@ export default function MaterialsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading } = useMaterials();
+  const { materials, loading: materialsLoading, bulkAddMaterials } = useMaterials();
 
   const filteredMaterials = useMemo(() => {
     return materials
@@ -123,7 +123,7 @@ export default function MaterialsPage() {
                       재고 입출고
                     </Link>
                   </Button>
-                  <ImportButton resourceName="자재" />
+                  <ImportButton resourceName="자재" onImport={bulkAddMaterials} />
                   <Button variant="outline" size="sm" onClick={handleExport}>
                     <Download className="mr-2 h-4 w-4" />
                     내보내기

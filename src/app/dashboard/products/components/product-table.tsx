@@ -117,7 +117,7 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
   return (
     <>
       <Card>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
