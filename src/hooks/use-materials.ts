@@ -6,17 +6,18 @@ import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, 
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Material as MaterialData } from "@/app/dashboard/materials/components/material-table";
+import type { MaterialFormValues } from '@/app/dashboard/materials/components/material-form';
 
 export type Material = MaterialData;
 
-const initialMaterials: Material[] = [
-  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, size: "1단", color: "Pink", branch: "릴리맥광화문점", status: 'active' },
-  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 80, size: "1단", color: "Pink", branch: "릴리맥여의도점", status: 'active' },
-  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, size: "1단", color: "Red", branch: "릴리맥여의도점", status: 'active' },
-  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, size: "대", color: "Green", branch: "릴리맥광화문점", status: 'out_of_stock' },
-  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, size: "특", color: "Purple", branch: "릴리맥NC이스트폴점", status: 'active' },
-  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점", status: 'low_stock' },
-  { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점", status: 'active' },
+const initialMaterials: Omit<Material, 'docId' | 'status'>[] = [
+  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, size: "1단", color: "Pink", branch: "릴리맥광화문점" },
+  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 80, size: "1단", color: "Pink", branch: "릴리맥여의도점" },
+  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, size: "1단", color: "Red", branch: "릴리맥여의도점" },
+  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, size: "대", color: "Green", branch: "릴리맥광화문점" },
+  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, size: "특", color: "Purple", branch: "릴리맥NC이스트폴점" },
+  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
+  { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점" },
 ];
 
 export function useMaterials() {
@@ -39,9 +40,8 @@ export function useMaterials() {
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
         initialMaterials.forEach((materialData) => {
-            const {status, ...dataToSave} = materialData;
             const newDocRef = doc(materialsCollection);
-            batch.set(newDocRef, dataToSave);
+            batch.set(newDocRef, materialData);
         });
         await batch.commit();
         querySnapshot = await getDocs(query(materialsCollection));
@@ -50,6 +50,7 @@ export function useMaterials() {
       const materialsData = querySnapshot.docs.map((doc) => {
           const data = doc.data();
           return { 
+              docId: doc.id,
               ...data,
               status: getStatus(data.stock)
           } as Material;
@@ -71,21 +72,83 @@ export function useMaterials() {
   useEffect(() => {
     fetchMaterials();
   }, [fetchMaterials]);
+  
+  const generateNewId = async () => {
+    const q = query(collection(db, "materials"), orderBy("id", "desc"), limit(1));
+    const querySnapshot = await getDocs(q);
+    let lastIdNumber = 0;
+    if (!querySnapshot.empty) {
+        const lastId = querySnapshot.docs[0].data().id;
+        if(lastId && lastId.startsWith('M')) {
+            lastIdNumber = parseInt(lastId.replace('M', ''), 10);
+        }
+    }
+    return `M${String(lastIdNumber + 1).padStart(5, '0')}`;
+  }
+
+  const addMaterial = async (data: MaterialFormValues) => {
+    setLoading(true);
+    try {
+        const existingMaterialQuery = query(
+            collection(db, "materials"), 
+            where("name", "==", data.name), 
+            where("branch", "==", data.branch)
+        );
+        const existingMaterialSnapshot = await getDocs(existingMaterialQuery);
+
+        if (!existingMaterialSnapshot.empty) {
+            toast({ variant: 'destructive', title: '중복된 자재', description: `'${data.branch}' 지점에 동일한 이름의 자재가 이미 존재합니다.`});
+            return;
+        }
+
+        const newId = await generateNewId();
+        const docRef = doc(collection(db, "materials"));
+        await setDoc(docRef, { ...data, id: newId });
+
+        toast({ title: "성공", description: "새 자재가 추가되었습니다."});
+        await fetchMaterials();
+    } catch (error) {
+        console.error("Error adding material:", error);
+        toast({ variant: 'destructive', title: '오류', description: '자재 추가 중 오류가 발생했습니다.'});
+    } finally {
+        setLoading(false);
+    }
+  }
+
+  const updateMaterial = async (docId: string, materialId: string, data: MaterialFormValues) => {
+      setLoading(true);
+      try {
+          const docRef = doc(db, "materials", docId);
+          await setDoc(docRef, { ...data, id: materialId }, { merge: true });
+          toast({ title: "성공", description: "자재 정보가 수정되었습니다."});
+          await fetchMaterials();
+      } catch (error) {
+          console.error("Error updating material:", error);
+          toast({ variant: 'destructive', title: '오류', description: '자재 수정 중 오류가 발생했습니다.'});
+      } finally {
+          setLoading(false);
+      }
+  }
 
   const bulkAddMaterials = async (importedData: any[]) => {
     setLoading(true);
     const batch = writeBatch(db);
     const materialsCollection = collection(db, 'materials');
     
-    const q = query(materialsCollection, orderBy("id", "desc"), limit(1));
-    const querySnapshot = await getDocs(q);
     let lastIdNumber = 0;
-    if (!querySnapshot.empty) {
-        const lastId = querySnapshot.docs[0].data().id;
-        if(lastId && lastId.startsWith('M')) {
-            lastIdNumber = parseInt(lastId.replace('M', ''));
-        }
+    try {
+      const q = query(materialsCollection, orderBy("id", "desc"), limit(1));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+          const lastId = querySnapshot.docs[0].data().id;
+          if(lastId && lastId.startsWith('M')) {
+              lastIdNumber = parseInt(lastId.replace('M', ''));
+          }
+      }
+    } catch (e) {
+      console.error("Could not get last material ID", e);
     }
+    
 
     for (const item of importedData) {
         const docRef = doc(materialsCollection);
@@ -223,5 +286,5 @@ export function useMaterials() {
     }
   };
 
-  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials };
+  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials, addMaterial, updateMaterial };
 }

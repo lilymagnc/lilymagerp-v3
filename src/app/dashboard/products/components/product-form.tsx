@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useBranches } from "@/hooks/use-branches"
+import { useEffect } from "react"
 
 const productSchema = z.object({
   name: z.string().min(1, "상품명을 입력해주세요."),
@@ -35,36 +36,47 @@ const productSchema = z.object({
   size: z.string().min(1, "규격을 입력해주세요."),
   color: z.string().min(1, "색상을 입력해주세요."),
   branch: z.string().min(1, "지점을 선택해주세요."),
+  stock: z.coerce.number().min(0, "재고는 0 이상이어야 합니다.").default(0),
 })
 
-type ProductFormValues = z.infer<typeof productSchema>
+export type ProductFormValues = z.infer<typeof productSchema>
 
 interface ProductFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  product?: ProductFormValues & { id: string } | null
+  onSubmit: (data: ProductFormValues) => void;
+  product?: (ProductFormValues & { id: string; docId: string }) | null
 }
 
-export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps) {
+const defaultValues: ProductFormValues = {
+  name: "",
+  mainCategory: "",
+  midCategory: "",
+  price: 0,
+  supplier: "",
+  size: "",
+  color: "",
+  branch: "",
+  stock: 0,
+}
+
+
+export function ProductForm({ isOpen, onOpenChange, onSubmit, product }: ProductFormProps) {
   const { branches } = useBranches();
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: product || {
-      name: "",
-      mainCategory: "",
-      midCategory: "",
-      price: 0,
-      supplier: "",
-      size: "",
-      color: "",
-      branch: "",
-    },
+    defaultValues,
   })
 
-  const onSubmit = (data: ProductFormValues) => {
-    console.log(data)
-    onOpenChange(false)
+  useEffect(() => {
+    if(isOpen) {
+      form.reset(product || defaultValues);
+    }
+  }, [isOpen, product, form]);
+
+  const handleFormSubmit = (data: ProductFormValues) => {
+    onSubmit(data);
   }
 
   return (
@@ -75,7 +87,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
           <DialogDescription>상품의 상세 정보를 입력해주세요.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
              <FormField
               control={form.control}
               name="name"
@@ -96,7 +108,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>대분류</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder="대분류 선택" /></SelectTrigger>
                       </FormControl>
@@ -115,7 +127,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>중분류</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder="중분류 선택" /></SelectTrigger>
                       </FormControl>
@@ -178,7 +190,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>공급업체</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger><SelectValue placeholder="공급업체 선택" /></SelectTrigger>
                     </FormControl>
@@ -199,7 +211,7 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>소속 지점</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger><SelectValue placeholder="소속 지점 선택" /></SelectTrigger>
                     </FormControl>
@@ -213,6 +225,21 @@ export function ProductForm({ isOpen, onOpenChange, product }: ProductFormProps)
                 </FormItem>
               )}
             />
+             {product && (
+              <FormField
+                control={form.control}
+                name="stock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>재고</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} disabled />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter className="pt-4">
                 <DialogClose asChild>
                     <Button type="button" variant="secondary">취소</Button>

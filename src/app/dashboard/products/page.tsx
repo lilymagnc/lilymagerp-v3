@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Download, Printer, Search } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
 import { ProductTable, Product } from "./components/product-table";
-import { ProductForm } from "./components/product-form";
+import { ProductForm, ProductFormValues } from "./components/product-form";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,7 +30,7 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { products, loading: productsLoading, bulkAddProducts } = useProducts();
+  const { products, loading: productsLoading, bulkAddProducts, addProduct, updateProduct } = useProducts();
 
   const filteredProducts = useMemo(() => {
     return products
@@ -40,6 +41,27 @@ export default function ProductsPage() {
         product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
   }, [products, searchTerm, selectedBranch]);
+
+
+  const handleAdd = () => {
+    setSelectedProduct(null);
+    setIsFormOpen(true);
+  }
+
+  const handleEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setIsFormOpen(true);
+  }
+
+  const handleFormSubmit = async (data: ProductFormValues) => {
+    if (selectedProduct?.docId) {
+      await updateProduct(selectedProduct.docId, selectedProduct.id, data);
+    } else {
+      await addProduct(data);
+    }
+    setIsFormOpen(false);
+    setSelectedProduct(null);
+  }
 
 
   const handleExport = () => {
@@ -122,7 +144,7 @@ export default function ProductsPage() {
                         <Download className="mr-2 h-4 w-4" />
                         내보내기
                     </Button>
-                    <Button size="sm" onClick={() => setIsFormOpen(true)}>
+                    <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         상품 추가
                     </Button>
@@ -151,9 +173,14 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
       ) : (
-        <ProductTable products={filteredProducts} onSelectionChange={setSelectedProducts} />
+        <ProductTable products={filteredProducts} onSelectionChange={setSelectedProducts} onEdit={handleEdit} />
       )}
-      <ProductForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
+      <ProductForm 
+        isOpen={isFormOpen} 
+        onOpenChange={setIsFormOpen}
+        onSubmit={handleFormSubmit}
+        product={selectedProduct} 
+       />
        {isMultiPrintDialogOpen && (
         <MultiPrintOptionsDialog
             isOpen={isMultiPrintDialogOpen}

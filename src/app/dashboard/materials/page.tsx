@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Download, Printer, Search, ArrowRightLeft } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
 import { MaterialTable } from "./components/material-table";
-import { MaterialForm } from "./components/material-form";
+import { MaterialForm, MaterialFormValues } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
@@ -23,6 +23,7 @@ import { downloadXLSX } from "@/lib/utils";
 
 export default function MaterialsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,7 +32,7 @@ export default function MaterialsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, bulkAddMaterials } = useMaterials();
+  const { materials, loading: materialsLoading, bulkAddMaterials, addMaterial, updateMaterial } = useMaterials();
 
   const filteredMaterials = useMemo(() => {
     return materials
@@ -42,6 +43,26 @@ export default function MaterialsPage() {
         material.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
   }, [materials, searchTerm, selectedBranch]);
+
+  const handleAdd = () => {
+    setSelectedMaterial(null);
+    setIsFormOpen(true);
+  }
+
+  const handleEdit = (material: any) => {
+    setSelectedMaterial(material);
+    setIsFormOpen(true);
+  }
+
+  const handleFormSubmit = async (data: MaterialFormValues) => {
+    if (selectedMaterial?.docId) {
+      await updateMaterial(selectedMaterial.docId, selectedMaterial.id, data);
+    } else {
+      await addMaterial(data);
+    }
+    setIsFormOpen(false);
+    setSelectedMaterial(null);
+  }
 
   const handleExport = () => {
     if (filteredMaterials.length === 0) {
@@ -128,7 +149,7 @@ export default function MaterialsPage() {
                     <Download className="mr-2 h-4 w-4" />
                     내보내기
                   </Button>
-                  <Button size="sm" onClick={() => setIsFormOpen(true)}>
+                  <Button size="sm" onClick={handleAdd}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     자재 추가
                   </Button>
@@ -157,9 +178,14 @@ export default function MaterialsPage() {
           </CardContent>
         </Card>
       ) : (
-        <MaterialTable materials={filteredMaterials} onSelectionChange={setSelectedMaterials} />
+        <MaterialTable materials={filteredMaterials} onSelectionChange={setSelectedMaterials} onEdit={handleEdit} />
       )}
-      <MaterialForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
+      <MaterialForm 
+        isOpen={isFormOpen} 
+        onOpenChange={setIsFormOpen}
+        onSubmit={handleFormSubmit}
+        material={selectedMaterial}
+      />
       {isMultiPrintDialogOpen && (
         <MultiPrintOptionsDialog
             isOpen={isMultiPrintDialogOpen}

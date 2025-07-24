@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MoreHorizontal } from "lucide-react";
-import { MaterialForm } from "./material-form";
 import { StockUpdateForm } from "@/app/dashboard/products/components/stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { MaterialDetails } from "./material-details";
@@ -18,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export type Material = {
+  docId: string;
   id: string;
   name: string;
   mainCategory: string;
@@ -35,11 +35,11 @@ export type Material = {
 interface MaterialTableProps {
   materials: Material[];
   onSelectionChange: (selectedIds: string[]) => void;
+  onEdit: (material: Material) => void;
 }
 
-export function MaterialTable({ materials, onSelectionChange }: MaterialTableProps) {
+export function MaterialTable({ materials, onSelectionChange, onEdit }: MaterialTableProps) {
   const router = useRouter();
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
@@ -68,10 +68,9 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
     return materials.length > 0 && Object.keys(selectedRows).length === materials.length;
   }, [selectedRows, materials]);
 
-  const handleEdit = (material: any) => {
+  const handleEdit = (material: Material) => {
     setIsDetailOpen(false);
-    setSelectedMaterial(material);
-    setIsFormOpen(true);
+    onEdit(material);
   };
   
   const handleStockUpdate = (material: any) => {
@@ -103,7 +102,6 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
 
 
   const handleCloseForms = () => {
-    setIsFormOpen(false);
     setIsStockFormOpen(false);
     setIsDetailOpen(false);
     setSelectedMaterial(null);
@@ -145,7 +143,7 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
               {materials.length > 0 ? materials.map((material, idx) => {
                 const statusInfo = getStatus(material.status, material.stock);
                 return (
-                <TableRow key={`${material.id}-${idx}`}>
+                <TableRow key={`${material.docId}-${idx}`}>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={!!selectedRows[material.id]}
@@ -155,16 +153,18 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
                   </TableCell>
                   <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name}</TableCell>
                    <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
-                    <Barcode 
-                      value={material.id} 
-                      options={{ 
-                        format: 'CODE39',
-                        displayValue: true,
-                        fontSize: 14,
-                        height: 30,
-                        width: 1.5
-                      }} 
-                    />
+                    {material.id && (
+                        <Barcode 
+                        value={material.id} 
+                        options={{ 
+                            format: 'CODE39',
+                            displayValue: true,
+                            fontSize: 14,
+                            height: 30,
+                            width: 1.5
+                        }} 
+                        />
+                    )}
                   </TableCell>
                   <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
                     <Badge variant={statusInfo.variant}>
@@ -221,7 +221,6 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
           </Table>
         </CardContent>
       </Card>
-      {isFormOpen && <MaterialForm isOpen={isFormOpen} onOpenChange={handleCloseForms} material={selectedMaterial} />}
       {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedMaterial} />}
        {selectedMaterial && (
         <PrintOptionsDialog

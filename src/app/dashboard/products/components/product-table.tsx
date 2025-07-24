@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MoreHorizontal } from "lucide-react";
-import { ProductForm } from "./product-form";
 import { StockUpdateForm } from "./stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProductDetails } from "./product-details";
@@ -18,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export type Product = {
+  docId: string;
   id: string;
   name: string;
   mainCategory: string;
@@ -34,11 +34,11 @@ export type Product = {
 interface ProductTableProps {
   products: Product[];
   onSelectionChange: (selectedIds: string[]) => void;
+  onEdit: (product: Product) => void;
 }
 
-export function ProductTable({ products, onSelectionChange }: ProductTableProps) {
+export function ProductTable({ products, onSelectionChange, onEdit }: ProductTableProps) {
   const router = useRouter();
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
@@ -68,10 +68,9 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
   }, [selectedRows, products]);
 
 
-  const handleEdit = (product: any) => {
+  const handleEdit = (product: Product) => {
     setIsDetailOpen(false);
-    setSelectedProduct(product);
-    setIsFormOpen(true);
+    onEdit(product);
   };
   
   const handleStockUpdate = (product: any) => {
@@ -102,7 +101,6 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
   };
 
   const handleCloseForms = () => {
-    setIsFormOpen(false);
     setIsStockFormOpen(false);
     setIsDetailOpen(false);
     setSelectedProduct(null);
@@ -144,7 +142,7 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
               {products.length > 0 ? products.map((product, idx) => {
                 const statusInfo = getStatus(product.status, product.stock);
                 return (
-                <TableRow key={`${product.id}-${idx}`}>
+                <TableRow key={`${product.docId}-${idx}`}>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={!!selectedRows[product.id]}
@@ -154,16 +152,18 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
                   </TableCell>
                   <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(product)}>{product.name}</TableCell>
                    <TableCell className="cursor-pointer" onClick={() => handleRowClick(product)}>
-                    <Barcode 
-                      value={product.id} 
-                      options={{ 
-                        format: 'CODE39',
-                        displayValue: true,
-                        fontSize: 14,
-                        height: 30,
-                        width: 1.5
-                      }} 
-                    />
+                    {product.id && (
+                        <Barcode 
+                        value={product.id} 
+                        options={{ 
+                            format: 'CODE39',
+                            displayValue: true,
+                            fontSize: 14,
+                            height: 30,
+                            width: 1.5
+                        }} 
+                        />
+                    )}
                   </TableCell>
                   <TableCell className="cursor-pointer" onClick={() => handleRowClick(product)}>
                     <Badge variant={statusInfo.variant}>
@@ -220,7 +220,6 @@ export function ProductTable({ products, onSelectionChange }: ProductTableProps)
           </Table>
         </CardContent>
       </Card>
-      {isFormOpen && <ProductForm isOpen={isFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
       {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
       {selectedProduct && (
         <PrintOptionsDialog

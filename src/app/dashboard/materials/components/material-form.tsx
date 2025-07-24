@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useBranches } from "@/hooks/use-branches"
+import { useEffect } from "react"
 
 const materialSchema = z.object({
   name: z.string().min(1, "자재명을 입력해주세요."),
@@ -35,36 +36,46 @@ const materialSchema = z.object({
   size: z.string().min(1, "규격을 입력해주세요."),
   color: z.string().min(1, "색상을 입력해주세요."),
   branch: z.string().min(1, "지점을 선택해주세요."),
+  stock: z.coerce.number().min(0, "재고는 0 이상이어야 합니다.").default(0),
 })
 
-type MaterialFormValues = z.infer<typeof materialSchema>
+export type MaterialFormValues = z.infer<typeof materialSchema>
 
 interface MaterialFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  material?: MaterialFormValues & { id: string } | null
+  onSubmit: (data: MaterialFormValues) => void;
+  material?: (MaterialFormValues & { id: string; docId: string }) | null
 }
 
-export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormProps) {
+const defaultValues: MaterialFormValues = {
+  name: "",
+  mainCategory: "",
+  midCategory: "",
+  price: 0,
+  supplier: "",
+  size: "",
+  color: "",
+  branch: "",
+  stock: 0,
+}
+
+export function MaterialForm({ isOpen, onOpenChange, onSubmit, material }: MaterialFormProps) {
   const { branches } = useBranches();
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(materialSchema),
-    defaultValues: material || {
-      name: "",
-      mainCategory: "",
-      midCategory: "",
-      price: 0,
-      supplier: "",
-      size: "",
-      color: "",
-      branch: "",
-    },
+    defaultValues,
   })
 
-  const onSubmit = (data: MaterialFormValues) => {
-    console.log(data)
-    onOpenChange(false)
+  useEffect(() => {
+    if(isOpen) {
+      form.reset(material || defaultValues);
+    }
+  }, [isOpen, material, form]);
+  
+  const handleFormSubmit = (data: MaterialFormValues) => {
+    onSubmit(data);
   }
 
   return (
@@ -75,7 +86,7 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
           <DialogDescription>자재의 상세 정보를 입력해주세요.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
              <FormField
               control={form.control}
               name="name"
@@ -96,7 +107,7 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>대분류</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder="대분류 선택" /></SelectTrigger>
                       </FormControl>
@@ -117,7 +128,7 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>중분류</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger><SelectValue placeholder="중분류 선택" /></SelectTrigger>
                       </FormControl>
@@ -126,6 +137,7 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
                         <SelectItem value="카네이션">카네이션</SelectItem>
                         <SelectItem value="관엽식물">관엽식물</SelectItem>
                         <SelectItem value="난">난</SelectItem>
+                         <SelectItem value="기타">기타</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -180,7 +192,7 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>공급업체</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger><SelectValue placeholder="공급업체 선택" /></SelectTrigger>
                     </FormControl>
@@ -200,7 +212,7 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>소속 지점</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger><SelectValue placeholder="소속 지점 선택" /></SelectTrigger>
                     </FormControl>
@@ -214,6 +226,21 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
                 </FormItem>
               )}
             />
+             {material && (
+              <FormField
+                control={form.control}
+                name="stock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>재고</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} disabled />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter className="pt-4">
                 <DialogClose asChild>
                     <Button type="button" variant="secondary">취소</Button>
