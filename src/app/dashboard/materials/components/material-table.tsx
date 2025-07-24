@@ -156,14 +156,13 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
                   <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name}</TableCell>
                    <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
                     <Barcode 
-                      value={material.id.replace('M','')}
+                      value={material.id}
                       options={{ 
                         format: 'CODE39',
                         displayValue: true,
                         fontSize: 14,
                         height: 30,
-                        width: 1.5,
-                        text: material.id
+                        width: 1.5
                       }} 
                     />
                   </TableCell>
