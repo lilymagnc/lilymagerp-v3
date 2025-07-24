@@ -1,8 +1,6 @@
 
 "use client"
 
-import { useEffect, useRef } from "react"
-import JsBarcode from "jsbarcode"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,6 +12,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import { Barcode } from "@/components/barcode"
 
 type Product = {
   id: string;
@@ -35,20 +34,6 @@ interface ProductDetailsProps {
 }
 
 export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: ProductDetailsProps) {
-  const barcodeRef = useRef<SVGSVGElement | null>(null);
-
-  useEffect(() => {
-    if (barcodeRef.current && product) {
-      JsBarcode(barcodeRef.current, product.id, {
-        format: 'CODE39',
-        displayValue: true,
-        fontSize: 16,
-        height: 80,
-      });
-    }
-  }, [product]);
-
-
   if (!product) return null;
 
   return (
@@ -62,7 +47,17 @@ export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: Produc
         </DialogHeader>
         <div className="py-4 space-y-4">
           <div className="flex justify-center my-4">
-            <svg ref={barcodeRef} />
+            {isOpen && (
+              <Barcode 
+                value={product.id} 
+                options={{ 
+                  format: 'CODE39',
+                  displayValue: true,
+                  fontSize: 16,
+                  height: 80,
+                }} 
+              />
+            )}
           </div>
           <Separator />
           <div className="grid grid-cols-3 items-center gap-4">
