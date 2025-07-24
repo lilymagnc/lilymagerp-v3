@@ -13,6 +13,8 @@ import { StockUpdateForm } from "@/app/dashboard/products/components/stock-updat
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { MaterialDetails } from "./material-details";
 import { Barcode } from "@/components/barcode";
+import { PrintOptionsDialog } from "@/components/print-options-dialog";
+import { useRouter } from "next/navigation";
 
 const mockMaterials = [
   { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
@@ -23,9 +25,11 @@ const mockMaterials = [
 ];
 
 export function MaterialTable() {
+  const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
   const handleEdit = (material: any) => {
@@ -43,6 +47,24 @@ export function MaterialTable() {
     setSelectedMaterial(material);
     setIsDetailOpen(true);
   }
+
+  const handlePrint = (material: any) => {
+    setSelectedMaterial(material);
+    setIsPrintDialogOpen(true);
+  }
+
+  const handlePrintSubmit = ({ quantity, startPosition }: { quantity: number; startPosition: number }) => {
+    if (!selectedMaterial) return;
+    const params = new URLSearchParams({
+      ids: selectedMaterial.id,
+      type: 'material',
+      quantity: String(quantity),
+      start: String(startPosition),
+    });
+    router.push(`/dashboard/print-labels?${params.toString()}`);
+    setIsPrintDialogOpen(false);
+  };
+
 
   const handleCloseForms = () => {
     setIsFormOpen(false);
@@ -119,6 +141,7 @@ export function MaterialTable() {
                           <DropdownMenuLabel>작업</DropdownMenuLabel>
                           <DropdownMenuItem onSelect={() => handleEdit(material)}>수정</DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => handleStockUpdate(material)}>재고 업데이트</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handlePrint(material)}>라벨 인쇄</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>
@@ -147,6 +170,14 @@ export function MaterialTable() {
       </Card>
       {isFormOpen && <MaterialForm isOpen={isFormOpen} onOpenChange={handleCloseForms} material={selectedMaterial} />}
       {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedMaterial} />}
+       {selectedMaterial && (
+        <PrintOptionsDialog
+          isOpen={isPrintDialogOpen}
+          onOpenChange={setIsPrintDialogOpen}
+          onSubmit={handlePrintSubmit}
+          itemName={selectedMaterial.name}
+        />
+      )}
       <MaterialDetails
         isOpen={isDetailOpen}
         onOpenChange={setIsDetailOpen}
@@ -156,3 +187,4 @@ export function MaterialTable() {
     </>
   );
 }
+

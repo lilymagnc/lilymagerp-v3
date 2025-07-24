@@ -13,6 +13,8 @@ import { StockUpdateForm } from "./stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProductDetails } from "./product-details";
 import { Barcode } from "@/components/barcode";
+import { PrintOptionsDialog } from "@/components/print-options-dialog";
+import { useRouter } from "next/navigation";
 
 const mockProducts = [
   { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
@@ -23,9 +25,11 @@ const mockProducts = [
 ];
 
 export function ProductTable() {
+  const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const handleEdit = (product: any) => {
@@ -43,6 +47,23 @@ export function ProductTable() {
     setSelectedProduct(product);
     setIsDetailOpen(true);
   }
+  
+  const handlePrint = (product: any) => {
+    setSelectedProduct(product);
+    setIsPrintDialogOpen(true);
+  };
+
+  const handlePrintSubmit = ({ quantity, startPosition }: { quantity: number; startPosition: number }) => {
+    if (!selectedProduct) return;
+    const params = new URLSearchParams({
+      ids: selectedProduct.id,
+      type: 'product',
+      quantity: String(quantity),
+      start: String(startPosition),
+    });
+    router.push(`/dashboard/print-labels?${params.toString()}`);
+    setIsPrintDialogOpen(false);
+  };
 
   const handleCloseForms = () => {
     setIsFormOpen(false);
@@ -117,6 +138,7 @@ export function ProductTable() {
                           <DropdownMenuLabel>작업</DropdownMenuLabel>
                           <DropdownMenuItem onSelect={() => handleEdit(product)}>수정</DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => handleStockUpdate(product)}>재고 업데이트</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handlePrint(product)}>라벨 인쇄</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>
@@ -145,6 +167,14 @@ export function ProductTable() {
       </Card>
       {isFormOpen && <ProductForm isOpen={isFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
       {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
+      {selectedProduct && (
+        <PrintOptionsDialog
+          isOpen={isPrintDialogOpen}
+          onOpenChange={setIsPrintDialogOpen}
+          onSubmit={handlePrintSubmit}
+          itemName={selectedProduct.name}
+        />
+      )}
       <ProductDetails
         isOpen={isDetailOpen}
         onOpenChange={setIsDetailOpen}
