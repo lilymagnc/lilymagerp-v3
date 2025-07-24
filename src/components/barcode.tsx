@@ -6,7 +6,7 @@ import JsBarcode from 'jsbarcode';
 
 interface BarcodeProps {
   value: string;
-  options: JsBarcode.Options;
+  options: JsBarcode.Options & { text?: string };
 }
 
 export function Barcode({ value, options }: BarcodeProps) {
