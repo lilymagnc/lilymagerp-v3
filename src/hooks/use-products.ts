@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
@@ -73,11 +73,20 @@ export function useProducts() {
   }, [fetchProducts]);
 
   const bulkAddProducts = async (importedData: any[]) => {
+    const productsCollection = collection(db, "products");
+    const snapshot = await getCountFromServer(productsCollection);
+    let currentCount = snapshot.data().count;
+
     const batch = writeBatch(db);
     importedData.forEach((item: any) => {
-        const docRef = item.id 
-          ? doc(db, 'products', String(item.id))
-          : doc(collection(db, 'products'));
+        let docRef;
+        if (item.id) {
+          docRef = doc(db, 'products', String(item.id));
+        } else {
+          currentCount++;
+          const newId = `P${String(currentCount).padStart(5, '0')}`;
+          docRef = doc(db, 'products', newId);
+        }
         
         const productData = {
             name: item.name || "",

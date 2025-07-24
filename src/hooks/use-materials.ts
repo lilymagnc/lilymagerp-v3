@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, getCountFromServer } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Material as MaterialData } from "@/app/dashboard/materials/components/material-table";
@@ -73,13 +73,20 @@ export function useMaterials() {
   }, [fetchMaterials]);
 
   const bulkAddMaterials = async (importedData: any[]) => {
+    const materialsCollection = collection(db, "materials");
+    const snapshot = await getCountFromServer(materialsCollection);
+    let currentCount = snapshot.data().count;
+
     const batch = writeBatch(db);
     importedData.forEach((item: any) => {
-        // Assume 'id' column exists in XLSX for updating, otherwise creates new
-        // If 'id' is not provided, Firestore will auto-generate one.
-        const docRef = item.id 
-          ? doc(db, 'materials', String(item.id))
-          : doc(collection(db, 'materials'));
+        let docRef;
+        if (item.id) {
+          docRef = doc(db, 'materials', String(item.id));
+        } else {
+          currentCount++;
+          const newId = `M${String(currentCount).padStart(5, '0')}`;
+          docRef = doc(db, 'materials', newId);
+        }
         
         const materialData = {
             name: item.name || "",
@@ -93,11 +100,11 @@ export function useMaterials() {
             branch: item.branch || ""
         };
 
-        batch.set(docRef, materialData, { merge: true }); // merge:true to update existing
+        batch.set(docRef, materialData, { merge: true });
     });
 
     await batch.commit();
-    await fetchMaterials(); // Refetch data to show updates
+    await fetchMaterials();
   };
 
 
