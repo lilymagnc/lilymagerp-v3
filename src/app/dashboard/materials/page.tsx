@@ -91,9 +91,9 @@ export default function MaterialsPage() {
       return;
     }
     const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
-      ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, current_stock: stock, quantity: '' })
+      ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, current_stock: stock })
     );
-    downloadXLSX(dataToExport, "materials_stock_update");
+    downloadXLSX(dataToExport, "materials_list");
     toast({
       title: "목록 다운로드 성공",
       description: `현재 필터링된 ${dataToExport.length}개 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
@@ -205,13 +205,13 @@ export default function MaterialsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드 (입고용)</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드</DropdownMenuItem>
                          <ImportButton 
                           resourceName="자재"
                           onImport={handleExcelImport}
                           asDropdownMenuItem
                         >
-                          2. 파일로 자재 입고
+                          2. 파일로 자재 입고/수정
                         </ImportButton>
                       </DropdownMenuContent>
                     </DropdownMenu>

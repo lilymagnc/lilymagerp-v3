@@ -18,7 +18,7 @@ import { downloadXLSX } from "@/lib/utils";
 import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportButton } from "@/components/import-button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -78,9 +78,9 @@ export default function ProductsPage() {
       return;
     }
     const dataToExport = filteredProducts.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
-      ({ id, name, mainCategory, midCategory, price, supplier, size, color, branch, quantity: '' })
+      ({ id, name, mainCategory, midCategory, price, supplier, size, color, branch, current_stock: stock })
     );
-    downloadXLSX(dataToExport, "products_stock_update");
+    downloadXLSX(dataToExport, "products_list");
     toast({
       title: "목록 다운로드 성공",
       description: `현재 필터링된 ${dataToExport.length}개 상품 정보가 XLSX 파일로 다운로드되었습니다.`,
@@ -159,13 +159,13 @@ export default function ProductsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드 (입고용)</DropdownMenuItem>
+                       <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드</DropdownMenuItem>
                        <ImportButton 
                         resourceName="상품"
                         onImport={handleExcelImport}
                         asDropdownMenuItem
                       >
-                        2. 파일로 상품 입고
+                        2. 파일로 상품 입고/수정
                       </ImportButton>
                     </DropdownMenuContent>
                   </DropdownMenu>
