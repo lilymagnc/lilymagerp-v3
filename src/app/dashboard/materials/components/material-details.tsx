@@ -48,19 +48,19 @@ export function MaterialDetails({ isOpen, onOpenChange, onEdit, material }: Mate
         <div className="py-4 space-y-4">
           <div className="flex flex-col items-center my-4">
             {isOpen && (
-                <div className="flex items-center gap-4">
-                    <Barcode 
-                        value={material.id} 
-                        options={{ 
-                            format: 'CODE39',
-                            displayValue: true,
-                            fontSize: 16,
-                            height: 80,
-                        }} 
-                    />
-                </div>
+              <>
+                <Barcode 
+                  value={material.id} 
+                  options={{ 
+                    format: 'CODE39',
+                    displayValue: false,
+                    fontSize: 16,
+                    height: 80,
+                  }} 
+                />
+                <p className="text-center font-semibold mt-2">{material.id} {material.name}</p>
+              </>
             )}
-            <p className="text-center font-semibold mt-2">{material.id} {material.name}</p>
           </div>
           <Separator />
           <div className="grid grid-cols-3 items-center gap-4">
