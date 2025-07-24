@@ -18,7 +18,7 @@ import { useBranches } from "@/hooks/use-branches";
 import Link from "next/link";
 import { useMaterials } from "@/hooks/use-materials";
 import { Skeleton } from "@/components/ui/skeleton";
-import { downloadCSV } from "@/lib/utils";
+import { downloadXLSX } from "@/lib/utils";
 
 
 export default function MaterialsPage() {
@@ -55,10 +55,10 @@ export default function MaterialsPage() {
     const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
       ({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch })
     );
-    downloadCSV(dataToExport, "materials");
+    downloadXLSX(dataToExport, "materials");
     toast({
       title: "내보내기 성공",
-      description: `${dataToExport.length}개의 자재 정보가 CSV 파일로 다운로드되었습니다.`,
+      description: `${dataToExport.length}개의 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
   }
   

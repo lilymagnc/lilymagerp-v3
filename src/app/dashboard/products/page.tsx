@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
-import { downloadCSV } from "@/lib/utils";
+import { downloadXLSX } from "@/lib/utils";
 
 const mockProducts: Product[] = [
   { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White", branch: "릴리맥광화문점" },
@@ -61,10 +61,10 @@ export default function ProductsPage() {
     const dataToExport = filteredProducts.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
       ({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch })
     );
-    downloadCSV(dataToExport, "products");
+    downloadXLSX(dataToExport, "products");
     toast({
       title: "내보내기 성공",
-      description: `${dataToExport.length}개의 상품 정보가 CSV 파일로 다운로드되었습니다.`,
+      description: `${dataToExport.length}개의 상품 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
   }
 

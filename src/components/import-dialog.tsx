@@ -38,13 +38,13 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName }: ImportDialo
         <DialogHeader>
           <DialogTitle>{resourceName} 데이터 가져오기</DialogTitle>
           <DialogDescription>
-            CSV 또는 Excel 파일을 업로드해주세요.
+            Excel(XLSX) 파일을 업로드해주세요.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid w-full items-center gap-1.5">
             <Label htmlFor="file">파일 선택</Label>
-            <Input id="file" type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+            <Input id="file" type="file" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
             <p className="text-xs text-muted-foreground">
                 파일의 첫 번째 행은 헤더(id, name, price 등)여야 합니다.
             </p>
