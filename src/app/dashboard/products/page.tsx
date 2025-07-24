@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search } from "lucide-react";
+import { PlusCircle, Printer, Search, Sheet } from "lucide-react";
 import { ProductTable, Product } from "./components/product-table";
 import { ProductForm, ProductFormValues } from "./components/product-form";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { downloadXLSX } from "@/lib/utils";
 import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportButton } from "@/components/import-button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -30,7 +31,7 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, bulkAddProducts } = useProducts();
 
   const filteredProducts = useMemo(() => {
     return products
@@ -67,23 +68,22 @@ export default function ProductsPage() {
     await deleteProduct(docId);
   }
 
-
-  const handleExport = () => {
+  const handleExportTemplate = () => {
      if (filteredProducts.length === 0) {
       toast({
         variant: "destructive",
         title: "내보낼 데이터 없음",
-        description: "목록에 상품 데이터가 없습니다.",
+        description: "현재 필터에 맞는 상품 데이터가 없습니다. 필터를 초기화하거나 상품을 먼저 추가해주세요.",
       });
       return;
     }
     const dataToExport = filteredProducts.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
-      ({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch })
+      ({ id, name, mainCategory, midCategory, price, supplier, size, color, branch, quantity: '' })
     );
-    downloadXLSX(dataToExport, "products_template");
+    downloadXLSX(dataToExport, "products_update_template");
     toast({
-      title: "내보내기 성공",
-      description: `${dataToExport.length}개의 상품 정보가 XLSX 파일로 다운로드되었습니다.`,
+      title: "템플릿 다운로드 성공",
+      description: `현재 필터링된 ${dataToExport.length}개 상품 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
   }
 
@@ -98,6 +98,9 @@ export default function ProductsPage() {
     setIsMultiPrintDialogOpen(false);
   };
 
+  const handleExcelImport = async (data: any[]) => {
+    await bulkAddProducts(data, selectedBranch);
+  }
 
   return (
     <div>
@@ -147,10 +150,25 @@ export default function ProductsPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleExport}>
-                        <Download className="mr-2 h-4 w-4" />
-                        템플릿 다운로드
-                    </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Sheet className="mr-2 h-4 w-4" />
+                        엑셀 작업
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleExportTemplate}>1. 데이터 템플릿 다운로드</DropdownMenuItem>
+                       <ImportButton 
+                        resourceName="상품"
+                        onImport={handleExcelImport}
+                        asDropdownMenuItem
+                      >
+                        2. 템플릿 파일로 상품 등록
+                      </ImportButton>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         상품 추가

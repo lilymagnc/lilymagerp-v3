@@ -5,21 +5,25 @@ import { useState } from "react";
 import { Upload } from "lucide-react";
 import { Button, ButtonProps } from "./ui/button";
 import { ImportDialog } from "./import-dialog";
+import { DropdownMenuItem } from "./ui/dropdown-menu";
 
 interface ImportButtonProps extends ButtonProps {
     resourceName: string;
     onImport: (data: any[]) => Promise<void>;
+    asDropdownMenuItem?: boolean;
+    children: React.ReactNode;
 }
 
-export function ImportButton({ resourceName, onImport, ...props }: ImportButtonProps) {
+export function ImportButton({ resourceName, onImport, asDropdownMenuItem = false, children, ...props }: ImportButtonProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    const TriggerComponent = asDropdownMenuItem ? DropdownMenuItem : Button;
 
     return (
         <>
-            <Button {...props} onClick={() => setIsDialogOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                가져오기
-            </Button>
+            <TriggerComponent {...props} onClick={() => setIsDialogOpen(true)} onSelect={(e) => e.preventDefault()}>
+                {children}
+            </TriggerComponent>
             <ImportDialog
                 isOpen={isDialogOpen}
                 onOpenChange={setIsDialogOpen}

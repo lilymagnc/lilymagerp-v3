@@ -147,5 +147,73 @@ export function useProducts() {
     }
   }
 
-  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct };
+  const bulkAddProducts = async (excelData: any[], currentBranch: string) => {
+    setLoading(true);
+    const batch = writeBatch(db);
+    let newProductsCount = 0;
+    let updatedProductsCount = 0;
+
+    for (const row of excelData) {
+        if (!row.name || !row.branch) {
+            toast({ variant: 'destructive', title: '데이터 오류', description: `필수 항목(상품명, 지점)이 누락된 행이 있어 건너뜁니다.` });
+            continue;
+        }
+        
+        if (currentBranch !== "all" && row.branch !== currentBranch) {
+            continue;
+        }
+        
+        const productsRef = collection(db, "products");
+        const q = query(productsRef, where("name", "==", row.name), where("branch", "==", row.branch));
+        
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) { // New product
+            const newId = await generateNewId();
+            const newDocRef = doc(productsRef);
+            const newProductData = {
+                id: newId,
+                name: row.name,
+                branch: row.branch,
+                mainCategory: row.mainCategory || "미분류",
+                midCategory: row.midCategory || "미분류",
+                price: Number(row.price) || 0,
+                supplier: row.supplier || "미지정",
+                size: row.size || "-",
+                color: row.color || "-",
+                stock: Number(row.quantity) || 0,
+            };
+            batch.set(newDocRef, newProductData);
+            newProductsCount++;
+        } else { // Existing product
+            const docRef = querySnapshot.docs[0].ref;
+            const updateData: any = {};
+            if(row.price) updateData.price = Number(row.price);
+            if(row.supplier) updateData.supplier = row.supplier;
+            if(row.quantity) updateData.stock = Number(querySnapshot.docs[0].data().stock) + Number(row.quantity);
+
+            if(Object.keys(updateData).length > 0) {
+              batch.update(docRef, updateData);
+              updatedProductsCount++;
+            }
+        }
+    }
+
+    try {
+        await batch.commit();
+        toast({
+            title: "가져오기 완료",
+            description: `새 상품 ${newProductsCount}개 추가, 기존 상품 ${updatedProductsCount}개 업데이트 완료.`
+        });
+        await fetchProducts();
+    } catch (error) {
+        console.error("Error in bulk add/update:", error);
+        toast({ variant: "destructive", title: "오류", description: "일괄 처리 중 오류가 발생했습니다." });
+    } finally {
+        setLoading(false);
+    }
+  };
+
+
+  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct, bulkAddProducts };
 }
