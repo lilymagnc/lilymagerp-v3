@@ -46,7 +46,7 @@ export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: Produc
         height: 80,
       });
     }
-  }, [product, isOpen]);
+  }, [product]);
 
 
   if (!product) return null;

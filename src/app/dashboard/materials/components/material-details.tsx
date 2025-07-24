@@ -46,7 +46,7 @@ export function MaterialDetails({ isOpen, onOpenChange, onEdit, material }: Mate
         height: 80,
       });
     }
-  }, [material, isOpen]);
+  }, [material]);
 
 
   if (!material) return null;
