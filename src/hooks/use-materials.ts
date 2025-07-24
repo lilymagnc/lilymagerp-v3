@@ -2,20 +2,21 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, getCountFromServer, where } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Material as MaterialData } from "@/app/dashboard/materials/components/material-table";
 
 export type Material = MaterialData;
 
-const initialMaterials: Omit<Material, 'id' | 'status'>[] = [
-  { name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, size: "1단", color: "Pink", branch: "릴리맥광화문점" },
-  { name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, size: "1단", color: "Red", branch: "릴리맥여의도점" },
-  { name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, size: "대", color: "Green", branch: "릴리맥광화문점" },
-  { name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, size: "특", color: "Purple", branch: "릴리맥NC이스트폴점" },
-  { name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
-  { name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점" },
+const initialMaterials: Omit<Material, 'status'>[] = [
+  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, size: "1단", color: "Pink", branch: "릴리맥광화문점" },
+  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 80, size: "1단", color: "Pink", branch: "릴리맥여의도점" },
+  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, size: "1단", color: "Red", branch: "릴리맥여의도점" },
+  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, size: "대", color: "Green", branch: "릴리맥광화문점" },
+  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, size: "특", color: "Purple", branch: "릴리맥NC이스트폴점" },
+  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
+  { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점" },
 ];
 
 export function useMaterials() {
@@ -37,19 +38,9 @@ export function useMaterials() {
       
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
-        const materialIds: Record<string, string> = {};
-        let materialCounter = 1;
-
         initialMaterials.forEach((materialData) => {
-            const materialKey = `${materialData.name}-${materialData.size}-${materialData.color}`;
-            if (!materialIds[materialKey]) {
-                materialIds[materialKey] = `M${String(materialCounter++).padStart(5, '0')}`;
-            }
             const newDocRef = doc(materialsCollection);
-            batch.set(newDocRef, {
-                ...materialData,
-                id: materialIds[materialKey],
-            });
+            batch.set(newDocRef, materialData);
         });
         await batch.commit();
         querySnapshot = await getDocs(query(materialsCollection));
@@ -59,7 +50,7 @@ export function useMaterials() {
           const data = doc.data();
           return { 
               ...data,
-              id: data.id || doc.id, // Fallback to doc.id if id field is missing
+              id: data.id, 
               status: getStatus(data.stock)
           } as Material;
       }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
@@ -86,23 +77,27 @@ export function useMaterials() {
     const batch = writeBatch(db);
     const materialsCollection = collection(db, 'materials');
     
-    // Get the current highest ID
-    const q = query(materialsCollection);
+    const q = query(materialsCollection, orderBy("id", "desc"), limit(1));
     const querySnapshot = await getDocs(q);
-    let materialCounter = querySnapshot.size;
+    let lastIdNumber = 0;
+    if (!querySnapshot.empty) {
+        const lastId = querySnapshot.docs[0].data().id;
+        lastIdNumber = parseInt(lastId.replace('M', ''));
+    }
 
     for (const item of importedData) {
         const docRef = doc(materialsCollection);
-        const newId = `M${String(++materialCounter).padStart(5, '0')}`;
+        const newId = item.id ? item.id : `M${String(++lastIdNumber).padStart(5, '0')}`;
+
         batch.set(docRef, {
             ...item,
-            id: item.id || newId, // Use imported ID or generate new one
+            id: newId,
             stock: Number(item.stock) || 0,
             price: Number(item.price) || 0,
         });
     }
     await batch.commit();
-    await fetchMaterials(); // Refetch to show new data
+    await fetchMaterials();
   };
 
 
@@ -175,7 +170,7 @@ export function useMaterials() {
         const materialSnapshot = await getDocs(materialQuery);
 
         if (materialSnapshot.empty) {
-          throw new Error(`자재를 찾을 수 없습니다: ${itemName}`);
+          throw new Error(`자재를 찾을 수 없습니다: ${itemName} (${branchName})`);
         }
         
         const materialRef = materialSnapshot.docs[0].ref;
