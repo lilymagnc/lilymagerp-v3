@@ -72,17 +72,15 @@ export function StockMovement() {
   }
 
   const updateQuantity = (id: string, newQuantity: number) => {
-    const list = activeTab === 'stock-in' ? stockInList : stockOutList;
     const setList = activeTab === 'stock-in' ? setStockInList : setStockOutList;
     if (newQuantity >= 1) {
-        setList(list.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
+        setList(prevList => prevList.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
     }
   }
   
   const removeItem = (id: string) => {
-    const list = activeTab === 'stock-in' ? stockInList : stockOutList;
     const setList = activeTab === 'stock-in' ? setStockInList : setStockOutList;
-    setList(list.filter(item => item.id !== id));
+    setList(prevList => prevList.filter(item => item.id !== id));
   }
 
   const handleProcess = () => {
@@ -111,7 +109,7 @@ export function StockMovement() {
     }
   }
 
-  const renderList = (list: ScannedItem[]) => (
+  const renderList = (list: ScannedItem[], type: 'stock-in' | 'stock-out') => (
     <div className="space-y-4">
         {list.length > 0 ? (
             <Card>
@@ -197,10 +195,10 @@ export function StockMovement() {
                     <TabsTrigger value="stock-out">출고</TabsTrigger>
                 </TabsList>
                 <TabsContent value="stock-in" className="mt-4">
-                    {renderList(stockInList)}
+                    {renderList(stockInList, 'stock-in')}
                 </TabsContent>
                 <TabsContent value="stock-out" className="mt-4">
-                    {renderList(stockOutList)}
+                    {renderList(stockOutList, 'stock-out')}
                 </TabsContent>
             </Tabs>
           </Card>
@@ -209,5 +207,3 @@ export function StockMovement() {
     </Card>
   );
 }
-
-    
