@@ -37,9 +37,15 @@ export function useMaterials() {
       
       if (querySnapshot.empty) {
         const batch = writeBatch(db);
-        initialMaterials.forEach(materialData => {
-          const docRef = doc(collection(db, "materials"));
-          batch.set(docRef, materialData);
+        const newInitialMaterials = initialMaterials.map((material, index) => ({
+            id: `M1000${index + 1}`,
+            ...material
+        }));
+
+        newInitialMaterials.forEach(materialData => {
+          const docRef = doc(db, "materials", materialData.id);
+          const { id, ...dataToSet } = materialData;
+          batch.set(docRef, dataToSet);
         });
         await batch.commit();
         querySnapshot = await getDocs(materialsCollection);
@@ -77,8 +83,7 @@ export function useMaterials() {
     branchName: string,
     operator: string
   ) => {
-    const batch = writeBatch(db);
-
+    
     for (const item of items) {
         const materialRef = doc(db, "materials", item.id);
         const historyRef = doc(collection(db, "stockHistory"));
@@ -100,20 +105,17 @@ export function useMaterials() {
                 
                 transaction.update(materialRef, { stock: newStock });
 
-                // We cannot run batch writes inside a transaction, so we'll do history outside
-            });
-
-            // Create history record after transaction succeeds
-            batch.set(historyRef, {
-                date: serverTimestamp(),
-                type: type,
-                itemType: "material",
-                itemId: item.id,
-                itemName: item.name,
-                quantity: item.quantity,
-                resultingStock: 0, // This will be updated below
-                branch: branchName,
-                operator: operator,
+                transaction.set(historyRef, {
+                    date: serverTimestamp(),
+                    type: type,
+                    itemType: "material",
+                    itemId: item.id,
+                    itemName: item.name,
+                    quantity: item.quantity,
+                    resultingStock: newStock,
+                    branch: branchName,
+                    operator: operator,
+                });
             });
 
         } catch (e: any) {
@@ -123,24 +125,11 @@ export function useMaterials() {
                 title: "재고 업데이트 실패",
                 description: e.message,
             });
-            return; // Stop processing if one item fails
+            return; 
         }
     }
     
-    // After all transactions, commit the history writes
-    await batch.commit();
-
-    // Now update resultingStock in a separate loop
-    const finalBatch = writeBatch(db);
-    for (const item of items) {
-        const materialRef = doc(db, "materials", item.id);
-        const materialSnap = await getDocs(collection(db, "stockHistory")); // This seems wrong
-        // Need to refetch material to get final stock, or just calculate it
-         const materialDoc = await getDocs(collection(db, "materials")); // This is also wrong
-         //Let's just refetch all materials at the end
-    }
-
-    await fetchMaterials(); // Refetch all data to ensure consistency
+    await fetchMaterials(); 
   };
 
   return { materials, loading, updateStock, fetchMaterials };

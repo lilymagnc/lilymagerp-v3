@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -9,19 +9,15 @@ import { HistoryTable, StockHistory } from "./components/history-table";
 import { HistoryFilters } from "./components/history-filters";
 import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
-
-const mockHistory: StockHistory[] = [
-  { id: "SH-001", date: "2023-11-01T10:00:00Z", type: "in", itemType: "material", itemName: "마르시아 장미", quantity: 50, resultingStock: 100, branch: "릴리맥광화문점", operator: "김입고" },
-  { id: "SH-002", date: "2023-11-01T11:30:00Z", type: "out", itemType: "product", itemName: "레드로즈 꽃다발", quantity: 2, resultingStock: 28, branch: "릴리맥NC이스트폴점", operator: "박출고" },
-  { id: "SH-003", date: "2023-11-02T14:00:00Z", type: "out", itemType: "material", itemName: "포장용 크라프트지", quantity: 10, resultingStock: 5, branch: "릴리맥여의도점", operator: "이사용" },
-  { id: "SH-004", date: "2023-11-02T16:45:00Z", type: "in", itemType: "product", itemName: "맥 데님 팬츠", quantity: 20, resultingStock: 100, branch: "릴리맥여의도점", operator: "최보충" },
-  { id: "SH-005", date: "2023-11-03T09:10:00Z", type: "in", itemType: "material", itemName: "만천홍", quantity: 15, resultingStock: 45, branch: "릴리맥NC이스트폴점", operator: "김입고" },
-  { id: "SH-006", date: "2023-11-03T18:00:00Z", type: "out", itemType: "material", itemName: "마르시아 장미", quantity: 5, resultingStock: 95, branch: "릴리맥광화문점", operator: "박출고" },
-];
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function StockHistoryPage() {
     const { branches } = useBranches();
     const { toast } = useToast();
+    const [history, setHistory] = useState<StockHistory[]>([]);
+    const [loading, setLoading] = useState(true);
     
     const [filters, setFilters] = useState({
         dateRange: { from: new Date(new Date().setMonth(new Date().getMonth() - 1)), to: new Date() },
@@ -31,10 +27,45 @@ export default function StockHistoryPage() {
         search: "",
     });
 
+    useEffect(() => {
+        setLoading(true);
+        const q = query(collection(db, "stockHistory"), orderBy("date", "desc"));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const historyData: StockHistory[] = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                historyData.push({
+                    id: doc.id,
+                    ...data,
+                    date: data.date.toDate().toISOString(),
+                } as StockHistory);
+            });
+            setHistory(historyData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching stock history:", error);
+            toast({
+                variant: "destructive",
+                title: "오류",
+                description: "재고 기록을 불러오는 중 오류가 발생했습니다."
+            });
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [toast]);
+
     const filteredHistory = useMemo(() => {
-        return mockHistory.filter(item => {
+        return history.filter(item => {
+            if (!item.date) return false;
             const itemDate = new Date(item.date);
-            const inDateRange = itemDate >= (filters.dateRange.from ?? new Date(0)) && itemDate <= (filters.dateRange.to ?? new Date());
+            const fromDate = filters.dateRange?.from;
+            const toDate = filters.dateRange?.to;
+
+            const inDateRange = 
+                (!fromDate || itemDate >= fromDate) && 
+                (!toDate || itemDate <= toDate);
+            
             const branchMatch = filters.branch === 'all' || item.branch === filters.branch;
             const typeMatch = filters.type === 'all' || item.type === filters.type;
             const itemTypeMatch = filters.itemType === 'all' || item.itemType === filters.itemType;
@@ -42,7 +73,7 @@ export default function StockHistoryPage() {
 
             return inDateRange && branchMatch && typeMatch && itemTypeMatch && searchMatch;
         });
-    }, [filters]);
+    }, [filters, history]);
 
     const handleExport = () => {
         toast({
@@ -69,7 +100,15 @@ export default function StockHistoryPage() {
         branches={branches}
       />
       
-      <HistoryTable history={filteredHistory} />
+      {loading ? (
+        <div className="space-y-2">
+            {Array.from({length: 10}).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+            ))}
+        </div>
+      ) : (
+        <HistoryTable history={filteredHistory} />
+      )}
     </div>
   );
 }

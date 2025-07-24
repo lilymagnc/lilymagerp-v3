@@ -126,15 +126,18 @@ export default function MaterialsPage() {
       {materialsLoading ? (
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
+            <div className="space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center space-x-4 p-2">
                   <Skeleton className="h-5 w-5 rounded-sm" />
                   <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-5 w-20" />
-                  <Skeleton className="h-5 flex-1" />
-                  <Skeleton className="h-5 w-20" />
+                  <Skeleton className="h-5 w-48" />
+                   <Skeleton className="h-6 w-20 rounded-full" />
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-12" />
+                  <Skeleton className="h-8 w-8" />
                 </div>
               ))}
             </div>

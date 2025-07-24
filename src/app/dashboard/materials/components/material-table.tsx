@@ -118,7 +118,7 @@ export function MaterialTable({ materials, onSelectionChange }: MaterialTablePro
   return (
     <>
       <Card>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
