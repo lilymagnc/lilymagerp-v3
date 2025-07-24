@@ -20,21 +20,9 @@ export function LabelGrid({ items }: LabelGridProps) {
             gridTemplateRows: 'repeat(8, 33.9mm)',
         }}
     >
-        {items.map((item, index) => {
-            if (!item.name) {
-                // Render a simple div with a border for empty items
-                return (
-                    <div
-                        key={`empty-${index}`}
-                        className="border border-dashed border-gray-300"
-                    />
-                );
-            }
-            // Render the full LabelItem for items with data
-            return (
-                <LabelItem key={`${item.id}-${index}`} id={item.id} name={item.name} />
-            );
-        })}
+        {items.map((item, index) => (
+            <LabelItem key={`${item.id}-${index}`} id={item.id} name={item.name} />
+        ))}
     </div>
   );
 }
