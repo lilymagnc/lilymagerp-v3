@@ -15,6 +15,7 @@ import { MaterialDetails } from "./material-details";
 import { Barcode } from "@/components/barcode";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
+import { PrintOptionsDialog } from "../../print-labels/components/print-options-dialog";
 
 const mockMaterials = [
   { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
@@ -29,6 +30,7 @@ export function MaterialTable() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
@@ -77,11 +79,14 @@ export function MaterialTable() {
     }
   };
 
-  const handlePrintLabels = () => {
+  const handlePrintLabels = ({ copies, startPosition }: { copies: number, startPosition: number }) => {
     const params = new URLSearchParams();
     params.append("type", "materials");
     params.append("ids", selectedRows.join(','));
+    params.append("copies", copies.toString());
+    params.append("start", startPosition.toString());
     router.push(`/dashboard/print-labels?${params.toString()}`);
+    setIsPrintDialogOpen(false);
   }
 
   return (
@@ -90,7 +95,7 @@ export function MaterialTable() {
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>자재 목록</CardTitle>
           {selectedRows.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handlePrintLabels}>
+            <Button variant="outline" size="sm" onClick={() => setIsPrintDialogOpen(true)}>
               <Printer className="mr-2 h-4 w-4" />
               선택 항목 라벨 인쇄 ({selectedRows.length})
             </Button>
@@ -198,6 +203,12 @@ export function MaterialTable() {
         onOpenChange={setIsDetailOpen}
         material={selectedMaterial}
         onEdit={() => selectedMaterial && handleEdit(selectedMaterial)}
+      />
+      <PrintOptionsDialog
+        isOpen={isPrintDialogOpen}
+        onOpenChange={setIsPrintDialogOpen}
+        onSubmit={handlePrintLabels}
+        selectedCount={selectedRows.length}
       />
     </>
   );

@@ -15,6 +15,7 @@ import { ProductDetails } from "./product-details";
 import { Barcode } from "@/components/barcode";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
+import { PrintOptionsDialog } from "../../print-labels/components/print-options-dialog";
 
 const mockProducts = [
   { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
@@ -29,6 +30,7 @@ export function ProductTable() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
@@ -77,11 +79,14 @@ export function ProductTable() {
     }
   };
   
-  const handlePrintLabels = () => {
+  const handlePrintLabels = ({ copies, startPosition }: { copies: number, startPosition: number }) => {
     const params = new URLSearchParams();
     params.append("type", "products");
     params.append("ids", selectedRows.join(','));
+    params.append("copies", copies.toString());
+    params.append("start", startPosition.toString());
     router.push(`/dashboard/print-labels?${params.toString()}`);
+    setIsPrintDialogOpen(false);
   }
 
   return (
@@ -90,7 +95,7 @@ export function ProductTable() {
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle>상품 목록</CardTitle>
           {selectedRows.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handlePrintLabels}>
+            <Button variant="outline" size="sm" onClick={() => setIsPrintDialogOpen(true)}>
               <Printer className="mr-2 h-4 w-4" />
               선택 항목 라벨 인쇄 ({selectedRows.length})
             </Button>
@@ -196,6 +201,12 @@ export function ProductTable() {
         onOpenChange={setIsDetailOpen}
         product={selectedProduct}
         onEdit={() => selectedProduct && handleEdit(selectedProduct)}
+      />
+      <PrintOptionsDialog
+        isOpen={isPrintDialogOpen}
+        onOpenChange={setIsPrintDialogOpen}
+        onSubmit={handlePrintLabels}
+        selectedCount={selectedRows.length}
       />
     </>
   );
