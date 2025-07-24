@@ -36,7 +36,10 @@ export async function processReceipt(input: ReceiptProcessInput): Promise<Receip
 
 const prompt = ai.definePrompt({
   name: 'receiptProcessPrompt',
-  input: { schema: ReceiptProcessInputSchema },
+  input: { schema: z.object({
+      receiptText: z.string(),
+      availableMaterials: z.array(z.string()),
+  }) },
   output: { schema: ReceiptProcessOutputSchema },
   prompt: `You are an expert inventory manager for a flower shop.
 Your task is to parse the provided receipt text and identify the materials and quantities being stocked.
@@ -47,8 +50,8 @@ The receipt text is as follows:
 ---
 
 Here is a list of available materials in our inventory:
-{{#each (jsonStringify availableMaterials as |material|)}}
-- {{{material}}}
+{{#each availableMaterials}}
+- {{{this}}}
 {{/each}}
 
 Please analyze the receipt text and extract each material and its corresponding quantity.
@@ -65,14 +68,10 @@ const processReceiptFlow = ai.defineFlow(
     outputSchema: ReceiptProcessOutputSchema,
   },
   async (input) => {
-    // Helper to pass array to prompt context
-    const handlebarsSafeObject = {
+    const { output } = await prompt({
         ...input,
         availableMaterials: AVAILABLE_MATERIALS,
-        jsonStringify: (obj: any) => JSON.stringify(obj),
-    };
-
-    const { output } = await prompt(handlebarsSafeObject);
+    });
     
     if (!output) {
       return { items: [] };
