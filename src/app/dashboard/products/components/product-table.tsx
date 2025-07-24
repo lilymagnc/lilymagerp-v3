@@ -17,19 +17,26 @@ import { PrintOptionsDialog } from "@/components/print-options-dialog";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const mockProducts = [
-  { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
-  { id: "P00002", name: "맥 데님 팬츠", mainCategory: "완제품", midCategory: "꽃바구니", price: 78000, supplier: "데님월드", stock: 80, status: "active", size: "28", color: "Blue" },
-  { id: "P00003", name: "오렌지 포인트 스커트", mainCategory: "완제품", midCategory: "꽃바구니", price: 62000, supplier: "꽃길 본사", stock: 0, status: "out_of_stock", size: "S", color: "Orange" },
-  { id: "P00004", name: "그린 스트라이프 티", mainCategory: "부자재", midCategory: "포장지", price: 32000, supplier: "티셔츠팩토리", stock: 250, status: "active", size: "L", color: "Green/White" },
-  { id: "P00005", name: "베이직 블랙 슬랙스", mainCategory: "부자재", midCategory: "리본", price: 55000, supplier: "슬랙스하우스", stock: 15, status: "low_stock", size: "M", color: "Black" },
-];
+export type Product = {
+  id: string;
+  name: string;
+  mainCategory: string;
+  midCategory: string;
+  price: number;
+  supplier: string;
+  stock: number;
+  status: string;
+  size: string;
+  color: string;
+  branch: string;
+};
 
 interface ProductTableProps {
+  products: Product[];
   onSelectionChange: (selectedIds: string[]) => void;
 }
 
-export function ProductTable({ onSelectionChange }: ProductTableProps) {
+export function ProductTable({ products, onSelectionChange }: ProductTableProps) {
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
@@ -50,15 +57,15 @@ export function ProductTable({ onSelectionChange }: ProductTableProps) {
   const handleSelectAll = (checked: boolean) => {
     const newSelection: Record<string, boolean> = {};
     if (checked) {
-      mockProducts.forEach(p => newSelection[p.id] = true);
+      products.forEach(p => newSelection[p.id] = true);
     }
     setSelectedRows(newSelection);
     onSelectionChange(Object.keys(newSelection));
   };
 
   const isAllSelected = useMemo(() => {
-    return mockProducts.length > 0 && Object.keys(selectedRows).length === mockProducts.length;
-  }, [selectedRows]);
+    return products.length > 0 && Object.keys(selectedRows).length === products.length;
+  }, [selectedRows, products]);
 
 
   const handleEdit = (product: any) => {
@@ -110,9 +117,6 @@ export function ProductTable({ onSelectionChange }: ProductTableProps) {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>상품 목록</CardTitle>
-        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -136,7 +140,7 @@ export function ProductTable({ onSelectionChange }: ProductTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockProducts.map((product) => {
+              {products.length > 0 ? products.map((product) => {
                 const statusInfo = getStatus(product.status, product.stock);
                 return (
                 <TableRow key={product.id}>
@@ -203,7 +207,13 @@ export function ProductTable({ onSelectionChange }: ProductTableProps) {
                     </AlertDialog>
                   </TableCell>
                 </TableRow>
-              )})}
+              )}) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center">
+                    조회된 상품이 없습니다.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

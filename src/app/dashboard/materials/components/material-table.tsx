@@ -17,19 +17,27 @@ import { PrintOptionsDialog } from "@/components/print-options-dialog";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const mockMaterials = [
-  { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
-  { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, status: "active", size: "1단", color: "Red" },
-  { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, status: "out_of_stock", size: "대", color: "Green" },
-  { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, status: "active", size: "특", color: "Purple" },
-  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, status: "low_stock", size: "1롤", color: "Brown" },
-];
+export type Material = {
+  id: string;
+  name: string;
+  mainCategory: string;
+  midCategory: string;
+  price: number;
+  supplier: string;
+  stock: number;
+  status: string;
+  size: string;
+  color: string;
+  branch: string;
+};
+
 
 interface MaterialTableProps {
+  materials: Material[];
   onSelectionChange: (selectedIds: string[]) => void;
 }
 
-export function MaterialTable({ onSelectionChange }: MaterialTableProps) {
+export function MaterialTable({ materials, onSelectionChange }: MaterialTableProps) {
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
@@ -50,15 +58,15 @@ export function MaterialTable({ onSelectionChange }: MaterialTableProps) {
   const handleSelectAll = (checked: boolean) => {
     const newSelection: Record<string, boolean> = {};
     if (checked) {
-      mockMaterials.forEach(m => newSelection[m.id] = true);
+      materials.forEach(m => newSelection[m.id] = true);
     }
     setSelectedRows(newSelection);
     onSelectionChange(Object.keys(newSelection));
   };
 
   const isAllSelected = useMemo(() => {
-    return mockMaterials.length > 0 && Object.keys(selectedRows).length === mockMaterials.length;
-  }, [selectedRows]);
+    return materials.length > 0 && Object.keys(selectedRows).length === materials.length;
+  }, [selectedRows, materials]);
 
   const handleEdit = (material: any) => {
     setIsDetailOpen(false);
@@ -110,9 +118,6 @@ export function MaterialTable({ onSelectionChange }: MaterialTableProps) {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>자재 목록</CardTitle>
-        </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
@@ -137,7 +142,7 @@ export function MaterialTable({ onSelectionChange }: MaterialTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockMaterials.map((material) => {
+              {materials.length > 0 ? materials.map((material) => {
                 const statusInfo = getStatus(material.status, material.stock);
                 return (
                 <TableRow key={material.id}>
@@ -205,7 +210,13 @@ export function MaterialTable({ onSelectionChange }: MaterialTableProps) {
                     </AlertDialog>
                   </TableCell>
                 </TableRow>
-              )})}
+              )}) : (
+                <TableRow>
+                  <TableCell colSpan={9} className="h-24 text-center">
+                    조회된 자재가 없습니다.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
