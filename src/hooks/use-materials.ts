@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, where, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Material as MaterialData } from "@/app/dashboard/materials/components/material-table";
@@ -16,7 +16,7 @@ const initialMaterials: Omit<Material, 'docId' | 'status'>[] = [
   { id: "M00002", name: "레드 카네이션", mainCategory: "생화", midCategory: "카네이션", price: 4500, supplier: "플라워팜", stock: 200, size: "1단", color: "Red", branch: "릴리맥여의도점" },
   { id: "M00003", name: "몬스테라", mainCategory: "화분", midCategory: "관엽식물", price: 25000, supplier: "플라워팜", stock: 0, size: "대", color: "Green", branch: "릴리맥광화문점" },
   { id: "M00004", name: "만천홍", mainCategory: "화분", midCategory: "난", price: 55000, supplier: "경부선꽃시장", stock: 30, size: "특", color: "Purple", branch: "릴리맥NC이스트폴점" },
-  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "포장지", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
+  { id: "M00005", name: "포장용 크라프트지", mainCategory: "기타자재", midCategory: "기타", price: 1000, supplier: "자재월드", stock: 15, size: "1롤", color: "Brown", branch: "릴리맥여의도점" },
   { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점" },
 ];
 
@@ -98,6 +98,7 @@ export function useMaterials() {
 
         if (!existingMaterialSnapshot.empty) {
             toast({ variant: 'destructive', title: '중복된 자재', description: `'${data.branch}' 지점에 동일한 이름의 자재가 이미 존재합니다.`});
+            setLoading(false);
             return;
         }
 
@@ -128,6 +129,21 @@ export function useMaterials() {
       } finally {
           setLoading(false);
       }
+  }
+
+  const deleteMaterial = async (docId: string) => {
+    setLoading(true);
+    try {
+        const docRef = doc(db, "materials", docId);
+        await deleteDoc(docRef);
+        toast({ title: "성공", description: "자재가 삭제되었습니다."});
+        await fetchMaterials();
+    } catch (error) {
+        console.error("Error deleting material:", error);
+        toast({ variant: 'destructive', title: '오류', description: '자재 삭제 중 오류가 발생했습니다.'});
+    } finally {
+        setLoading(false);
+    }
   }
 
   const bulkAddMaterials = async (importedData: any[]) => {
@@ -286,5 +302,7 @@ export function useMaterials() {
     }
   };
 
-  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials, addMaterial, updateMaterial };
+  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials, addMaterial, updateMaterial, deleteMaterial };
 }
+
+    

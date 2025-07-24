@@ -36,9 +36,10 @@ interface MaterialTableProps {
   materials: Material[];
   onSelectionChange: (selectedIds: string[]) => void;
   onEdit: (material: Material) => void;
+  onDelete: (docId: string) => void;
 }
 
-export function MaterialTable({ materials, onSelectionChange, onEdit }: MaterialTableProps) {
+export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete }: MaterialTableProps) {
   const router = useRouter();
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -204,7 +205,12 @@ export function MaterialTable({ materials, onSelectionChange, onEdit }: Material
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>취소</AlertDialogCancel>
-                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90">삭제</AlertDialogAction>
+                          <AlertDialogAction 
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => onDelete(material.docId)}
+                          >
+                            삭제
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -239,3 +245,5 @@ export function MaterialTable({ materials, onSelectionChange, onEdit }: Material
     </>
   );
 }
+
+    

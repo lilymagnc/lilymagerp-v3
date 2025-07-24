@@ -35,9 +35,10 @@ interface ProductTableProps {
   products: Product[];
   onSelectionChange: (selectedIds: string[]) => void;
   onEdit: (product: Product) => void;
+  onDelete: (docId: string) => void;
 }
 
-export function ProductTable({ products, onSelectionChange, onEdit }: ProductTableProps) {
+export function ProductTable({ products, onSelectionChange, onEdit, onDelete }: ProductTableProps) {
   const router = useRouter();
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -203,7 +204,12 @@ export function ProductTable({ products, onSelectionChange, onEdit }: ProductTab
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>취소</AlertDialogCancel>
-                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90">삭제</AlertDialogAction>
+                          <AlertDialogAction 
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => onDelete(product.docId)}
+                          >
+                            삭제
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -238,3 +244,5 @@ export function ProductTable({ products, onSelectionChange, onEdit }: ProductTab
     </>
   );
 }
+
+    

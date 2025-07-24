@@ -32,7 +32,7 @@ export default function MaterialsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, bulkAddMaterials, addMaterial, updateMaterial } = useMaterials();
+  const { materials, loading: materialsLoading, bulkAddMaterials, addMaterial, updateMaterial, deleteMaterial } = useMaterials();
 
   const filteredMaterials = useMemo(() => {
     return materials
@@ -62,6 +62,10 @@ export default function MaterialsPage() {
     }
     setIsFormOpen(false);
     setSelectedMaterial(null);
+  }
+
+  const handleDelete = async (docId: string) => {
+    await deleteMaterial(docId);
   }
 
   const handleExport = () => {
@@ -178,7 +182,12 @@ export default function MaterialsPage() {
           </CardContent>
         </Card>
       ) : (
-        <MaterialTable materials={filteredMaterials} onSelectionChange={setSelectedMaterials} onEdit={handleEdit} />
+        <MaterialTable 
+          materials={filteredMaterials} 
+          onSelectionChange={setSelectedMaterials} 
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       )}
       <MaterialForm 
         isOpen={isFormOpen} 
@@ -198,3 +207,5 @@ export default function MaterialsPage() {
     </div>
   );
 }
+
+    

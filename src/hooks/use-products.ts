@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
@@ -99,6 +99,7 @@ export function useProducts() {
 
         if (!existingProductSnapshot.empty) {
             toast({ variant: 'destructive', title: '중복된 상품', description: `'${data.branch}' 지점에 동일한 이름의 상품이 이미 존재합니다.`});
+            setLoading(false);
             return;
         }
 
@@ -129,6 +130,21 @@ export function useProducts() {
       } finally {
           setLoading(false);
       }
+  }
+
+  const deleteProduct = async (docId: string) => {
+    setLoading(true);
+    try {
+        const docRef = doc(db, "products", docId);
+        await deleteDoc(docRef);
+        toast({ title: "성공", description: "상품이 삭제되었습니다."});
+        await fetchProducts();
+    } catch (error) {
+        console.error("Error deleting product:", error);
+        toast({ variant: 'destructive', title: '오류', description: '상품 삭제 중 오류가 발생했습니다.'});
+    } finally {
+        setLoading(false);
+    }
   }
 
 
@@ -168,5 +184,7 @@ export function useProducts() {
     await fetchProducts(); // Refetch to show new data
   };
 
-  return { products, loading, fetchProducts, bulkAddProducts, addProduct, updateProduct };
+  return { products, loading, fetchProducts, bulkAddProducts, addProduct, updateProduct, deleteProduct };
 }
+
+    

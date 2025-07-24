@@ -30,7 +30,7 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { products, loading: productsLoading, bulkAddProducts, addProduct, updateProduct } = useProducts();
+  const { products, loading: productsLoading, bulkAddProducts, addProduct, updateProduct, deleteProduct } = useProducts();
 
   const filteredProducts = useMemo(() => {
     return products
@@ -61,6 +61,10 @@ export default function ProductsPage() {
     }
     setIsFormOpen(false);
     setSelectedProduct(null);
+  }
+
+  const handleDelete = async (docId: string) => {
+    await deleteProduct(docId);
   }
 
 
@@ -173,7 +177,12 @@ export default function ProductsPage() {
           </CardContent>
         </Card>
       ) : (
-        <ProductTable products={filteredProducts} onSelectionChange={setSelectedProducts} onEdit={handleEdit} />
+        <ProductTable 
+          products={filteredProducts} 
+          onSelectionChange={setSelectedProducts} 
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       )}
       <ProductForm 
         isOpen={isFormOpen} 
@@ -193,3 +202,5 @@ export default function ProductsPage() {
     </div>
   );
 }
+
+    
