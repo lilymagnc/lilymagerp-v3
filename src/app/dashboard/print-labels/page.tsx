@@ -1,10 +1,7 @@
 
-import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/page-header";
-import { Printer } from "lucide-react";
-import { LabelGrid } from "./components/label-grid";
 import { getItemData } from "@/lib/data-fetch";
 import type { LabelItemData } from "./components/label-item";
+import { PrintLayout } from "./components/print-layout";
 
 export default async function PrintLabelsPage({
   searchParams,
@@ -33,23 +30,5 @@ export default async function PrintLabelsPage({
     }
   }
 
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="no-print">
-         <PageHeader
-            title="라벨 인쇄 미리보기"
-            description="인쇄 버튼을 눌러 라벨을 출력하세요. (용지: 폼텍 3108)"
-        >
-            <Button onClick={() => window.print()}>
-                <Printer className="mr-2 h-4 w-4" />
-                인쇄하기
-            </Button>
-        </PageHeader>
-      </div>
-      <div id="printable-area" className="bg-white">
-        <LabelGrid items={finalLabels} />
-      </div>
-    </div>
-  );
+  return <PrintLayout labels={finalLabels} />;
 }
