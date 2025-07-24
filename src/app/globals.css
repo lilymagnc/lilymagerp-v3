@@ -91,7 +91,10 @@ body {
 @media print {
   @page {
     size: A4;
-    margin: 10mm;
+    margin-top: 10mm;
+    margin-bottom: 10mm;
+    margin-left: 0;
+    margin-right: 0;
   }
 
   body {
@@ -106,12 +109,5 @@ body {
   
   #printable-area {
     display: block !important;
-  }
-
-  .printing-active .no-print {
-      display: none !important;
-  }
-  .printing-active #printable-area {
-      display: block !important;
   }
 }
