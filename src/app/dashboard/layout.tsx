@@ -36,7 +36,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={true}>
         <Sidebar>
             <SidebarHeader className="p-4">
                 <div className="flex items-center justify-center">
