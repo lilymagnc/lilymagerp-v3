@@ -28,10 +28,19 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
     const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [isImporting, setIsImporting] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             setFile(e.target.files[0]);
+        }
+    }
+
+    const reset = () => {
+        setFile(null);
+        setIsImporting(false);
+        if(fileInputRef.current) {
+            fileInputRef.current.value = "";
         }
     }
 
@@ -51,18 +60,13 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
             reader.onload = async (e) => {
                 try {
                     const data = e.target?.result;
-                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
                     const sheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[sheetName];
                     const json = XLSX.utils.sheet_to_json(worksheet);
 
                     await onImport(json);
 
-                    toast({
-                        title: "가져오기 성공",
-                        description: `${json.length}개의 ${resourceName} 데이터가 성공적으로 처리되었습니다.`,
-                    });
-                    onOpenChange(false);
                 } catch (readError) {
                     console.error("File parsing error:", readError);
                     toast({
@@ -71,7 +75,9 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
                         description: "파일을 읽는 중 오류가 발생했습니다. 파일 형식을 확인해주세요.",
                     });
                 } finally {
-                     setFile(null);
+                    reset();
+                    // This is handled by the onImport function now
+                    // onOpenChange(false);
                 }
             };
             reader.readAsBinaryString(file);
@@ -82,31 +88,41 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
                 title: "오류",
                 description: "파일을 읽기 시작하는 중 오류가 발생했습니다.",
             });
-        } finally {
-            // The actual isImporting=false will be set inside the onload callback
-            // to ensure it waits for the async onImport to finish.
-            // But we add a timeout here to prevent it from getting stuck forever.
-            setTimeout(() => setIsImporting(false), 30000); 
+             setIsImporting(false);
         }
     }
+    
+    const handleClose = (open: boolean) => {
+        if(!open) {
+            reset();
+        }
+        onOpenChange(open);
+    }
+
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{resourceName} 데이터 가져오기</DialogTitle>
           <DialogDescription>
-            Excel(XLSX) 파일을 업로드해주세요. 파일의 첫 번째 행은 헤더(id, name, price 등)여야 합니다.
+            Excel(XLSX) 파일을 업로드해주세요. 템플릿의 형식과 일치해야 합니다.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid w-full items-center gap-1.5">
             <Label htmlFor="file">파일 선택</Label>
-            <Input id="file" type="file" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFileChange} />
+            <Input 
+                id="file" 
+                type="file" 
+                accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+                onChange={handleFileChange}
+                ref={fileInputRef}
+             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isImporting}>취소</Button>
+          <Button variant="outline" onClick={() => handleClose(false)} disabled={isImporting}>취소</Button>
           <Button onClick={handleImportClick} disabled={isImporting || !file}>
             {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
             가져오기

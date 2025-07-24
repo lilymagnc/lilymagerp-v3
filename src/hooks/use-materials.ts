@@ -147,7 +147,7 @@ export function useMaterials() {
   }
 
   const updateStock = async (
-    items: { id: string; name: string; quantity: number }[],
+    items: { id: string; name: string; quantity: number, price?: number, supplier?: string }[],
     type: 'in' | 'out',
     branchName: string,
     operator: string
@@ -176,7 +176,13 @@ export function useMaterials() {
                 const change = type === 'in' ? item.quantity : -item.quantity;
                 const newStock = currentStock + change;
 
-                transaction.update(materialDocRef, { stock: newStock });
+                const updatePayload: {stock: number, price?: number, supplier?: string} = { stock: newStock };
+                if (type === 'in') {
+                    if (item.price !== undefined) updatePayload.price = item.price;
+                    if (item.supplier !== undefined) updatePayload.supplier = item.supplier;
+                }
+
+                transaction.update(materialDocRef, updatePayload);
 
                 const historyDocRef = doc(collection(db, "stockHistory"));
                 historyBatch.set(historyDocRef, {
@@ -191,9 +197,9 @@ export function useMaterials() {
                     resultingStock: newStock,
                     branch: branchName,
                     operator: operator,
-                    supplier: materialData?.supplier,
-                    price: materialData?.price,
-                    totalAmount: type === 'in' ? (materialData?.price || 0) * item.quantity : 0,
+                    supplier: type === 'in' ? (item.supplier || materialData?.supplier) : materialData?.supplier,
+                    price: type === 'in' ? (item.price || materialData?.price) : materialData?.price,
+                    totalAmount: type === 'in' ? ((item.price || materialData?.price || 0) * item.quantity) : 0,
                 });
             });
         } catch (error) {

@@ -154,27 +154,37 @@ export function useProducts() {
     let updatedProductsCount = 0;
 
     for (const row of excelData) {
-        if (!row.name || !row.branch) {
-            toast({ variant: 'destructive', title: '데이터 오류', description: `필수 항목(상품명, 지점)이 누락된 행이 있어 건너뜁니다.` });
+        // Skip rows without a name, or if a specific branch is selected and the row's branch doesn't match
+        if (!row.name || (currentBranch !== "all" && row.branch !== currentBranch)) {
             continue;
         }
-        
-        if (currentBranch !== "all" && row.branch !== currentBranch) {
-            continue;
-        }
-        
+
         const productsRef = collection(db, "products");
-        const q = query(productsRef, where("name", "==", row.name), where("branch", "==", row.branch));
+        let q;
+        
+        // If an ID is provided in the Excel, use it for lookup. Otherwise, use name and branch.
+        if (row.id) {
+            q = query(productsRef, where("id", "==", row.id));
+        } else if (row.name && row.branch) {
+            q = query(productsRef, where("name", "==", row.name), where("branch", "==", row.branch));
+        } else {
+            // Not enough info to lookup, skip.
+            continue; 
+        }
         
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) { // New product
-            const newId = await generateNewId();
+            // Skip if the quantity is empty or zero for new products
+            if (!row.quantity || Number(row.quantity) === 0) {
+                continue;
+            }
+            const newId = row.id || await generateNewId(); // Use provided ID or generate new
             const newDocRef = doc(productsRef);
             const newProductData = {
                 id: newId,
                 name: row.name,
-                branch: row.branch,
+                branch: row.branch || "미지정",
                 mainCategory: row.mainCategory || "미분류",
                 midCategory: row.midCategory || "미분류",
                 price: Number(row.price) || 0,
@@ -186,26 +196,43 @@ export function useProducts() {
             batch.set(newDocRef, newProductData);
             newProductsCount++;
         } else { // Existing product
-            const docRef = querySnapshot.docs[0].ref;
-            const updateData: any = {};
-            if(row.price) updateData.price = Number(row.price);
-            if(row.supplier) updateData.supplier = row.supplier;
-            if(row.quantity) updateData.stock = Number(querySnapshot.docs[0].data().stock) + Number(row.quantity);
-
-            if(Object.keys(updateData).length > 0) {
-              batch.update(docRef, updateData);
-              updatedProductsCount++;
+             // Skip if the quantity is empty or zero
+            if (!row.quantity || Number(row.quantity) === 0) {
+                continue;
             }
+            const docRef = querySnapshot.docs[0].ref;
+            const existingData = querySnapshot.docs[0].data();
+            const updateData: any = {
+                stock: Number(existingData.stock) + Number(row.quantity)
+            };
+            
+            // Optionally update other fields if they are present in the Excel file
+            if(row.price !== undefined) updateData.price = Number(row.price);
+            if(row.supplier) updateData.supplier = row.supplier;
+            if(row.mainCategory) updateData.mainCategory = row.mainCategory;
+            if(row.midCategory) updateData.midCategory = row.midCategory;
+            if(row.size) updateData.size = row.size;
+            if(row.color) updateData.color = row.color;
+
+            batch.update(docRef, updateData);
+            updatedProductsCount++;
         }
     }
 
     try {
         await batch.commit();
-        toast({
-            title: "가져오기 완료",
-            description: `새 상품 ${newProductsCount}개 추가, 기존 상품 ${updatedProductsCount}개 업데이트 완료.`
-        });
-        await fetchProducts();
+        if (newProductsCount > 0 || updatedProductsCount > 0) {
+            toast({
+                title: "가져오기 완료",
+                description: `새 상품 ${newProductsCount}개 추가, 기존 상품 ${updatedProductsCount}개 재고 업데이트 완료.`
+            });
+            await fetchProducts();
+        } else {
+            toast({
+                title: "변경 사항 없음",
+                description: "업데이트할 내용이 없습니다. 수량을 확인해주세요."
+            });
+        }
     } catch (error) {
         console.error("Error in bulk add/update:", error);
         toast({ variant: "destructive", title: "오류", description: "일괄 처리 중 오류가 발생했습니다." });
