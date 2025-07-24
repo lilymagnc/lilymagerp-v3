@@ -19,6 +19,7 @@ import { ScrollArea } from "./ui/scroll-area"
 import { getItemData } from "@/lib/data-fetch"
 import { Label } from "./ui/label"
 import { Skeleton } from "./ui/skeleton"
+import { cn } from "@/lib/utils"
 
 interface ItemWithQuantity {
   id: string;
@@ -75,7 +76,7 @@ export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemId
         </DialogHeader>
         <div className="space-y-4 py-4">
             <Label>인쇄할 항목 및 수량</Label>
-            <ScrollArea className="h-60 w-full rounded-md border p-2">
+            <ScrollArea className="h-40 w-full rounded-md border p-2">
                 {loading ? (
                      <div className="space-y-4 p-2">
                         {Array.from({ length: 3 }).map((_, i) => (
@@ -104,14 +105,32 @@ export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemId
             </ScrollArea>
              <div>
                 <Label htmlFor="start-position">시작 위치 (1-24)</Label>
-                <Input 
+                 <Input 
                     id="start-position"
                     type="number" 
+                    className="w-24 mt-1"
                     value={startPosition}
                     onChange={(e) => setStartPosition(Math.max(1, Math.min(24, parseInt(e.target.value) || 1)))}
                     min="1"
                     max="24"
                 />
+                 <div className="grid grid-cols-3 gap-1 mt-2 border p-2 rounded-md">
+                    {Array.from({ length: 24 }).map((_, i) => {
+                      const position = i + 1;
+                      return (
+                        <Button
+                          key={position}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className={cn("h-8", startPosition === position && "bg-primary text-primary-foreground")}
+                          onClick={() => setStartPosition(position)}
+                        >
+                          {position}
+                        </Button>
+                      )
+                    })}
+                  </div>
             </div>
         </div>
         <DialogFooter className="pt-4">

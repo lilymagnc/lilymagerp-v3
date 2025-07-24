@@ -24,6 +24,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog"
 import { Printer } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const printOptionsSchema = z.object({
   quantity: z.coerce.number().int().min(1, "1 이상의 값을 입력해주세요.").max(24, "최대 24개까지 가능합니다."),
@@ -52,9 +53,11 @@ export function PrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemName }:
     onSubmit(data);
   }
 
+  const startPositionValue = form.watch("startPosition");
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>라벨 인쇄 옵션</DialogTitle>
           <DialogDescription>'{itemName}' 라벨의 인쇄 수량과 시작 위치를 지정하세요.</DialogDescription>
@@ -66,9 +69,9 @@ export function PrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemName }:
               name="quantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>인쇄 수량</FormLabel>
+                  <FormLabel>인쇄 수량 (1-24)</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input type="number" min="1" max="24" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -80,10 +83,27 @@ export function PrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemName }:
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>시작 위치 (1-24)</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
+                   <FormControl>
+                     <Input type="number" className="w-24" min="1" max="24" {...field} />
                   </FormControl>
-                   <FormMessage />
+                  <div className="grid grid-cols-3 gap-1 mt-2 border p-2 rounded-md">
+                    {Array.from({ length: 24 }).map((_, i) => {
+                      const position = i + 1;
+                      return (
+                        <Button
+                          key={position}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className={cn("h-8", startPositionValue === position && "bg-primary text-primary-foreground")}
+                          onClick={() => form.setValue('startPosition', position, { shouldValidate: true })}
+                        >
+                          {position}
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <FormMessage />
                 </FormItem>
               )}
             />
