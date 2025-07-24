@@ -46,18 +46,19 @@ export function useMaterials() {
         querySnapshot = await getDocs(materialsCollection);
       } 
       
-      const materialsData = querySnapshot.docs.map((doc, index) => {
+      const materialsData = querySnapshot.docs.map((doc) => {
           const data = doc.data();
-          // This ensures all IDs are consistently formatted as M + 5 digits
           const originalId = doc.id;
           const numericPart = originalId.replace(/[^0-9]/g, '');
-          const newId = `M${String(parseInt(numericPart, 10)).padStart(5, '0')}`;
+          // This ensures the displayed ID is always in the M0000X format
+          const displayId = `M${String(parseInt(numericPart, 10)).padStart(5, '0')}`;
 
           return { 
               ...data,
-              id: newId,
+              id: displayId, // Use the consistent, short ID for the UI
+              originalId: originalId, // Keep track of the actual DB document ID
               status: getStatus(data.stock)
-          } as Material
+          } as Material & { originalId: string };
       });
       setMaterials(materialsData);
 
@@ -84,7 +85,19 @@ export function useMaterials() {
     operator: string
   ) => {
     for (const item of items) {
-        const materialRef = doc(db, "materials", item.id);
+        // When updating, we need to find the material with the matching display ID
+        // to get its original database ID.
+        const materialToUpdate = (materials as (Material & { originalId: string })[]).find(m => m.id === item.id);
+        if (!materialToUpdate) {
+             toast({
+                variant: "destructive",
+                title: "재고 업데이트 실패",
+                description: `자재를 찾을 수 없습니다: ${item.name}`,
+            });
+            continue;
+        }
+
+        const materialRef = doc(db, "materials", materialToUpdate.originalId);
         const historyRef = doc(collection(db, "stockHistory"));
 
         try {
@@ -108,7 +121,7 @@ export function useMaterials() {
                     date: serverTimestamp(),
                     type: type,
                     itemType: "material",
-                    itemId: item.id,
+                    itemId: materialToUpdate.originalId,
                     itemName: item.name,
                     quantity: item.quantity,
                     resultingStock: newStock,
@@ -132,13 +145,23 @@ export function useMaterials() {
   };
   
   const manualUpdateStock = async (
-    itemId: string,
+    itemId: string, // This is the display ID (e.g., M00001)
     itemName: string,
     newStock: number,
     branchName: string,
     operator: string
   ) => {
-    const materialRef = doc(db, "materials", itemId);
+    const materialToUpdate = (materials as (Material & { originalId: string })[]).find(m => m.id === itemId);
+    if (!materialToUpdate) {
+         toast({
+            variant: "destructive",
+            title: "재고 업데이트 실패",
+            description: `자재를 찾을 수 없습니다: ${itemName}`,
+        });
+        return;
+    }
+    
+    const materialRef = doc(db, "materials", materialToUpdate.originalId);
     const historyRef = doc(collection(db, "stockHistory"));
 
     try {
@@ -156,7 +179,7 @@ export function useMaterials() {
                 date: serverTimestamp(),
                 type: "manual_update",
                 itemType: "material",
-                itemId: itemId,
+                itemId: materialToUpdate.originalId,
                 itemName: itemName,
                 quantity: newStock - currentStock, // Log the difference
                 fromStock: currentStock,
