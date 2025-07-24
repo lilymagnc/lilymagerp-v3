@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -187,6 +187,44 @@ export function useOrders() {
       setLoading(false);
     }
   };
+  
+  const updateOrderStatus = async (orderId: string, newStatus: 'processing' | 'completed' | 'canceled') => {
+    try {
+        const orderRef = doc(db, 'orders', orderId);
+        await updateDoc(orderRef, { status: newStatus });
+        toast({
+            title: '상태 변경 성공',
+            description: `주문 상태가 '${newStatus}'(으)로 변경되었습니다.`,
+        });
+        await fetchOrders();
+    } catch (error) {
+        console.error("Error updating order status:", error);
+        toast({
+            variant: 'destructive',
+            title: '오류',
+            description: '주문 상태 변경 중 오류가 발생했습니다.',
+        });
+    }
+  };
 
-  return { orders, loading, addOrder, fetchOrders };
+  const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'completed') => {
+    try {
+        const orderRef = doc(db, 'orders', orderId);
+        await updateDoc(orderRef, { 'payment.status': newStatus });
+        toast({
+            title: '결제 상태 변경 성공',
+            description: `결제 상태가 '${newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
+        });
+        await fetchOrders();
+    } catch (error) {
+        console.error("Error updating payment status:", error);
+        toast({
+            variant: 'destructive',
+            title: '오류',
+            description: '결제 상태 변경 중 오류가 발생했습니다.',
+        });
+    }
+  };
+
+  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
 }

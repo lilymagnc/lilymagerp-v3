@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search } from "lucide-react";
+import { PlusCircle, Printer, Search, MoreHorizontal } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,9 +16,10 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 
 export default function OrdersPage() {
-  const { orders, loading } = useOrders();
+  const { orders, loading, updateOrderStatus, updatePaymentStatus } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
   const router = useRouter();
 
@@ -41,6 +42,18 @@ export default function OrdersPage() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+  
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-blue-500 text-white">완결</Badge>;
+      case 'pending':
+        return <Badge variant="secondary" className="bg-yellow-500 text-white">미결</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
 
   const filteredOrders = useMemo(() => {
     return orders
@@ -130,14 +143,41 @@ export default function OrdersPage() {
                   <TableCell>{format(order.orderDate.toDate(), 'yyyy-MM-dd')}</TableCell>
                   <TableCell>{order.branchName}</TableCell>
                   <TableCell>
-                      {getStatusBadge(order.status)}
+                      <div className="flex flex-col gap-1">
+                        {getStatusBadge(order.status)}
+                        {getPaymentStatusBadge(order.payment.status)}
+                      </div>
                   </TableCell>
                   <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handlePrint(order.id)}>
-                      <Printer className="h-4 w-4" />
-                      <span className="sr-only">주문서 출력</span>
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">메뉴 토글</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>작업</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => handlePrint(order.id)}>주문서 인쇄</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>주문 상태 변경</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'processing')}>처리중</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'completed')}>완료</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'canceled')}>취소</DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger>결제 상태 변경</DropdownMenuSubTrigger>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem onClick={() => updatePaymentStatus(order.id, 'completed')}>완결</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updatePaymentStatus(order.id, 'pending')}>미결</DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                   </TableRow>
               ))
@@ -149,3 +189,4 @@ export default function OrdersPage() {
     </>
   );
 }
+
