@@ -24,6 +24,7 @@ import {
   DialogDescription
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useBranches } from "@/hooks/use-branches"
 
 const materialSchema = z.object({
   name: z.string().min(1, "자재명을 입력해주세요."),
@@ -33,6 +34,7 @@ const materialSchema = z.object({
   supplier: z.string().min(1, "공급업체를 선택해주세요."),
   size: z.string().min(1, "규격을 입력해주세요."),
   color: z.string().min(1, "색상을 입력해주세요."),
+  branch: z.string().min(1, "지점을 선택해주세요."),
 })
 
 type MaterialFormValues = z.infer<typeof materialSchema>
@@ -44,6 +46,8 @@ interface MaterialFormProps {
 }
 
 export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormProps) {
+  const { branches } = useBranches();
+
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(materialSchema),
     defaultValues: material || {
@@ -54,6 +58,7 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
       supplier: "",
       size: "",
       color: "",
+      branch: "",
     },
   })
 
@@ -183,6 +188,26 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
                       <SelectItem value="경부선꽃시장">경부선꽃시장</SelectItem>
                       <SelectItem value="플라워팜">플라워팜</SelectItem>
                       <SelectItem value="자재월드">자재월드</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="branch"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>소속 지점</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="소속 지점 선택" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {branches.filter(b => b.type !== '본사').map(branch => (
+                        <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
