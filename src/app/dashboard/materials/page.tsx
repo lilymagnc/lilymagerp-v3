@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search, ArrowRightLeft } from "lucide-react";
+import { PlusCircle, Download, Printer, Search, ArrowRightLeft, Upload } from "lucide-react";
 import { ImportButton } from "@/components/import-button";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
@@ -82,12 +82,12 @@ export default function MaterialsPage() {
     await deleteMaterial(docId);
   }
 
-  const handleExport = () => {
+  const handleExportTemplate = () => {
     if (filteredMaterials.length === 0) {
       toast({
         variant: "destructive",
         title: "내보낼 데이터 없음",
-        description: "현재 필터에 맞는 자재 데이터가 없습니다.",
+        description: "현재 필터에 맞는 자재 데이터가 없습니다. 필터를 초기화하거나 자재를 먼저 추가해주세요.",
       });
       return;
     }
@@ -96,8 +96,8 @@ export default function MaterialsPage() {
     );
     downloadXLSX(dataToExport, "materials_update_template");
     toast({
-      title: "내보내기 성공",
-      description: `${dataToExport.length}개의 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
+      title: "템플릿 다운로드 성공",
+      description: `현재 필터링된 ${dataToExport.length}개 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
   }
   
@@ -176,25 +176,29 @@ export default function MaterialsPage() {
                     </SelectContent>
                 </Select>
             </div>
-            <div className="mt-4 flex items-center gap-2 flex-wrap">
-                {selectedMaterials.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
-                    <Printer className="mr-2 h-4 w-4" />
-                    라벨 인쇄 ({selectedMaterials.length})
-                </Button>
-                )}
-                <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/materials/stock">
-                    <ArrowRightLeft className="mr-2 h-4 w-4" />
-                    재고 입출고
-                </Link>
-                </Button>
-                <ImportButton resourceName="자재" onImport={bulkAddMaterials} />
-                <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="mr-2 h-4 w-4" />
-                내보내기
-                </Button>
-                <div className="ml-auto">
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {selectedMaterials.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            라벨 인쇄 ({selectedMaterials.length})
+                        </Button>
+                    )}
+                    <Button variant="outline" size="sm" asChild>
+                    <Link href="/dashboard/materials/stock">
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        재고 입출고 페이지
+                    </Link>
+                    </Button>
+                     <Button variant="outline" size="sm" onClick={handleExportTemplate}>
+                        <Download className="mr-2 h-4 w-4" />
+                        템플릿 다운로드
+                    </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                    <ImportButton resourceName="자재" onImport={bulkAddMaterials}>
+                       <Upload className="mr-2 h-4 w-4" />자재 가져오기
+                    </ImportButton>
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         자재 추가
