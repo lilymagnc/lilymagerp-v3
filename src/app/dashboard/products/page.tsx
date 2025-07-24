@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search, FileSpreadsheet, Upload } from "lucide-react";
+import { PlusCircle, Download, Printer, Search } from "lucide-react";
 import { ProductTable, Product } from "./components/product-table";
 import { ProductForm, ProductFormValues } from "./components/product-form";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,6 @@ import { useBranches } from "@/hooks/use-branches";
 import { downloadXLSX } from "@/lib/utils";
 import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ImportButton } from "@/components/import-button";
 
 export default function ProductsPage() {
@@ -31,7 +30,7 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { products, loading: productsLoading, bulkAddProducts, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct } = useProducts();
 
   const filteredProducts = useMemo(() => {
     return products
@@ -148,25 +147,10 @@ export default function ProductsPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <FileSpreadsheet className="mr-2 h-4 w-4" />
-                          엑셀 작업
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={handleExport}>
-                          <Download className="mr-2 h-4 w-4" />
-                          1. 데이터 템플릿 다운로드
-                        </DropdownMenuItem>
-                        <ImportButton resourceName="상품" onImport={bulkAddProducts} asDropdownMenuItem>
-                           <Upload className="mr-2 h-4 w-4" />
-                           2. 템플릿 파일로 상품 등록
-                        </ImportButton>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
+                    <Button variant="outline" size="sm" onClick={handleExport}>
+                        <Download className="mr-2 h-4 w-4" />
+                        템플릿 다운로드
+                    </Button>
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         상품 추가

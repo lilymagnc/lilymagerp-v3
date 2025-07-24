@@ -146,42 +146,6 @@ export function useMaterials() {
     }
   }
 
-  const bulkAddMaterials = async (importedData: any[]) => {
-    setLoading(true);
-    const batch = writeBatch(db);
-    const materialsCollection = collection(db, 'materials');
-    
-    let lastIdNumber = 0;
-    try {
-      const q = query(materialsCollection, orderBy("id", "desc"), limit(1));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-          const lastId = querySnapshot.docs[0].data().id;
-          if(lastId && lastId.startsWith('M')) {
-              lastIdNumber = parseInt(lastId.replace('M', ''));
-          }
-      }
-    } catch (e) {
-      console.error("Could not get last material ID", e);
-    }
-    
-
-    for (const item of importedData) {
-        const docRef = doc(materialsCollection);
-        const newId = item.id ? item.id : `M${String(++lastIdNumber).padStart(5, '0')}`;
-
-        batch.set(docRef, {
-            ...item,
-            id: newId,
-            stock: Number(item.stock) || 0,
-            price: Number(item.price) || 0,
-        });
-    }
-    await batch.commit();
-    await fetchMaterials();
-  };
-
-
   const updateStock = async (
     items: { id: string; name: string; quantity: number }[],
     type: 'in' | 'out',
@@ -306,5 +270,5 @@ export function useMaterials() {
     }
   };
 
-  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, bulkAddMaterials, addMaterial, updateMaterial, deleteMaterial };
+  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, addMaterial, updateMaterial, deleteMaterial };
 }

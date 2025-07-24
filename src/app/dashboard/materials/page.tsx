@@ -4,8 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Download, Printer, Search, ArrowRightLeft, Upload, FileSpreadsheet } from "lucide-react";
-import { ImportButton } from "@/components/import-button";
+import { PlusCircle, Download, Printer, Search, ArrowRightLeft } from "lucide-react";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
@@ -19,8 +18,6 @@ import Link from "next/link";
 import { useMaterials } from "@/hooks/use-materials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
 
 export default function MaterialsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -37,7 +34,7 @@ export default function MaterialsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, bulkAddMaterials, addMaterial, updateMaterial, deleteMaterial } = useMaterials();
+  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial } = useMaterials();
 
   const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
   const midCategories = useMemo(() => {
@@ -193,25 +190,10 @@ export default function MaterialsPage() {
                     </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <FileSpreadsheet className="mr-2 h-4 w-4" />
-                          엑셀 작업
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={handleExportTemplate}>
-                          <Download className="mr-2 h-4 w-4" />
-                          1. 데이터 템플릿 다운로드
-                        </DropdownMenuItem>
-                        <ImportButton resourceName="자재" onImport={bulkAddMaterials} asDropdownMenuItem>
-                           <Upload className="mr-2 h-4 w-4" />
-                           2. 템플릿 파일로 자재 등록
-                        </ImportButton>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
+                    <Button variant="outline" size="sm" onClick={handleExportTemplate}>
+                        <Download className="mr-2 h-4 w-4" />
+                        템플릿 다운로드
+                    </Button>
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         자재 추가

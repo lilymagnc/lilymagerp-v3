@@ -11,12 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2, Upload, Paperclip } from "lucide-react";
+import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2, Paperclip } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { processReceipt } from "@/ai/flows/receipt-processor";
 import { useMaterials } from "@/hooks/use-materials";
 import { useAuth } from "@/hooks/use-auth";
-import { ImportButton } from "@/components/import-button";
 import { Label } from "@/components/ui/label";
 
 interface ScannedItem {
@@ -27,7 +26,7 @@ interface ScannedItem {
 
 export function StockMovement() {
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, updateStock, updateMaterial, addMaterial } = useMaterials();
+  const { materials, loading: materialsLoading, updateStock } = useMaterials();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -212,92 +211,6 @@ export function StockMovement() {
     }
   };
 
-  const handleExcelImport = async (data: any[]) => {
-     try {
-        const newItems: ScannedItem[] = [];
-        let updatedCount = 0;
-        let newCount = 0;
-
-        for (const row of data) {
-            const name = row['name'] || row['자재명'];
-            const quantity = Number(row['quantity'] || row['수량']);
-
-            if(!name || !quantity || quantity <= 0) {
-              continue;
-            }
-
-            const id = row['id'];
-            const supplier = row['supplier'] || row['공급업체'];
-            const price = Number(row['price'] || row['가격']);
-            
-            const material = materials.find(m => m.id === id && m.branch === selectedBranchName);
-            
-            if (material) {
-                // Add to stock-in list
-                newItems.push({
-                    id: material.id,
-                    name: material.name,
-                    quantity: quantity,
-                });
-
-                // Check if supplier or price needs update
-                const needsUpdate = (supplier && material.supplier !== supplier) || (price && material.price !== price);
-                if (needsUpdate) {
-                    const updatedData = {
-                        ...material,
-                        supplier: supplier || material.supplier,
-                        price: price ? price : material.price,
-                    };
-                    await updateMaterial(material.docId, material.id, updatedData);
-                    updatedCount++;
-                }
-            } else if (name && selectedBranchName) {
-                // This is a new item
-                await addMaterial({
-                    name: name,
-                    branch: selectedBranchName,
-                    mainCategory: row['mainCategory'] || '기타',
-                    midCategory: row['midCategory'] || '기타',
-                    supplier: supplier || '신규',
-                    price: price || 0,
-                    size: row['size'] || '-',
-                    color: row['color'] || '-',
-                    stock: quantity, // Directly set stock for new item
-                });
-                newCount++;
-            }
-        }
-
-        if (newItems.length > 0) {
-          setStockInList(prevList => {
-              const updatedList = [...prevList];
-              newItems.forEach(newItem => {
-                  const existingItemIndex = updatedList.findIndex(item => item.id === newItem.id);
-                  if (existingItemIndex > -1) {
-                      updatedList[existingItemIndex].quantity += newItem.quantity;
-                  } else {
-                      updatedList.push(newItem);
-                  }
-              });
-              return updatedList;
-          });
-        }
-
-        let description = "";
-        if (newItems.length > 0) description += `${newItems.length}개 기존 항목이 입고 목록에 추가되었습니다. `;
-        if (updatedCount > 0) description += `${updatedCount}개 항목의 정보가 업데이트되었습니다. `;
-        if (newCount > 0) description += `${newCount}개의 신규 항목이 등록되고 재고가 설정되었습니다.`;
-
-        toast({
-            title: "엑셀 가져오기 완료",
-            description: description || "처리할 데이터가 없습니다.",
-        });
-
-     } catch (e) {
-        toast({ variant: "destructive", title: "엑셀 처리 오류", description: "엑셀 파일을 처리하는 중 오류가 발생했습니다."});
-     }
-  }
-
 
   const renderList = (list: ScannedItem[], type: 'in' | 'out') => (
     <Card>
@@ -417,10 +330,6 @@ export function StockMovement() {
                         {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                         AI로 분석하기
                     </Button>
-                     <ImportButton resourceName="엑셀로 입고" onImport={handleExcelImport}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        엑셀로 입고
-                    </ImportButton>
                 </div>
             </CardContent>
           </Card>

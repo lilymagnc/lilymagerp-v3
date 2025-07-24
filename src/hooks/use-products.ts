@@ -147,44 +147,5 @@ export function useProducts() {
     }
   }
 
-
-  const bulkAddProducts = async (importedData: any[]) => {
-    setLoading(true);
-    const batch = writeBatch(db);
-    const productsCollection = collection(db, 'products');
-    
-    let lastIdNumber = 0;
-    try {
-      const q = query(productsCollection, orderBy("id", "desc"), limit(1));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-          const lastId = querySnapshot.docs[0].data().id;
-          if(lastId && lastId.startsWith('P')) {
-              lastIdNumber = parseInt(lastId.replace('P', ''));
-          }
-      }
-    } catch(e) {
-      console.error("Could not get last product ID", e);
-    }
-
-    for (const item of importedData) {
-        const docRef = doc(productsCollection);
-        // If the imported item doesn't have an ID, generate a new one.
-        const newId = item.id ? item.id : `P${String(++lastIdNumber).padStart(5, '0')}`;
-        
-        batch.set(docRef, {
-            ...item,
-            id: newId,
-            stock: Number(item.stock) || 0,
-            price: Number(item.price) || 0,
-        });
-    }
-
-    await batch.commit();
-    await fetchProducts(); // Refetch to show new data
-  };
-
-  return { products, loading, fetchProducts, bulkAddProducts, addProduct, updateProduct, deleteProduct };
+  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct };
 }
-
-    
