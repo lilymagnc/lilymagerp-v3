@@ -7,15 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, Printer } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { MaterialForm } from "./material-form";
 import { StockUpdateForm } from "@/app/dashboard/products/components/stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { MaterialDetails } from "./material-details";
 import { Barcode } from "@/components/barcode";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useRouter } from "next/navigation";
-import { PrintOptionsDialog } from "../../print-labels/components/print-options-dialog";
 
 const mockMaterials = [
   { id: "M00001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
@@ -26,13 +23,10 @@ const mockMaterials = [
 ];
 
 export function MaterialTable() {
-  const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   const handleEdit = (material: any) => {
     setIsDetailOpen(false);
@@ -63,55 +57,17 @@ export function MaterialTable() {
     return { text: '입고중', variant: 'default' as const };
   }
 
-  const handleSelectAll = (checked: boolean | string) => {
-    if (checked) {
-      setSelectedRows(mockMaterials.map(m => m.id));
-    } else {
-      setSelectedRows([]);
-    }
-  };
-
-  const handleSelectRow = (id: string, checked: boolean | string) => {
-    if (checked) {
-      setSelectedRows(prev => [...prev, id]);
-    } else {
-      setSelectedRows(prev => prev.filter(rowId => rowId !== id));
-    }
-  };
-
-  const handlePrintLabels = ({ copies, startPosition }: { copies: number, startPosition: number }) => {
-    const params = new URLSearchParams();
-    params.append("type", "materials");
-    params.append("ids", selectedRows.join(','));
-    params.append("copies", copies.toString());
-    params.append("start", startPosition.toString());
-    router.push(`/dashboard/print-labels?${params.toString()}`);
-    setIsPrintDialogOpen(false);
-  }
-
   return (
     <>
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>자재 목록</CardTitle>
-          {selectedRows.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setIsPrintDialogOpen(true)}>
-              <Printer className="mr-2 h-4 w-4" />
-              선택 항목 라벨 인쇄 ({selectedRows.length})
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[40px]">
-                   <Checkbox 
-                    onCheckedChange={handleSelectAll}
-                    checked={selectedRows.length === mockMaterials.length && mockMaterials.length > 0}
-                  />
-                </TableHead>
-                <TableHead className="w-[200px]">자재명</TableHead>
+                <TableHead>자재명</TableHead>
                 <TableHead>바코드</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
@@ -127,15 +83,8 @@ export function MaterialTable() {
               {mockMaterials.map((material) => {
                 const statusInfo = getStatus(material.status, material.stock);
                 return (
-                <TableRow key={material.id} data-state={selectedRows.includes(material.id) ? "selected" : ""}>
-                   <TableCell>
-                    <Checkbox
-                      checked={selectedRows.includes(material.id)}
-                      onCheckedChange={(checked) => handleSelectRow(material.id, checked)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name}</TableCell>
+                <TableRow key={material.id} onClick={() => handleRowClick(material)} className="cursor-pointer">
+                  <TableCell className="font-medium">{material.name}</TableCell>
                    <TableCell>
                     <Barcode 
                       value={material.id} 
@@ -148,15 +97,15 @@ export function MaterialTable() {
                       }} 
                     />
                   </TableCell>
-                  <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
+                  <TableCell>
                     <Badge variant={statusInfo.variant}>
                       {statusInfo.text}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>{material.mainCategory} &gt; {material.midCategory}</TableCell>
-                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>₩{material.price.toLocaleString()}</TableCell>
-                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(material)}>{material.supplier}</TableCell>
-                  <TableCell className="text-right cursor-pointer" onClick={() => handleRowClick(material)}>{material.stock}</TableCell>
+                  <TableCell className="hidden md:table-cell">{material.mainCategory} &gt; {material.midCategory}</TableCell>
+                  <TableCell className="hidden sm:table-cell">₩{material.price.toLocaleString()}</TableCell>
+                  <TableCell className="hidden md:table-cell">{material.supplier}</TableCell>
+                  <TableCell className="text-right">{material.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <DropdownMenu>
@@ -203,12 +152,6 @@ export function MaterialTable() {
         onOpenChange={setIsDetailOpen}
         material={selectedMaterial}
         onEdit={() => selectedMaterial && handleEdit(selectedMaterial)}
-      />
-      <PrintOptionsDialog
-        isOpen={isPrintDialogOpen}
-        onOpenChange={setIsPrintDialogOpen}
-        onSubmit={handlePrintLabels}
-        selectedCount={selectedRows.length}
       />
     </>
   );

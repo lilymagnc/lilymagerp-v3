@@ -7,15 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, Printer } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { ProductForm } from "./product-form";
 import { StockUpdateForm } from "./stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProductDetails } from "./product-details";
 import { Barcode } from "@/components/barcode";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useRouter } from "next/navigation";
-import { PrintOptionsDialog } from "../../print-labels/components/print-options-dialog";
 
 const mockProducts = [
   { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
@@ -26,13 +23,10 @@ const mockProducts = [
 ];
 
 export function ProductTable() {
-  const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
   const handleEdit = (product: any) => {
     setIsDetailOpen(false);
@@ -63,55 +57,17 @@ export function ProductTable() {
     return { text: '판매중', variant: 'default' as const };
   }
 
-  const handleSelectAll = (checked: boolean | string) => {
-    if (checked) {
-      setSelectedRows(mockProducts.map(p => p.id));
-    } else {
-      setSelectedRows([]);
-    }
-  };
-
-  const handleSelectRow = (id: string, checked: boolean | string) => {
-    if (checked) {
-      setSelectedRows(prev => [...prev, id]);
-    } else {
-      setSelectedRows(prev => prev.filter(rowId => rowId !== id));
-    }
-  };
-  
-  const handlePrintLabels = ({ copies, startPosition }: { copies: number, startPosition: number }) => {
-    const params = new URLSearchParams();
-    params.append("type", "products");
-    params.append("ids", selectedRows.join(','));
-    params.append("copies", copies.toString());
-    params.append("start", startPosition.toString());
-    router.push(`/dashboard/print-labels?${params.toString()}`);
-    setIsPrintDialogOpen(false);
-  }
-
   return (
     <>
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle>상품 목록</CardTitle>
-          {selectedRows.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setIsPrintDialogOpen(true)}>
-              <Printer className="mr-2 h-4 w-4" />
-              선택 항목 라벨 인쇄 ({selectedRows.length})
-            </Button>
-          )}
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[40px]">
-                  <Checkbox 
-                    onCheckedChange={handleSelectAll}
-                    checked={selectedRows.length === mockProducts.length && mockProducts.length > 0}
-                  />
-                </TableHead>
-                <TableHead className="w-[200px]">상품명</TableHead>
+                <TableHead>상품명</TableHead>
                 <TableHead>바코드</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
@@ -126,15 +82,8 @@ export function ProductTable() {
               {mockProducts.map((product) => {
                 const statusInfo = getStatus(product.status, product.stock);
                 return (
-                <TableRow key={product.id} data-state={selectedRows.includes(product.id) ? "selected" : ""}>
-                   <TableCell>
-                    <Checkbox
-                      checked={selectedRows.includes(product.id)}
-                      onCheckedChange={(checked) => handleSelectRow(product.id, checked)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(product)}>{product.name}</TableCell>
+                <TableRow key={product.id} onClick={() => handleRowClick(product)} className="cursor-pointer">
+                  <TableCell className="font-medium">{product.name}</TableCell>
                    <TableCell>
                     <Barcode 
                       value={product.id} 
@@ -147,14 +96,14 @@ export function ProductTable() {
                       }} 
                     />
                   </TableCell>
-                  <TableCell className="cursor-pointer" onClick={() => handleRowClick(product)}>
+                  <TableCell>
                     <Badge variant={statusInfo.variant}>
                       {statusInfo.text}
                     </Badge>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>{product.mainCategory} &gt; {product.midCategory}</TableCell>
-                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>₩{product.price.toLocaleString()}</TableCell>
-                  <TableCell className="text-right cursor-pointer" onClick={() => handleRowClick(product)}>{product.stock}</TableCell>
+                  <TableCell className="hidden md:table-cell">{product.mainCategory} &gt; {product.midCategory}</TableCell>
+                  <TableCell className="hidden sm:table-cell">₩{product.price.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{product.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
                       <DropdownMenu>
@@ -201,12 +150,6 @@ export function ProductTable() {
         onOpenChange={setIsDetailOpen}
         product={selectedProduct}
         onEdit={() => selectedProduct && handleEdit(selectedProduct)}
-      />
-      <PrintOptionsDialog
-        isOpen={isPrintDialogOpen}
-        onOpenChange={setIsPrintDialogOpen}
-        onSubmit={handlePrintLabels}
-        selectedCount={selectedRows.length}
       />
     </>
   );
