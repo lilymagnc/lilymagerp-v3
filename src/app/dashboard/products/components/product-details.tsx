@@ -46,17 +46,20 @@ export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: Produc
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
-          <div className="flex justify-center my-4">
+          <div className="flex flex-col items-center my-4">
             {isOpen && (
-              <Barcode 
-                value={product.id} 
-                options={{ 
-                  format: 'CODE39',
-                  displayValue: true,
-                  fontSize: 16,
-                  height: 80,
-                }} 
-              />
+              <>
+                <Barcode 
+                  value={product.id} 
+                  options={{ 
+                    format: 'CODE39',
+                    displayValue: true,
+                    fontSize: 16,
+                    height: 80,
+                  }} 
+                />
+                <p className="text-center font-semibold mt-2">{product.name}</p>
+              </>
             )}
           </div>
           <Separator />
