@@ -25,6 +25,24 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useBranches } from "@/hooks/use-branches"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ChevronsUpDown, Check } from "lucide-react"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { cn } from "@/lib/utils"
+
+const mainCategories = [
+  { value: "생화", label: "생화" },
+  { value: "조화", label: "조화" },
+  { value: "화분", label: "화분" },
+  { value: "기타자재", label: "기타자재" },
+]
+
+const midCategories = [
+    { value: "장미", label: "장미" },
+    { value: "카네이션", label: "카네이션" },
+    { value: "관엽식물", label: "관엽식물" },
+    { value: "난", label: "난" },
+]
 
 const materialSchema = z.object({
   name: z.string().min(1, "자재명을 입력해주세요."),
@@ -94,19 +112,67 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
                 control={form.control}
                 name="mainCategory"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>대분류</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <FormControl>
-                        <SelectTrigger><SelectValue placeholder="대분류 선택" /></SelectTrigger>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? mainCategories.find(
+                                  (category) => category.value === field.value
+                                )?.label
+                              : "대분류 선택"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="생화">생화</SelectItem>
-                          <SelectItem value="조화">조화</SelectItem>
-                          <SelectItem value="화분">화분</SelectItem>
-                          <SelectItem value="기타자재">기타자재</SelectItem>
-                        </SelectContent>
-                    </Select>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="분류 검색 또는 추가..." />
+                          <CommandEmpty>분류를 찾을 수 없습니다.</CommandEmpty>
+                          <CommandGroup>
+                            {mainCategories.map((category) => (
+                              <CommandItem
+                                value={category.label}
+                                key={category.value}
+                                onSelect={() => {
+                                  form.setValue("mainCategory", category.value)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    category.value === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {category.label}
+                              </CommandItem>
+                            ))}
+                             <CommandItem
+                                onSelect={() => {
+                                  const input = document.querySelector<HTMLInputElement>('[cmdk-input]');
+                                  if (input) {
+                                      form.setValue("mainCategory", input.value);
+                                  }
+                                }}
+                                >
+                                <span className="mr-2 h-4 w-4" />
+                                <span className="italic">새 분류 추가...</span>
+                            </CommandItem>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -115,19 +181,67 @@ export function MaterialForm({ isOpen, onOpenChange, material }: MaterialFormPro
                 control={form.control}
                 name="midCategory"
                 render={({ field }) => (
-                  <FormItem>
+                   <FormItem className="flex flex-col">
                     <FormLabel>중분류</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <FormControl>
-                        <SelectTrigger><SelectValue placeholder="중분류 선택" /></SelectTrigger>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? midCategories.find(
+                                  (category) => category.value === field.value
+                                )?.label
+                              : "중분류 선택"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
                         </FormControl>
-                        <SelectContent>
-                          <SelectItem value="장미">장미</SelectItem>
-                          <SelectItem value="카네이션">카네이션</SelectItem>
-                          <SelectItem value="관엽식물">관엽식물</SelectItem>
-                          <SelectItem value="난">난</SelectItem>
-                        </SelectContent>
-                    </Select>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="분류 검색 또는 추가..." />
+                          <CommandEmpty>분류를 찾을 수 없습니다.</CommandEmpty>
+                          <CommandGroup>
+                            {midCategories.map((category) => (
+                              <CommandItem
+                                value={category.label}
+                                key={category.value}
+                                onSelect={() => {
+                                  form.setValue("midCategory", category.value)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    category.value === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {category.label}
+                              </CommandItem>
+                            ))}
+                             <CommandItem
+                                onSelect={() => {
+                                  const input = document.querySelector<HTMLInputElement>('[cmdk-input]');
+                                  if (input) {
+                                      form.setValue("midCategory", input.value);
+                                  }
+                                }}
+                                >
+                                <span className="mr-2 h-4 w-4" />
+                                <span className="italic">새 분류 추가...</span>
+                            </CommandItem>
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
