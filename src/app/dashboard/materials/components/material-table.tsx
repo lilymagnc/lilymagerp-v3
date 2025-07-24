@@ -12,6 +12,7 @@ import { MaterialForm } from "./material-form";
 import { StockUpdateForm } from "@/app/dashboard/products/components/stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { MaterialDetails } from "./material-details";
+import { Barcode } from "@/components/barcode";
 
 const mockMaterials = [
   { id: "MAT-001", name: "마르시아 장미", mainCategory: "생화", midCategory: "장미", price: 5000, supplier: "경부선꽃시장", stock: 100, status: "active", size: "1단", color: "Pink" },
@@ -63,7 +64,8 @@ export function MaterialTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[250px]">자재명</TableHead>
+                <TableHead className="w-[200px]">자재명</TableHead>
+                <TableHead>바코드</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
                 <TableHead className="hidden sm:table-cell">가격</TableHead>
@@ -80,6 +82,17 @@ export function MaterialTable() {
                 return (
                 <TableRow key={material.id} onClick={() => handleRowClick(material)} className="cursor-pointer">
                   <TableCell className="font-medium">{material.name}</TableCell>
+                   <TableCell>
+                    <Barcode 
+                      value={material.id} 
+                      options={{ 
+                        format: 'CODE39',
+                        displayValue: false,
+                        height: 30,
+                        width: 1.5
+                      }} 
+                    />
+                  </TableCell>
                   <TableCell>
                     <Badge variant={statusInfo.variant}>
                       {statusInfo.text}

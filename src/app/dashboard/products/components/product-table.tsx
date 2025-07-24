@@ -12,6 +12,7 @@ import { ProductForm } from "./product-form";
 import { StockUpdateForm } from "./stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProductDetails } from "./product-details";
+import { Barcode } from "@/components/barcode";
 
 const mockProducts = [
   { id: "PROD-001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White" },
@@ -63,11 +64,11 @@ export function ProductTable() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[250px]">상품명</TableHead>
+                <TableHead className="w-[200px]">상품명</TableHead>
+                <TableHead>바코드</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
                 <TableHead className="hidden sm:table-cell">가격</TableHead>
-                <TableHead className="hidden md:table-cell">공급업체</TableHead>
                 <TableHead className="text-right">재고</TableHead>
                 <TableHead>
                   <span className="sr-only">작업</span>
@@ -80,6 +81,17 @@ export function ProductTable() {
                 return (
                 <TableRow key={product.id} onClick={() => handleRowClick(product)} className="cursor-pointer">
                   <TableCell className="font-medium">{product.name}</TableCell>
+                   <TableCell>
+                    <Barcode 
+                      value={product.id} 
+                      options={{ 
+                        format: 'CODE39',
+                        displayValue: false,
+                        height: 30,
+                        width: 1.5
+                      }} 
+                    />
+                  </TableCell>
                   <TableCell>
                     <Badge variant={statusInfo.variant}>
                       {statusInfo.text}
@@ -87,7 +99,6 @@ export function ProductTable() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{product.mainCategory} &gt; {product.midCategory}</TableCell>
                   <TableCell className="hidden sm:table-cell">₩{product.price.toLocaleString()}</TableCell>
-                  <TableCell className="hidden md:table-cell">{product.supplier}</TableCell>
                   <TableCell className="text-right">{product.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <AlertDialog>
