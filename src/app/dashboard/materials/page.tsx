@@ -18,6 +18,7 @@ import { useBranches } from "@/hooks/use-branches";
 import Link from "next/link";
 import { useMaterials } from "@/hooks/use-materials";
 import { Skeleton } from "@/components/ui/skeleton";
+import { downloadCSV } from "@/lib/utils";
 
 
 export default function MaterialsPage() {
@@ -43,10 +44,22 @@ export default function MaterialsPage() {
   }, [materials, searchTerm, selectedBranch]);
 
   const handleExport = () => {
+    if (filteredMaterials.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "내보낼 데이터 없음",
+        description: "목록에 자재 데이터가 없습니다.",
+      });
+      return;
+    }
+    const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
+      ({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch })
+    );
+    downloadCSV(dataToExport, "materials");
     toast({
-        title: "기능 구현 예정",
-        description: "구글 시트로 내보내기 기능은 현재 개발 중입니다.",
-    })
+      title: "내보내기 성공",
+      description: `${dataToExport.length}개의 자재 정보가 CSV 파일로 다운로드되었습니다.`,
+    });
   }
   
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {

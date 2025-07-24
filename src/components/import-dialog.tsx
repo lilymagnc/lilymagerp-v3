@@ -28,7 +28,7 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName }: ImportDialo
         // In a real app, this would handle file parsing and submission.
         toast({
             title: "기능 구현 예정",
-            description: "구글 시트 연동 기능은 현재 개발 중입니다.",
+            description: "파일 업로드 및 데이터 처리 기능은 현재 개발 중입니다.",
         })
         onOpenChange(false);
     }
@@ -38,15 +38,15 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName }: ImportDialo
         <DialogHeader>
           <DialogTitle>{resourceName} 데이터 가져오기</DialogTitle>
           <DialogDescription>
-            연동할 구글 시트의 주소(URL)를 입력해주세요.
+            CSV 또는 Excel 파일을 업로드해주세요.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid w-full items-center gap-1.5">
-            <Label htmlFor="sheet-url">구글 시트 URL</Label>
-            <Input id="sheet-url" type="url" placeholder="https://docs.google.com/spreadsheets/..." />
+            <Label htmlFor="file">파일 선택</Label>
+            <Input id="file" type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
             <p className="text-xs text-muted-foreground">
-                시트의 첫 번째 행은 헤더(id, name, price 등)여야 합니다.
+                파일의 첫 번째 행은 헤더(id, name, price 등)여야 합니다.
             </p>
           </div>
         </div>

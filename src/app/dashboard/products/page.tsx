@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
+import { downloadCSV } from "@/lib/utils";
 
 const mockProducts: Product[] = [
   { id: "P00001", name: "릴리 화이트 셔츠", mainCategory: "완제품", midCategory: "꽃다발", price: 45000, supplier: "꽃길 본사", stock: 120, status: "active", size: "M", color: "White", branch: "릴리맥광화문점" },
@@ -49,10 +50,22 @@ export default function ProductsPage() {
 
 
   const handleExport = () => {
+     if (filteredProducts.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "내보낼 데이터 없음",
+        description: "목록에 상품 데이터가 없습니다.",
+      });
+      return;
+    }
+    const dataToExport = filteredProducts.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
+      ({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch })
+    );
+    downloadCSV(dataToExport, "products");
     toast({
-        title: "기능 구현 예정",
-        description: "구글 시트로 내보내기 기능은 현재 개발 중입니다.",
-    })
+      title: "내보내기 성공",
+      description: `${dataToExport.length}개의 상품 정보가 CSV 파일로 다운로드되었습니다.`,
+    });
   }
 
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
