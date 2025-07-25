@@ -9,7 +9,8 @@ interface PageProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
-async function generateLabels({ searchParams }: PageProps) {
+async function generateLabels(props: PageProps) {
+  const { searchParams } = props;
   const type = searchParams.type as 'product' | 'material';
   const startPosition = parseInt(searchParams.start as string) || 1;
   
@@ -70,11 +71,10 @@ async function generateLabels({ searchParams }: PageProps) {
   return <PrintLayout labels={finalLabels} />;
 }
 
-export default async function PrintLabelsPage({ searchParams }: PageProps) {
-
+export default async function PrintLabelsPage(props: PageProps) {
   return (
     <Suspense fallback={<div className="max-w-4xl mx-auto p-6"><Skeleton className="h-96 w-full" /></div>}>
-      {await generateLabels({searchParams})}
+      {await generateLabels(props)}
     </Suspense>
   );
 }

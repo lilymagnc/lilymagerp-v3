@@ -10,26 +10,21 @@ interface PageProps {
   };
 }
 
-// The Order type from use-orders uses Timestamp, but when we get it from Firestore
-// it's a plain object that needs to be converted.
-// We also need to make sure the orderDate is serializable.
-interface ServerOrder extends Omit<Order, 'orderDate'> {
-    orderDate: string; // ISO string
-}
-
-async function getOrder(orderId: string): Promise<ServerOrder | null> {
+async function getOrder(orderId: string): Promise<Order | null> {
     try {
         const docRef = doc(db, 'orders', orderId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             const data = docSnap.data();
-            const orderDate = data.orderDate as Timestamp;
+            // Firestore timestamps need to be converted to Date objects for serialization
+            const orderDate = data.orderDate instanceof Timestamp ? data.orderDate.toDate() : new Date();
+            
             return {
-                id: docSnap.id,
                 ...data,
-                orderDate: orderDate.toDate().toISOString(),
-            } as unknown as ServerOrder; // Cast to unknown first
+                id: docSnap.id,
+                orderDate: orderDate,
+            } as unknown as Order; // Use unknown for safer casting
         } else {
             console.error("No such document!");
             return null;
@@ -40,22 +35,22 @@ async function getOrder(orderId: string): Promise<ServerOrder | null> {
     }
 }
 
-export default async function PrintPreviewPage({ params }: PageProps) {
-  const order = await getOrder(params.id);
 
-  if (!order) {
+export default async function PrintPreviewPage({ params }: PageProps) {
+  const orderData = await getOrder(params.id);
+
+  if (!orderData) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <p>주문 정보를 찾을 수 없습니다.</p>
       </div>
     );
   }
-
-  // We need to convert the ISO string back to a Date object for the client component
+  
   const orderForClient = {
-    ...order,
-    orderDate: new Date(order.orderDate),
-  };
+      ...orderData,
+      orderDate: new Date(orderData.orderDate),
+  }
 
   return <PrintPreviewClient order={orderForClient as any} />;
 }
