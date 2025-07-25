@@ -4,6 +4,10 @@ import { db } from '@/lib/firebase';
 import type { Order } from '@/hooks/use-orders';
 import { PrintPreviewClient } from './components/print-preview-client';
 
+interface PageProps {
+  params: { id: string };
+}
+
 async function getOrder(orderId: string): Promise<Order | null> {
     try {
         const docRef = doc(db, 'orders', orderId);
@@ -11,10 +15,16 @@ async function getOrder(orderId: string): Promise<Order | null> {
 
         if (docSnap.exists()) {
             const data = docSnap.data();
-            // Firestore data is fetched here
+            
+            // Convert Timestamp to a serializable format (like Date object) before passing to a Client Component.
+            const orderDate = (data.orderDate instanceof Timestamp) 
+                ? data.orderDate.toDate() 
+                : new Date();
+
             return {
                 ...data,
                 id: docSnap.id,
+                orderDate: orderDate,
             } as Order;
         } else {
             console.error("No such document!");
@@ -27,7 +37,7 @@ async function getOrder(orderId: string): Promise<Order | null> {
 }
 
 
-export default async function PrintPreviewPage({ params }: { params: { id: string } }) {
+export default async function PrintPreviewPage({ params }: PageProps) {
   const orderData = await getOrder(params.id);
 
   if (!orderData) {
@@ -38,11 +48,5 @@ export default async function PrintPreviewPage({ params }: { params: { id: strin
     );
   }
   
-  // Convert Timestamp to a serializable format (like Date object) before passing to a Client Component.
-  const orderForClient = {
-      ...orderData,
-      orderDate: orderData.orderDate.toDate(),
-  }
-
-  return <PrintPreviewClient order={orderForClient as any} />;
+  return <PrintPreviewClient order={orderData as any} />;
 }
