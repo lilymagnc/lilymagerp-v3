@@ -9,8 +9,7 @@ interface PageProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
 
-async function generateLabels(props: PageProps) {
-  const { searchParams } = props;
+async function generateLabels({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
   const type = searchParams.type as 'product' | 'material';
   const startPosition = parseInt(searchParams.start as string) || 1;
   

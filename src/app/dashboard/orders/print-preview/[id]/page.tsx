@@ -17,14 +17,11 @@ async function getOrder(orderId: string): Promise<Order | null> {
 
         if (docSnap.exists()) {
             const data = docSnap.data();
-            // Firestore timestamps need to be converted to Date objects for serialization
-            const orderDate = data.orderDate instanceof Timestamp ? data.orderDate.toDate() : new Date();
-            
+            // Keep it as a Timestamp object for now
             return {
                 ...data,
                 id: docSnap.id,
-                orderDate: orderDate,
-            } as unknown as Order; // Use unknown for safer casting
+            } as Order;
         } else {
             console.error("No such document!");
             return null;
@@ -47,9 +44,10 @@ export default async function PrintPreviewPage({ params }: PageProps) {
     );
   }
   
+  // Convert Timestamp to Date right before passing to client component
   const orderForClient = {
       ...orderData,
-      orderDate: new Date(orderData.orderDate),
+      orderDate: orderData.orderDate.toDate(),
   }
 
   return <PrintPreviewClient order={orderForClient as any} />;
