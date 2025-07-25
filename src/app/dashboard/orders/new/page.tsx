@@ -23,7 +23,6 @@ import { useOrders, OrderData, Order } from "@/hooks/use-orders";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useProducts, Product } from "@/hooks/use-products";
-import { AddProductDialog } from "./components/add-product-dialog";
 
 interface OrderItem extends Product {
   quantity: number;
@@ -83,7 +82,7 @@ export default function NewOrderPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
 
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
-  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+  const [productToAdd, setProductToAdd] = useState<Product | null>(null);
 
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
@@ -139,20 +138,28 @@ export default function NewOrderPage() {
     setSelectedDistrict(null);
   }, [selectedBranch]);
 
-  const handleAddProducts = (productsToAdd: OrderItem[]) => {
+  const handleAddProduct = () => {
+    if (!productToAdd) {
+        toast({ variant: 'destructive', title: '상품 미선택', description: '추가할 상품을 선택해주세요.' });
+        return;
+    }
+
     setOrderItems(prevItems => {
-        const updatedItems = [...prevItems];
-        productsToAdd.forEach(productToAdd => {
-            const existingItemIndex = updatedItems.findIndex(item => item.id === productToAdd.id);
-            if (existingItemIndex > -1) {
-                const newQuantity = updatedItems[existingItemIndex].quantity + productToAdd.quantity;
-                const stock = updatedItems[existingItemIndex].stock;
-                updatedItems[existingItemIndex].quantity = Math.min(newQuantity, stock);
-            } else {
-                updatedItems.push(productToAdd);
+        const existingItem = prevItems.find(item => item.id === productToAdd.id);
+        if (existingItem) {
+            const newQuantity = existingItem.quantity + 1;
+            if (newQuantity > existingItem.stock) {
+                toast({ variant: 'destructive', title: '재고 부족', description: `최대 주문 가능 수량은 ${existingItem.stock}개 입니다.` });
+                return prevItems;
             }
-        });
-        return updatedItems;
+            return prevItems.map(item => item.id === productToAdd.id ? { ...item, quantity: newQuantity } : item);
+        } else {
+             if (productToAdd.stock < 1) {
+                toast({ variant: 'destructive', title: '재고 없음', description: '선택하신 상품은 재고가 없습니다.' });
+                return prevItems;
+            }
+            return [...prevItems, { ...productToAdd, quantity: 1 }];
+        }
     });
   };
 
@@ -377,10 +384,30 @@ export default function NewOrderPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                            <Button variant="outline" className="mt-2 w-full" onClick={() => setIsAddProductDialogOpen(true)} disabled={productsLoading}>
-                                {productsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4"/>}
-                                상품 검색 및 추가
-                            </Button>
+                             <div className="mt-2 p-2 border-t flex items-center gap-2">
+                                {productsLoading ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Select onValueChange={(value) => setProductToAdd(branchProducts.find(p => p.id === value) || null)}>
+                                        <SelectTrigger className="flex-1">
+                                            <SelectValue placeholder="상품을 선택하세요..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {branchProducts.map(p => (
+                                                <SelectItem key={p.id} value={p.id} disabled={p.stock === 0}>
+                                                    {p.name} (재고: {p.stock})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button onClick={handleAddProduct}>
+                                        <PlusCircle className="mr-2 h-4 w-4"/>
+                                        추가
+                                    </Button>
+                                  </>
+                                )}
+                            </div>
                             </CardContent>
                           </Card>
                       </div>
@@ -702,16 +729,6 @@ export default function NewOrderPage() {
         </div>
 
         </fieldset>
-        
-        <AddProductDialog
-          isOpen={isAddProductDialogOpen}
-          onOpenChange={setIsAddProductDialogOpen}
-          allProducts={branchProducts}
-          currentOrderItems={orderItems}
-          onAddProducts={handleAddProducts}
-        />
     </div>
   );
 }
-
-    
