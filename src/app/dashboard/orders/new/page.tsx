@@ -409,10 +409,14 @@ export default function NewOrderPage() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[600px] p-0" align="start">
                                     <Command
-                                      filter={(value, search, keywords) => {
-                                          const lowerCaseSearch = search.toLowerCase();
-                                          const valueAndKeywords = `${value.toLowerCase()} ${keywords?.join(' ')}`.trim();
-                                          return valueAndKeywords.includes(lowerCaseSearch) ? 1 : 0;
+                                      filter={(value, search) => {
+                                        const product = filteredProductsForSearch.find(p => p.id === value);
+                                        if (product) {
+                                            const a = `${product.name} ${product.id}`.toLowerCase();
+                                            const b = search.toLowerCase();
+                                            return a.includes(b) ? 1 : 0;
+                                        }
+                                        return 0;
                                       }}
                                     >
                                         <div className="flex items-center border-b px-3">
@@ -447,10 +451,12 @@ export default function NewOrderPage() {
                                             {filteredProductsForSearch.map((product) => (
                                                 <CommandItem
                                                     key={product.id}
-                                                    value={product.name}
-                                                    keywords={[product.id]}
-                                                    onSelect={() => {
-                                                        handleAddProduct(product);
+                                                    value={product.id}
+                                                    onSelect={(currentValue) => {
+                                                        const selectedProduct = filteredProductsForSearch.find(p => p.id === currentValue);
+                                                        if (selectedProduct) {
+                                                            handleAddProduct(selectedProduct);
+                                                        }
                                                         setIsSearchOpen(false);
                                                     }}
                                                     disabled={product.stock === 0}
