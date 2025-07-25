@@ -27,17 +27,27 @@ export default function DashboardPage() {
       try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const thirtyDaysAgoTimestamp = Timestamp.fromDate(thirtyDaysAgo);
-
+        
         const ordersSnapshot = await getDocs(collection(db, "orders"));
         const productsSnapshot = await getDocs(collection(db, "products"));
         const branchesSnapshot = await getDocs(collection(db, "branches"));
-        const employeesSnapshot = await getDocs(collection(db, "employees")); // Assuming you have an 'employees' collection
+        const employeesSnapshot = await getDocs(collection(db, "employees"));
 
-        const totalRevenue = ordersSnapshot.docs.reduce((acc, doc) => acc + doc.data().summary.total, 0);
+        const totalRevenue = ordersSnapshot.docs.reduce((acc, doc) => {
+            const data = doc.data();
+            return acc + (data.summary?.total || 0);
+        }, 0);
+
         const lastMonthRevenue = ordersSnapshot.docs
-            .filter(doc => doc.data().orderDate.toDate() > thirtyDaysAgo)
-            .reduce((acc, doc) => acc + doc.data().summary.total, 0);
+            .filter(doc => {
+                const data = doc.data();
+                // Defensive check for orderDate and its toDate method
+                return data.orderDate && typeof data.orderDate.toDate === 'function' && data.orderDate.toDate() > thirtyDaysAgo;
+            })
+            .reduce((acc, doc) => {
+                const data = doc.data();
+                return acc + (data.summary?.total || 0);
+            }, 0);
 
         const totalProducts = productsSnapshot.size;
         const totalBranches = branchesSnapshot.docs.filter(doc => doc.data().type !== "본사").length;
@@ -52,7 +62,6 @@ export default function DashboardPage() {
 
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
-        // Set stats with error message or default values
         setStats([
             { title: "총 매출", value: "데이터 로딩 실패", icon: DollarSign },
             { title: "등록 상품 수", value: "데이터 로딩 실패", icon: Package },

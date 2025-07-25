@@ -22,7 +22,7 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
         if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // Defensive check for orderDate
+            // Defensive check for orderDate and convert to ISO string
             let orderDateIso = new Date().toISOString();
             if (data.orderDate && typeof (data.orderDate as Timestamp).toDate === 'function') {
                 orderDateIso = (data.orderDate as Timestamp).toDate().toISOString();

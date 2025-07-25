@@ -105,29 +105,37 @@ export function useOrders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  const addOrder = async (order: OrderData) => {
+  const addOrder = async (orderData: OrderData) => {
     setLoading(true);
     
     try {
-      // 1. Add the new order document
-      const orderRef = await addDoc(collection(db, 'orders'), order);
+      // Ensure orderDate is a JS Date object before proceeding
+      const orderDate = (orderData.orderDate instanceof Timestamp) 
+        ? orderData.orderDate.toDate() 
+        : new Date(orderData.orderDate);
 
-      // 2. Update stock for each item in the order
+      const orderPayload = {
+        ...orderData,
+        orderDate: Timestamp.fromDate(orderDate),
+      };
+
+      const orderRef = await addDoc(collection(db, 'orders'), orderPayload);
+
       const historyBatch = writeBatch(db);
 
-      for (const item of order.items) {
+      for (const item of orderData.items) {
         if (!item.id || item.quantity <= 0) continue;
 
         await runTransaction(db, async (transaction) => {
           const productQuery = query(
             collection(db, "products"),
             where("id", "==", item.id),
-            where("branch", "==", order.branchName)
+            where("branch", "==", orderData.branchName)
           );
           const productSnapshot = await getDocs(productQuery);
 
           if (productSnapshot.empty) {
-            throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${order.branchName}' 지점에서 찾을 수 없습니다.`);
+            throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${orderData.branchName}' 지점에서 찾을 수 없습니다.`);
           }
 
           const productDocRef = productSnapshot.docs[0].ref;
@@ -148,7 +156,7 @@ export function useOrders() {
 
           const historyDocRef = doc(collection(db, "stockHistory"));
           historyBatch.set(historyDocRef, {
-            date: order.orderDate, // Use the date from the order data
+            date: Timestamp.fromDate(orderDate),
             type: "out",
             itemType: "product",
             itemId: item.id,
@@ -157,7 +165,7 @@ export function useOrders() {
             fromStock: currentStock,
             toStock: newStock,
             resultingStock: newStock,
-            branch: order.branchName,
+            branch: orderData.branchName,
             operator: user?.email || "Unknown User",
             price: item.price,
             totalAmount: item.price * item.quantity,
