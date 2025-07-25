@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +18,6 @@ import { Product } from "@/hooks/use-products";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 
 interface OrderItem extends Product {
   quantity: number;
@@ -41,6 +41,14 @@ export function AddProductDialog({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
   const [productFilter, setProductFilter] = useState({ mainCategory: "all", midCategory: "all" });
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedItems([]);
+      setSearchTerm("");
+      setProductFilter({ mainCategory: "all", midCategory: "all" });
+    }
+  }, [isOpen]);
 
   const mainCategories = useMemo(() => ["all", ...new Set(allProducts.map(p => p.mainCategory))], [allProducts]);
   const midCategories = useMemo(() => {
@@ -72,10 +80,11 @@ export function AddProductDialog({
     const product = allProducts.find(p => p.id === productId);
     if (!product) return;
     
-    if (newQuantity > 0 && newQuantity <= product.stock) {
-      setSelectedItems(prev => prev.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
-    } else if (newQuantity <= 0) {
+    if (newQuantity <= 0) {
       handleRemoveItem(productId);
+    } else {
+        const validatedQuantity = Math.min(newQuantity, product.stock);
+        setSelectedItems(prev => prev.map(item => item.id === productId ? { ...item, quantity: validatedQuantity } : item));
     }
   };
 
@@ -86,8 +95,6 @@ export function AddProductDialog({
   const handleConfirmAdd = () => {
     onAddProducts(selectedItems);
     onOpenChange(false);
-    setSelectedItems([]);
-    setSearchTerm("");
   };
 
   const isProductSelected = (productId: string) => {
