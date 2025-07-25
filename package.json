@@ -3,6 +3,7 @@
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
+  "main": "src/index.ts",
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
@@ -10,7 +11,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy": "npm run build && firebase deploy --only functions,hosting"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -44,6 +46,8 @@
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^10.12.2",
+    "firebase-admin": "^12.1.1",
+    "firebase-functions": "^5.0.1",
     "genkit": "^1.14.1",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.475.0",

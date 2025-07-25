@@ -1,17 +1,31 @@
 
 {
+  "functions": [
+    {
+      "source": ".",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ],
+      "runtime": "nodejs20"
+    }
+  ],
   "hosting": {
     "public": ".next",
+    "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "**",
+        "function": "server"
+      }
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
     ]
   }
 }
