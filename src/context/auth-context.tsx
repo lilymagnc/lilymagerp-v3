@@ -5,11 +5,12 @@ import { createContext, useEffect, useState, ReactNode, useCallback } from 'reac
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 export interface UserProfile extends User {
   role?: '본사 관리자' | '가맹점 관리자' | '직원';
+  franchise?: string;
 }
 
 interface AuthContextType {
@@ -28,12 +29,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       const userDocRef = doc(db, 'users', firebaseUser.email);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
-        return { ...firebaseUser, role: userDoc.data().role } as UserProfile;
+      let userDoc = await getDoc(userDocRef);
+      
+      if (!userDoc.exists()) {
+        const usersCollectionRef = collection(db, 'users');
+        const usersSnapshot = await getDocs(usersCollectionRef);
+        const isFirstUser = usersSnapshot.empty;
+        
+        const newUserProfile = {
+          email: firebaseUser.email,
+          role: isFirstUser ? '본사 관리자' : '직원',
+          franchise: isFirstUser ? '본사' : '미지정',
+        };
+        
+        await setDoc(userDocRef, newUserProfile);
+        userDoc = await getDoc(userDocRef); // Re-fetch the document
       }
+      
+      const userData = userDoc.data();
+      return { ...firebaseUser, role: userData?.role, franchise: userData?.franchise } as UserProfile;
+
     } catch (error) {
-      console.error("Error fetching user role:", error);
+      console.error("Error fetching or creating user role:", error);
     }
     return firebaseUser;
   }, []);
