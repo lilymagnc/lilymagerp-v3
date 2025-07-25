@@ -449,7 +449,10 @@ export default function NewOrderPage() {
                                                     key={product.id}
                                                     value={product.name}
                                                     keywords={[product.id]}
-                                                    onSelect={() => handleAddProduct(product)}
+                                                    onSelect={() => {
+                                                        handleAddProduct(product);
+                                                        setIsSearchOpen(false);
+                                                    }}
                                                     disabled={product.stock === 0}
                                                     className="flex justify-between"
                                                 >
