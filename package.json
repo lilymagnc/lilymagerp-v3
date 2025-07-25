@@ -16,10 +16,7 @@
   },
   "dependencies": {
     "firebase-admin": "^12.1.1",
-    "firebase-functions": "^5.0.1",
-    "next": "15.3.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "firebase-functions": "^5.0.1"
   },
   "devDependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -61,9 +58,12 @@
     "genkit-cli": "^1.14.1",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.475.0",
+    "next": "15.3.3",
     "patch-package": "^8.0.0",
     "postcss": "^8",
+    "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.2",
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
