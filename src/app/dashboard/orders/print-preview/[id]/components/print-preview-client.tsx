@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Printer, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
-import type { Order } from '@/hooks/use-orders';
 import { PrintableOrder, OrderPrintData } from '@/app/dashboard/orders/new/components/printable-order';
 import { useBranches } from '@/hooks/use-branches';
 import { PageHeader } from '@/components/page-header';
 import { format } from 'date-fns';
+import type { SerializableOrder } from '../page';
 
-export function PrintPreviewClient({ order }: { order: Order }) {
+export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
     const router = useRouter();
     const { branches, loading: branchesLoading } = useBranches();
     
@@ -29,7 +29,7 @@ export function PrintPreviewClient({ order }: { order: Order }) {
     
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
     
-    const orderDateObject = order.orderDate.toDate ? order.orderDate.toDate() : new Date(order.orderDate as any);
+    const orderDateObject = new Date(order.orderDate);
 
     const printData: OrderPrintData | null = targetBranch ? {
         orderDate: format(orderDateObject, "yyyy-MM-dd HH:mm"),

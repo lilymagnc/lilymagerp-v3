@@ -1,31 +1,37 @@
 
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Order } from '@/hooks/use-orders';
+import type { Order as OrderType } from '@/hooks/use-orders';
 import { PrintPreviewClient } from './components/print-preview-client';
+
+// Define the type for serializable order data that can be passed from Server to Client component
+export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
+  id: string;
+  orderDate: string; // ISO string format
+}
 
 interface PageProps {
   params: { id: string };
 }
 
-async function getOrder(orderId: string): Promise<Order | null> {
+async function getOrder(orderId: string): Promise<SerializableOrder | null> {
     try {
         const docRef = doc(db, 'orders', orderId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            const data = docSnap.data();
+            const data = docSnap.data() as Omit<OrderType, 'id'>;
             
-            // Convert Timestamp to a serializable format (like Date object) before passing to a Client Component.
-            const orderDate = (data.orderDate instanceof Timestamp) 
-                ? data.orderDate.toDate() 
-                : new Date();
+            // Ensure orderDate is handled correctly, converting Timestamp to ISO string
+            const orderDate = data.orderDate && typeof (data.orderDate as any).toDate === 'function'
+                ? (data.orderDate as Timestamp).toDate().toISOString()
+                : new Date().toISOString();
 
             return {
                 ...data,
                 id: docSnap.id,
                 orderDate: orderDate,
-            } as Order;
+            };
         } else {
             console.error("No such document!");
             return null;
@@ -48,5 +54,5 @@ export default async function PrintPreviewPage({ params }: PageProps) {
     );
   }
   
-  return <PrintPreviewClient order={orderData as any} />;
+  return <PrintPreviewClient order={orderData} />;
 }
