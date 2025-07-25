@@ -42,7 +42,14 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto w-full max-w-sm">
         <div className="flex justify-center py-6">
-            <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={200} height={50} priority />
+            <Image 
+              src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" 
+              alt="Logo" 
+              width={200} 
+              height={50}
+              className="w-48 h-auto"
+              priority 
+            />
         </div>
         <CardContent>
           <form onSubmit={handleLogin} className="grid gap-4">

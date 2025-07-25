@@ -45,7 +45,14 @@ export default function DashboardLayout({
         <Sidebar>
             <SidebarHeader className="p-4">
                 <div className="flex items-center justify-center">
-                    <Image src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" alt="Logo" width={150} height={40} priority />
+                    <Image 
+                      src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" 
+                      alt="Logo" 
+                      width={150} 
+                      height={40} 
+                      className="w-36 h-auto"
+                      priority 
+                    />
                 </div>
             </SidebarHeader>
             <SidebarContent>
