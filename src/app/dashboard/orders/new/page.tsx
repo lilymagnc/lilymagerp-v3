@@ -145,7 +145,9 @@ export default function NewOrderPage() {
         productsToAdd.forEach(productToAdd => {
             const existingItemIndex = updatedItems.findIndex(item => item.id === productToAdd.id);
             if (existingItemIndex > -1) {
-                updatedItems[existingItemIndex].quantity += productToAdd.quantity;
+                const newQuantity = updatedItems[existingItemIndex].quantity + productToAdd.quantity;
+                const stock = updatedItems[existingItemIndex].stock;
+                updatedItems[existingItemIndex].quantity = Math.min(newQuantity, stock);
             } else {
                 updatedItems.push(productToAdd);
             }
@@ -711,3 +713,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    
