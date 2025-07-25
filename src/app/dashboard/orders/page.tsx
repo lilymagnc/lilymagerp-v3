@@ -145,7 +145,7 @@ export default function OrdersPage() {
                   <TableCell>
                       <div className="flex flex-col gap-1">
                         {getStatusBadge(order.status)}
-                        {getPaymentStatusBadge(order.payment.status)}
+                        {order.payment && getPaymentStatusBadge(order.payment.status)}
                       </div>
                   </TableCell>
                   <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
@@ -189,4 +189,3 @@ export default function OrdersPage() {
     </>
   );
 }
-
