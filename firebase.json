@@ -2,7 +2,7 @@
 {
   "functions": [
     {
-      "source": "functions",
+      "source": ".",
       "codebase": "default",
       "ignore": [
         "node_modules",
@@ -12,23 +12,19 @@
       ],
       "runtime": "nodejs20",
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run build"
+        "npm --prefix \"%RESOURCE_DIR%\" run build"
       ]
     }
   ],
   "hosting": {
-    "public": "public",
-    "cleanUrls": true,
-    "rewrites": [
-      {
-        "source": "**",
-        "function": "server"
-      }
-    ],
+    "source": ".",
     "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
+      "**/.*", 
+      "**/node_modules/**",
+      "*.log"
+    ],
+    "frameworksBackend": {
+      "region": "us-central1"
+    }
   }
 }
