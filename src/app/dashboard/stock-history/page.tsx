@@ -13,6 +13,8 @@ import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
+import { format } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 export default function StockHistoryPage() {
     const { branches } = useBranches();
@@ -20,7 +22,13 @@ export default function StockHistoryPage() {
     const [history, setHistory] = useState<StockHistory[]>([]);
     const [loading, setLoading] = useState(true);
     
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<{
+        dateRange: DateRange;
+        branch: string;
+        type: string;
+        itemType: string;
+        search: string;
+    }>({
         dateRange: { from: new Date(new Date().setMonth(new Date().getMonth() - 1)), to: new Date() },
         branch: "all",
         type: "all",

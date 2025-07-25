@@ -40,7 +40,7 @@ export function BranchDetails({ isOpen, onOpenChange, onEdit, branch }: BranchDe
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
             <p className="text-sm text-muted-foreground">직원 수</p>
-            <p className="col-span-2 text-sm">{branch.employeeCount > 0 ? `${branch.employeeCount}명` : "-"}</p>
+            <p className="col-span-2 text-sm">{(branch.employeeCount ?? 0) > 0 ? `${branch.employeeCount}명` : "-"}</p>
           </div>
           <Separator />
           <div className="grid grid-cols-3 items-center gap-4">
@@ -66,5 +66,3 @@ export function BranchDetails({ isOpen, onOpenChange, onEdit, branch }: BranchDe
     </Dialog>
   )
 }
-
-    

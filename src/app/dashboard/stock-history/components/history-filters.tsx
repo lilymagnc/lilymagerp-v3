@@ -1,6 +1,7 @@
 
 "use client";
 
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,23 +14,25 @@ import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import type { Branch } from "@/hooks/use-branches";
 
+export interface StockHistoryFiltersState {
+    dateRange: DateRange;
+    branch: string;
+    type: string;
+    itemType: string;
+    search: string;
+}
+
 interface HistoryFiltersProps {
-    filters: {
-        dateRange: DateRange;
-        branch: string;
-        type: string;
-        itemType: string;
-        search: string;
-    };
-    onFiltersChange: (filters: HistoryFiltersProps['filters']) => void;
+    filters: StockHistoryFiltersState;
+    onFiltersChange: React.Dispatch<React.SetStateAction<StockHistoryFiltersState>>;
     branches: Branch[];
 }
 
 
 export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFiltersProps) {
 
-    const handleFilterChange = (key: keyof typeof filters, value: any) => {
-        onFiltersChange({ ...filters, [key]: value });
+    const handleFilterChange = (key: keyof StockHistoryFiltersState, value: any) => {
+        onFiltersChange(prev => ({ ...prev, [key]: value }));
     };
 
   return (

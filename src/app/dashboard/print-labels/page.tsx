@@ -5,7 +5,11 @@ import type { LabelItemData } from "./components/label-item";
 import { PrintLayout } from "./components/print-layout";
 import { Skeleton } from '@/components/ui/skeleton';
 
-async function generateLabels(searchParams: { [key: string]: string | string[] | undefined }) {
+interface PageProps {
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+async function generateLabels({ searchParams }: PageProps) {
   const type = searchParams.type as 'product' | 'material';
   const startPosition = parseInt(searchParams.start as string) || 1;
   
@@ -66,15 +70,11 @@ async function generateLabels(searchParams: { [key: string]: string | string[] |
   return <PrintLayout labels={finalLabels} />;
 }
 
-export default async function PrintLabelsPage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined };
-}) {
+export default async function PrintLabelsPage({ searchParams }: PageProps) {
 
   return (
     <Suspense fallback={<div className="max-w-4xl mx-auto p-6"><Skeleton className="h-96 w-full" /></div>}>
-      {await generateLabels(searchParams)}
+      {await generateLabels({searchParams})}
     </Suspense>
   );
 }

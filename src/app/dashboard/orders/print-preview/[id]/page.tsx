@@ -4,6 +4,12 @@ import { db } from '@/lib/firebase';
 import type { Order } from '@/hooks/use-orders';
 import { PrintPreviewClient } from './components/print-preview-client';
 
+interface PageProps {
+  params: {
+    id: string;
+  };
+}
+
 // The Order type from use-orders uses Timestamp, but when we get it from Firestore
 // it's a plain object that needs to be converted.
 // We also need to make sure the orderDate is serializable.
@@ -34,7 +40,7 @@ async function getOrder(orderId: string): Promise<ServerOrder | null> {
     }
 }
 
-export default async function PrintPreviewPage({ params }: { params: { id: string } }) {
+export default async function PrintPreviewPage({ params }: PageProps) {
   const order = await getOrder(params.id);
 
   if (!order) {
