@@ -1,3 +1,4 @@
+
 {
   "functions": [
     {
@@ -7,7 +8,8 @@
         "node_modules",
         ".git",
         "firebase-debug.log",
-        "firebase-debug.*.log"
+        "firebase-debug.*.log",
+        ".next"
       ],
       "runtime": "nodejs20",
       "predeploy": [
@@ -16,7 +18,7 @@
     }
   ],
   "hosting": {
-    "source": ".",
+    "source": ".next",
     "ignore": [
       "**/.*",
       "**/node_modules/**",
