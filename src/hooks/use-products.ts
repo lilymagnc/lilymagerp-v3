@@ -141,8 +141,8 @@ export function useProducts() {
     try {
         const docRef = doc(db, "products", docId);
         await deleteDoc(docRef);
-        toast({ title: "성공", description: "상품이 삭제되었습니다."});
         await fetchProducts();
+        toast({ title: "성공", description: "상품이 삭제되었습니다."});
     } catch (error) {
         console.error("Error deleting product:", error);
         toast({ variant: 'destructive', title: '오류', description: '상품 삭제 중 오류가 발생했습니다.'});
@@ -151,96 +151,5 @@ export function useProducts() {
     }
   }
 
-  const bulkAddProducts = async (excelData: any[], currentBranch: string) => {
-    setLoading(true);
-    const batch = writeBatch(db);
-    let newItemsCount = 0;
-    let updatedItemsCount = 0;
-
-    const processRow = async (row: any) => {
-        // Skip rows without a name, or if a specific branch is selected and the row's branch doesn't match
-        if (!row.name || (currentBranch !== "all" && row.branch !== currentBranch)) {
-            return;
-        }
-
-        const productsRef = collection(db, "products");
-        let q;
-
-        // If an ID is provided in the Excel, use it for lookup. Otherwise, use name and branch.
-        if (row.id) {
-            q = query(productsRef, where("id", "==", row.id), where("branch", "==", row.branch));
-        } else if (row.name && row.branch) {
-            q = query(productsRef, where("name", "==", row.name), where("branch", "==", row.branch));
-        } else {
-            return; // Not enough info to lookup, skip.
-        }
-
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) { // New product
-            if (!row.quantity || Number(row.quantity) === 0) return; // Skip if quantity is zero/empty
-            const newId = row.id || await generateNewId();
-            const newDocRef = doc(productsRef);
-            const newProductData = {
-                id: newId,
-                name: row.name,
-                branch: row.branch || "미지정",
-                mainCategory: row.mainCategory || "미분류",
-                midCategory: row.midCategory || "미분류",
-                price: Number(row.price) || 0,
-                supplier: row.supplier || "미지정",
-                size: String(row.size || "-"),
-                color: row.color || "-",
-                stock: Number(row.quantity) || 0,
-            };
-            batch.set(newDocRef, newProductData);
-            newItemsCount++;
-        } else { // Existing product
-            if (!row.quantity || Number(row.quantity) === 0) return; // Skip if quantity is zero/empty
-            const docRef = querySnapshot.docs[0].ref;
-            const existingData = querySnapshot.docs[0].data();
-            const updateData: any = {
-                stock: Number(existingData.stock) + Number(row.quantity)
-            };
-
-            // Optionally update other fields if they are present in the Excel file
-            if(row.price !== undefined) updateData.price = Number(row.price);
-            if(row.supplier) updateData.supplier = row.supplier;
-            if(row.mainCategory) updateData.mainCategory = row.mainCategory;
-            if(row.midCategory) updateData.midCategory = row.midCategory;
-            if(row.size) updateData.size = String(row.size);
-            if(row.color) updateData.color = row.color;
-
-            batch.update(docRef, updateData);
-            updatedItemsCount++;
-        }
-    };
-    
-    try {
-      await Promise.all(excelData.map(processRow));
-      
-      await batch.commit();
-
-      if (newItemsCount > 0 || updatedItemsCount > 0) {
-          toast({
-              title: "가져오기 완료",
-              description: `새 상품 ${newItemsCount}개 추가, 기존 상품 ${updatedItemsCount}개 재고 업데이트 완료.`
-          });
-          await fetchProducts();
-      } else {
-          toast({
-              title: "변경 사항 없음",
-              description: "업데이트할 내용이 없거나, 필터링된 지점과 일치하는 데이터가 없습니다."
-          });
-      }
-    } catch (error) {
-        console.error("Error in bulk add/update:", error);
-        toast({ variant: "destructive", title: "오류", description: "일괄 처리 중 오류가 발생했습니다." });
-    } finally {
-        setLoading(false);
-    }
-  };
-
-
-  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct, bulkAddProducts };
+  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct };
 }

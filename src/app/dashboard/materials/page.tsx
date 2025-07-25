@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search, ArrowRightLeft, Sheet } from "lucide-react";
+import { PlusCircle, Printer, Search, ArrowRightLeft, Sheet, Download } from "lucide-react";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
@@ -18,8 +18,6 @@ import Link from "next/link";
 import { useMaterials } from "@/hooks/use-materials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
-import { ImportButton } from "@/components/import-button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function MaterialsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -35,7 +33,7 @@ export default function MaterialsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials } = useMaterials();
+  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial } = useMaterials();
 
   const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
   const midCategories = useMemo(() => {
@@ -86,7 +84,7 @@ export default function MaterialsPage() {
       toast({
         variant: "destructive",
         title: "내보낼 데이터 없음",
-        description: "현재 필터에 맞는 자재 데이터가 없습니다. 필터를 초기화하거나 자재를 먼저 추가해주세요.",
+        description: "현재 필터에 맞는 자재 데이터가 없습니다.",
       });
       return;
     }
@@ -111,12 +109,6 @@ export default function MaterialsPage() {
     setIsMultiPrintDialogOpen(false);
   };
   
-  const handleExcelImport = async (data: any[]) => {
-    await bulkAddMaterials(data, selectedBranch);
-    setIsFormOpen(false);
-  }
-
-
   return (
     <div>
       <PageHeader
@@ -197,24 +189,10 @@ export default function MaterialsPage() {
                     </Button>
                 </div>
                 <div className="flex items-center gap-2">
-                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Sheet className="mr-2 h-4 w-4" />
-                          엑셀 작업
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드</DropdownMenuItem>
-                         <ImportButton 
-                          resourceName="자재"
-                          onImport={handleExcelImport}
-                          asDropdownMenuItem
-                        >
-                          2. 파일로 자재 입고/수정
-                        </ImportButton>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
+                      <Download className="mr-2 h-4 w-4" />
+                      현재 목록 다운로드
+                    </Button>
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         자재 추가

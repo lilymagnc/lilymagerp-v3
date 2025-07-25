@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search, Sheet } from "lucide-react";
+import { PlusCircle, Printer, Search, Download } from "lucide-react";
 import { ProductTable, Product } from "./components/product-table";
 import { ProductForm, ProductFormValues } from "./components/product-form";
 import { useToast } from "@/hooks/use-toast";
@@ -17,8 +17,6 @@ import { useBranches } from "@/hooks/use-branches";
 import { downloadXLSX } from "@/lib/utils";
 import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ImportButton } from "@/components/import-button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function ProductsPage() {
@@ -33,7 +31,7 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, bulkAddProducts } = useProducts();
+  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct } = useProducts();
 
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
 
@@ -77,7 +75,7 @@ export default function ProductsPage() {
       toast({
         variant: "destructive",
         title: "내보낼 데이터 없음",
-        description: "현재 필터에 맞는 상품 데이터가 없습니다. 필터를 초기화하거나 상품을 먼저 추가해주세요.",
+        description: "현재 필터에 맞는 상품 데이터가 없습니다.",
       });
       return;
     }
@@ -101,11 +99,6 @@ export default function ProductsPage() {
     router.push(`/dashboard/print-labels?${params.toString()}`);
     setIsMultiPrintDialogOpen(false);
   };
-
-  const handleExcelImport = async (data: any[]) => {
-    await bulkAddProducts(data, selectedBranch);
-    setIsFormOpen(false);
-  }
 
   return (
     <div>
@@ -156,24 +149,10 @@ export default function ProductsPage() {
                 </div>
                 {isHeadOfficeAdmin && (
                   <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Sheet className="mr-2 h-4 w-4" />
-                          엑셀 작업
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드 (보관용)</DropdownMenuItem>
-                        <ImportButton 
-                          resourceName="상품"
-                          onImport={handleExcelImport}
-                          asDropdownMenuItem
-                        >
-                          2. 파일로 상품 입고/수정
-                        </ImportButton>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                     <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
+                        <Download className="mr-2 h-4 w-4" />
+                        현재 목록 다운로드
+                      </Button>
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         상품 추가

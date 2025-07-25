@@ -140,8 +140,8 @@ export function useMaterials() {
     try {
         const docRef = doc(db, "materials", docId);
         await deleteDoc(docRef);
-        toast({ title: "성공", description: "자재가 삭제되었습니다."});
         await fetchMaterials();
+        toast({ title: "성공", description: "자재가 삭제되었습니다."});
     } catch (error) {
         console.error("Error deleting material:", error);
         toast({ variant: 'destructive', title: '오류', description: '자재 삭제 중 오류가 발생했습니다.'});
@@ -149,93 +149,7 @@ export function useMaterials() {
         setLoading(false);
     }
   }
-
-  const bulkAddMaterials = async (excelData: any[], currentBranch: string) => {
-    setLoading(true);
-    const batch = writeBatch(db);
-    let newItemsCount = 0;
-    let updatedItemsCount = 0;
-
-    const processRow = async (row: any) => {
-        if (!row.name || (currentBranch !== "all" && row.branch !== currentBranch)) {
-            return;
-        }
-
-        const materialsRef = collection(db, "materials");
-        let q;
-
-        if (row.id) {
-            q = query(materialsRef, where("id", "==", row.id), where("branch", "==", row.branch));
-        } else if (row.name && row.branch) {
-            q = query(materialsRef, where("name", "==", row.name), where("branch", "==", row.branch));
-        } else {
-            return;
-        }
-
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            if (!row.quantity || Number(row.quantity) === 0) return;
-            const newId = row.id || await generateNewId();
-            const newDocRef = doc(materialsRef);
-            batch.set(newDocRef, {
-                id: newId,
-                name: row.name,
-                branch: row.branch || "미지정",
-                mainCategory: row.mainCategory || "기타자재",
-                midCategory: row.midCategory || "기타",
-                price: Number(row.price) || 0,
-                supplier: row.supplier || "미지정",
-                size: String(row.size || "-"),
-                color: row.color || "-",
-                stock: Number(row.quantity) || 0,
-            });
-            newItemsCount++;
-        } else {
-            if (!row.quantity || Number(row.quantity) === 0) return;
-            const docRef = querySnapshot.docs[0].ref;
-            const existingData = querySnapshot.docs[0].data();
-            const updateData: any = {
-                stock: Number(existingData.stock) + Number(row.quantity)
-            };
-            
-            if(row.price !== undefined) updateData.price = Number(row.price);
-            if(row.supplier) updateData.supplier = row.supplier;
-            if(row.mainCategory) updateData.mainCategory = row.mainCategory;
-            if(row.midCategory) updateData.midCategory = row.midCategory;
-            if(row.size) updateData.size = String(row.size);
-            if(row.color) updateData.color = row.color;
-
-            batch.update(docRef, updateData);
-            updatedItemsCount++;
-        }
-    };
-    
-    try {
-        await Promise.all(excelData.map(processRow));
-
-        await batch.commit();
-
-        if (newItemsCount > 0 || updatedItemsCount > 0) {
-            toast({
-                title: "가져오기 완료",
-                description: `새 자재 ${newItemsCount}개 추가, 기존 자재 ${updatedItemsCount}개 재고 업데이트 완료.`
-            });
-            await fetchMaterials();
-        } else {
-            toast({
-                title: "변경 사항 없음",
-                description: "업데이트할 내용이 없거나, 필터링된 지점과 일치하는 데이터가 없습니다."
-            });
-        }
-    } catch (error) {
-        console.error("Error in bulk add/update:", error);
-        toast({ variant: "destructive", title: "오류", description: "일괄 처리 중 오류가 발생했습니다." });
-    } finally {
-        setLoading(false);
-    }
-  };
-
+  
   const updateStock = async (
     items: { id: string; name: string; quantity: number, price?: number, supplier?: string }[],
     type: 'in' | 'out',
@@ -366,5 +280,5 @@ export function useMaterials() {
     }
   };
 
-  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials };
+  return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, addMaterial, updateMaterial, deleteMaterial };
 }
