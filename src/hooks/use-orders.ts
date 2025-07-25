@@ -228,5 +228,3 @@ export function useOrders() {
 
   return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
 }
-
-    

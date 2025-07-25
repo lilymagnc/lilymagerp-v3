@@ -4,12 +4,6 @@ import { db } from '@/lib/firebase';
 import type { Order } from '@/hooks/use-orders';
 import { PrintPreviewClient } from './components/print-preview-client';
 
-interface PageProps {
-  params: {
-    id: string;
-  };
-}
-
 async function getOrder(orderId: string): Promise<Order | null> {
     try {
         const docRef = doc(db, 'orders', orderId);
@@ -17,7 +11,7 @@ async function getOrder(orderId: string): Promise<Order | null> {
 
         if (docSnap.exists()) {
             const data = docSnap.data();
-            // Keep it as a Timestamp object for now
+            // Firestore data is fetched here
             return {
                 ...data,
                 id: docSnap.id,
@@ -33,7 +27,7 @@ async function getOrder(orderId: string): Promise<Order | null> {
 }
 
 
-export default async function PrintPreviewPage({ params }: PageProps) {
+export default async function PrintPreviewPage({ params }: { params: { id: string } }) {
   const orderData = await getOrder(params.id);
 
   if (!orderData) {
@@ -44,7 +38,7 @@ export default async function PrintPreviewPage({ params }: PageProps) {
     );
   }
   
-  // Convert Timestamp to Date right before passing to client component
+  // Convert Timestamp to a serializable format (like Date object) before passing to a Client Component.
   const orderForClient = {
       ...orderData,
       orderDate: orderData.orderDate.toDate(),
