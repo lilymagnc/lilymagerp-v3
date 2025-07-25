@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,8 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { AddProductDialog } from "./components/add-product-dialog";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch } from "@/hooks/use-branches";
@@ -24,14 +23,12 @@ import { cn } from "@/lib/utils";
 import { useOrders, OrderData, Order } from "@/hooks/use-orders";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { useProducts, Product } from "@/hooks/use-products";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
-interface OrderItem {
-  id: string;
-  name: string;
+interface OrderItem extends Product {
   quantity: number;
-  price: number;
-  stock: number;
 }
 
 type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
@@ -49,11 +46,11 @@ declare global {
 
 export default function NewOrderPage() {
   const { branches } = useBranches();
+  const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, addOrder, loading: isSubmitting } = useOrders();
   const router = useRouter();
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
-  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const { toast } = useToast();
   
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
@@ -89,6 +86,15 @@ export default function NewOrderPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
 
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
+  
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const availableProducts = useMemo(() => {
+    if (!selectedBranch) return [];
+    return allProducts.filter(p => p.branch === selectedBranch.name);
+  }, [allProducts, selectedBranch]);
+
 
   const todaysOrders = useMemo(() => {
     const today = new Date();
@@ -141,7 +147,7 @@ export default function NewOrderPage() {
   }, [selectedBranch]);
 
 
-  const handleAddProduct = (product: { id: string, name: string, price: number, stock: number }) => {
+  const handleAddProduct = (product: Product) => {
     const existingItem = orderItems.find(item => item.id === product.id);
     if (existingItem) {
       if (existingItem.quantity < product.stock) {
@@ -150,8 +156,13 @@ export default function NewOrderPage() {
         toast({ variant: 'destructive', title: '재고 부족', description: '더 이상 추가할 수 없습니다.' });
       }
     } else {
-      setOrderItems([...orderItems, { ...product, quantity: 1 }]);
+       if (product.stock > 0) {
+        setOrderItems([...orderItems, { ...product, quantity: 1 }]);
+      } else {
+         toast({ variant: 'destructive', title: '재고 없음', description: '이 상품은 현재 재고가 없습니다.' });
+      }
     }
+    setIsSearchOpen(false);
   };
 
   const updateItemQuantity = (productId: string, newQuantity: number) => {
@@ -338,47 +349,77 @@ export default function NewOrderPage() {
                       <div>
                           <Label>주문 상품</Label>
                           <Card className="mt-2">
-                              <CardContent className="p-2">
-                              <Table>
-                                  <TableHeader>
-                                      <TableRow>
-                                          <TableHead>상품</TableHead>
-                                          <TableHead className="w-[120px]">수량</TableHead>
-                                          <TableHead className="w-[120px] text-right">단가</TableHead>
-                                          <TableHead className="w-[120px] text-right">합계</TableHead>
-                                          <TableHead className="w-[50px]"></TableHead>
-                                      </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                      {orderItems.length > 0 ? (
-                                      orderItems.map(item => (
-                                          <TableRow key={item.id}>
-                                          <TableCell>{item.name}</TableCell>
-                                          <TableCell>
-                                              <div className="flex items-center gap-2">
-                                                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
-                                                  <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
-                                                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
-                                              </div>
-                                          </TableCell>
-                                          <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
-                                          <TableCell className="text-right">₩{(item.price * item.quantity).toLocaleString()}</TableCell>
-                                          <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
-                                          </TableRow>
-                                      ))
-                                      ) : (
-                                      <TableRow>
-                                          <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                                          상품을 추가해주세요.
-                                          </TableCell>
-                                      </TableRow>
-                                      )}
-                                  </TableBody>
-                              </Table>
-                              <Button variant="outline" className="mt-2 w-full" onClick={() => setIsAddProductDialogOpen(true)}>
-                                  <PlusCircle className="mr-2 h-4 w-4"/> 상품 추가
-                              </Button>
-                              </CardContent>
+                            <CardContent className="p-2">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>상품</TableHead>
+                                        <TableHead className="w-[120px]">수량</TableHead>
+                                        <TableHead className="w-[120px] text-right">단가</TableHead>
+                                        <TableHead className="w-[120px] text-right">합계</TableHead>
+                                        <TableHead className="w-[50px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {orderItems.length > 0 ? (
+                                    orderItems.map(item => (
+                                        <TableRow key={item.id}>
+                                        <TableCell>{item.name}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
+                                                <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
+                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right">₩{(item.price * item.quantity).toLocaleString()}</TableCell>
+                                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
+                                        </TableRow>
+                                    ))
+                                    ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                                        상품을 추가해주세요.
+                                        </TableCell>
+                                    </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                            <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+                                <PopoverTrigger asChild>
+                                <Button variant="outline" className="mt-2 w-full" disabled={productsLoading}>
+                                    {productsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4"/>}
+                                    상품 검색 및 추가
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[600px] p-0" align="start">
+                                    <Command>
+                                        <CommandInput placeholder="상품명 또는 ID로 검색..." />
+                                        <CommandList>
+                                            <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
+                                            <CommandGroup>
+                                            {availableProducts.map((product) => (
+                                                <CommandItem
+                                                    key={product.id}
+                                                    value={`${product.name} ${product.id}`}
+                                                    onSelect={() => handleAddProduct(product)}
+                                                    disabled={product.stock === 0}
+                                                    className="flex justify-between"
+                                                >
+                                                  <div>
+                                                    <p>{product.name} <span className="text-xs text-muted-foreground">{product.id}</span></p>
+                                                    <p className="text-xs text-muted-foreground">가격: ₩{product.price.toLocaleString()} | 재고: {product.stock}</p>
+                                                  </div>
+                                                  {orderItems.some(item => item.id === product.id) && <CheckCircle className="h-5 w-5 text-primary"/>}
+                                                </CommandItem>
+                                            ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            </CardContent>
                           </Card>
                       </div>
 
@@ -699,11 +740,8 @@ export default function NewOrderPage() {
         </div>
 
         </fieldset>
-      <AddProductDialog 
-        isOpen={isAddProductDialogOpen}
-        onOpenChange={setIsAddProductDialogOpen}
-        onAddProduct={handleAddProduct}
-      />
     </div>
   );
 }
+
+    

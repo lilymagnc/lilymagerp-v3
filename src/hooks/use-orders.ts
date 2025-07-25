@@ -160,7 +160,7 @@ export function useOrders() {
             toStock: newStock,
             resultingStock: newStock,
             branch: order.branchName,
-            operator: `주문(${order.orderer.name})`,
+            operator: user?.email || "Unknown User",
             price: item.price,
             totalAmount: item.price * item.quantity,
           });
@@ -228,3 +228,5 @@ export function useOrders() {
 
   return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
 }
+
+    
