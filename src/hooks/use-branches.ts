@@ -146,21 +146,24 @@ export function useBranches() {
     try {
       setLoading(true);
       const branchesCollection = collection(db, 'branches');
-      let querySnapshot = await getDocs(branchesCollection);
-      
-      if (querySnapshot.empty) {
-        // Seed initial data if the collection is empty
+      const initDocRef = doc(branchesCollection, '_initialized');
+      const initDoc = await getDocs(initDocRef as any);
+
+      if (initDoc.empty) {
         const batch = writeBatch(db);
         initialBranches.forEach(branchData => {
           const docRef = doc(collection(db, "branches"));
           batch.set(docRef, branchData);
         });
+        batch.set(initDocRef, { seeded: true });
         await batch.commit();
-        // Fetch again after seeding
-        querySnapshot = await getDocs(branchesCollection);
       } 
       
-      const branchesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
+      const querySnapshot = await getDocs(branchesCollection);
+      const branchesData = querySnapshot.docs
+        .filter(doc => doc.id !== '_initialized')
+        .map(doc => ({ id: doc.id, ...doc.data() } as Branch));
+
       branchesData.sort((a, b) => {
         if (a.type === '본사') return -1;
         if (b.type === '본사') return 1;
@@ -237,7 +240,7 @@ export function useBranches() {
         title: '성공',
         description: '지점이 성공적으로 삭제되었습니다.',
       });
-      setBranches(prev => prev.filter(b => b.id !== branchId));
+      await fetchBranches();
     } catch (error) {
       console.error("Error deleting branch: ", error);
       toast({
@@ -253,4 +256,5 @@ export function useBranches() {
   return { branches, loading, addBranch, updateBranch, deleteBranch, fetchBranches };
 }
 
+    
     

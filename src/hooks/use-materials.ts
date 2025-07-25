@@ -35,25 +35,29 @@ export function useMaterials() {
     try {
       setLoading(true);
       const materialsCollection = collection(db, 'materials');
-      let querySnapshot = await getDocs(query(materialsCollection));
-      
-      if (querySnapshot.empty) {
+      const initDocRef = doc(materialsCollection, '_initialized');
+      const initDoc = await getDocs(initDocRef as any);
+
+      if (initDoc.empty) {
         const batch = writeBatch(db);
         initialMaterials.forEach((materialData) => {
             const newDocRef = doc(materialsCollection);
             batch.set(newDocRef, materialData);
         });
+        batch.set(initDocRef, { seeded: true });
         await batch.commit();
-        querySnapshot = await getDocs(query(materialsCollection));
       } 
       
-      const materialsData = querySnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return { 
-              docId: doc.id,
-              ...data,
-              status: getStatus(data.stock)
-          } as Material;
+      const querySnapshot = await getDocs(materialsCollection);
+      const materialsData = querySnapshot.docs
+          .filter(doc => doc.id !== '_initialized')
+          .map((doc) => {
+              const data = doc.data();
+              return { 
+                  docId: doc.id,
+                  ...data,
+                  status: getStatus(data.stock)
+              } as Material;
       }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
       setMaterials(materialsData);
 
@@ -364,3 +368,5 @@ export function useMaterials() {
 
   return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials };
 }
+
+    
