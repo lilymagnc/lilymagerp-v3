@@ -18,12 +18,6 @@
     }
   ],
   "hosting": {
-    "source": ".next",
-    "ignore": [
-      "**/.*",
-      "**/node_modules/**",
-      "*.log"
-    ],
     "rewrites": [
       {
         "source": "**",
