@@ -2,7 +2,7 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, UserProfile } from '@/hooks/use-auth';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,11 @@ export default function DashboardLayout({
 
   if (loading || !user) {
     return null; // or a loading spinner
+  }
+
+  const getRoleDisplayName = (user: UserProfile) => {
+    if (user.isAnonymous) return '익명 사용자';
+    return user.role || '사용자';
   }
 
   return (
@@ -88,7 +93,7 @@ export default function DashboardLayout({
                     </Avatar>
                     <div className="flex flex-col overflow-hidden">
                         <p className="text-sm font-medium truncate">{user.isAnonymous ? '익명 사용자' : user.email}</p>
-                        <p className="text-xs text-muted-foreground">역할: 관리자</p>
+                        <p className="text-xs text-muted-foreground">역할: {getRoleDisplayName(user)}</p>
                     </div>
                 </div>
                 <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />로그아웃</Button>

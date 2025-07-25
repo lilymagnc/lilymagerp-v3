@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Barcode } from "@/components/barcode"
+import { useAuth } from "@/hooks/use-auth"
 
 type Product = {
   id: string;
@@ -34,6 +35,9 @@ interface ProductDetailsProps {
 }
 
 export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: ProductDetailsProps) {
+  const { user } = useAuth();
+  const isHeadOfficeAdmin = user?.role === '본사 관리자';
+
   if (!product) return null;
 
   return (
@@ -88,7 +92,7 @@ export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: Produc
             <DialogClose asChild>
                 <Button type="button" variant="secondary">닫기</Button>
             </DialogClose>
-            <Button onClick={onEdit}>정보 수정</Button>
+            {isHeadOfficeAdmin && <Button onClick={onEdit}>정보 수정</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

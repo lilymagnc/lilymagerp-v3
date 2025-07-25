@@ -24,6 +24,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useBranches } from "@/hooks/use-branches"
+import { useToast } from "@/hooks/use-toast"
+import { useState } from "react"
+import { doc, setDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+import { Loader2 } from "lucide-react"
 
 const userSchema = z.object({
   email: z.string().email("유효한 이메일을 입력해주세요."),
@@ -42,6 +48,9 @@ interface UserFormProps {
 
 export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
   const isEditMode = !!user;
+  const { branches } = useBranches();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
@@ -53,9 +62,30 @@ export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
     },
   })
 
-  const onSubmit = (data: UserFormValues) => {
-    console.log(data)
-    onOpenChange(false)
+  const onSubmit = async (data: UserFormValues) => {
+    setLoading(true);
+    try {
+      // In a real app, you would have a backend function to create/update users to handle auth and firestore together.
+      // Here, we'll just update/create the firestore document.
+      const { password, ...userData } = data; // Don't save password in firestore
+      const userDocRef = doc(db, "users", data.email);
+      await setDoc(userDocRef, userData, { merge: isEditMode });
+      
+      toast({
+        title: "성공",
+        description: `사용자 정보가 성공적으로 ${isEditMode ? '수정' : '추가'}되었습니다.`,
+      })
+      onOpenChange(false);
+    } catch(error) {
+      console.error("Error saving user:", error);
+      toast({
+        variant: "destructive",
+        title: "오류",
+        description: "사용자 정보 저장 중 오류가 발생했습니다."
+      })
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -126,9 +156,9 @@ export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
                       <SelectTrigger><SelectValue placeholder="소속 지점 선택" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="꽃길 본사">꽃길 본사</SelectItem>
-                      <SelectItem value="강남점">강남점</SelectItem>
-                      <SelectItem value="홍대점">홍대점</SelectItem>
+                      {branches.map(branch => (
+                        <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -137,9 +167,12 @@ export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
             />
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="secondary">취소</Button>
+                <Button type="button" variant="secondary" disabled={loading}>취소</Button>
               </DialogClose>
-              <Button type="submit">저장</Button>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                저장
+              </Button>
             </DialogFooter>
           </form>
         </Form>

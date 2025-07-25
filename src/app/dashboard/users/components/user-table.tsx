@@ -10,19 +10,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { MoreHorizontal } from "lucide-react";
 import { UserForm } from "./user-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import type { SystemUser } from "../page";
 
-const mockUsers = [
-  { id: "USER-001", email: "admin@ggotgil.com", role: "본사 관리자", franchise: "꽃길 본사", lastLogin: "2023-10-26 10:30" },
-  { id: "USER-002", email: "manager_gn@example.com", role: "가맹점 관리자", franchise: "강남점", lastLogin: "2023-10-26 09:15" },
-  { id: "USER-003", email: "staff_gn@example.com", role: "직원", franchise: "강남점", lastLogin: "2023-10-25 14:00" },
-  { id: "USER-004", email: "manager_hd@example.com", role: "가맹점 관리자", franchise: "홍대점", lastLogin: "2023-10-26 11:05" },
-];
+interface UserTableProps {
+  users: SystemUser[];
+}
 
-export function UserTable() {
+export function UserTable({ users }: UserTableProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
 
-  const handleEdit = (user: any) => {
+  const handleEdit = (user: SystemUser) => {
     setSelectedUser(user);
     setIsFormOpen(true);
   };
@@ -49,7 +47,7 @@ export function UserTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockUsers.map((user) => (
+              {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>
@@ -60,7 +58,7 @@ export function UserTable() {
                     </Badge>
                   </TableCell>
                   <TableCell>{user.franchise}</TableCell>
-                  <TableCell className="hidden md:table-cell">{user.lastLogin}</TableCell>
+                  <TableCell className="hidden md:table-cell">{user.lastLogin || '-'}</TableCell>
                   <TableCell>
                     <AlertDialog>
                       <DropdownMenu>

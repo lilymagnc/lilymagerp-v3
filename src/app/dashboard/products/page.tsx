@@ -19,6 +19,7 @@ import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImportButton } from "@/components/import-button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -27,11 +28,14 @@ export default function ProductsPage() {
   const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
-
+  
+  const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
   const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, bulkAddProducts } = useProducts();
+
+  const isHeadOfficeAdmin = user?.role === '본사 관리자';
 
   const filteredProducts = useMemo(() => {
     return products
@@ -150,31 +154,32 @@ export default function ProductsPage() {
                         </Button>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Sheet className="mr-2 h-4 w-4" />
-                        엑셀 작업
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                       <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드</DropdownMenuItem>
-                       <ImportButton 
-                        resourceName="상품"
-                        onImport={handleExcelImport}
-                        asDropdownMenuItem
-                      >
-                        2. 파일로 상품 입고/수정
-                      </ImportButton>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
+                {isHeadOfficeAdmin && (
+                  <div className="flex items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Sheet className="mr-2 h-4 w-4" />
+                          엑셀 작업
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleDownloadCurrentList}>1. 현재 목록 다운로드 (보관용)</DropdownMenuItem>
+                        <ImportButton 
+                          resourceName="상품"
+                          onImport={handleExcelImport}
+                          asDropdownMenuItem
+                        >
+                          2. 파일로 상품 입고/수정
+                        </ImportButton>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button size="sm" onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         상품 추가
                     </Button>
-                </div>
+                  </div>
+                )}
             </div>
         </CardContent>
       </Card>
@@ -206,12 +211,14 @@ export default function ProductsPage() {
           onDelete={handleDelete}
         />
       )}
-      <ProductForm 
-        isOpen={isFormOpen} 
-        onOpenChange={setIsFormOpen}
-        onSubmit={handleFormSubmit}
-        product={selectedProduct} 
-       />
+      {isHeadOfficeAdmin && (
+        <ProductForm 
+          isOpen={isFormOpen} 
+          onOpenChange={setIsFormOpen}
+          onSubmit={handleFormSubmit}
+          product={selectedProduct} 
+        />
+      )}
        {isMultiPrintDialogOpen && (
         <MultiPrintOptionsDialog
             isOpen={isMultiPrintDialogOpen}

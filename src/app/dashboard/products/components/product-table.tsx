@@ -15,6 +15,7 @@ import { Barcode } from "@/components/barcode";
 import { PrintOptionsDialog } from "@/components/print-options-dialog";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/hooks/use-auth";
 
 export type Product = {
   docId: string;
@@ -40,11 +41,14 @@ interface ProductTableProps {
 
 export function ProductTable({ products, onSelectionChange, onEdit, onDelete }: ProductTableProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+
+  const isHeadOfficeAdmin = user?.role === '본사 관리자';
 
   const handleSelectionChange = (id: string) => {
     const newSelection = { ...selectedRows, [id]: !selectedRows[id] };
@@ -186,13 +190,17 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete }: 
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>작업</DropdownMenuLabel>
-                          <DropdownMenuItem onSelect={() => handleEdit(product)}>수정</DropdownMenuItem>
+                          {isHeadOfficeAdmin && <DropdownMenuItem onSelect={() => handleEdit(product)}>수정</DropdownMenuItem>}
                           <DropdownMenuItem onSelect={() => handleStockUpdate(product)}>재고 업데이트</DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => handlePrint(product)}>라벨 인쇄</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>
-                          </AlertDialogTrigger>
+                          {isHeadOfficeAdmin && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>
+                              </AlertDialogTrigger>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <AlertDialogContent>
@@ -226,7 +234,7 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete }: 
           </Table>
         </CardContent>
       </Card>
-      {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />}
+      <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />
       {selectedProduct && (
         <PrintOptionsDialog
           isOpen={isPrintDialogOpen}
@@ -239,10 +247,8 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete }: 
         isOpen={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         product={selectedProduct}
-        onEdit={() => selectedProduct && handleEdit(selectedProduct)}
+        onEdit={() => selectedProduct && isHeadOfficeAdmin && handleEdit(selectedProduct)}
       />
     </>
   );
 }
-
-    
