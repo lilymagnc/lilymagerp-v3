@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
@@ -36,9 +36,9 @@ export function useProducts() {
       setLoading(true);
       const productsCollection = collection(db, 'products');
       const initDocRef = doc(productsCollection, '_initialized');
-      const initDoc = await getDocs(initDocRef as any);
+      const initDoc = await getDoc(initDocRef);
       
-      if (initDoc.empty) {
+      if (!initDoc.exists()) {
         const batch = writeBatch(db);
         initialProducts.forEach((productData) => {
           const newDocRef = doc(productsCollection);
@@ -244,5 +244,3 @@ export function useProducts() {
 
   return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct, bulkAddProducts };
 }
-
-    

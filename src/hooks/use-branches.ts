@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { BranchFormValues } from '@/app/dashboard/branches/components/branch-form';
@@ -147,9 +147,9 @@ export function useBranches() {
       setLoading(true);
       const branchesCollection = collection(db, 'branches');
       const initDocRef = doc(branchesCollection, '_initialized');
-      const initDoc = await getDocs(initDocRef as any);
+      const initDoc = await getDoc(initDocRef);
 
-      if (initDoc.empty) {
+      if (!initDoc.exists()) {
         const batch = writeBatch(db);
         initialBranches.forEach(branchData => {
           const docRef = doc(collection(db, "branches"));
@@ -255,6 +255,3 @@ export function useBranches() {
 
   return { branches, loading, addBranch, updateBranch, deleteBranch, fetchBranches };
 }
-
-    
-    

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, where, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, where, orderBy, limit, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Material as MaterialData } from "@/app/dashboard/materials/components/material-table";
@@ -36,9 +36,9 @@ export function useMaterials() {
       setLoading(true);
       const materialsCollection = collection(db, 'materials');
       const initDocRef = doc(materialsCollection, '_initialized');
-      const initDoc = await getDocs(initDocRef as any);
+      const initDoc = await getDoc(initDocRef);
 
-      if (initDoc.empty) {
+      if (!initDoc.exists()) {
         const batch = writeBatch(db);
         initialMaterials.forEach((materialData) => {
             const newDocRef = doc(materialsCollection);
@@ -368,5 +368,3 @@ export function useMaterials() {
 
   return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials };
 }
-
-    
