@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch } from "@/hooks/use-branches";
@@ -24,8 +23,7 @@ import { useOrders, OrderData, Order } from "@/hooks/use-orders";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useProducts, Product } from "@/hooks/use-products";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-
+import { AddProductDialog } from "./components/add-product-dialog";
 
 interface OrderItem extends Product {
   quantity: number;
@@ -36,7 +34,6 @@ type ReceiptType = "pickup" | "delivery";
 type MessageType = "card" | "ribbon";
 type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
 type PaymentStatus = "pending" | "completed";
-
 
 declare global {
   interface Window {
@@ -86,30 +83,12 @@ export default function NewOrderPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
 
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
-  
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [productFilter, setProductFilter] = useState({ mainCategory: 'all', midCategory: 'all' });
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
 
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
-
-  const mainCategories = useMemo(() => ['all', ...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
-  const midCategories = useMemo(() => {
-      if (productFilter.mainCategory === 'all') {
-          return ['all', ...new Set(branchProducts.map(p => p.midCategory))];
-      }
-      return ['all', ...new Set(branchProducts.filter(p => p.mainCategory === productFilter.mainCategory).map(p => p.midCategory))];
-  }, [branchProducts, productFilter.mainCategory]);
-
-  const filteredProductsForSearch = useMemo(() => {
-      return branchProducts.filter(p => 
-          (productFilter.mainCategory === 'all' || p.mainCategory === productFilter.mainCategory) &&
-          (productFilter.midCategory === 'all' || p.midCategory === productFilter.midCategory)
-      );
-  }, [branchProducts, productFilter]);
-
 
   const todaysOrders = useMemo(() => {
     const today = new Date();
@@ -156,27 +135,23 @@ export default function NewOrderPage() {
     return feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
   }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, receiptType]);
 
-
   useEffect(() => {
     setSelectedDistrict(null);
   }, [selectedBranch]);
 
-
-  const handleAddProduct = (product: Product) => {
-    const existingItem = orderItems.find(item => item.id === product.id);
-    if (existingItem) {
-      if (existingItem.quantity < product.stock) {
-        updateItemQuantity(product.id, existingItem.quantity + 1);
-      } else {
-        toast({ variant: 'destructive', title: '재고 부족', description: '더 이상 추가할 수 없습니다.' });
-      }
-    } else {
-       if (product.stock > 0) {
-        setOrderItems([...orderItems, { ...product, quantity: 1 }]);
-      } else {
-         toast({ variant: 'destructive', title: '재고 없음', description: '이 상품은 현재 재고가 없습니다.' });
-      }
-    }
+  const handleAddProducts = (productsToAdd: OrderItem[]) => {
+    setOrderItems(prevItems => {
+        const updatedItems = [...prevItems];
+        productsToAdd.forEach(productToAdd => {
+            const existingItemIndex = updatedItems.findIndex(item => item.id === productToAdd.id);
+            if (existingItemIndex > -1) {
+                updatedItems[existingItemIndex].quantity += productToAdd.quantity;
+            } else {
+                updatedItems.push(productToAdd);
+            }
+        });
+        return updatedItems;
+    });
   };
 
   const updateItemQuantity = (productId: string, newQuantity: number) => {
@@ -400,80 +375,10 @@ export default function NewOrderPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                            <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-                                <PopoverTrigger asChild>
-                                <Button variant="outline" className="mt-2 w-full" disabled={productsLoading}>
-                                    {productsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4"/>}
-                                    상품 검색 및 추가
-                                </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[600px] p-0" align="start">
-                                    <Command
-                                      filter={(value, search) => {
-                                        const product = filteredProductsForSearch.find(p => p.id === value);
-                                        if (product) {
-                                            const a = `${product.name} ${product.id}`.toLowerCase();
-                                            const b = search.toLowerCase();
-                                            return a.includes(b) ? 1 : 0;
-                                        }
-                                        return 0;
-                                      }}
-                                    >
-                                        <div className="flex items-center border-b px-3">
-                                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                                            <CommandInput placeholder="상품명 또는 ID로 검색..." className="h-11 border-0 pl-0" />
-                                        </div>
-                                         <div className="flex items-center gap-2 border-b p-2">
-                                            <Select 
-                                                value={productFilter.mainCategory} 
-                                                onValueChange={(value) => setProductFilter({ mainCategory: value, midCategory: 'all' })}>
-                                                <SelectTrigger className="w-[180px]">
-                                                    <SelectValue placeholder="대분류" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {mainCategories.map(cat => <SelectItem key={cat} value={cat}>{cat === 'all' ? '전체 대분류' : cat}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                            <Select 
-                                                value={productFilter.midCategory} 
-                                                onValueChange={(value) => setProductFilter(prev => ({...prev, midCategory: value}))}>
-                                                <SelectTrigger className="w-[180px]">
-                                                    <SelectValue placeholder="중분류" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {midCategories.map(cat => <SelectItem key={cat} value={cat}>{cat === 'all' ? '전체 중분류' : cat}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <CommandList>
-                                            <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
-                                            <CommandGroup>
-                                            {filteredProductsForSearch.map((product) => (
-                                                <CommandItem
-                                                    key={product.id}
-                                                    value={product.id}
-                                                    onSelect={(currentValue) => {
-                                                        const selectedProduct = filteredProductsForSearch.find(p => p.id === currentValue);
-                                                        if (selectedProduct) {
-                                                            handleAddProduct(selectedProduct);
-                                                        }
-                                                        setIsSearchOpen(false);
-                                                    }}
-                                                    disabled={product.stock === 0}
-                                                    className="flex justify-between"
-                                                >
-                                                  <div>
-                                                    <p>{product.name} <span className="text-xs text-muted-foreground">{product.id}</span></p>
-                                                    <p className="text-xs text-muted-foreground">가격: ₩{product.price.toLocaleString()} | 재고: {product.stock}</p>
-                                                  </div>
-                                                  {orderItems.some(item => item.id === product.id) && <CheckCircle className="h-5 w-5 text-primary"/>}
-                                                </CommandItem>
-                                            ))}
-                                            </CommandGroup>
-                                        </CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
+                            <Button variant="outline" className="mt-2 w-full" onClick={() => setIsAddProductDialogOpen(true)} disabled={productsLoading}>
+                                {productsLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4"/>}
+                                상품 검색 및 추가
+                            </Button>
                             </CardContent>
                           </Card>
                       </div>
@@ -485,7 +390,7 @@ export default function NewOrderPage() {
                             <CardContent className="p-4 space-y-4">
                                 <div>
                                     <Label className="text-xs text-muted-foreground">결제 수단</Label>
-                                    <RadioGroup value={paymentMethod} onValueChange={(v: PaymentMethod) => setPaymentMethod(v)} className="flex items-center flex-wrap gap-4 mt-2">
+                                    <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="flex items-center flex-wrap gap-4 mt-2">
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="pay-card" /><Label htmlFor="pay-card">카드</Label></div>
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="cash" id="pay-cash" /><Label htmlFor="pay-cash">현금</Label></div>
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="transfer" id="pay-transfer" /><Label htmlFor="pay-transfer">계좌이체</Label></div>
@@ -496,7 +401,7 @@ export default function NewOrderPage() {
                                 </div>
                                  <div>
                                     <Label className="text-xs text-muted-foreground">결제 상태</Label>
-                                    <RadioGroup value={paymentStatus} onValueChange={(v: PaymentStatus) => setPaymentStatus(v)} className="flex items-center gap-4 mt-2">
+                                    <RadioGroup value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)} className="flex items-center gap-4 mt-2">
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="pending" id="status-pending" /><Label htmlFor="status-pending">미결</Label></div>
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="completed" id="status-completed" /><Label htmlFor="status-completed">완결</Label></div>
                                     </RadioGroup>
@@ -544,7 +449,7 @@ export default function NewOrderPage() {
                       {/* 주문 유형 */}
                       <div>
                           <Label>주문 유형</Label>
-                          <RadioGroup value={orderType} onValueChange={(v: OrderType) => setOrderType(v)} className="flex items-center gap-4 mt-2">
+                          <RadioGroup value={orderType} onValueChange={(v) => setOrderType(v as OrderType)} className="flex items-center gap-4 mt-2">
                               <div className="flex items-center space-x-2"><RadioGroupItem value="store" id="type-store" /><Label htmlFor="type-store">매장방문</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="phone" id="type-phone" /><Label htmlFor="type-phone">전화</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="naver" id="type-naver" /><Label htmlFor="type-naver">네이버</Label></div>
@@ -556,7 +461,7 @@ export default function NewOrderPage() {
                       {/* 수령 정보 */}
                       <div>
                           <Label>수령 정보</Label>
-                          <RadioGroup value={receiptType} onValueChange={(v: ReceiptType) => setReceiptType(v)} className="flex items-center gap-4 mt-2">
+                          <RadioGroup value={receiptType} onValueChange={(v) => setReceiptType(v as ReceiptType)} className="flex items-center gap-4 mt-2">
                               <div className="flex items-center space-x-2"><RadioGroupItem value="pickup" id="receipt-pickup" /><Label htmlFor="receipt-pickup">매장픽업</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="delivery" id="receipt-delivery" /><Label htmlFor="receipt-delivery">배송</Label></div>
                           </RadioGroup>
@@ -656,7 +561,7 @@ export default function NewOrderPage() {
                                       </div>
                                       <div className="space-y-2">
                                           <Label>배송비</Label>
-                                          <RadioGroup value={deliveryFeeType} className="flex items-center gap-4" onValueChange={(value: "auto" | "manual") => setDeliveryFeeType(value)}>
+                                          <RadioGroup value={deliveryFeeType} className="flex items-center gap-4" onValueChange={(value) => setDeliveryFeeType(value as "auto" | "manual")}>
                                           <div className="flex items-center space-x-2">
                                               <RadioGroupItem value="auto" id="auto" />
                                               <Label htmlFor="auto">자동 계산</Label>
@@ -697,7 +602,7 @@ export default function NewOrderPage() {
                       {/* 메시지 */}
                       <div>
                           <Label>메시지</Label>
-                          <RadioGroup value={messageType} onValueChange={(v: MessageType) => setMessageType(v)} className="flex items-center gap-4 mt-2">
+                          <RadioGroup value={messageType} onValueChange={(v) => setMessageType(v as MessageType)} className="flex items-center gap-4 mt-2">
                               <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="msg-card" /><Label htmlFor="msg-card">카드 메시지</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="ribbon" id="msg-ribbon" /><Label htmlFor="msg-ribbon">리본 메시지</Label></div>
                           </RadioGroup>
@@ -795,6 +700,14 @@ export default function NewOrderPage() {
         </div>
 
         </fieldset>
+        
+        <AddProductDialog
+          isOpen={isAddProductDialogOpen}
+          onOpenChange={setIsAddProductDialogOpen}
+          allProducts={branchProducts}
+          currentOrderItems={orderItems}
+          onAddProducts={handleAddProducts}
+        />
     </div>
   );
 }
