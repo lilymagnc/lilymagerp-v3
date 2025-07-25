@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
@@ -27,7 +27,7 @@ export function useProducts() {
 
   const getStatus = (stock: number): string => {
       if (stock === 0) return 'out_of_stock';
-      if (stock < 20) return 'low_stock';
+      if (stock < 10) return 'low_stock';
       return 'active';
   }
 
@@ -151,67 +151,128 @@ export function useProducts() {
     }
   }
 
+    const manualUpdateStock = async (
+        itemId: string,
+        itemName: string,
+        newStock: number,
+        branchName: string,
+        operator: string
+    ) => {
+        try {
+            await runTransaction(db, async (transaction) => {
+                const productQuery = query(collection(db, "products"), where("id", "==", itemId), where("branch", "==", branchName));
+                const productSnapshot = await getDocs(productQuery);
+
+                if (productSnapshot.empty) {
+                    throw new Error(`상품을 찾을 수 없습니다: ${itemName} (${branchName})`);
+                }
+                
+                const productRef = productSnapshot.docs[0].ref;
+                const productDoc = await transaction.get(productRef);
+
+                if(!productDoc.exists()) {
+                    throw new Error(`상품 문서를 찾을 수 없습니다: ${itemName} (${branchName})`);
+                }
+                
+                const currentStock = productDoc.data()?.stock || 0;
+
+                transaction.update(productRef, { stock: newStock });
+
+                const historyDocRef = doc(collection(db, "stockHistory"));
+                transaction.set(historyDocRef, {
+                    date: serverTimestamp(),
+                    type: "manual_update",
+                    itemType: "product",
+                    itemId: itemId,
+                    itemName: itemName,
+                    quantity: newStock - currentStock,
+                    fromStock: currentStock,
+                    toStock: newStock,
+                    resultingStock: newStock,
+                    branch: branchName,
+                    operator: operator,
+                });
+            });
+
+            toast({
+                title: "업데이트 성공",
+                description: `${itemName}의 재고가 ${newStock}으로 업데이트되었습니다.`,
+            });
+            await fetchProducts();
+
+        } catch (error) {
+            console.error("Manual stock update error:", error);
+            toast({
+                variant: "destructive",
+                title: "재고 업데이트 오류",
+                description: `재고 업데이트 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
+            });
+        }
+    };
+
+
   const bulkAddProducts = async (data: any[], currentBranch: string) => {
     setLoading(true);
     let newCount = 0;
     let updateCount = 0;
-    
+    let errorCount = 0;
+
     const dataToProcess = data.filter(row => {
-      const branchMatch = currentBranch === 'all' || row.branch === currentBranch;
-      const hasName = row.name && String(row.name).trim() !== '';
-      return branchMatch && hasName;
+        const branchMatch = currentBranch === 'all' || row.branch === currentBranch;
+        const hasName = row.name && String(row.name).trim() !== '';
+        return branchMatch && hasName;
     });
 
-    for (const row of dataToProcess) {
-      const quantity = Number(row.quantity);
-      if (isNaN(quantity) || quantity <= 0) continue;
+    await Promise.all(dataToProcess.map(async (row) => {
+        try {
+            const stock = Number(row.current_stock ?? row.stock ?? row.quantity);
+            if (isNaN(stock)) return;
 
-      const productData = {
-        id: row.id || null,
-        name: String(row.name),
-        branch: String(row.branch),
-        stock: quantity,
-        price: Number(row.price) || 0,
-        supplier: String(row.supplier) || '미지정',
-        mainCategory: String(row.mainCategory) || '완제품',
-        midCategory: String(row.midCategory) || '기타',
-        size: String(row.size) || '기타',
-        color: String(row.color) || '기타',
-      };
-      
-      try {
-        let q;
-        if (productData.id) {
-            q = query(collection(db, "products"), where("id", "==", productData.id), where("branch", "==", productData.branch));
-        } else {
-            q = query(collection(db, "products"), where("name", "==", productData.name), where("branch", "==", productData.branch));
+            const productData = {
+                id: row.id || null,
+                name: String(row.name),
+                branch: String(row.branch),
+                stock: stock,
+                price: Number(row.price) || 0,
+                supplier: String(row.supplier) || '미지정',
+                mainCategory: String(row.mainCategory) || '완제품',
+                midCategory: String(row.midCategory) || '기타',
+                size: String(row.size) || '기타',
+                color: String(row.color) || '기타',
+            };
+
+            let q;
+            if (productData.id) {
+                q = query(collection(db, "products"), where("id", "==", productData.id), where("branch", "==", productData.branch));
+            } else {
+                q = query(collection(db, "products"), where("name", "==", productData.name), where("branch", "==", productData.branch));
+            }
+            
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const docRef = querySnapshot.docs[0].ref;
+                await setDoc(docRef, productData, { merge: true });
+                updateCount++;
+            } else {
+                const newId = productData.id || await generateNewId();
+                const newDocRef = doc(collection(db, "products"));
+                await setDoc(newDocRef, { ...productData, id: newId });
+                newCount++;
+            }
+        } catch (error) {
+            console.error("Error processing row:", row, error);
+            errorCount++;
         }
-        
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          // Update existing product
-          const docRef = querySnapshot.docs[0].ref;
-          const existingData = querySnapshot.docs[0].data();
-          const newStock = (existingData.stock || 0) + productData.stock;
-          await setDoc(docRef, { ...productData, id: existingData.id, stock: newStock }, { merge: true });
-          updateCount++;
-        } else {
-          // Add new product
-          const newId = productData.id || await generateNewId();
-          const newDocRef = doc(collection(db, "products"));
-          await setDoc(newDocRef, { ...productData, id: newId });
-          newCount++;
-        }
-      } catch (error) {
-         console.error("Error processing row:", row, error);
-         toast({ variant: 'destructive', title: '처리 오류', description: `'${row.name}' 처리 중 오류가 발생했습니다.` });
-      }
+    }));
+
+    if (errorCount > 0) {
+        toast({ variant: 'destructive', title: '일부 처리 오류', description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` });
     }
-    
     toast({ title: '처리 완료', description: `성공: 신규 상품 ${newCount}개 추가, ${updateCount}개 업데이트 완료.`});
     await fetchProducts();
   };
 
-  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct, bulkAddProducts };
+
+  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct, bulkAddProducts, manualUpdateStock };
 }

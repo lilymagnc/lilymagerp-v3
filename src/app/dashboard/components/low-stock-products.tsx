@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 
 const lowStockProducts = [
-  { id: "PROD-005", name: "베이직 블랙 슬랙스", stock: 15, status: "low_stock" },
+  { id: "PROD-005", name: "베이직 블랙 슬랙스", stock: 5, status: "low_stock" },
   { id: "PROD-003", name: "오렌지 포인트 스커트", stock: 0, status: "out_of_stock" },
 ];
 

@@ -23,7 +23,7 @@ import {
   DialogClose,
   DialogDescription
 } from "@/components/ui/dialog"
-import { useMaterials } from "@/hooks/use-materials"
+import { useProducts } from "@/hooks/use-products"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
@@ -42,7 +42,7 @@ interface StockUpdateFormProps {
 }
 
 export function StockUpdateForm({ isOpen, onOpenChange, product }: StockUpdateFormProps) {
-  const { manualUpdateStock } = useMaterials();
+  const { manualUpdateStock } = useProducts();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);

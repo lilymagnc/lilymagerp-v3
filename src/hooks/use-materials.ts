@@ -27,7 +27,7 @@ export function useMaterials() {
 
   const getStatus = (stock: number): string => {
       if (stock === 0) return 'out_of_stock';
-      if (stock < 20) return 'low_stock';
+      if (stock < 10) return 'low_stock';
       return 'active';
   }
 
@@ -284,63 +284,64 @@ export function useMaterials() {
     setLoading(true);
     let newCount = 0;
     let updateCount = 0;
-    
+    let errorCount = 0;
+
     const dataToProcess = data.filter(row => {
-      const branchMatch = currentBranch === 'all' || row.branch === currentBranch;
-      const hasName = row.name && String(row.name).trim() !== '';
-      return branchMatch && hasName;
+        const branchMatch = currentBranch === 'all' || row.branch === currentBranch;
+        const hasName = row.name && String(row.name).trim() !== '';
+        return branchMatch && hasName;
     });
 
-    for (const row of dataToProcess) {
-      const quantity = Number(row.quantity);
-      if (isNaN(quantity) || quantity <= 0) continue;
+    await Promise.all(dataToProcess.map(async (row) => {
+        try {
+            const stock = Number(row.current_stock ?? row.stock ?? row.quantity);
+            if (isNaN(stock)) return;
 
-      const materialData = {
-        id: row.id || null,
-        name: String(row.name),
-        branch: String(row.branch),
-        stock: quantity,
-        price: Number(row.price) || 0,
-        supplier: String(row.supplier) || '미지정',
-        mainCategory: String(row.mainCategory) || '기타자재',
-        midCategory: String(row.midCategory) || '기타',
-        size: String(row.size) || '기타',
-        color: String(row.color) || '기타',
-      };
-      
-      try {
-        let q;
-        if (materialData.id) {
-            q = query(collection(db, "materials"), where("id", "==", materialData.id), where("branch", "==", materialData.branch));
-        } else {
-            q = query(collection(db, "materials"), where("name", "==", materialData.name), where("branch", "==", materialData.branch));
+            const materialData = {
+                id: row.id || null,
+                name: String(row.name),
+                branch: String(row.branch),
+                stock: stock,
+                price: Number(row.price) || 0,
+                supplier: String(row.supplier) || '미지정',
+                mainCategory: String(row.mainCategory) || '기타자재',
+                midCategory: String(row.midCategory) || '기타',
+                size: String(row.size) || '기타',
+                color: String(row.color) || '기타',
+            };
+
+            let q;
+            if (materialData.id) {
+                q = query(collection(db, "materials"), where("id", "==", materialData.id), where("branch", "==", materialData.branch));
+            } else {
+                q = query(collection(db, "materials"), where("name", "==", materialData.name), where("branch", "==", materialData.branch));
+            }
+            
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const docRef = querySnapshot.docs[0].ref;
+                await setDoc(docRef, materialData, { merge: true });
+                updateCount++;
+            } else {
+                const newId = materialData.id || await generateNewId();
+                const newDocRef = doc(collection(db, "materials"));
+                await setDoc(newDocRef, { ...materialData, id: newId });
+                newCount++;
+            }
+        } catch (error) {
+            console.error("Error processing row:", row, error);
+            errorCount++;
         }
-        
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          // Update existing material
-          const docRef = querySnapshot.docs[0].ref;
-          const existingData = querySnapshot.docs[0].data();
-          const newStock = (existingData.stock || 0) + materialData.stock;
-          await setDoc(docRef, { ...materialData, id: existingData.id, stock: newStock }, { merge: true });
-          updateCount++;
-        } else {
-          // Add new material
-          const newId = materialData.id || await generateNewId();
-          const newDocRef = doc(collection(db, "materials"));
-          await setDoc(newDocRef, { ...materialData, id: newId });
-          newCount++;
-        }
-      } catch (error) {
-         console.error("Error processing row:", row, error);
-         toast({ variant: 'destructive', title: '처리 오류', description: `'${row.name}' 처리 중 오류가 발생했습니다.` });
-      }
+    }));
+
+    if (errorCount > 0) {
+        toast({ variant: 'destructive', title: '일부 처리 오류', description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` });
     }
-    
     toast({ title: '처리 완료', description: `성공: 신규 자재 ${newCount}개 추가, ${updateCount}개 업데이트 완료.`});
     await fetchMaterials();
   };
+
 
   return { materials, loading, updateStock, fetchMaterials, manualUpdateStock, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials };
 }

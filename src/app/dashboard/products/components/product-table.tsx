@@ -113,7 +113,7 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete }: 
 
   const getStatus = (status: string, stock: number) => {
     if (status === 'out_of_stock' || stock === 0) return { text: '품절', variant: 'destructive' as const };
-    if (status === 'low_stock' || stock < 20) return { text: '재고 부족', variant: 'secondary' as const };
+    if (status === 'low_stock' || stock < 10) return { text: '재고 부족', variant: 'secondary' as const };
     return { text: '판매중', variant: 'default' as const };
   }
 
