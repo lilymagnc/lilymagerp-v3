@@ -20,17 +20,21 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            const data = docSnap.data() as Omit<OrderType, 'id'>;
+            const data = docSnap.data();
             
-            // Ensure orderDate is handled correctly, converting Timestamp to ISO string
-            const orderDate = data.orderDate && typeof (data.orderDate as any).toDate === 'function'
-                ? (data.orderDate as Timestamp).toDate().toISOString()
-                : new Date().toISOString();
+            // Defensive check for orderDate
+            let orderDateIso = new Date().toISOString();
+            if (data.orderDate && typeof (data.orderDate as Timestamp).toDate === 'function') {
+                orderDateIso = (data.orderDate as Timestamp).toDate().toISOString();
+            }
+
+            // The rest of the data is cast, assuming the structure is mostly correct.
+            const orderBase = data as Omit<OrderType, 'id' | 'orderDate'>;
 
             return {
-                ...data,
+                ...orderBase,
                 id: docSnap.id,
-                orderDate: orderDate,
+                orderDate: orderDateIso,
             };
         } else {
             console.error("No such document!");

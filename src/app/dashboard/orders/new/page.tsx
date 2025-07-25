@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -23,6 +24,7 @@ import { useOrders, OrderData, Order } from "@/hooks/use-orders";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useProducts, Product } from "@/hooks/use-products";
+import { Timestamp } from "firebase/firestore";
 
 interface OrderItem extends Product {
   quantity: number;
@@ -93,9 +95,9 @@ export default function NewOrderPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return orders.filter(order => {
-        const orderDate = order.orderDate.toDate();
-        orderDate.setHours(0,0,0,0);
-        return orderDate.getTime() === today.getTime();
+      const orderDate = (order.orderDate as Timestamp).toDate();
+      orderDate.setHours(0,0,0,0);
+      return orderDate.getTime() === today.getTime();
     })
   }, [orders])
 

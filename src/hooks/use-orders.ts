@@ -107,12 +107,10 @@ export function useOrders() {
 
   const addOrder = async (order: OrderData) => {
     setLoading(true);
-    const orderTimestamp = serverTimestamp();
-    const orderToSave = { ...order, orderDate: orderTimestamp };
-
+    
     try {
       // 1. Add the new order document
-      const orderRef = await addDoc(collection(db, 'orders'), orderToSave);
+      const orderRef = await addDoc(collection(db, 'orders'), order);
 
       // 2. Update stock for each item in the order
       const historyBatch = writeBatch(db);
@@ -150,7 +148,7 @@ export function useOrders() {
 
           const historyDocRef = doc(collection(db, "stockHistory"));
           historyBatch.set(historyDocRef, {
-            date: orderTimestamp,
+            date: order.orderDate, // Use the date from the order data
             type: "out",
             itemType: "product",
             itemId: item.id,
