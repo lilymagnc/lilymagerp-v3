@@ -81,22 +81,24 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1 align-top whitespace-pre-wrap" colSpan={5}>{data.items}</td>
                         </tr>
                          {!isReceipt && (
-                            <tr>
-                                <td className="border border-black p-1 font-bold">결제정보</td>
-                                <td className="border border-black p-1" colSpan={5}>
-                                    <div className="flex items-center justify-between">
-                                        <span>금액: ₩{data.totalAmount.toLocaleString()}</span>
-                                        <span>배송비: ₩{data.deliveryFee.toLocaleString()}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span>결제수단: {paymentMethodText}</span>
-                                            <div className="flex items-center gap-2 pr-2">
-                                                <div className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /><span>미결</span></div>
-                                                <div className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /><span>완결</span></div>
+                            <>
+                                <tr>
+                                    <td className="border border-black p-1 font-bold">결제정보</td>
+                                    <td className="border border-black p-1" colSpan={5}>
+                                        <div className="flex items-center justify-between">
+                                            <span>금액: ₩{data.totalAmount.toLocaleString()}</span>
+                                            <span>배송비: ₩{data.deliveryFee.toLocaleString()}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span>결제수단: {paymentMethodText}</span>
+                                                <div className="flex items-center gap-2 pr-2">
+                                                    <div className="flex items-center"><Checkbox checked={data.paymentStatus === '미결'} /><span>미결</span></div>
+                                                    <div className="flex items-center"><Checkbox checked={data.paymentStatus === '완결'} /><span>완결</span></div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </td>
+                                </tr>
+                            </>
                         )}
                         <tr>
                             <td className="border border-black p-1 font-bold">배송일/시간</td>
@@ -107,17 +109,19 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <td className="border border-black p-1">{data.recipientContact}</td>
                         </tr>
                         <tr>
-                            <td className="border border-black p-1 font-bold align-top h-16">배송지주소</td>
+                            <td className={`border border-black p-1 font-bold align-top ${isReceipt ? 'h-20' : 'h-16'}`}>배송지주소</td>
                             <td colSpan={5} className="border border-black p-1 align-top">{data.deliveryAddress}</td>
                         </tr>
-                        <tr>
-                            <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
-                            <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
-                        </tr>
+                        {!isReceipt && (
+                            <tr>
+                                <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
+                                <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
+                            </tr>
+                        )}
                         {isReceipt && (
                             <tr>
                                 <td className="border border-black p-1 font-bold">인수자성명</td>
-                                <td colSpan={5} className="border border-black p-1 h-10"></td>
+                                <td colSpan={5} className="border border-black p-1 h-16"></td>
                             </tr>
                         )}
                     </tbody>
