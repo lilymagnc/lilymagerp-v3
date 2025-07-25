@@ -43,7 +43,7 @@ export function AddProductDialog({
   const [productFilter, setProductFilter] = useState({ mainCategory: "all", midCategory: "all" });
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
       setSelectedItems([]);
       setSearchTerm("");
       setProductFilter({ mainCategory: "all", midCategory: "all" });
