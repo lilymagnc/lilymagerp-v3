@@ -88,12 +88,27 @@ export default function NewOrderPage() {
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [productFilter, setProductFilter] = useState({ mainCategory: 'all', midCategory: 'all' });
 
-  const availableProducts = useMemo(() => {
+  const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
+
+  const mainCategories = useMemo(() => ['all', ...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
+  const midCategories = useMemo(() => {
+      if (productFilter.mainCategory === 'all') {
+          return ['all', ...new Set(branchProducts.map(p => p.midCategory))];
+      }
+      return ['all', ...new Set(branchProducts.filter(p => p.mainCategory === productFilter.mainCategory).map(p => p.midCategory))];
+  }, [branchProducts, productFilter.mainCategory]);
+
+  const filteredProductsForSearch = useMemo(() => {
+      return branchProducts.filter(p => 
+          (productFilter.mainCategory === 'all' || p.mainCategory === productFilter.mainCategory) &&
+          (productFilter.midCategory === 'all' || p.midCategory === productFilter.midCategory)
+      );
+  }, [branchProducts, productFilter]);
 
 
   const todaysOrders = useMemo(() => {
@@ -162,7 +177,6 @@ export default function NewOrderPage() {
          toast({ variant: 'destructive', title: '재고 없음', description: '이 상품은 현재 재고가 없습니다.' });
       }
     }
-    setIsSearchOpen(false);
   };
 
   const updateItemQuantity = (productId: string, newQuantity: number) => {
@@ -394,15 +408,47 @@ export default function NewOrderPage() {
                                 </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[600px] p-0" align="start">
-                                    <Command>
-                                        <CommandInput placeholder="상품명 또는 ID로 검색..." />
+                                    <Command
+                                      filter={(value, search, keywords) => {
+                                          const lowerCaseSearch = search.toLowerCase();
+                                          const valueAndKeywords = `${value.toLowerCase()} ${keywords?.join(' ')}`.trim();
+                                          return valueAndKeywords.includes(lowerCaseSearch) ? 1 : 0;
+                                      }}
+                                    >
+                                        <div className="flex items-center border-b px-3">
+                                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                            <CommandInput placeholder="상품명 또는 ID로 검색..." className="h-11 border-0 pl-0" />
+                                        </div>
+                                         <div className="flex items-center gap-2 border-b p-2">
+                                            <Select 
+                                                value={productFilter.mainCategory} 
+                                                onValueChange={(value) => setProductFilter({ mainCategory: value, midCategory: 'all' })}>
+                                                <SelectTrigger className="w-[180px]">
+                                                    <SelectValue placeholder="대분류" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {mainCategories.map(cat => <SelectItem key={cat} value={cat}>{cat === 'all' ? '전체 대분류' : cat}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <Select 
+                                                value={productFilter.midCategory} 
+                                                onValueChange={(value) => setProductFilter(prev => ({...prev, midCategory: value}))}>
+                                                <SelectTrigger className="w-[180px]">
+                                                    <SelectValue placeholder="중분류" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {midCategories.map(cat => <SelectItem key={cat} value={cat}>{cat === 'all' ? '전체 중분류' : cat}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                         <CommandList>
                                             <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
                                             <CommandGroup>
-                                            {availableProducts.map((product) => (
+                                            {filteredProductsForSearch.map((product) => (
                                                 <CommandItem
                                                     key={product.id}
-                                                    value={`${product.name} ${product.id}`}
+                                                    value={product.name}
+                                                    keywords={[product.id]}
                                                     onSelect={() => handleAddProduct(product)}
                                                     disabled={product.stock === 0}
                                                     className="flex justify-between"
@@ -743,5 +789,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
-    
