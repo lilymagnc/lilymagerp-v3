@@ -35,20 +35,36 @@ export function useProducts() {
     try {
       setLoading(true);
       const productsCollection = collection(db, 'products');
-      const initDocRef = doc(productsCollection, '_initialized');
-      const initDoc = await getDoc(initDocRef);
-      
-      if (!initDoc.exists()) {
-        const batch = writeBatch(db);
-        initialProducts.forEach((productData) => {
-          const newDocRef = doc(productsCollection);
-          batch.set(newDocRef, productData);
-        });
-        batch.set(initDocRef, { seeded: true });
-        await batch.commit();
-      } 
-      
       const querySnapshot = await getDocs(productsCollection);
+      
+      if (querySnapshot.size <= 1) {
+          const initDocRef = doc(productsCollection, '_initialized');
+          const initDoc = await getDoc(initDocRef);
+          if (!initDoc.exists()) {
+            const batch = writeBatch(db);
+            initialProducts.forEach((productData) => {
+              const newDocRef = doc(productsCollection);
+              batch.set(newDocRef, productData);
+            });
+            batch.set(initDocRef, { seeded: true });
+            await batch.commit();
+
+            const seededSnapshot = await getDocs(productsCollection);
+            const productsData = seededSnapshot.docs
+              .filter(doc => doc.id !== '_initialized')
+              .map((doc) => {
+                  const data = doc.data();
+                  return { 
+                      docId: doc.id,
+                      ...data,
+                      status: getStatus(data.stock)
+                  } as Product;
+            }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
+            setProducts(productsData);
+            return;
+          }
+      }
+      
       const productsData = querySnapshot.docs
         .filter(doc => doc.id !== '_initialized')
         .map((doc) => {

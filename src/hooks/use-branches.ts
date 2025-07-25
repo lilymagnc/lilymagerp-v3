@@ -146,20 +146,36 @@ export function useBranches() {
     try {
       setLoading(true);
       const branchesCollection = collection(db, 'branches');
-      const initDocRef = doc(branchesCollection, '_initialized');
-      const initDoc = await getDoc(initDocRef);
-
-      if (!initDoc.exists()) {
-        const batch = writeBatch(db);
-        initialBranches.forEach(branchData => {
-          const docRef = doc(collection(db, "branches"));
-          batch.set(docRef, branchData);
-        });
-        batch.set(initDocRef, { seeded: true });
-        await batch.commit();
+      const querySnapshot = await getDocs(branchesCollection);
+      
+      // If the collection is empty (or just has the _initialized doc), seed it.
+      if (querySnapshot.size <= 1) {
+          const initDocRef = doc(branchesCollection, '_initialized');
+          const initDoc = await getDoc(initDocRef);
+          if (!initDoc.exists()) {
+            const batch = writeBatch(db);
+            initialBranches.forEach(branchData => {
+              const docRef = doc(collection(db, "branches"));
+              batch.set(docRef, branchData);
+            });
+            batch.set(initDocRef, { seeded: true });
+            await batch.commit();
+            // After seeding, refetch to get the fresh data
+            const seededSnapshot = await getDocs(branchesCollection);
+            const branchesData = seededSnapshot.docs
+              .filter(doc => doc.id !== '_initialized')
+              .map(doc => ({ id: doc.id, ...doc.data() } as Branch));
+            
+            branchesData.sort((a, b) => {
+                if (a.type === '본사') return -1;
+                if (b.type === '본사') return 1;
+                return a.name.localeCompare(b.name);
+            });
+            setBranches(branchesData);
+            return;
+          }
       } 
       
-      const querySnapshot = await getDocs(branchesCollection);
       const branchesData = querySnapshot.docs
         .filter(doc => doc.id !== '_initialized')
         .map(doc => ({ id: doc.id, ...doc.data() } as Branch));

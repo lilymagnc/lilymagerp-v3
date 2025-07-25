@@ -35,20 +35,36 @@ export function useMaterials() {
     try {
       setLoading(true);
       const materialsCollection = collection(db, 'materials');
-      const initDocRef = doc(materialsCollection, '_initialized');
-      const initDoc = await getDoc(initDocRef);
+      const querySnapshot = await getDocs(materialsCollection);
 
-      if (!initDoc.exists()) {
-        const batch = writeBatch(db);
-        initialMaterials.forEach((materialData) => {
-            const newDocRef = doc(materialsCollection);
-            batch.set(newDocRef, materialData);
-        });
-        batch.set(initDocRef, { seeded: true });
-        await batch.commit();
+      if (querySnapshot.size <= 1) {
+          const initDocRef = doc(materialsCollection, '_initialized');
+          const initDoc = await getDoc(initDocRef);
+          if (!initDoc.exists()) {
+            const batch = writeBatch(db);
+            initialMaterials.forEach((materialData) => {
+                const newDocRef = doc(materialsCollection);
+                batch.set(newDocRef, materialData);
+            });
+            batch.set(initDocRef, { seeded: true });
+            await batch.commit();
+
+            const seededSnapshot = await getDocs(materialsCollection);
+            const materialsData = seededSnapshot.docs
+                .filter(doc => doc.id !== '_initialized')
+                .map((doc) => {
+                    const data = doc.data();
+                    return { 
+                        docId: doc.id,
+                        ...data,
+                        status: getStatus(data.stock)
+                    } as Material;
+            }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
+            setMaterials(materialsData);
+            return;
+          }
       } 
       
-      const querySnapshot = await getDocs(materialsCollection);
       const materialsData = querySnapshot.docs
           .filter(doc => doc.id !== '_initialized')
           .map((doc) => {
