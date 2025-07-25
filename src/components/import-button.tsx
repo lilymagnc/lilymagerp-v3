@@ -1,29 +1,25 @@
 
-"use client"
+"use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Upload } from "lucide-react";
 import { Button, ButtonProps } from "./ui/button";
 import { ImportDialog } from "./import-dialog";
-import { DropdownMenuItem } from "./ui/dropdown-menu";
 
-interface ImportButtonProps extends ButtonProps {
+interface ImportButtonProps extends Omit<ButtonProps, 'children'> {
     resourceName: string;
     onImport: (data: any[]) => Promise<void>;
-    asDropdownMenuItem?: boolean;
     children: React.ReactNode;
 }
 
-export function ImportButton({ resourceName, onImport, asDropdownMenuItem = false, children, ...props }: ImportButtonProps) {
+export function ImportButton({ resourceName, onImport, children, ...props }: ImportButtonProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-    const TriggerComponent = asDropdownMenuItem ? DropdownMenuItem : Button;
 
     return (
         <>
-            <TriggerComponent {...props} onClick={() => setIsDialogOpen(true)} onSelect={(e) => e.preventDefault()}>
+            <Button {...props} onClick={() => setIsDialogOpen(true)} size="sm">
                 {children}
-            </TriggerComponent>
+            </Button>
             <ImportDialog
                 isOpen={isDialogOpen}
                 onOpenChange={setIsDialogOpen}

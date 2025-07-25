@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search, ArrowRightLeft, Sheet, Download } from "lucide-react";
+import { PlusCircle, Printer, Search, Download, FileUp } from "lucide-react";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
@@ -14,10 +14,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
-import Link from "next/link";
 import { useMaterials } from "@/hooks/use-materials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { ImportButton } from "@/components/import-button";
 
 export default function MaterialsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -32,8 +33,11 @@ export default function MaterialsPage() {
 
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useAuth();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial } = useMaterials();
+  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials } = useMaterials();
+  
+  const isHeadOfficeAdmin = user?.role === '본사 관리자';
 
   const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
   const midCategories = useMemo(() => {
@@ -96,6 +100,10 @@ export default function MaterialsPage() {
       title: "목록 다운로드 성공",
       description: `현재 필터링된 ${dataToExport.length}개 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
+  }
+
+  const handleImport = async (data: any[]) => {
+    await bulkAddMaterials(data, selectedBranch);
   }
   
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
@@ -181,23 +189,23 @@ export default function MaterialsPage() {
                             라벨 인쇄 ({selectedMaterials.length})
                         </Button>
                     )}
-                    <Button variant="outline" size="sm" asChild>
-                    <Link href="/dashboard/materials/stock">
-                        <ArrowRightLeft className="mr-2 h-4 w-4" />
-                        재고 입출고 페이지
-                    </Link>
-                    </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
-                      <Download className="mr-2 h-4 w-4" />
-                      현재 목록 다운로드
-                    </Button>
-                    <Button size="sm" onClick={handleAdd}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        자재 추가
-                    </Button>
-                </div>
+                 {isHeadOfficeAdmin && (
+                    <div className="flex items-center gap-2">
+                         <ImportButton resourceName="자재" onImport={handleImport}>
+                            <FileUp className="mr-2 h-4 w-4" />
+                             엑셀로 가져오기
+                         </ImportButton>
+                        <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
+                        <Download className="mr-2 h-4 w-4" />
+                        현재 목록 다운로드
+                        </Button>
+                        <Button size="sm" onClick={handleAdd}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            자재 추가
+                        </Button>
+                    </div>
+                )}
             </div>
         </CardContent>
       </Card>
@@ -229,12 +237,14 @@ export default function MaterialsPage() {
           onDelete={handleDelete}
         />
       )}
-      <MaterialForm 
-        isOpen={isFormOpen} 
-        onOpenChange={setIsFormOpen}
-        onSubmit={handleFormSubmit}
-        material={selectedMaterial}
-      />
+       {isHeadOfficeAdmin && (
+        <MaterialForm 
+            isOpen={isFormOpen} 
+            onOpenChange={setIsFormOpen}
+            onSubmit={handleFormSubmit}
+            material={selectedMaterial}
+        />
+      )}
       {isMultiPrintDialogOpen && (
         <MultiPrintOptionsDialog
             isOpen={isMultiPrintDialogOpen}

@@ -151,5 +151,67 @@ export function useProducts() {
     }
   }
 
-  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct };
+  const bulkAddProducts = async (data: any[], currentBranch: string) => {
+    setLoading(true);
+    let newCount = 0;
+    let updateCount = 0;
+    
+    const dataToProcess = data.filter(row => {
+      const branchMatch = currentBranch === 'all' || row.branch === currentBranch;
+      const hasName = row.name && String(row.name).trim() !== '';
+      return branchMatch && hasName;
+    });
+
+    for (const row of dataToProcess) {
+      const quantity = Number(row.quantity);
+      if (isNaN(quantity) || quantity <= 0) continue;
+
+      const productData = {
+        id: row.id || null,
+        name: String(row.name),
+        branch: String(row.branch),
+        stock: quantity,
+        price: Number(row.price) || 0,
+        supplier: String(row.supplier) || '미지정',
+        mainCategory: String(row.mainCategory) || '완제품',
+        midCategory: String(row.midCategory) || '기타',
+        size: String(row.size) || '기타',
+        color: String(row.color) || '기타',
+      };
+      
+      try {
+        let q;
+        if (productData.id) {
+            q = query(collection(db, "products"), where("id", "==", productData.id), where("branch", "==", productData.branch));
+        } else {
+            q = query(collection(db, "products"), where("name", "==", productData.name), where("branch", "==", productData.branch));
+        }
+        
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          // Update existing product
+          const docRef = querySnapshot.docs[0].ref;
+          const existingData = querySnapshot.docs[0].data();
+          const newStock = (existingData.stock || 0) + productData.stock;
+          await setDoc(docRef, { ...productData, id: existingData.id, stock: newStock }, { merge: true });
+          updateCount++;
+        } else {
+          // Add new product
+          const newId = productData.id || await generateNewId();
+          const newDocRef = doc(collection(db, "products"));
+          await setDoc(newDocRef, { ...productData, id: newId });
+          newCount++;
+        }
+      } catch (error) {
+         console.error("Error processing row:", row, error);
+         toast({ variant: 'destructive', title: '처리 오류', description: `'${row.name}' 처리 중 오류가 발생했습니다.` });
+      }
+    }
+    
+    toast({ title: '처리 완료', description: `성공: 신규 상품 ${newCount}개 추가, ${updateCount}개 업데이트 완료.`});
+    await fetchProducts();
+  };
+
+  return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct, bulkAddProducts };
 }

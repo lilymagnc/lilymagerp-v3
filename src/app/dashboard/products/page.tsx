@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search, Download } from "lucide-react";
+import { PlusCircle, Printer, Search, Download, FileUp } from "lucide-react";
 import { ProductTable, Product } from "./components/product-table";
 import { ProductForm, ProductFormValues } from "./components/product-form";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { downloadXLSX } from "@/lib/utils";
 import { useProducts } from "@/hooks/use-products";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
+import { ImportButton } from "@/components/import-button";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -31,7 +32,7 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const router = useRouter();
   const { branches } = useBranches();
-  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, bulkAddProducts } = useProducts();
 
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
 
@@ -87,6 +88,10 @@ export default function ProductsPage() {
       title: "목록 다운로드 성공",
       description: `현재 필터링된 ${dataToExport.length}개 상품 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
+  }
+
+  const handleImport = async (data: any[]) => {
+    await bulkAddProducts(data, selectedBranch);
   }
 
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
@@ -149,6 +154,10 @@ export default function ProductsPage() {
                 </div>
                 {isHeadOfficeAdmin && (
                   <div className="flex items-center gap-2">
+                     <ImportButton resourceName="상품" onImport={handleImport}>
+                        <FileUp className="mr-2 h-4 w-4" />
+                         엑셀로 가져오기
+                     </ImportButton>
                      <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
                         <Download className="mr-2 h-4 w-4" />
                         현재 목록 다운로드
