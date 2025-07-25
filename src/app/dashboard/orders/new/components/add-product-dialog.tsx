@@ -43,6 +43,7 @@ export function AddProductDialog({
   const [productFilter, setProductFilter] = useState({ mainCategory: "all", midCategory: "all" });
 
   useEffect(() => {
+    // Reset state only when the dialog opens, not on every re-render
     if (isOpen) {
       setSelectedItems([]);
       setSearchTerm("");
