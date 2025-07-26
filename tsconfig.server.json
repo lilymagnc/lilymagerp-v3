@@ -18,13 +18,6 @@
     "src/ai/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "src/app",
-    "src/components",
-    "src/context",
-    "src/hooks",
-    "src/lib",
-    "next-env.d.ts",
-    ".next/types/**/*.ts"
+    "node_modules"
   ]
 }
