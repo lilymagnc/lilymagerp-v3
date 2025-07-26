@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI agent for processing receipts to update stock.

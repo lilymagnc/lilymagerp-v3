@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Building, DollarSign, Package, Users, Loader2 } from "lucide-react";
 import { RecentOrders } from "./components/recent-orders";
 import { LowStockProducts } from "./components/low-stock-products";
-import { collection, getDocs, Timestamp } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface StatCard {
