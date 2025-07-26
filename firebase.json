@@ -9,9 +9,11 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         ".next",
-        "src"
+        "src",
+        "lib"
       ],
       "runtime": "nodejs20",
+      "region": "us-central1",
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" install",
         "npm --prefix \"$RESOURCE_DIR\" run build"
@@ -28,8 +30,17 @@
     "rewrites": [
       {
         "source": "**",
-        "function": "serverV2"
+        "function": {
+          "functionId": "serverV2",
+          "region": "us-central1"
+        }
       }
+    ]
+  },
+  "deploy": {
+    "only": [
+      "functions",
+      "hosting"
     ]
   }
 }
