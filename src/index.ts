@@ -6,8 +6,8 @@ import { onRequest } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import next from 'next';
 import path from 'path';
-import { processReceipt } from "./ai/flows/receipt-processor";
-import { helloFlow } from "./ai/flows/helloFlow";
+import { processReceipt } from "./ai/flows/receipt-processor.js";
+import { helloFlow } from "./ai/flows/helloFlow.js";
 
 // Set global options for Firebase Functions
 setGlobalOptions({ maxInstances: 10, region: 'us-central1' });

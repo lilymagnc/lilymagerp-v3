@@ -22,6 +22,7 @@ exports.server = onRequest((req, res) => {
 });
 
 // AI flows are also exported from here
+// The compiled TypeScript code will be in 'lib/ai' so we import from there.
 const aiFlows = require("./lib/ai/dev.js");
 exports.processReceipt = aiFlows.processReceipt;
 exports.helloFlow = aiFlows.helloFlow;
