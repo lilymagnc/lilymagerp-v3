@@ -1,8 +1,32 @@
-// This file is the entry point for Firebase Functions.
-// AI flows are exported from here.
 
+// This file is the entry point for Firebase Functions.
+// It configures the Next.js server to run as a function and exports AI flows.
+
+import { onRequest } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
+import next from 'next';
+import path from 'path';
 import { processReceipt } from "./ai/flows/receipt-processor";
 import { helloFlow } from "./ai/flows/helloFlow";
+
+// Set global options for Firebase Functions
+setGlobalOptions({ maxInstances: 10, region: 'us-central1' });
+
+const nextjsDistDir = path.join(path.dirname(new URL(import.meta.url).pathname), '.next');
+
+const nextServer = next({
+    dev: false,
+    conf: {
+        distDir: nextjsDistDir,
+    },
+});
+
+const nextjsHandle = nextServer.getRequestHandler();
+
+// Export the Next.js server as a Firebase Function
+export const serverV2 = onRequest((req, res) => {
+    return nextServer.prepare().then(() => nextjsHandle(req, res));
+});
 
 // Export the AI flows
 export {
