@@ -21,7 +21,7 @@
     "rewrites": [
       {
         "source": "**",
-        "function": "server"
+        "function": "serverV2"
       }
     ]
   }
