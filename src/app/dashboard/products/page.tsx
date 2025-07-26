@@ -5,20 +5,20 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer, Search, Download, FileUp } from "lucide-react";
-import { ProductTable, Product } from "./components/product-table";
-import { ProductForm, ProductFormValues } from "./components/product-form";
-import { useToast } from "@/hooks/use-toast";
+import { ProductTable, Product } from "./components/product-table.js";
+import { ProductForm, ProductFormValues } from "./components/product-form.js";
+import { useToast } from "@/hooks/use-toast.js";
 import { useRouter } from "next/navigation";
-import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
+import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog.js";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useBranches } from "@/hooks/use-branches";
-import { downloadXLSX } from "@/lib/utils";
-import { useProducts } from "@/hooks/use-products";
+import { useBranches } from "@/hooks/use-branches.js";
+import { downloadXLSX } from "@/lib/utils.js";
+import { useProducts } from "@/hooks/use-products.js";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/use-auth";
-import { ImportButton } from "@/components/import-button";
+import { useAuth } from "@/hooks/use-auth.js";
+import { ImportButton } from "@/components/import-button.js";
 
 export default function ProductsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -95,7 +95,7 @@ export default function ProductsPage() {
   }
 
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
-    const itemsQuery = items.map(item => `${item.id}:${item.quantity}`).join(',');
+    const itemsQuery = items.map(item => `${'item.id'}:${'item.quantity'}`).join(',');
     const params = new URLSearchParams({
       items: itemsQuery,
       type: 'product',
@@ -104,7 +104,7 @@ export default function ProductsPage() {
     router.push(`/dashboard/print-labels?${params.toString()}`);
     setIsMultiPrintDialogOpen(false);
   };
-
+  
   return (
     <div>
       <PageHeader
@@ -219,3 +219,5 @@ export default function ProductsPage() {
     </div>
   );
 }
+
+    

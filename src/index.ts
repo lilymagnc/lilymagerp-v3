@@ -23,3 +23,5 @@ const nextjsHandle = nextServer.getRequestHandler();
 export const serverV2 = onRequest((req, res) => {
   return nextServer.prepare().then(() => nextjsHandle(req, res));
 });
+
+    

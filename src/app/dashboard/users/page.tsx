@@ -5,11 +5,11 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle } from "lucide-react";
-import { UserTable } from "./components/user-table";
-import { UserForm } from "./components/user-form";
-import { useAuth } from "@/hooks/use-auth";
+import { UserTable } from "./components/user-table.js";
+import { UserForm } from "./components/user-form.js";
+import { useAuth } from "@/hooks/use-auth.js";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db } from "@/lib/firebase.js";
 
 export interface SystemUser {
   id: string; // email is the id
@@ -59,3 +59,5 @@ export default function UsersPage() {
     </div>
   );
 }
+
+    

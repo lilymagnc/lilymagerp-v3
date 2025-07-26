@@ -1,3 +1,4 @@
+/** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
     typescript: {
@@ -24,3 +25,5 @@ const nextConfig = {
     },
 };
 export default nextConfig;
+
+    

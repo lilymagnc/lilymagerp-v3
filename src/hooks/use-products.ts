@@ -3,10 +3,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useToast } from './use-toast';
-import type { Product as ProductData } from "@/app/dashboard/products/components/product-table";
-import type { ProductFormValues } from '@/app/dashboard/products/components/product-form';
+import { db } from '@/lib/firebase.js';
+import { useToast } from './use-toast.js';
+import type { Product as ProductData } from "@/app/dashboard/products/components/product-table.js";
+import type { ProductFormValues } from '@/app/dashboard/products/components/product-form.js';
 
 export type Product = ProductData;
 
@@ -292,3 +292,5 @@ export function useProducts() {
 
   return { products, loading, fetchProducts, addProduct, updateProduct, deleteProduct, bulkAddProducts, manualUpdateStock };
 }
+
+    

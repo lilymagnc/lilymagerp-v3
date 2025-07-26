@@ -3,9 +3,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useToast } from './use-toast';
-import { useAuth } from './use-auth';
+import { db } from '@/lib/firebase.js';
+import { useToast } from './use-toast.js';
+import { useAuth } from './use-auth.js';
 
 // Simplified version for the form
 interface OrderItemForm {
@@ -234,3 +234,5 @@ export function useOrders() {
 
   return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
 }
+
+    

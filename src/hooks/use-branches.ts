@@ -3,9 +3,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { useToast } from './use-toast';
-import type { BranchFormValues } from '@/app/dashboard/branches/components/branch-form';
+import { db } from '@/lib/firebase.js';
+import { useToast } from './use-toast.js';
+import type { BranchFormValues } from '@/app/dashboard/branches/components/branch-form.js';
 
 export interface DeliveryFee {
     district: string;
@@ -271,3 +271,5 @@ export function useBranches() {
 
   return { branches, loading, addBranch, updateBranch, deleteBranch, fetchBranches };
 }
+
+    
