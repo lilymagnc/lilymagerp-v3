@@ -22,6 +22,7 @@ const handle = app.getRequestHandler();
 
 // HTTP function to handle all requests to the Next.js app
 export const serverV2 = onRequest((req, res) => {
+  console.log("File: " + req.originalUrl);
   return app.prepare().then(() => handle(req, res));
 });
 
