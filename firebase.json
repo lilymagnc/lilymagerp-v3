@@ -10,7 +10,7 @@
         "firebase-debug.*.log",
         ".next",
         "src",
-        "lib"
+        "public"
       ],
       "runtime": "nodejs20",
       "region": "us-central1",
