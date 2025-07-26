@@ -2,11 +2,13 @@
   "name": "next-app",
   "version": "0.1.0",
   "private": true,
+  "main": "lib/index.js",
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "next build",
+    "build:server": "tsc && tsc-alias",
+    "build": "next build && npm run build:server",
     "start": "next start -p 8080 -H 0.0.0.0",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
