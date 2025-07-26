@@ -1,6 +1,5 @@
 
 {
-  "frameworksBackend": {},
   "functions": [
     {
       "source": ".",
@@ -20,7 +19,7 @@
     }
   ],
   "hosting": {
-    "source": ".",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -29,10 +28,7 @@
     "rewrites": [
       {
         "source": "**",
-        "function": {
-          "functionId": "serverV2",
-          "region": "us-central1"
-        }
+        "function": "serverV2"
       }
     ]
   },
