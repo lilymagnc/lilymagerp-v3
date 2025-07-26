@@ -46,7 +46,7 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
 }
 
 
-export default async function PrintPreviewPage({ params }: PageProps) {
+export default async function PrintPreviewPage({ params }: { params: { id: string } }) {
   const orderData = await getOrder(params.id);
 
   if (!orderData) {
