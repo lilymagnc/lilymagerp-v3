@@ -1,3 +1,4 @@
+
 const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const next = require("next");

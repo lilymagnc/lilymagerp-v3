@@ -1,11 +1,12 @@
+
 {
   "name": "ggotgil-erp",
   "version": "0.1.0",
   "private": true,
-  "main": "lib/src/index.js",
+  "main": "lib/index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build && tsc -p tsconfig.server.json",
+    "build": "next build && tsc",
     "start": "next start",
     "lint": "next lint",
     "deploy": "firebase deploy"
