@@ -22,6 +22,6 @@ exports.server = onRequest((req, res) => {
 });
 
 // AI flows are also exported from here
-const aiFlows = require("./src/index.js");
+const aiFlows = require("./lib/ai/dev.js");
 exports.processReceipt = aiFlows.processReceipt;
 exports.helloFlow = aiFlows.helloFlow;
