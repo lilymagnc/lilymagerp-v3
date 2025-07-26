@@ -13,13 +13,14 @@
     "build": "next build && tsc && tsc-alias",
     "start": "next start -p 8080 -H 0.0.0.0",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "predeploy": "npm --prefix \"$RESOURCE_DIR\" run build"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "firebase-admin": "^12.2.0",
     "firebase-functions": "^5.0.1",
-    "firebase": "^12.0.0"
+    "firebase": "^12.0.0",
+    "jsbarcode": "^3.11.6",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@genkit-ai/firebase": "^1.15.5",
@@ -61,7 +62,6 @@
     "embla-carousel-react": "^8.6.0",
     "genkit": "^1.15.5",
     "genkit-cli": "^1.15.5",
-    "jsbarcode": "^3.11.6",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
     "patch-package": "^8.0.0",
@@ -76,7 +76,6 @@
     "tailwindcss-animate": "^1.0.7",
     "tsc-alias": "^1.8.10",
     "typescript": "^5",
-    "xlsx": "^0.18.5",
     "zod": "^3.24.2"
   }
 }

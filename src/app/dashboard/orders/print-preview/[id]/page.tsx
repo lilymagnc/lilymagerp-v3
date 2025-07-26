@@ -11,6 +11,7 @@ export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
   orderDate: string; // ISO string format
 }
 
+// Correctly type the props for a Next.js Page component with dynamic routes
 interface PageProps {
   params: { id: string };
 }

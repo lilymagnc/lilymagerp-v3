@@ -5,6 +5,7 @@ import type { LabelItemData } from "./components/label-item";
 import { PrintLayout } from "./components/print-layout";
 import { Skeleton } from '@/components/ui/skeleton';
 
+// Correctly type the props for a Next.js Page component with searchParams
 interface PageProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
