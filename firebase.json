@@ -1,4 +1,3 @@
-
 {
   "functions": [
     {
@@ -17,10 +16,5 @@
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
-  ],
-  "deploy": {
-    "only": [
-      "functions"
-    ]
-  }
+  ]
 }
