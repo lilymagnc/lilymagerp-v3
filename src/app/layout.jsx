@@ -4,8 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata = {
-    title: "꽃길 ERP",
-    description: "가맹점 관리를 위한 ERP 시스템",
+    title: "릴리맥 ERP",
+    description: "릴리맥 가맹점 관리를 위한 ERP 시스템",
 };
 
 export default function RootLayout({ children }) {
