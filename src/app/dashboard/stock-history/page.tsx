@@ -5,14 +5,14 @@ import { useState, useMemo, useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { HistoryTable, StockHistory } from "./components/history-table.js";
-import { HistoryFilters } from "./components/history-filters.js";
-import { useBranches } from "@/hooks/use-branches.js";
-import { useToast } from "@/hooks/use-toast.js";
+import { HistoryTable, StockHistory } from "./components/history-table";
+import { HistoryFilters } from "./components/history-filters";
+import { useBranches } from "@/hooks/use-branches";
+import { useToast } from "@/hooks/use-toast";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase.js";
+import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-import { downloadXLSX } from "@/lib/utils.js";
+import { downloadXLSX } from "@/lib/utils";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 
@@ -144,5 +144,3 @@ export default function StockHistoryPage() {
     </div>
   );
 }
-
-    
