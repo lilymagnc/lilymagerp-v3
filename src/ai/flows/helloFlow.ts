@@ -16,7 +16,7 @@ const HelloOutputSchema = z.object({
 });
 
 export async function helloFlow(name: string): Promise<string> {
-    const { output } = await helloGenkitFlow({ name });
+    const output = await helloGenkitFlow({ name });
     return output?.greeting ?? "No greeting generated.";
 }
 
