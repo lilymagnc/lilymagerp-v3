@@ -19,7 +19,7 @@ export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemId
                 setLoading(true);
                 const fetched = await Promise.all(itemIds.map(async (id) => {
                     const itemData = await getItemData(id, itemType);
-                    return { id, name: (itemData === null || itemData === void 0 ? void 0 : itemData.name) || 'Unknown', quantity: 1 };
+                    return { id, name: itemData?.name || 'Unknown', quantity: 1 };
                 }));
                 setItems(fetched);
                 setLoading(false);
@@ -29,7 +29,7 @@ export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemId
     }, [isOpen, itemIds, itemType]);
     const handleQuantityChange = (id, quantity) => {
         const newQuantity = Math.max(1, quantity);
-        setItems(prev => prev.map(item => item.id === id ? Object.assign(Object.assign({}, item), { quantity: newQuantity }) : item));
+        setItems(prev => prev.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
     };
     const handleFormSubmit = () => {
         const itemsToSubmit = items.map(({ id, quantity }) => ({ id, quantity }));

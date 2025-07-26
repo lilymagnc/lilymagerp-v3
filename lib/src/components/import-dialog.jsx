@@ -37,9 +37,8 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }) {
         try {
             const reader = new FileReader();
             reader.onload = async (e) => {
-                var _a;
                 try {
-                    const data = (_a = e.target) === null || _a === void 0 ? void 0 : _a.result;
+                    const data = e.target?.result;
                     const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
                     const sheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[sheetName];

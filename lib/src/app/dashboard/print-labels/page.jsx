@@ -16,7 +16,7 @@ export default async function PrintLabelsPage({ searchParams }) {
         });
         const fetchedItems = await Promise.all(itemRequests.map(async (req) => {
             const itemData = await getItemData(req.id, type);
-            return Object.assign(Object.assign({}, itemData), { quantity: req.quantity });
+            return { ...itemData, quantity: req.quantity };
         }));
         fetchedItems.forEach(item => {
             if (item.id) {

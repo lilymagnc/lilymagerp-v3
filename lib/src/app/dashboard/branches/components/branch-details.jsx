@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription, } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 export function BranchDetails({ isOpen, onOpenChange, onEdit, branch }) {
-    var _a;
     if (!branch)
         return null;
     return (<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -21,7 +20,7 @@ export function BranchDetails({ isOpen, onOpenChange, onEdit, branch }) {
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
             <p className="text-sm text-muted-foreground">직원 수</p>
-            <p className="col-span-2 text-sm">{((_a = branch.employeeCount) !== null && _a !== void 0 ? _a : 0) > 0 ? `${branch.employeeCount}명` : "-"}</p>
+            <p className="col-span-2 text-sm">{(branch.employeeCount ?? 0) > 0 ? `${branch.employeeCount}명` : "-"}</p>
           </div>
           <Separator />
           <div className="grid grid-cols-3 items-center gap-4">

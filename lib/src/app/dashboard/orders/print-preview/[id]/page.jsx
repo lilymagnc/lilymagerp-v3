@@ -13,7 +13,11 @@ async function getOrder(orderId) {
                 orderDateIso = data.orderDate.toDate().toISOString();
             }
             const orderBase = data;
-            return Object.assign(Object.assign({}, orderBase), { id: docSnap.id, orderDate: orderDateIso });
+            return {
+                ...orderBase,
+                id: docSnap.id,
+                orderDate: orderDateIso,
+            };
         }
         else {
             console.error("No such document!");

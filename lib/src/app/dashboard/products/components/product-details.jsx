@@ -6,7 +6,7 @@ import { Barcode } from "@/components/barcode";
 import { useAuth } from "@/hooks/use-auth";
 export function ProductDetails({ isOpen, onOpenChange, onEdit, product }) {
     const { user } = useAuth();
-    const isHeadOfficeAdmin = (user === null || user === void 0 ? void 0 : user.role) === '본사 관리자';
+    const isHeadOfficeAdmin = user?.role === '본사 관리자';
     if (!product)
         return null;
     return (<Dialog open={isOpen} onOpenChange={onOpenChange}>

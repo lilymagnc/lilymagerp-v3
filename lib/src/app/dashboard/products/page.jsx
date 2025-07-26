@@ -29,7 +29,7 @@ export default function ProductsPage() {
     const router = useRouter();
     const { branches } = useBranches();
     const { products, loading: productsLoading, addProduct, updateProduct, deleteProduct, bulkAddProducts } = useProducts();
-    const isHeadOfficeAdmin = (user === null || user === void 0 ? void 0 : user.role) === '본사 관리자';
+    const isHeadOfficeAdmin = user?.role === '본사 관리자';
     const filteredProducts = useMemo(() => {
         return products
             .filter(product => (selectedBranch === "all" || product.branch === selectedBranch))
@@ -44,7 +44,7 @@ export default function ProductsPage() {
         setIsFormOpen(true);
     };
     const handleFormSubmit = async (data) => {
-        if (selectedProduct === null || selectedProduct === void 0 ? void 0 : selectedProduct.docId) {
+        if (selectedProduct?.docId) {
             await updateProduct(selectedProduct.docId, selectedProduct.id, data);
         }
         else {

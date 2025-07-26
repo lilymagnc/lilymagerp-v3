@@ -14,12 +14,15 @@ export default function UsersPage() {
     const { user: currentUser } = useAuth();
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
-            const usersData = snapshot.docs.map(doc => (Object.assign({ id: doc.id }, doc.data())));
+            const usersData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
             setUsers(usersData);
         });
         return () => unsubscribe();
     }, []);
-    if ((currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) !== '본사 관리자') {
+    if (currentUser?.role !== '본사 관리자') {
         return (<div className="flex items-center justify-center h-96 border rounded-md">
         <p className="text-muted-foreground">이 페이지에 접근할 권한이 없습니다.</p>
       </div>);

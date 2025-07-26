@@ -31,7 +31,7 @@ export default function BranchesPage() {
         setIsDetailOpen(true);
     };
     const handleFormSubmit = async (data) => {
-        if (selectedBranch === null || selectedBranch === void 0 ? void 0 : selectedBranch.id) {
+        if (selectedBranch?.id) {
             await updateBranch(selectedBranch.id, data);
         }
         else {

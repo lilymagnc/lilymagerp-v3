@@ -23,7 +23,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useProducts } from "@/hooks/use-products";
 export default function NewOrderPage() {
-    var _a;
     const { branches } = useBranches();
     const { products: allProducts, loading: productsLoading } = useProducts();
     const { orders, addOrder, loading: isSubmitting } = useOrders();
@@ -93,7 +92,6 @@ export default function NewOrderPage() {
         setter(formattedPhoneNumber);
     };
     const deliveryFee = useMemo(() => {
-        var _a, _b, _c, _d;
         if (receiptType === 'pickup')
             return 0;
         if (deliveryFeeType === 'manual') {
@@ -102,8 +100,8 @@ export default function NewOrderPage() {
         if (!selectedBranch || !selectedDistrict) {
             return 0;
         }
-        const feeInfo = (_a = selectedBranch.deliveryFees) === null || _a === void 0 ? void 0 : _a.find(df => df.district === selectedDistrict);
-        return feeInfo ? feeInfo.fee : ((_d = (_c = (_b = selectedBranch.deliveryFees) === null || _b === void 0 ? void 0 : _b.find(df => df.district === "기타")) === null || _c === void 0 ? void 0 : _c.fee) !== null && _d !== void 0 ? _d : 0);
+        const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
+        return feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
     }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, receiptType]);
     useEffect(() => {
         setSelectedDistrict(null);
@@ -121,14 +119,14 @@ export default function NewOrderPage() {
                     toast({ variant: 'destructive', title: '재고 부족', description: `최대 주문 가능 수량은 ${existingItem.stock}개 입니다.` });
                     return prevItems;
                 }
-                return prevItems.map(item => item.id === productToAdd.id ? Object.assign(Object.assign({}, item), { quantity: newQuantity }) : item);
+                return prevItems.map(item => item.id === productToAdd.id ? { ...item, quantity: newQuantity } : item);
             }
             else {
                 if (productToAdd.stock < 1) {
                     toast({ variant: 'destructive', title: '재고 없음', description: '선택하신 상품은 재고가 없습니다.' });
                     return prevItems;
                 }
-                return [...prevItems, Object.assign(Object.assign({}, productToAdd), { quantity: 1 })];
+                return [...prevItems, { ...productToAdd, quantity: 1 }];
             }
         });
     };
@@ -137,7 +135,7 @@ export default function NewOrderPage() {
         if (!itemToUpdate)
             return;
         if (newQuantity > 0 && newQuantity <= itemToUpdate.stock) {
-            setOrderItems(orderItems.map(item => item.id === productId ? Object.assign(Object.assign({}, item), { quantity: newQuantity }) : item));
+            setOrderItems(orderItems.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
         }
         else if (newQuantity > itemToUpdate.stock) {
             toast({ variant: 'destructive', title: '재고 부족', description: `최대 주문 가능 수량은 ${itemToUpdate.stock}개 입니다.` });
@@ -188,7 +186,7 @@ export default function NewOrderPage() {
                 recipientName,
                 recipientContact,
                 address: `${deliveryAddress} ${deliveryAddressDetail}`,
-                district: selectedDistrict !== null && selectedDistrict !== void 0 ? selectedDistrict : '',
+                district: selectedDistrict ?? '',
             } : null,
             message: { type: messageType, content: messageContent },
             request: specialRequest,
@@ -209,7 +207,6 @@ export default function NewOrderPage() {
         if (window.daum && window.daum.Postcode) {
             new window.daum.Postcode({
                 oncomplete: function (data) {
-                    var _a;
                     let fullAddress = data.address;
                     let extraAddress = '';
                     if (data.addressType === 'R') {
@@ -224,7 +221,7 @@ export default function NewOrderPage() {
                     setDeliveryAddress(fullAddress);
                     setDeliveryAddressDetail('');
                     const district = data.sigungu;
-                    if ((_a = selectedBranch === null || selectedBranch === void 0 ? void 0 : selectedBranch.deliveryFees) === null || _a === void 0 ? void 0 : _a.some(df => df.district === district)) {
+                    if (selectedBranch?.deliveryFees?.some(df => df.district === district)) {
                         setSelectedDistrict(district);
                     }
                     else {
@@ -520,12 +517,12 @@ export default function NewOrderPage() {
                                           </div>
                                           </RadioGroup>
                                           <div className="flex items-center gap-2 mt-2">
-                                              <Select onValueChange={setSelectedDistrict} value={selectedDistrict !== null && selectedDistrict !== void 0 ? selectedDistrict : ''} disabled={!selectedBranch || deliveryFeeType !== 'auto'}>
+                                              <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch || deliveryFeeType !== 'auto'}>
                                                   <SelectTrigger>
                                                       <SelectValue placeholder="지역 선택"/>
                                                   </SelectTrigger>
                                                   <SelectContent>
-                                                      {(_a = selectedBranch === null || selectedBranch === void 0 ? void 0 : selectedBranch.deliveryFees) === null || _a === void 0 ? void 0 : _a.map(df => (<SelectItem key={df.district} value={df.district}>
+                                                      {selectedBranch?.deliveryFees?.map(df => (<SelectItem key={df.district} value={df.district}>
                                                           {df.district}
                                                       </SelectItem>))}
                                                   </SelectContent>
@@ -614,16 +611,13 @@ export default function NewOrderPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {todaysOrders.length > 0 ? todaysOrders.map(order => {
-                var _a, _b;
-                return (<TableRow key={order.id}>
+                                {todaysOrders.length > 0 ? todaysOrders.map(order => (<TableRow key={order.id}>
                                         <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}...</TableCell>
                                         <TableCell>{order.orderer.name}</TableCell>
-                                        <TableCell>{((_a = order.deliveryInfo) === null || _a === void 0 ? void 0 : _a.recipientName) || ((_b = order.pickupInfo) === null || _b === void 0 ? void 0 : _b.pickerName) || '-'}</TableCell>
+                                        <TableCell>{order.deliveryInfo?.recipientName || order.pickupInfo?.pickerName || '-'}</TableCell>
                                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                                         <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
-                                    </TableRow>);
-            }) : (<TableRow>
+                                    </TableRow>)) : (<TableRow>
                                         <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                                             오늘 접수된 주문이 없습니다.
                                         </TableCell>

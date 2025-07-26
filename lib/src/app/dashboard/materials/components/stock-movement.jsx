@@ -33,8 +33,7 @@ export function StockMovement() {
     const barcodeInputRef = useRef(null);
     const photoInputRef = useRef(null);
     const selectedBranchName = useMemo(() => {
-        var _a;
-        return ((_a = branches.find(b => b.id === selectedBranchId)) === null || _a === void 0 ? void 0 : _a.name) || "지점";
+        return branches.find(b => b.id === selectedBranchId)?.name || "지점";
     }, [selectedBranchId, branches]);
     useEffect(() => {
         if (selectedBranchId && barcodeInputRef.current) {
@@ -59,7 +58,7 @@ export function StockMovement() {
         const listUpdater = (list) => {
             const existingItem = list.find(item => item.id === scannedId);
             if (existingItem) {
-                return list.map(item => item.id === scannedId ? Object.assign(Object.assign({}, item), { quantity: item.quantity + 1 }) : item);
+                return list.map(item => item.id === scannedId ? { ...item, quantity: item.quantity + 1 } : item);
             }
             return [...list, { id: scannedId, name: material.name, quantity: 1 }];
         };
@@ -74,7 +73,7 @@ export function StockMovement() {
     const updateQuantity = (list, id, newQuantity) => {
         const quantity = Math.max(1, newQuantity);
         const setter = list === 'in' ? setStockInList : setStockOutList;
-        setter(prev => prev.map(item => item.id === id ? Object.assign(Object.assign({}, item), { quantity }) : item));
+        setter(prev => prev.map(item => item.id === id ? { ...item, quantity } : item));
     };
     const removeItem = (list, id) => {
         const setter = list === 'in' ? setStockInList : setStockOutList;
@@ -223,7 +222,7 @@ export function StockMovement() {
           <CardContent>
             <div className="flex items-center gap-2">
               <Store className="h-5 w-5 text-muted-foreground"/>
-              <Select onValueChange={setSelectedBranchId} value={selectedBranchId !== null && selectedBranchId !== void 0 ? selectedBranchId : ''}>
+              <Select onValueChange={setSelectedBranchId} value={selectedBranchId ?? ''}>
                 <SelectTrigger className="w-full sm:w-[300px]">
                   <SelectValue placeholder="지점 선택..."/>
                 </SelectTrigger>
@@ -251,13 +250,13 @@ export function StockMovement() {
                   <Label htmlFor="receipt-photo">영수증 사진</Label>
                   <div className="flex items-center gap-4 mt-1">
                     <Input id="receipt-photo" type="file" ref={photoInputRef} onChange={handlePhotoChange} accept="image/*" className="hidden"/>
-                    <Button type="button" variant="outline" onClick={() => { var _a; return (_a = photoInputRef.current) === null || _a === void 0 ? void 0 : _a.click(); }}>
+                    <Button type="button" variant="outline" onClick={() => photoInputRef.current?.click()}>
                       <Paperclip className="mr-2 h-4 w-4"/>
                       {receiptPhoto ? "사진 변경" : "사진 선택"}
                     </Button>
                     {receiptPhotoPreview && (<div className="flex items-center gap-2">
                         <img src={receiptPhotoPreview} alt="영수증 미리보기" className="h-10 w-10 object-cover rounded-md"/>
-                        <span className="text-sm text-muted-foreground truncate max-w-[200px]">{receiptPhoto === null || receiptPhoto === void 0 ? void 0 : receiptPhoto.name}</span>
+                        <span className="text-sm text-muted-foreground truncate max-w-[200px]">{receiptPhoto?.name}</span>
                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setReceiptPhoto(null); setReceiptPhotoPreview(null); }}>
                            <Trash2 className="h-4 w-4 text-destructive"/>
                          </Button>

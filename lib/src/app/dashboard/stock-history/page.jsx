@@ -31,7 +31,11 @@ export default function StockHistoryPage() {
             const historyData = [];
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                historyData.push(Object.assign(Object.assign({ id: doc.id }, data), { date: data.date.toDate().toISOString() }));
+                historyData.push({
+                    id: doc.id,
+                    ...data,
+                    date: data.date.toDate().toISOString(),
+                });
             });
             setHistory(historyData);
             setLoading(false);
@@ -48,12 +52,11 @@ export default function StockHistoryPage() {
     }, [toast]);
     const filteredHistory = useMemo(() => {
         return history.filter(item => {
-            var _a, _b;
             if (!item.date)
                 return false;
             const itemDate = new Date(item.date);
-            const fromDate = (_a = filters.dateRange) === null || _a === void 0 ? void 0 : _a.from;
-            const toDate = (_b = filters.dateRange) === null || _b === void 0 ? void 0 : _b.to;
+            const fromDate = filters.dateRange?.from;
+            const toDate = filters.dateRange?.to;
             const inDateRange = (!fromDate || itemDate >= fromDate) &&
                 (!toDate || itemDate <= toDate);
             const branchMatch = filters.branch === 'all' || item.branch === filters.branch;

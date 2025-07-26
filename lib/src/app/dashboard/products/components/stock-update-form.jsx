@@ -22,7 +22,7 @@ export function StockUpdateForm({ isOpen, onOpenChange, product }) {
     const form = useForm({
         resolver: zodResolver(stockUpdateSchema),
         defaultValues: {
-            stock: (product === null || product === void 0 ? void 0 : product.stock) || 0,
+            stock: product?.stock || 0,
         },
     });
     const onSubmit = async (data) => {
@@ -43,7 +43,7 @@ export function StockUpdateForm({ isOpen, onOpenChange, product }) {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>재고 업데이트</DialogTitle>
-          <DialogDescription>'{product === null || product === void 0 ? void 0 : product.name}'의 현재 재고 수량을 업데이트합니다.</DialogDescription>
+          <DialogDescription>'{product?.name}'의 현재 재고 수량을 업데이트합니다.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-4">

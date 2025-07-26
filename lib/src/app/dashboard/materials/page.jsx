@@ -31,7 +31,7 @@ export default function MaterialsPage() {
     const { user } = useAuth();
     const { branches } = useBranches();
     const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials } = useMaterials();
-    const isHeadOfficeAdmin = (user === null || user === void 0 ? void 0 : user.role) === '본사 관리자';
+    const isHeadOfficeAdmin = user?.role === '본사 관리자';
     const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
     const midCategories = useMemo(() => {
         if (selectedMainCategory === "all") {
@@ -55,7 +55,7 @@ export default function MaterialsPage() {
         setIsFormOpen(true);
     };
     const handleFormSubmit = async (data) => {
-        if (selectedMaterial === null || selectedMaterial === void 0 ? void 0 : selectedMaterial.docId) {
+        if (selectedMaterial?.docId) {
             await updateMaterial(selectedMaterial.docId, selectedMaterial.id, data);
         }
         else {

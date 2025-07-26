@@ -22,9 +22,9 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete }) 
     const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [selectedRows, setSelectedRows] = useState({});
-    const isHeadOfficeAdmin = (user === null || user === void 0 ? void 0 : user.role) === '본사 관리자';
+    const isHeadOfficeAdmin = user?.role === '본사 관리자';
     const handleSelectionChange = (id) => {
-        const newSelection = Object.assign(Object.assign({}, selectedRows), { [id]: !selectedRows[id] });
+        const newSelection = { ...selectedRows, [id]: !selectedRows[id] };
         if (!newSelection[id]) {
             delete newSelection[id];
         }

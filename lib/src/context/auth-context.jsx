@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
                 userDoc = await getDoc(userDocRef); // Re-fetch the document
             }
             const userData = userDoc.data();
-            return Object.assign(Object.assign({}, firebaseUser), { role: userData === null || userData === void 0 ? void 0 : userData.role, franchise: userData === null || userData === void 0 ? void 0 : userData.franchise });
+            return { ...firebaseUser, role: userData?.role, franchise: userData?.franchise };
         }
         catch (error) {
             console.error("Error fetching or creating user role:", error);

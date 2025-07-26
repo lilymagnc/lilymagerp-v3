@@ -21,7 +21,7 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete }
     const [selectedMaterial, setSelectedMaterial] = useState(null);
     const [selectedRows, setSelectedRows] = useState({});
     const handleSelectionChange = (id) => {
-        const newSelection = Object.assign(Object.assign({}, selectedRows), { [id]: !selectedRows[id] });
+        const newSelection = { ...selectedRows, [id]: !selectedRows[id] };
         if (!newSelection[id]) {
             delete newSelection[id];
         }

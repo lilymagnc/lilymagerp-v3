@@ -21,9 +21,8 @@ export default function DashboardPage() {
                 const branchesSnapshot = await getDocs(collection(db, "branches"));
                 const employeesSnapshot = await getDocs(collection(db, "employees"));
                 const totalRevenue = ordersSnapshot.docs.reduce((acc, doc) => {
-                    var _a;
                     const data = doc.data();
-                    return acc + (((_a = data.summary) === null || _a === void 0 ? void 0 : _a.total) || 0);
+                    return acc + (data.summary?.total || 0);
                 }, 0);
                 const lastMonthRevenue = ordersSnapshot.docs
                     .filter(doc => {
@@ -32,9 +31,8 @@ export default function DashboardPage() {
                     return data.orderDate && typeof data.orderDate.toDate === 'function' && data.orderDate.toDate() > thirtyDaysAgo;
                 })
                     .reduce((acc, doc) => {
-                    var _a;
                     const data = doc.data();
-                    return acc + (((_a = data.summary) === null || _a === void 0 ? void 0 : _a.total) || 0);
+                    return acc + (data.summary?.total || 0);
                 }, 0);
                 const totalProducts = productsSnapshot.size;
                 const totalBranches = branchesSnapshot.docs.filter(doc => doc.data().type !== "본사").length;

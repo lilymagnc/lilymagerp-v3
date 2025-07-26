@@ -10,9 +10,8 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon, Search } from "lucide-react";
 import { format } from "date-fns";
 export function HistoryFilters({ filters, onFiltersChange, branches }) {
-    var _a, _b;
     const handleFilterChange = (key, value) => {
-        onFiltersChange(prev => (Object.assign(Object.assign({}, prev), { [key]: value })));
+        onFiltersChange(prev => ({ ...prev, [key]: value }));
     };
     return (<Card className="mb-4">
       <CardContent className="pt-6">
@@ -22,14 +21,14 @@ export function HistoryFilters({ filters, onFiltersChange, branches }) {
                 <PopoverTrigger asChild>
                 <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !filters.dateRange && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4"/>
-                    {((_a = filters.dateRange) === null || _a === void 0 ? void 0 : _a.from) ? (filters.dateRange.to ? (<>
+                    {filters.dateRange?.from ? (filters.dateRange.to ? (<>
                         {format(filters.dateRange.from, "LLL dd, y")} -{" "}
                         {format(filters.dateRange.to, "LLL dd, y")}
                         </>) : (format(filters.dateRange.from, "LLL dd, y"))) : (<span>날짜 선택</span>)}
                 </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                <Calendar initialFocus mode="range" defaultMonth={(_b = filters.dateRange) === null || _b === void 0 ? void 0 : _b.from} selected={filters.dateRange} onSelect={(range) => handleFilterChange('dateRange', range)} numberOfMonths={2}/>
+                <Calendar initialFocus mode="range" defaultMonth={filters.dateRange?.from} selected={filters.dateRange} onSelect={(range) => handleFilterChange('dateRange', range)} numberOfMonths={2}/>
                 </PopoverContent>
             </Popover>
 

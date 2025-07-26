@@ -10,7 +10,6 @@ import { auth } from '@/lib/firebase';
 import React from 'react';
 import Image from 'next/image';
 export default function DashboardLayout({ children, }) {
-    var _a, _b, _c;
     const { user, loading } = useAuth();
     const router = useRouter();
     React.useEffect(() => {
@@ -77,8 +76,8 @@ export default function DashboardLayout({ children, }) {
             <SidebarFooter className="p-4">
                 <div className="flex items-center gap-3 mb-2">
                     <Avatar>
-                        <AvatarImage src={(_a = user.photoURL) !== null && _a !== void 0 ? _a : ''}/>
-                        <AvatarFallback>{(_c = (_b = user.email) === null || _b === void 0 ? void 0 : _b[0].toUpperCase()) !== null && _c !== void 0 ? _c : 'U'}</AvatarFallback>
+                        <AvatarImage src={user.photoURL ?? ''}/>
+                        <AvatarFallback>{user.email?.[0].toUpperCase() ?? 'U'}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col overflow-hidden">
                         <p className="text-sm font-medium truncate">{user.isAnonymous ? '익명 사용자' : user.email}</p>

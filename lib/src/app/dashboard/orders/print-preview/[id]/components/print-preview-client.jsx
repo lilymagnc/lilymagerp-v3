@@ -9,7 +9,6 @@ import { useBranches } from '@/hooks/use-branches';
 import { PageHeader } from '@/components/page-header';
 import { format } from 'date-fns';
 export function PrintPreviewClient({ order }) {
-    var _a, _b, _c, _d, _e, _f, _g;
     const router = useRouter();
     const { branches, loading: branchesLoading } = useBranches();
     if (branchesLoading) {
@@ -30,10 +29,10 @@ export function PrintPreviewClient({ order }) {
         deliveryFee: order.summary.deliveryFee,
         paymentMethod: order.payment.method,
         paymentStatus: order.payment.status === 'completed' ? '완결' : '미결',
-        deliveryDate: ((_a = order.deliveryInfo) === null || _a === void 0 ? void 0 : _a.date) ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` : '정보 없음',
-        recipientName: (_c = (_b = order.deliveryInfo) === null || _b === void 0 ? void 0 : _b.recipientName) !== null && _c !== void 0 ? _c : '',
-        recipientContact: (_e = (_d = order.deliveryInfo) === null || _d === void 0 ? void 0 : _d.recipientContact) !== null && _e !== void 0 ? _e : '',
-        deliveryAddress: (_g = (_f = order.deliveryInfo) === null || _f === void 0 ? void 0 : _f.address) !== null && _g !== void 0 ? _g : '',
+        deliveryDate: order.deliveryInfo?.date ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` : '정보 없음',
+        recipientName: order.deliveryInfo?.recipientName ?? '',
+        recipientContact: order.deliveryInfo?.recipientContact ?? '',
+        deliveryAddress: order.deliveryInfo?.address ?? '',
         message: order.message.content,
         isAnonymous: order.isAnonymous || false,
         branchInfo: {
