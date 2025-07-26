@@ -11,7 +11,10 @@
         "firebase-debug.*.log",
         ".next"
       ],
-      "runtime": "nodejs20"
+      "runtime": "nodejs20",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
   "hosting": {

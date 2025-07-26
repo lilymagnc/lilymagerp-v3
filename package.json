@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "predeploy": "npm run build",
     "deploy": "firebase deploy --only functions,hosting"
   },
   "dependencies": {

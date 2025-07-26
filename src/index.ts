@@ -6,7 +6,8 @@ import path from 'path';
 
 setGlobalOptions({maxInstances: 10});
 
-// Define parameters for Firebase app config
+// Firebase 프로젝트 설정 값들을 환경 변수로 정의합니다.
+// .env 파일에 이 값들이 정의되어 있으면, 배포 시 자동으로 로드됩니다.
 defineString('NEXT_PUBLIC_FIREBASE_API_KEY');
 defineString('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN');
 defineString('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
