@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "private": true,
   "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
@@ -16,9 +19,9 @@
     "deploy": "firebase deploy --only functions,hosting"
   },
   "dependencies": {
-    "firebase": "^12.0.0",
     "firebase-admin": "^12.1.1",
-    "firebase-functions": "^5.0.1"
+    "firebase-functions": "^5.0.1",
+    "firebase": "^12.0.0"
   },
   "devDependencies": {
     "@genkit-ai/firebase": "^1.15.5",
