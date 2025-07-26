@@ -17,16 +17,10 @@
     }
   ],
   "hosting": {
-    "source": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
     "rewrites": [
       {
         "source": "**",
-        "function": "server"
+        "function": "serverV2"
       }
     ]
   }
