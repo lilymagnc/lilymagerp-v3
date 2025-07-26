@@ -15,5 +15,13 @@
         "npm --prefix \"$RESOURCE_DIR\" install"
       ]
     }
-  ]
+  ],
+  "hosting": {
+    "rewrites": [
+      {
+        "source": "**",
+        "function": "server"
+      }
+    ]
+  }
 }

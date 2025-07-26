@@ -16,7 +16,8 @@ const nextServer = next({
 });
 const nextjsHandle = nextServer.getRequestHandler();
 
-exports.serverV2 = onRequest((req, res) => {
+// Export the Next.js server as a single function named 'server'
+exports.server = onRequest((req, res) => {
     return nextServer.prepare().then(() => nextjsHandle(req, res));
 });
 
