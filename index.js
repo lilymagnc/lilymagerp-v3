@@ -16,13 +16,10 @@ const nextServer = next({
 });
 const nextjsHandle = nextServer.getRequestHandler();
 
-// Export the Next.js server as a single function named 'server'
 exports.server = onRequest((req, res) => {
     return nextServer.prepare().then(() => nextjsHandle(req, res));
 });
 
-// AI flows are also exported from here
-// The compiled TypeScript code will be in 'lib/ai' so we import from there.
 const aiFlows = require("./lib/ai/dev.js");
 exports.processReceipt = aiFlows.processReceipt;
 exports.helloFlow = aiFlows.helloFlow;
