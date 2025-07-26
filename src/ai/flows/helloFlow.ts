@@ -17,7 +17,7 @@ const HelloOutputSchema = z.object({
 
 export async function helloFlow(name: string): Promise<string> {
     const output = await helloGenkitFlow({ name });
-    return output?.greeting ?? "No greeting generated.";
+    return output.greeting;
 }
 
 const prompt = ai.definePrompt({
@@ -35,6 +35,6 @@ const helloGenkitFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await prompt(input);
-    return { greeting: output?.greeting ?? `Hello, ${input.name}!` };
+    return output ?? { greeting: `Hello, ${input.name}!` };
   }
 );
