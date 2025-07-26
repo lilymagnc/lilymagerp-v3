@@ -1,3 +1,4 @@
+
 {
   "name": "next-app",
   "version": "0.1.0",
@@ -14,7 +15,7 @@
     "start": "next start -p 8080 -H 0.0.0.0",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "predeploy": "npm run build"
+    "predeploy": "npm --prefix \"$RESOURCE_DIR\" run build"
   },
   "dependencies": {
     "firebase-admin": "^12.2.0",
