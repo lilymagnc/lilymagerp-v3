@@ -1,15 +1,11 @@
-
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "noEmit": false,
-    "outDir": "lib"
+    "outDir": "lib",
+    "noEmit": false
   },
-  "include": [
-    "src/index.ts",
-    "src/ai/**/*.ts"
-  ],
+  "include": ["src/index.ts", "src/ai/**/*.ts"],
   "exclude": [
     "node_modules",
     "src/app",

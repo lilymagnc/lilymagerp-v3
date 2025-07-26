@@ -1,4 +1,3 @@
-
 {
   "functions": [
     {
@@ -8,9 +7,7 @@
         "node_modules",
         ".git",
         "firebase-debug.log",
-        "firebase-debug.*.log",
-        ".next",
-        "out"
+        "firebase-debug.*.log"
       ],
       "runtime": "nodejs20",
       "predeploy": [
@@ -18,12 +15,7 @@
       ]
     }
   ],
-  "hosting": {
-    "public": "out",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
+  "frameworksBackend": {
+    "region": "us-central1"
   }
 }
