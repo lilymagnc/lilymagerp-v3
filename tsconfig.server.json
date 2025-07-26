@@ -1,23 +1,20 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es2022",
-    "outDir": "lib",
-    "rootDir": "src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "noEmit": false,
+    "outDir": "lib"
   },
   "include": [
     "src/index.ts",
     "src/ai/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/app",
+    "src/components",
+    "src/context",
+    "src/hooks",
+    "src/lib"
   ]
 }
