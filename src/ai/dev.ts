@@ -1,4 +1,3 @@
-
-// Flows will be imported for their side effects in this file.
-import './flows/receipt-processor';
-import './flows/helloFlow';
+// This file is generated during the build process to dynamically export AI flows.
+export * from './flows/helloFlow';
+export * from './flows/receipt-processor';
