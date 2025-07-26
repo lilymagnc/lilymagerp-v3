@@ -28,6 +28,7 @@
       ]
     },
     "moduleResolution": "NodeNext",
+    "outDir": "lib",
     "noEmit": true
   },
   "include": [
