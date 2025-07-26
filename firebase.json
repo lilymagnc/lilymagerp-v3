@@ -12,7 +12,7 @@
       ],
       "runtime": "nodejs20",
       "predeploy": [
-        "npm --prefix "$RESOURCE_DIR" install"
+        "npm --prefix \"$RESOURCE_DIR\" install"
       ]
     }
   ],
