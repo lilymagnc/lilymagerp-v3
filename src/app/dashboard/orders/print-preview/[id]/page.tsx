@@ -3,6 +3,7 @@ import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Order as OrderType } from '@/hooks/use-orders';
 import { PrintPreviewClient } from './components/print-preview-client';
+import { notFound } from 'next/navigation';
 
 // Define the type for serializable order data that can be passed from Server to Client component
 export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
@@ -22,13 +23,11 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
         if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // Defensive check for orderDate and convert to ISO string
             let orderDateIso = new Date().toISOString();
             if (data.orderDate && typeof (data.orderDate as Timestamp).toDate === 'function') {
                 orderDateIso = (data.orderDate as Timestamp).toDate().toISOString();
             }
 
-            // The rest of the data is cast, assuming the structure is mostly correct.
             const orderBase = data as Omit<OrderType, 'id' | 'orderDate'>;
 
             return {
@@ -51,11 +50,7 @@ export default async function PrintPreviewPage({ params }: PageProps) {
   const orderData = await getOrder(params.id);
 
   if (!orderData) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <p>주문 정보를 찾을 수 없습니다.</p>
-      </div>
-    );
+    notFound();
   }
   
   return <PrintPreviewClient order={orderData} />;

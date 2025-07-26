@@ -19,7 +19,7 @@ export default async function PrintLabelsPage({ searchParams }: PageProps) {
     
     let labelsToPrint: LabelItemData[] = [];
 
-    if (itemsParam) { // Multi-item with quantities (e.g., "P001:3,P002:5")
+    if (itemsParam) {
         const itemRequests = itemsParam.split(',').map(item => {
         const [id, quantity] = item.split(':');
         return { id, quantity: parseInt(quantity) || 1 };
@@ -38,18 +38,18 @@ export default async function PrintLabelsPage({ searchParams }: PageProps) {
             }
         });
 
-    } else if (idsParam) { // Single or multiple items, single quantity
+    } else if (idsParam) {
         const ids = Array.isArray(idsParam) ? idsParam : idsParam.split(',').filter(id => id);
         if (ids.length > 0) {
             const fetchedItems = await Promise.all(ids.map(id => getItemData(id, type)));
             const validItems = fetchedItems.filter((item): item is LabelItemData => item !== null);
 
-            if (validItems.length === 1 && quantity > 1) { // Single item, multiple quantity
+            if (validItems.length === 1 && quantity > 1) {
                 const singleItem = validItems[0];
                 for (let i = 0; i < quantity; i++) {
                     labelsToPrint.push(singleItem);
                 }
-            } else { // Multiple items, one quantity each
+            } else {
                 labelsToPrint.push(...validItems);
             }
         }
