@@ -2,7 +2,7 @@
 {
   "functions": [
     {
-      "source": "lib",
+      "source": ".",
       "codebase": "default",
       "ignore": [
         "node_modules",
