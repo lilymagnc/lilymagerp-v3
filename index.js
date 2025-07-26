@@ -1,3 +1,4 @@
+
 /**
  * This file is the entry point for your Firebase Functions.
  * It uses the Next.js server as the handler for HTTP requests and also exports
@@ -7,7 +8,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2";
 import next from "next";
 
-// Import your Genkit flows here
+// Import your Genkit flows here. Make sure to use the .js extension.
 import { helloFlow } from "./lib/ai/flows/helloFlow.js";
 import { processReceipt } from "./lib/ai/flows/receipt-processor.js";
 
@@ -20,7 +21,7 @@ const app = next({ dev });
 const handle = app.getRequestHandler();
 
 // HTTP function to handle all requests to the Next.js app
-export const api = onRequest((req, res) => {
+export const serverV2 = onRequest((req, res) => {
   return app.prepare().then(() => handle(req, res));
 });
 
