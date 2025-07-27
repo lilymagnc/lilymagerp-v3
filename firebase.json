@@ -1,27 +1,16 @@
-
 {
   "functions": {
-    "source": ".",
+    "source": "lib",
     "runtime": "nodejs20",
     "predeploy": [
       "npm --prefix \"$RESOURCE_DIR\" run build"
-    ],
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "*.ts",
-      "*.tsx",
-      "src/",
-      "lib/src/"
     ]
   },
   "hosting": {
     "rewrites": [
       {
         "source": "**",
-        "function": "ssrapp"
+        "function": "serverV2"
       }
     ]
   }
