@@ -5,10 +5,11 @@ import next from 'next';
 import path from 'path';
 
 // AI-related imports
-import * as ai from './ai/dev';
+// By importing, we make sure they are included in the deployment bundle.
+import * as ai from './ai/dev.js';
 
-// Re-export all AI flows
-export * from './ai/dev';
+// Re-export all AI flows so they can be managed by Firebase
+export * from './ai/dev.js';
 
 // Set global options for Firebase Functions v2
 setGlobalOptions({maxInstances: 10, region: 'us-central1'});
