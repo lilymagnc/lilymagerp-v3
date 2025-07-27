@@ -110,16 +110,27 @@ export function useOrders() {
     
     try {
       // Ensure orderDate is a JS Date object before proceeding
-      const orderDate = (orderData.orderDate instanceof Timestamp) 
-        ? orderData.orderDate.toDate() 
-        : new Date(orderData.orderDate);
+      const getOrderDate = () => {
+        const { orderDate } = orderData;
+        if (orderDate instanceof Timestamp) {
+            return orderDate.toDate();
+        }
+        if (orderDate instanceof Date) {
+            return orderDate;
+        }
+        // Attempt to parse if it's a string or number, otherwise, default to now
+        const parsedDate = new Date(orderDate);
+        return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+      };
+
+      const orderDate = getOrderDate();
 
       const orderPayload = {
         ...orderData,
         orderDate: Timestamp.fromDate(orderDate),
       };
 
-      const orderRef = await addDoc(collection(db, 'orders'), orderPayload);
+      await addDoc(collection(db, 'orders'), orderPayload);
 
       const historyBatch = writeBatch(db);
 

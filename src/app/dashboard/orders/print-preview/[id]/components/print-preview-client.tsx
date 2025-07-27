@@ -44,7 +44,7 @@ export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
         recipientName: order.deliveryInfo?.recipientName ?? '',
         recipientContact: order.deliveryInfo?.recipientContact ?? '',
         deliveryAddress: order.deliveryInfo?.address ?? '',
-        message: order.message.content,
+        message: order.message?.content ?? '',
         isAnonymous: order.isAnonymous || false,
         branchInfo: {
             name: targetBranch.name,
