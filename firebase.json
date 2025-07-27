@@ -1,7 +1,15 @@
 
 {
   "functions": {
-    "source": "."
+    "source": ".",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "src",
+      "lib"
+    ]
   },
   "hosting": {
     "rewrites": [
