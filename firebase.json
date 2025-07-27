@@ -7,7 +7,7 @@
     "rewrites": [
       {
         "source": "**",
-        "function": "server"
+        "function": "ssrapp"
       }
     ]
   }
