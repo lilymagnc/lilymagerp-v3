@@ -50,7 +50,7 @@ export default function NewOrderPage() {
   const { branches, loading: branchesLoading } = useBranches();
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
-  const { customers, findCustomersByContact, updateCustomer } = useCustomers();
+  const { findCustomersByContact } = useCustomers();
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id');
@@ -123,21 +123,18 @@ export default function NewOrderPage() {
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
 
-  const groupedProducts = useMemo(() => {
-    if (!branchProducts) return {};
-    return branchProducts.reduce((acc, product) => {
-        const { mainCategory, midCategory } = product;
-        if (!acc[mainCategory]) {
-            acc[mainCategory] = {};
-        }
-        if (!acc[mainCategory][midCategory]) {
-            acc[mainCategory][midCategory] = [];
-        }
-        acc[mainCategory][midCategory].push(product);
-        return acc;
-    }, {} as Record<string, Record<string, Product[]>>);
-  }, [branchProducts]);
+  const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
+  const midCategories = useMemo(() => {
+    if (!selectedMainCategory) return [];
+    return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
+  }, [branchProducts, selectedMainCategory]);
 
+  const filteredProducts = useMemo(() => {
+    return branchProducts.filter(p => 
+        (!selectedMainCategory || p.mainCategory === selectedMainCategory) &&
+        (!selectedMidCategory || p.midCategory === selectedMidCategory)
+    );
+  }, [branchProducts, selectedMainCategory, selectedMidCategory]);
 
   const todaysOrders = useMemo(() => {
     const today = new Date();
@@ -284,8 +281,8 @@ export default function NewOrderPage() {
     }
   }, [selectedBranch, existingOrder]);
 
-  const handleAddProduct = (productToAddId: string) => {
-    const productToAdd = branchProducts.find(p => p.docId === productToAddId);
+  const handleAddProduct = (docId: string) => {
+    const productToAdd = branchProducts.find(p => p.docId === docId);
     if (!productToAdd) return;
 
     setOrderItems(prevItems => {
@@ -986,3 +983,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    
