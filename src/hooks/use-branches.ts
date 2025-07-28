@@ -148,7 +148,6 @@ export function useBranches() {
       const branchesCollection = collection(db, 'branches');
       const querySnapshot = await getDocs(branchesCollection);
       
-      // If the collection is empty (or just has the _initialized doc), seed it.
       if (querySnapshot.size <= 1) {
           const initDocRef = doc(branchesCollection, '_initialized');
           const initDoc = await getDoc(initDocRef);
@@ -160,7 +159,7 @@ export function useBranches() {
             });
             batch.set(initDocRef, { seeded: true });
             await batch.commit();
-            // After seeding, refetch to get the fresh data
+            
             const seededSnapshot = await getDocs(branchesCollection);
             const branchesData = seededSnapshot.docs
               .filter(doc => doc.id !== '_initialized')
