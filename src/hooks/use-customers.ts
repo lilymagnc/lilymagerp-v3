@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
@@ -12,6 +12,7 @@ export interface Customer extends CustomerFormValues {
   createdAt: string;
   lastOrderDate?: string;
   totalSpent?: number;
+  points?: number;
 }
 
 export function useCustomers() {
@@ -23,7 +24,7 @@ export function useCustomers() {
     try {
       setLoading(true);
       const customersCollection = collection(db, 'customers');
-      const q = query(customersCollection, where("isDeleted", "!=", true));
+      const q = query(customersCollection, where("isDeleted", "==", false));
       
       const customersData = (await getDocs(q)).docs.map(doc => {
         const data = doc.data();
@@ -61,6 +62,7 @@ export function useCustomers() {
             createdAt: serverTimestamp(),
             totalSpent: 0,
             orderCount: 0,
+            points: 0, // Initialize points
             isDeleted: false,
         };
       await addDoc(collection(db, 'customers'), customerWithTimestamp);
@@ -136,6 +138,7 @@ export function useCustomers() {
                 createdAt: serverTimestamp(),
                 totalSpent: 0,
                 orderCount: 0,
+                points: 0,
                 isDeleted: false,
             };
 

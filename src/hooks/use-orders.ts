@@ -6,6 +6,7 @@ import { collection, getDocs, doc, addDoc, writeBatch, serverTimestamp, Timestam
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
+import type { Customer } from './use-customers';
 
 // Simplified version for the form
 interface OrderItemForm {
@@ -27,9 +28,12 @@ export interface OrderData {
     discount: number;
     deliveryFee: number;
     total: number;
+    pointsUsed: number;
+    pointsEarned: number;
   };
 
   orderer: {
+    id?: string;
     name: string;
     contact: string;
     company: string;
@@ -42,7 +46,7 @@ export interface OrderData {
 
   payment: {
     method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
-    status: "pending" | "completed";
+    status: "pending" | "paid";
   };
 
   pickupInfo: {
@@ -106,44 +110,53 @@ export function useOrders() {
     fetchOrders();
   }, [fetchOrders]);
   
-  const addCustomerFromOrder = async (orderData: OrderData) => {
-    if (!orderData.registerCustomer) return;
-
-    const customerQuery = query(collection(db, "customers"), where("contact", "==", orderData.orderer.contact), where("branch", "==", orderData.branchName));
-    const querySnapshot = await getDocs(customerQuery);
+  const updateCustomerOnOrder = async (
+    transaction: any,
+    customerId: string,
+    orderData: OrderData
+  ) => {
+    const customerDocRef = doc(db, 'customers', customerId);
+    const customerDoc = await transaction.get(customerDocRef);
+    if (!customerDoc.exists()) {
+      // This case should ideally not happen if customer ID is present
+      return;
+    }
+    const existingCustomer = customerDoc.data() as Customer;
     
-    const customerData = {
-        name: orderData.orderer.name,
-        contact: orderData.orderer.contact,
-        email: orderData.orderer.email || '',
-        companyName: orderData.orderer.company || '',
+    const pointsChange = orderData.summary.pointsEarned - orderData.summary.pointsUsed;
+
+    const updatedData = {
+        lastOrderDate: serverTimestamp(),
+        totalSpent: (existingCustomer.totalSpent || 0) + orderData.summary.total,
+        orderCount: (existingCustomer.orderCount || 0) + 1,
+        points: (existingCustomer.points || 0) + pointsChange,
+    };
+    transaction.update(customerDocRef, updatedData);
+  }
+
+  const addCustomerFromOrder = async (
+    transaction: any,
+    orderData: OrderData
+  ): Promise<string> => {
+    const { orderer } = orderData;
+    const newCustomerData = {
+        name: orderer.name,
+        contact: orderer.contact,
+        email: orderer.email || '',
+        companyName: orderer.company || '',
         branch: orderData.branchName,
-        type: orderData.orderer.company ? 'company' : 'personal',
+        type: orderer.company ? 'company' : 'personal',
         lastOrderDate: serverTimestamp(),
         totalSpent: orderData.summary.total,
+        orderCount: 1,
+        points: orderData.summary.pointsEarned - orderData.summary.pointsUsed,
+        grade: '신규',
+        createdAt: serverTimestamp(),
+        isDeleted: false,
     };
-
-    if (!querySnapshot.empty) {
-        // Update existing customer
-        const customerDocRef = querySnapshot.docs[0].ref;
-        const existingCustomer = querySnapshot.docs[0].data();
-        const updatedData = {
-            ...customerData,
-            totalSpent: (existingCustomer.totalSpent || 0) + orderData.summary.total,
-            orderCount: (existingCustomer.orderCount || 0) + 1,
-        };
-        await setDoc(customerDocRef, updatedData, { merge: true });
-    } else {
-        // Add new customer
-        const newCustomerData = {
-            ...customerData,
-            grade: '신규',
-            createdAt: serverTimestamp(),
-            orderCount: 1,
-            isDeleted: false,
-        };
-        await addDoc(collection(db, 'customers'), newCustomerData);
-    }
+    const newCustomerRef = doc(collection(db, 'customers'));
+    transaction.set(newCustomerRef, newCustomerData);
+    return newCustomerRef.id;
   }
 
 
@@ -151,40 +164,38 @@ export function useOrders() {
     setLoading(true);
     
     try {
-      // Ensure orderDate is a JS Date object before proceeding
-      const getOrderDate = () => {
-        const { orderDate } = orderData;
-        if (orderDate instanceof Timestamp) {
-            return orderDate.toDate();
+      await runTransaction(db, async (transaction) => {
+        // Ensure orderDate is a JS Date object before proceeding
+        const getOrderDate = () => {
+          const { orderDate } = orderData;
+          if (orderDate instanceof Timestamp) return orderDate.toDate();
+          if (orderDate instanceof Date) return orderDate;
+          const parsedDate = new Date(orderDate);
+          return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+        };
+
+        const orderDate = getOrderDate();
+        const { registerCustomer, ...restOfOrderData } = orderData;
+        const orderPayload = {
+          ...restOfOrderData,
+          orderDate: Timestamp.fromDate(orderDate),
+        };
+        const orderRef = doc(collection(db, 'orders'));
+        transaction.set(orderRef, orderPayload);
+
+        // Customer and Points Logic
+        if (registerCustomer) {
+            if (orderData.orderer.id) {
+                await updateCustomerOnOrder(transaction, orderData.orderer.id, orderData);
+            } else {
+                await addCustomerFromOrder(transaction, orderData);
+            }
         }
-        if (orderDate instanceof Date) {
-            return orderDate;
-        }
-        const parsedDate = new Date(orderDate);
-        return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
-      };
-
-      const orderDate = getOrderDate();
-
-      const { registerCustomer, ...restOfOrderData } = orderData;
-
-      const orderPayload = {
-        ...restOfOrderData,
-        orderDate: Timestamp.fromDate(orderDate),
-      };
-
-      await addDoc(collection(db, 'orders'), orderPayload);
-
-      if (registerCustomer) {
-        await addCustomerFromOrder(orderData);
-      }
-
-      const historyBatch = writeBatch(db);
-
-      for (const item of orderData.items) {
-        if (!item.id || item.quantity <= 0) continue;
-
-        await runTransaction(db, async (transaction) => {
+        
+        // Stock History Logic
+        for (const item of orderData.items) {
+          if (!item.id || item.quantity <= 0) continue;
+          
           const productQuery = query(
             collection(db, "products"),
             where("id", "==", item.id),
@@ -195,25 +206,19 @@ export function useOrders() {
           if (productSnapshot.empty) {
             throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${orderData.branchName}' 지점에서 찾을 수 없습니다.`);
           }
-
           const productDocRef = productSnapshot.docs[0].ref;
           const productDoc = await transaction.get(productDocRef);
 
-          if (!productDoc.exists()) {
-            throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
-          }
+          if (!productDoc.exists()) throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
 
           const currentStock = productDoc.data().stock || 0;
           const newStock = currentStock - item.quantity;
-
-          if (newStock < 0) {
-            throw new Error(`재고 부족: '${item.name}'의 재고가 부족하여 주문을 완료할 수 없습니다. (현재 재고: ${currentStock})`);
-          }
-
+          if (newStock < 0) throw new Error(`재고 부족: '${item.name}'의 재고가 부족하여 주문을 완료할 수 없습니다. (현재 재고: ${currentStock})`);
+          
           transaction.update(productDocRef, { stock: newStock });
 
           const historyDocRef = doc(collection(db, "stockHistory"));
-          historyBatch.set(historyDocRef, {
+          transaction.set(historyDocRef, {
             date: Timestamp.fromDate(orderDate),
             type: "out",
             itemType: "product",
@@ -228,30 +233,54 @@ export function useOrders() {
             price: item.price,
             totalAmount: item.price * item.quantity,
           });
-        });
-      }
-
-      await historyBatch.commit();
+        }
+      });
       
       toast({
         title: '성공',
-        description: '새 주문이 추가되고 재고가 업데이트되었습니다.',
+        description: '새 주문이 추가되고 재고 및 고객 정보가 업데이트되었습니다.',
       });
       await fetchOrders();
       
     } catch (error) {
-      console.error("Error adding order and updating stock: ", error);
+      console.error("Error adding order transaction: ", error);
       toast({
         variant: 'destructive',
         title: '주문 처리 오류',
         description: error instanceof Error ? error.message : '주문 추가 중 오류가 발생했습니다.',
         duration: 5000,
       });
+      throw error; // Re-throw to be caught in the component
     } finally {
       setLoading(false);
     }
   };
   
+  const updateOrder = async (orderId: string, orderData: OrderData) => {
+     // For simplicity, we are not implementing the full logic to revert/recalculate stock and points on update.
+     // In a real-world scenario, this would require careful handling of state changes.
+     try {
+       setLoading(true);
+       const orderRef = doc(db, "orders", orderId);
+       await setDoc(orderRef, orderData, { merge: true });
+       toast({
+         title: "성공",
+         description: "주문 정보가 업데이트되었습니다."
+       });
+       await fetchOrders();
+     } catch(error) {
+        console.error("Error updating order:", error);
+        toast({
+            variant: "destructive",
+            title: "오류",
+            description: "주문 업데이트 중 오류가 발생했습니다."
+        });
+     } finally {
+        setLoading(false);
+     }
+  }
+
+
   const updateOrderStatus = async (orderId: string, newStatus: 'processing' | 'completed' | 'canceled') => {
     try {
         const orderRef = doc(db, 'orders', orderId);
@@ -271,13 +300,13 @@ export function useOrders() {
     }
   };
 
-  const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'completed') => {
+  const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'paid') => {
     try {
         const orderRef = doc(db, 'orders', orderId);
         await updateDoc(orderRef, { 'payment.status': newStatus });
         toast({
             title: '결제 상태 변경 성공',
-            description: `결제 상태가 '${newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
+            description: `결제 상태가 '${newStatus === 'paid' ? '결제완료' : '결제대기'}'(으)로 변경되었습니다.`,
         });
         await fetchOrders();
     } catch (error) {
@@ -290,5 +319,5 @@ export function useOrders() {
     }
   };
 
-  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
+  return { orders, loading, addOrder, updateOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
 }
