@@ -49,7 +49,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
     });
   };
 
-  const previewStyle = {
+  const previewStyle: React.CSSProperties = {
     fontFamily: font,
     fontSize: `${fontSize}pt`,
   };

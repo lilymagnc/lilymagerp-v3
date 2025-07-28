@@ -14,6 +14,8 @@ export default {
         body: ['Noto Sans KR', 'sans-serif'],
         headline: ['Noto Sans KR', 'sans-serif'],
         code: ['Source Code Pro', 'monospace'],
+        serif: ['Noto Serif KR', 'serif'],
+        gaegu: ['Gaegu', 'cursive'],
       },
       colors: {
         background: 'hsl(var(--background))',
