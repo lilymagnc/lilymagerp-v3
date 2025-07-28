@@ -219,6 +219,8 @@ export default function NewOrderPage() {
         setContactSearchResults(results);
         if (results.length > 0) {
           setIsContactSearchOpen(true);
+        } else {
+          setIsContactSearchOpen(false);
         }
       } else {
         setContactSearchResults([]);
