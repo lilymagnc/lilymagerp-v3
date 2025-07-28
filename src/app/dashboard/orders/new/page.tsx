@@ -358,7 +358,7 @@ export default function NewOrderPage() {
         items: orderItems.map(({id, name, quantity, price}) => ({id, name, quantity, price})),
         summary: orderSummary,
 
-        orderer: { id: selectedCustomer?.id, name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
+        orderer: { id: selectedCustomer?.id || "", name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
         isAnonymous: isAnonymous,
         registerCustomer: registerCustomer,
         orderType,
@@ -835,7 +835,7 @@ export default function NewOrderPage() {
                                                   <SelectContent>
                                                       {selectedBranch?.deliveryFees?.map(df => (
                                                       <SelectItem key={df.district} value={df.district}>
-                                                          {df.district}
+                                                          {df.district} ({df.fee.toLocaleString()}원)
                                                       </SelectItem>
                                                       ))}
                                                   </SelectContent>
