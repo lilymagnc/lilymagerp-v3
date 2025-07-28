@@ -128,6 +128,10 @@ export default function NewOrderPage() {
     if (!selectedMainCategory) return [];
     return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
   }, [branchProducts, selectedMainCategory]);
+  
+  const deliveryDistricts = useMemo(() => {
+    return selectedBranch?.deliveryFees || [];
+  }, [selectedBranch]);
 
   const filteredProducts = useMemo(() => {
     return branchProducts.filter(p => 
@@ -833,7 +837,7 @@ export default function NewOrderPage() {
                                                       <SelectValue placeholder="지역 선택" />
                                                   </SelectTrigger>
                                                   <SelectContent>
-                                                      {selectedBranch?.deliveryFees?.map(df => (
+                                                      {deliveryDistricts.map(df => (
                                                       <SelectItem key={df.district} value={df.district}>
                                                           {df.district} ({df.fee.toLocaleString()}원)
                                                       </SelectItem>
@@ -983,3 +987,4 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
