@@ -2,11 +2,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, getDocsFromCache } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, getDocsFromCache, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
 import type { Order } from './use-orders';
+import { Timestamp } from 'firebase/firestore';
 
 export interface Customer extends CustomerFormValues {
   id: string;
@@ -26,7 +27,8 @@ export function useCustomers() {
     try {
       setLoading(true);
       const customersCollection = collection(db, 'customers');
-      const q = query(customersCollection, where("isDeleted", "==", false));
+      // In a real application, you might want to paginate this query
+      const q = query(customersCollection, where("isDeleted", "!=", true));
       
       const customersData = (await getDocs(q)).docs.map(doc => {
         const data = doc.data();
@@ -102,7 +104,7 @@ export function useCustomers() {
     setLoading(true);
     try {
       const customerDocRef = doc(db, 'customers', id);
-      await setDoc(customerDocRef, { isDeleted: true }, { merge: true });
+      await deleteDoc(customerDocRef);
       toast({ title: "성공", description: "고객 정보가 삭제되었습니다." });
       await fetchCustomers();
     } catch (error) {
@@ -172,7 +174,7 @@ export function useCustomers() {
     if (!contact || contact.length < 4) return [];
     try {
         const customersCollection = collection(db, 'customers');
-        const q = query(customersCollection, where("contact", "==", contact), where("isDeleted", "==", false));
+        const q = query(customersCollection, where("contact", "==", contact), where("isDeleted", "!=", true));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
     } catch (error) {
@@ -186,7 +188,7 @@ export function useCustomers() {
     if (!customerContact) return [];
     try {
       const ordersCollection = collection(db, 'orders');
-      const q = query(ordersCollection, where("orderer.contact", "==", customerContact));
+      const q = query(ordersCollection, where("orderer.contact", "==", customerContact), orderBy("orderDate", "desc"));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     } catch (error) {
