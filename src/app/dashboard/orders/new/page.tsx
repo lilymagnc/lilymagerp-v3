@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBranches, Branch } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandList, CommandItem } from "@/components/ui/command";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -37,7 +37,7 @@ type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
 type ReceiptType = "pickup" | "delivery";
 type MessageType = "card" | "ribbon";
 type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
-type PaymentStatus = "pending" | "completed";
+type PaymentStatus = "pending" | "paid";
 
 declare global {
   interface Window {
@@ -46,11 +46,13 @@ declare global {
 }
 
 export default function NewOrderPage() {
-  const { branches } = useBranches();
+  const { branches, loading: branchesLoading } = useBranches();
   const { products: allProducts, loading: productsLoading } = useProducts();
-  const { orders, addOrder, loading: isSubmitting } = useOrders();
+  const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
   const { findCustomersByContact } = useCustomers();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get('id');
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const { toast } = useToast();
@@ -70,8 +72,8 @@ export default function NewOrderPage() {
   const [contactSearchResults, setContactSearchResults] = useState<Customer[]>([]);
   const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
   
-  const [orderType, setOrderType] = useState<OrderType>("phone");
-  const [receiptType, setReceiptType] = useState<ReceiptType>("delivery");
+  const [orderType, setOrderType] = useState<OrderType>("store");
+  const [receiptType, setReceiptType] = useState<ReceiptType>("pickup");
   
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
   const [scheduleTime, setScheduleTime] = useState("10:00");
@@ -89,12 +91,28 @@ export default function NewOrderPage() {
   const [specialRequest, setSpecialRequest] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
 
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
+  const [existingOrder, setExistingOrder] = useState<Order | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [selectedMidCategory, setSelectedMidCategory] = useState<string | null>(null);
+  
+  const timeOptions = useMemo(() => {
+    const options = [];
+    for (let h = 7; h <= 22; h++) {
+        for (let m = 0; m < 60; m += 30) {
+            if (h === 7 && m < 30) continue;
+            if (h === 22 && m > 0) continue;
+            const hour = String(h).padStart(2, '0');
+            const minute = String(m).padStart(2, '0');
+            options.push(`${hour}:${minute}`);
+        }
+    }
+    return options;
+  }, []);
 
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
@@ -102,19 +120,22 @@ export default function NewOrderPage() {
   }, [allProducts, selectedBranch]);
 
   const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
-  const midCategories = useMemo(() => {
-    if (!selectedMainCategory) return [];
-    return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
+  
+  const groupedProducts = useMemo(() => {
+    if (!selectedMainCategory) return {};
+    return branchProducts
+        .filter(p => p.mainCategory === selectedMainCategory)
+        .reduce((acc, product) => {
+            const { midCategory } = product;
+            if (!acc[midCategory]) {
+                acc[midCategory] = [];
+            }
+            acc[midCategory].push(product);
+            return acc;
+        }, {} as Record<string, Product[]>);
   }, [branchProducts, selectedMainCategory]);
 
-  const filteredProducts = useMemo(() => {
-    return branchProducts.filter(p => 
-        (!selectedMainCategory || p.mainCategory === selectedMainCategory) &&
-        (!selectedMidCategory || p.midCategory === selectedMidCategory)
-    );
-  }, [branchProducts, selectedMainCategory, selectedMidCategory]);
 
-  
   const todaysOrders = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -123,7 +144,66 @@ export default function NewOrderPage() {
       orderDate.setHours(0,0,0,0);
       return orderDate.getTime() === today.getTime();
     })
-  }, [orders])
+  }, [orders]);
+
+  useEffect(() => {
+      if (orderId && !ordersLoading && orders.length > 0 && !productsLoading && allProducts.length > 0 && !branchesLoading && branches.length > 0) {
+        const foundOrder = orders.find(o => o.id === orderId);
+        if(foundOrder) {
+            setExistingOrder(foundOrder);
+            const branch = branches.find(b => b.id === foundOrder.branchId);
+            setSelectedBranch(branch || null);
+
+            setOrderItems(foundOrder.items.map(item => {
+                const product = allProducts.find(p => p.id === item.id && p.branch === foundOrder.branchName);
+                return { ...product!, quantity: item.quantity };
+            }).filter(item => item.id)); 
+            
+            if(foundOrder.deliveryInfo?.district && foundOrder.deliveryInfo.district !== '') {
+                setDeliveryFeeType("auto");
+                setSelectedDistrict(foundOrder.deliveryInfo.district);
+            } else {
+                setDeliveryFeeType("manual");
+                setManualDeliveryFee(foundOrder.summary.deliveryFee);
+            }
+            
+            setOrdererName(foundOrder.orderer.name);
+            setOrdererContact(foundOrder.orderer.contact);
+            setOrdererCompany(foundOrder.orderer.company || "");
+            setOrdererEmail(foundOrder.orderer.email || "");
+            setIsAnonymous(foundOrder.isAnonymous);
+
+            setOrderType(foundOrder.orderType);
+            setReceiptType(foundOrder.receiptType);
+            
+            const schedule = foundOrder.pickupInfo || foundOrder.deliveryInfo;
+            if(schedule) {
+              setScheduleDate(schedule.date ? new Date(schedule.date) : new Date());
+              setScheduleTime(schedule.time);
+            }
+            
+            if(foundOrder.pickupInfo){
+              setPickerName(foundOrder.pickupInfo.pickerName);
+              setPickerContact(foundOrder.pickupInfo.pickerContact);
+            }
+            
+            if(foundOrder.deliveryInfo){
+              setRecipientName(foundOrder.deliveryInfo.recipientName);
+              setRecipientContact(foundOrder.deliveryInfo.recipientContact);
+              setDeliveryAddress(foundOrder.deliveryInfo.address);
+              setDeliveryAddressDetail(""); 
+            }
+
+            setMessageType(foundOrder.message.type);
+            setMessageContent(foundOrder.message.content);
+            setSpecialRequest(foundOrder.request || "");
+
+            setPaymentMethod(foundOrder.payment.method);
+            setPaymentStatus(foundOrder.payment.status);
+        }
+      }
+  }, [orderId, orders, ordersLoading, branches, branchesLoading, allProducts, productsLoading])
+
 
   useEffect(() => {
     if (receiptType === 'pickup') {
@@ -134,15 +214,15 @@ export default function NewOrderPage() {
 
   const debouncedSearch = useCallback(
     debounce(async (contact: string) => {
-        if (contact.length >= 4) {
-            const results = await findCustomersByContact(contact);
-            setContactSearchResults(results);
-            if(results.length > 0) setIsContactSearchOpen(true);
-        } else {
-            setContactSearchResults([]);
-            setIsContactSearchOpen(false);
-        }
-    }, 500),
+      if (contact.length >= 4) {
+        const results = await findCustomersByContact(contact);
+        setContactSearchResults(results);
+        setIsContactSearchOpen(results.length > 0);
+      } else {
+        setContactSearchResults([]);
+        setIsContactSearchOpen(false);
+      }
+    }, 300),
     [findCustomersByContact]
   );
   
@@ -159,7 +239,6 @@ export default function NewOrderPage() {
     setOrdererContact(customer.contact);
     setIsContactSearchOpen(false);
   }
-
 
   const formatPhoneNumber = (value: string) => {
     if (!value) return value;
@@ -190,23 +269,24 @@ export default function NewOrderPage() {
   }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, receiptType]);
 
   useEffect(() => {
-    setSelectedDistrict(null);
-  }, [selectedBranch]);
+    if(!existingOrder) {
+        setSelectedDistrict(null);
+    }
+  }, [selectedBranch, existingOrder]);
 
-  const handleAddProduct = (productId: string) => {
-    if (!productId) return;
-    const productToAdd = branchProducts.find(p => p.id === productId);
+  const handleAddProduct = (docId: string) => {
+    const productToAdd = branchProducts.find(p => p.docId === docId);
     if (!productToAdd) return;
 
     setOrderItems(prevItems => {
-        const existingItem = prevItems.find(item => item.id === productToAdd.id);
+        const existingItem = prevItems.find(item => item.docId === productToAdd.docId);
         if (existingItem) {
             const newQuantity = existingItem.quantity + 1;
             if (newQuantity > existingItem.stock) {
                 toast({ variant: 'destructive', title: '재고 부족', description: `최대 주문 가능 수량은 ${existingItem.stock}개 입니다.` });
                 return prevItems;
             }
-            return prevItems.map(item => item.id === productToAdd.id ? { ...item, quantity: newQuantity } : item);
+            return prevItems.map(item => item.docId === productToAdd.docId ? { ...item, quantity: newQuantity } : item);
         } else {
              if (productToAdd.stock < 1) {
                 toast({ variant: 'destructive', title: '재고 없음', description: '선택하신 상품은 재고가 없습니다.' });
@@ -217,19 +297,19 @@ export default function NewOrderPage() {
     });
   };
 
-  const updateItemQuantity = (productId: string, newQuantity: number) => {
-    const itemToUpdate = orderItems.find(item => item.id === productId);
+  const updateItemQuantity = (docId: string, newQuantity: number) => {
+    const itemToUpdate = orderItems.find(item => item.docId === docId);
     if (!itemToUpdate) return;
     
     if (newQuantity > 0 && newQuantity <= itemToUpdate.stock) {
-      setOrderItems(orderItems.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
+      setOrderItems(orderItems.map(item => item.docId === docId ? { ...item, quantity: newQuantity } : item));
     } else if (newQuantity > itemToUpdate.stock) {
         toast({ variant: 'destructive', title: '재고 부족', description: `최대 주문 가능 수량은 ${itemToUpdate.stock}개 입니다.` });
     }
   };
 
-  const removeItem = (productId: string) => {
-    setOrderItems(orderItems.filter(item => item.id !== productId));
+  const removeItem = (docId: string) => {
+    setOrderItems(orderItems.filter(item => item.docId !== docId));
   };
   
   const orderSummary = useMemo(() => {
@@ -240,20 +320,23 @@ export default function NewOrderPage() {
   }, [orderItems, deliveryFee]);
 
   const handleCompleteOrder = async () => {
+    setIsSubmitting(true);
     if (orderItems.length === 0) {
       toast({ variant: 'destructive', title: '주문 오류', description: '주문할 상품을 추가해주세요.' });
+      setIsSubmitting(false);
       return;
     }
     if (!selectedBranch) {
         toast({ variant: 'destructive', title: '주문 오류', description: '출고 지점을 선택해주세요.' });
+        setIsSubmitting(false);
         return;
     }
     
-    const newOrder: OrderData = {
+    const orderPayload: OrderData = {
         branchId: selectedBranch.id,
         branchName: selectedBranch.name,
-        orderDate: new Date(),
-        status: 'processing', // "processing", "completed", "canceled"
+        orderDate: existingOrder?.orderDate || new Date(),
+        status: existingOrder?.status || 'processing', 
         
         items: orderItems.map(({id, name, quantity, price}) => ({id, name, quantity, price})),
         summary: orderSummary,
@@ -289,8 +372,18 @@ export default function NewOrderPage() {
         request: specialRequest,
     };
 
-    await addOrder(newOrder);
-    router.push('/dashboard/orders');
+    try {
+      if (existingOrder) {
+        await updateOrder(existingOrder.id, orderPayload);
+      } else {
+        await addOrder(orderPayload);
+      }
+      router.push('/dashboard/orders');
+    } catch (error) {
+      // Error is already handled in the hook
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const handleBranchChange = (branchId: string) => {
@@ -346,11 +439,16 @@ export default function NewOrderPage() {
     }
   };
 
+  const pageTitle = existingOrder ? '주문 수정' : '새 주문 접수';
+  const pageDescription = existingOrder ? '기존 주문 정보를 수정합니다.' : '고객의 주문을 받아 시스템에 등록합니다.';
+
+  const isLoading = ordersLoading || productsLoading || branchesLoading;
+
   return (
     <div>
         <PageHeader
-          title="릴리맥 주문테이블"
-          description=""
+          title={pageTitle}
+          description={pageDescription}
         />
         <Card className="mb-6">
             <CardHeader>
@@ -361,9 +459,9 @@ export default function NewOrderPage() {
                   {!selectedBranch ? (
                     <div className="flex items-center gap-2">
                         <Store className="h-5 w-5 text-muted-foreground" />
-                        <Select onValueChange={handleBranchChange}>
+                        <Select onValueChange={handleBranchChange} disabled={isLoading || !!existingOrder}>
                             <SelectTrigger className="w-[300px]">
-                                <SelectValue placeholder="지점 선택" />
+                                <SelectValue placeholder={isLoading ? "지점 불러오는 중..." : "지점 선택"} />
                             </SelectTrigger>
                             <SelectContent>
                                 {branches.filter(b => b.type !== '본사').map(branch => (
@@ -377,9 +475,9 @@ export default function NewOrderPage() {
                   ) : (
                     <div className="flex items-center gap-4">
                       <p className="text-lg font-medium">
-                          안녕하세요, <span className="text-primary">{selectedBranch.name}</span>입니다.
+                          <span className="text-primary">{selectedBranch.name}</span>
                       </p>
-                      <Button variant="outline" size="sm" onClick={() => handleBranchChange("")}>
+                      <Button variant="outline" size="sm" onClick={() => handleBranchChange("")} disabled={!!existingOrder}>
                           지점 변경
                       </Button>
                     </div>
@@ -388,7 +486,7 @@ export default function NewOrderPage() {
             </CardContent>
         </Card>
 
-        <fieldset disabled={!selectedBranch} className="disabled:opacity-50">
+        <fieldset disabled={!selectedBranch || isLoading} className="disabled:opacity-50">
           <div className="grid gap-8 md:grid-cols-3">
             <div className="md:col-span-2">
               <Card>
@@ -414,18 +512,18 @@ export default function NewOrderPage() {
                                 <TableBody>
                                     {orderItems.length > 0 ? (
                                     orderItems.map(item => (
-                                        <TableRow key={item.id}>
+                                        <TableRow key={item.docId}>
                                         <TableCell>{item.name}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
-                                                <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
-                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
+                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.docId, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
+                                                <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.docId, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
+                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.docId, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
                                         <TableCell className="text-right">₩{(item.price * item.quantity).toLocaleString()}</TableCell>
-                                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
+                                        <TableCell><Button variant="ghost" size="icon" onClick={() => removeItem(item.docId)}><Trash2 className="h-4 w-4 text-destructive"/></Button></TableCell>
                                         </TableRow>
                                     ))
                                     ) : (
@@ -437,7 +535,7 @@ export default function NewOrderPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                             <div className="mt-2 p-2 border-t space-y-2">
+                            <div className="mt-2 p-2 border-t space-y-2">
                                 <div className="grid grid-cols-2 gap-2">
                                     <Select 
                                         value={selectedMainCategory || ""}
@@ -454,40 +552,34 @@ export default function NewOrderPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <Select
-                                        value={selectedMidCategory || ""}
-                                        onValueChange={(value) => {
-                                            setSelectedMidCategory(value);
-                                        }}
-                                        disabled={!selectedMainCategory}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="중분류 선택" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {midCategories.map(cat => (
-                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                {productsLoading ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                    <Select onValueChange={handleAddProduct}>
-                                        <SelectTrigger className="flex-1">
-                                            <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {filteredProducts.map(p => (
-                                                <SelectItem key={p.id} value={p.id} disabled={p.stock === 0}>
-                                                    {p.name} - ₩{p.price.toLocaleString()} (재고: {p.stock})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
+                                     <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" className="w-full justify-start" disabled={!selectedMainCategory}>
+                                                {selectedMidCategory || "중분류 선택"}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandList>
+                                                    {Object.entries(groupedProducts).map(([midCategory, products]) => (
+                                                        <CommandGroup key={midCategory} heading={midCategory}>
+                                                            {products.map(product => (
+                                                                <CommandItem
+                                                                    key={product.docId}
+                                                                    onSelect={() => handleAddProduct(product.docId)}
+                                                                    disabled={product.stock === 0}
+                                                                    className="flex justify-between"
+                                                                >
+                                                                    <span>{product.name}</span>
+                                                                    <span className="text-xs text-muted-foreground">₩{product.price.toLocaleString()} (재고: {product.stock})</span>
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    ))}
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
                             </div>
                             </CardContent>
@@ -513,8 +605,8 @@ export default function NewOrderPage() {
                                  <div>
                                     <Label className="text-xs text-muted-foreground">결제 상태</Label>
                                     <RadioGroup value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)} className="flex items-center gap-4 mt-2">
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="pending" id="status-pending" /><Label htmlFor="status-pending">미결</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="completed" id="status-completed" /><Label htmlFor="status-completed">완결</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="pending" id="status-pending" /><Label htmlFor="status-pending">결제대기</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="paid" id="status-paid" /><Label htmlFor="status-paid">결제완료</Label></div>
                                     </RadioGroup>
                                 </div>
                             </CardContent>
@@ -548,18 +640,14 @@ export default function NewOrderPage() {
                                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
                                           <CommandList>
-                                            {contactSearchResults.length > 0 ? (
-                                              contactSearchResults.map((customer) => (
+                                            {contactSearchResults.map((customer) => (
                                                 <CommandItem key={customer.id} onSelect={() => handleCustomerSelect(customer)}>
                                                   <div className="flex flex-col">
                                                     <span className="font-medium">{customer.name} {customer.companyName && `(${customer.companyName})`}</span>
                                                     <span className="text-xs text-muted-foreground">{customer.contact}</span>
                                                   </div>
                                                 </CommandItem>
-                                              ))
-                                            ) : (
-                                              <div className="p-4 text-sm text-center text-muted-foreground">일치하는 고객이 없습니다.</div>
-                                            )}
+                                              ))}
                                           </CommandList>
                                         </Command>
                                       </PopoverContent>
@@ -571,13 +659,19 @@ export default function NewOrderPage() {
                                 </div>
                                 <div className="flex items-center space-x-2 mt-4">
                                   <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={(checked) => setIsAnonymous(!!checked)} />
-                                  <label htmlFor="anonymous" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                  <label
+                                    htmlFor="anonymous"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                  >
                                     익명으로 보내기 (인수증에 주문자 정보 미표시)
                                   </label>
                                 </div>
                                 <div className="flex items-center space-x-2 mt-4">
                                   <Checkbox id="register-customer" checked={registerCustomer} onCheckedChange={(checked) => setRegisterCustomer(!!checked)} />
-                                  <label htmlFor="register-customer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                  <label
+                                    htmlFor="register-customer"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                  >
                                     이 주문자 정보를 고객으로 등록/업데이트합니다
                                   </label>
                                 </div>
@@ -630,7 +724,7 @@ export default function NewOrderPage() {
                                                       <SelectValue />
                                                   </SelectTrigger>
                                                   <SelectContent>
-                                                      {Array.from({length: 12}, (_, i) => `${10+i}:00`).map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+                                                      {timeOptions.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
                                                   </SelectContent>
                                               </Select>
                                           </div>
@@ -673,7 +767,7 @@ export default function NewOrderPage() {
                                                       <SelectValue />
                                                   </SelectTrigger>
                                                   <SelectContent>
-                                                      {Array.from({length: 12}, (_, i) => `${10+i}:00`).map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
+                                                      {timeOptions.map(time => <SelectItem key={time} value={time}>{time}</SelectItem>)}
                                                   </SelectContent>
                                               </Select>
                                           </div>
