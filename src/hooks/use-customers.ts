@@ -6,7 +6,6 @@ import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
-import type { Order } from './use-orders';
 
 export interface Customer extends CustomerFormValues {
   id: string;
@@ -26,7 +25,6 @@ export function useCustomers() {
     try {
       setLoading(true);
       const customersCollection = collection(db, 'customers');
-      // In a real application, you might want to paginate this query
       const q = query(customersCollection, where("isDeleted", "!=", true));
       
       const customersData = (await getDocs(q)).docs.map(doc => {
@@ -145,7 +143,7 @@ export function useCustomers() {
                 isDeleted: false,
             };
 
-            const q = query(collection(db, "customers"), where("contact", "==", customerData.contact), where("branch", "==", customerData.branch));
+            const q = query(collection(db, "customers"), where("contact", "==", customerData.contact), where("branch", "==", customerData.branch), where("isDeleted", "!=", true));
             const querySnapshot = await getDocs(q);
             
             if (!querySnapshot.empty) {
