@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
 import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp, UserSearch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { useBranches, Branch } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -92,12 +92,25 @@ export default function NewOrderPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
 
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
-  const [productToAdd, setProductToAdd] = useState<Product | null>(null);
 
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
+  
+  const groupedProducts = useMemo(() => {
+    return branchProducts.reduce((acc, product) => {
+        const { mainCategory, midCategory } = product;
+        if (!acc[mainCategory]) {
+            acc[mainCategory] = {};
+        }
+        if (!acc[mainCategory][midCategory]) {
+            acc[mainCategory][midCategory] = [];
+        }
+        acc[mainCategory][midCategory].push(product);
+        return acc;
+    }, {} as Record<string, Record<string, Product[]>>);
+  }, [branchProducts]);
 
   const todaysOrders = useMemo(() => {
     const today = new Date();
@@ -177,11 +190,9 @@ export default function NewOrderPage() {
     setSelectedDistrict(null);
   }, [selectedBranch]);
 
-  const handleAddProduct = () => {
-    if (!productToAdd) {
-        toast({ variant: 'destructive', title: '상품 미선택', description: '추가할 상품을 선택해주세요.' });
-        return;
-    }
+  const handleAddProduct = (productId: string) => {
+    const productToAdd = branchProducts.find(p => p.id === productId);
+    if (!productToAdd) return;
 
     setOrderItems(prevItems => {
         const existingItem = prevItems.find(item => item.id === productToAdd.id);
@@ -424,29 +435,31 @@ export default function NewOrderPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                             <div className="mt-2 p-2 border-t flex items-center gap-2">
-                                {productsLoading ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Select onValueChange={(value) => setProductToAdd(branchProducts.find(p => p.id === value) || null)}>
+                             <div className="mt-2 p-2 border-t">
+                                {productsLoading ? (<Loader2 className="h-5 w-5 animate-spin"/>) : (
+                                    <Select onValueChange={handleAddProduct}>
                                         <SelectTrigger className="flex-1">
-                                            <SelectValue placeholder="상품을 선택하세요..." />
+                                            <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {branchProducts.map(p => (
-                                                <SelectItem key={p.id} value={p.id} disabled={p.stock === 0}>
-                                                    {p.name} (재고: {p.stock})
-                                                </SelectItem>
+                                            {Object.entries(groupedProducts).map(([mainCategory, midCategories]) => (
+                                                <SelectGroup key={mainCategory}>
+                                                    <SelectLabel>{mainCategory}</SelectLabel>
+                                                    {Object.entries(midCategories).map(([midCategory, products]) => (
+                                                        <SelectGroup key={midCategory}>
+                                                             <SelectLabel className="pl-6 text-xs">{midCategory}</SelectLabel>
+                                                             {products.map(p => (
+                                                                <SelectItem key={p.id} value={p.id} disabled={p.stock === 0} className="pl-8">
+                                                                    {p.name} (재고: {p.stock})
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    ))}
+                                                </SelectGroup>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <Button onClick={handleAddProduct}>
-                                        <PlusCircle className="mr-2 h-4 w-4"/>
-                                        추가
-                                    </Button>
-                                  </>
-                                )}
+                                  )}
                             </div>
                             </CardContent>
                           </Card>
