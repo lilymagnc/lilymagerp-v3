@@ -167,7 +167,7 @@ export function useOrders() {
           // Use getDocs directly inside transaction for reads
           const productSnapshot = await getDocs(productQuery); 
           if (productSnapshot.empty) {
-            throw new Error(`상품을 찾을 수 없습니다: '${item.name}' (${orderData.branchName})`);
+            throw new Error(`상품을 찾을 수 없습니다: ${item.name} (${orderData.branchName})`);
           }
           const productDocRef = productSnapshot.docs[0].ref;
           const productDoc = await transaction.get(productDocRef);
@@ -215,7 +215,7 @@ export function useOrders() {
             const currentStock = productDoc.data()?.stock || 0;
             const newStock = currentStock - item.quantity;
             if (newStock < 0) {
-              throw new Error(`재고 부족: '${item.name}' (현재 ${currentStock}개)`);
+              throw new Error(`재고 부족: ${item.name} (현재 ${currentStock}개)`);
             }
             transaction.update(productDocRef, { stock: newStock });
   
