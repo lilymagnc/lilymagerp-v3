@@ -33,13 +33,34 @@ export function MessagePrintLayout({ order, labelType, startPosition, font, font
       }
   }
 
-  const fontStyle = {
+  const fontStyle: React.CSSProperties = {
     fontFamily: font,
     fontSize: `${fontSize}pt`,
   };
 
   return (
     <div className="max-w-4xl mx-auto">
+       <style jsx global>{`
+          @media print {
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+            #printable-area-wrapper {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 210mm;
+              height: 297mm;
+              box-sizing: border-box;
+              padding: 10mm 7.5mm; /* Adjust padding for message labels if different */
+            }
+          }
+        `}</style>
       <div className="no-print">
         <PageHeader
           title="메시지 인쇄 미리보기"
@@ -57,7 +78,7 @@ export function MessagePrintLayout({ order, labelType, startPosition, font, font
             </div>
         </PageHeader>
       </div>
-      <div id="printable-area" className="bg-white">
+      <div id="printable-area-wrapper" className="bg-white">
         <div 
           id="label-grid-container" 
           className={cn(
@@ -69,7 +90,7 @@ export function MessagePrintLayout({ order, labelType, startPosition, font, font
           {labels.map((content, index) => (
             <div 
               key={index} 
-              className="bg-white p-4 flex flex-col items-center justify-center text-center border border-dashed border-gray-300 print:border-none"
+              className="bg-white p-4 flex flex-col items-center justify-center text-center border border-dashed border-gray-300 print:border-transparent"
               style={{ height: config.height, ...fontStyle }}
             >
               <p className="whitespace-pre-wrap">

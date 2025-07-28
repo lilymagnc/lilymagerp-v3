@@ -56,6 +56,27 @@ export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
 
     return (
         <div>
+             <style jsx global>{`
+                @media print {
+                    @page {
+                        size: A4;
+                        margin: 0;
+                    }
+                    body * {
+                       visibility: hidden;
+                    }
+                    #printable-area, #printable-area * {
+                        visibility: visible;
+                    }
+                    #printable-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        height: auto;
+                    }
+                }
+             `}</style>
              <div className="max-w-4xl mx-auto no-print">
                 <PageHeader
                     title="주문서 인쇄 미리보기"

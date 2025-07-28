@@ -25,7 +25,7 @@ export function PrintLayout({ labels }: PrintLayoutProps) {
           </Button>
         </PageHeader>
       </div>
-      <div id="printable-area" className="bg-white">
+      <div id="printable-area-wrapper" className="bg-white">
         <LabelGrid items={labels} />
       </div>
     </div>
