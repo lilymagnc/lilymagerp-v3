@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc, getDoc, Firestore, Transaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -110,34 +110,26 @@ export function useOrders() {
     fetchOrders();
   }, [fetchOrders]);
   
-  const updateCustomerOnOrder = async (
-    transaction: any,
-    customerId: string,
+  const updateCustomerOnOrder = (
+    transaction: Transaction,
+    customerDocRef: any,
+    customerData: Customer,
     orderData: OrderData
   ) => {
-    const customerDocRef = doc(db, 'customers', customerId);
-    const customerDoc = await transaction.get(customerDocRef);
-    if (!customerDoc.exists()) {
-      // This case should ideally not happen if customer ID is present
-      return;
-    }
-    const existingCustomer = customerDoc.data() as Customer;
-    
     const pointsChange = orderData.summary.pointsEarned - orderData.summary.pointsUsed;
-
     const updatedData = {
         lastOrderDate: serverTimestamp(),
-        totalSpent: (existingCustomer.totalSpent || 0) + orderData.summary.total,
-        orderCount: (existingCustomer.orderCount || 0) + 1,
-        points: (existingCustomer.points || 0) + pointsChange,
+        totalSpent: (customerData.totalSpent || 0) + orderData.summary.total,
+        orderCount: (customerData.orderCount || 0) + 1,
+        points: (customerData.points || 0) + pointsChange,
     };
     transaction.update(customerDocRef, updatedData);
   }
 
-  const addCustomerFromOrder = async (
-    transaction: any,
+  const addCustomerFromOrder = (
+    transaction: Transaction,
     orderData: OrderData
-  ): Promise<string> => {
+  ): string => {
     const { orderer } = orderData;
     const newCustomerData = {
         name: orderer.name,
@@ -165,80 +157,86 @@ export function useOrders() {
     
     try {
       await runTransaction(db, async (transaction) => {
-        // Ensure orderDate is a JS Date object before proceeding
-        const getOrderDate = () => {
-          const { orderDate } = orderData;
-          if (orderDate instanceof Timestamp) return orderDate.toDate();
-          if (orderDate instanceof Date) return orderDate;
-          const parsedDate = new Date(orderDate);
-          return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
-        };
-
-        const orderDate = getOrderDate();
-        const { registerCustomer, ...restOfOrderData } = orderData;
-        
-        const orderPayload = {
-          ...restOfOrderData,
-          orderDate: Timestamp.fromDate(orderDate),
-        };
-
-        if (orderPayload.orderer.id === undefined) {
-          delete orderPayload.orderer.id;
-        }
-
-        const orderRef = doc(collection(db, 'orders'));
-        transaction.set(orderRef, orderPayload);
-
-        // Customer and Points Logic
-        if (registerCustomer) {
-            if (orderData.orderer.id) {
-                await updateCustomerOnOrder(transaction, orderData.orderer.id, orderData);
-            } else {
-                await addCustomerFromOrder(transaction, orderData);
-            }
-        }
-        
-        // Stock History Logic
-        for (const item of orderData.items) {
-          if (!item.id || item.quantity <= 0) continue;
-          
+        // --- 1. READ PHASE ---
+        const productReads = orderData.items.map(async (item) => {
           const productQuery = query(
             collection(db, "products"),
             where("id", "==", item.id),
             where("branch", "==", orderData.branchName)
           );
-          const productSnapshot = await getDocs(productQuery);
-
+          // Use getDocs directly inside transaction for reads
+          const productSnapshot = await getDocs(productQuery); 
           if (productSnapshot.empty) {
-            throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${orderData.branchName}' 지점에서 찾을 수 없습니다.`);
+            throw new Error(`상품을 찾을 수 없습니다: '${item.name}' (${orderData.branchName})`);
           }
           const productDocRef = productSnapshot.docs[0].ref;
           const productDoc = await transaction.get(productDocRef);
+          if (!productDoc.exists()) {
+            throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
+          }
+          return { productDocRef, productDoc, item };
+        });
 
-          if (!productDoc.exists()) throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
+        const productsToUpdate = await Promise.all(productReads);
 
-          const currentStock = productDoc.data().stock || 0;
-          const newStock = currentStock - item.quantity;
-          if (newStock < 0) throw new Error(`재고 부족: '${item.name}'의 재고가 부족하여 주문을 완료할 수 없습니다. (현재 재고: ${currentStock})`);
-          
-          transaction.update(productDocRef, { stock: newStock });
+        let customerDocRef;
+        let customerDoc;
+        if (orderData.registerCustomer && orderData.orderer.id) {
+            customerDocRef = doc(db, 'customers', orderData.orderer.id);
+            customerDoc = await transaction.get(customerDocRef);
+        }
 
-          const historyDocRef = doc(collection(db, "stockHistory"));
-          transaction.set(historyDocRef, {
-            date: Timestamp.fromDate(orderDate),
-            type: "out",
-            itemType: "product",
-            itemId: item.id,
-            itemName: item.name,
-            quantity: item.quantity,
-            fromStock: currentStock,
-            toStock: newStock,
-            resultingStock: newStock,
-            branch: orderData.branchName,
-            operator: user?.email || "Unknown User",
-            price: item.price,
-            totalAmount: item.price * item.quantity,
-          });
+        // --- 2. WRITE PHASE ---
+        const getOrderDate = () => {
+            const { orderDate } = orderData;
+            if (orderDate instanceof Timestamp) return orderDate.toDate();
+            if (orderDate instanceof Date) return orderDate;
+            const parsedDate = new Date(orderDate);
+            return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+        };
+        const orderDate = getOrderDate();
+        const { registerCustomer, ...restOfOrderData } = orderData;
+        const orderPayload = { ...restOfOrderData, orderDate: Timestamp.fromDate(orderDate) };
+        if (orderPayload.orderer.id === undefined) {
+          delete orderPayload.orderer.id;
+        }
+        const orderRef = doc(collection(db, 'orders'));
+        transaction.set(orderRef, orderPayload);
+
+        if (registerCustomer) {
+            if (customerDocRef && customerDoc?.exists()) {
+                updateCustomerOnOrder(transaction, customerDocRef, customerDoc.data() as Customer, orderData);
+            } else {
+                addCustomerFromOrder(transaction, orderData);
+            }
+        }
+        
+        const historyBatch = writeBatch(db);
+
+        for (const { productDocRef, productDoc, item } of productsToUpdate) {
+            const currentStock = productDoc.data()?.stock || 0;
+            const newStock = currentStock - item.quantity;
+            if (newStock < 0) {
+              throw new Error(`재고 부족: '${item.name}' (현재 ${currentStock}개)`);
+            }
+            transaction.update(productDocRef, { stock: newStock });
+  
+            const historyDocRef = doc(collection(db, "stockHistory"));
+            transaction.set(historyDocRef, {
+              date: Timestamp.fromDate(orderDate),
+              type: "out",
+              itemType: "product",
+              itemId: item.id,
+              itemName: item.name,
+              quantity: item.quantity,
+              fromStock: currentStock,
+              toStock: newStock,
+              resultingStock: newStock,
+              branch: orderData.branchName,
+              operator: user?.email || "Unknown User",
+              price: item.price,
+              totalAmount: item.price * item.quantity,
+            });
         }
       });
       
@@ -256,19 +254,18 @@ export function useOrders() {
         description: error instanceof Error ? error.message : '주문 추가 중 오류가 발생했습니다.',
         duration: 5000,
       });
-      throw error; // Re-throw to be caught in the component
+      throw error;
     } finally {
       setLoading(false);
     }
   };
   
   const updateOrder = async (orderId: string, orderData: OrderData) => {
-     // For simplicity, we are not implementing the full logic to revert/recalculate stock and points on update.
-     // In a real-world scenario, this would require careful handling of state changes.
      try {
        setLoading(true);
        const orderRef = doc(db, "orders", orderId);
-       const orderPayload = { ...orderData };
+       const { registerCustomer, ...restOfOrderData } = orderData;
+       const orderPayload = { ...restOfOrderData };
        if (orderPayload.orderer.id === undefined) {
           delete orderPayload.orderer.id;
        }
