@@ -14,6 +14,27 @@ interface PrintLayoutProps {
 export function PrintLayout({ labels }: PrintLayoutProps) {
   return (
     <div className="max-w-4xl mx-auto">
+       <style jsx global>{`
+          @media print {
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+            #printable-area-wrapper {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 210mm;
+              height: 297mm;
+              box-sizing: border-box;
+              padding: 13.5mm 6.5mm;
+            }
+          }
+        `}</style>
       <div className="no-print">
         <PageHeader
           title="라벨 인쇄 미리보기"

@@ -70,29 +70,7 @@ export default async function PrintLabelsPage({ searchParams }: PageProps) {
 
     return (
         <Suspense fallback={<div className="max-w-4xl mx-auto p-6"><Skeleton className="h-96 w-full" /></div>}>
-            <style jsx global>{`
-              @media print {
-                @page {
-                  size: A4;
-                  margin: 0;
-                }
-                body {
-                  margin: 0;
-                  padding: 0;
-                }
-                #printable-area-wrapper {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 210mm;
-                  height: 297mm;
-                  box-sizing: border-box;
-                  padding: 13.5mm 6.5mm;
-                }
-              }
-            `}</style>
             <PrintLayout labels={finalLabels} />
         </Suspense>
     );
 }
-
