@@ -190,22 +190,24 @@ export default function MaterialsPage() {
                         </Button>
                     )}
                 </div>
-                 {isHeadOfficeAdmin && (
-                    <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                     {isHeadOfficeAdmin && (
                          <ImportButton resourceName="자재" onImport={handleImport}>
                             <FileUp className="mr-2 h-4 w-4" />
                              엑셀로 가져오기
                          </ImportButton>
-                        <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
-                        <Download className="mr-2 h-4 w-4" />
-                        현재 목록 다운로드
-                        </Button>
+                     )}
+                    <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
+                    <Download className="mr-2 h-4 w-4" />
+                    현재 목록 다운로드
+                    </Button>
+                    {isHeadOfficeAdmin && (
                         <Button size="sm" onClick={handleAdd}>
                             <PlusCircle className="mr-2 h-4 w-4" />
                             자재 추가
                         </Button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </CardContent>
       </Card>

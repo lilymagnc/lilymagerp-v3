@@ -152,22 +152,24 @@ export default function ProductsPage() {
                         </Button>
                     )}
                 </div>
-                {isHeadOfficeAdmin && (
-                  <div className="flex items-center gap-2">
-                     <ImportButton resourceName="상품" onImport={handleImport}>
-                        <FileUp className="mr-2 h-4 w-4" />
-                         엑셀로 가져오기
-                     </ImportButton>
+                <div className="flex items-center gap-2">
+                     {isHeadOfficeAdmin && (
+                        <ImportButton resourceName="상품" onImport={handleImport}>
+                            <FileUp className="mr-2 h-4 w-4" />
+                            엑셀로 가져오기
+                        </ImportButton>
+                     )}
                      <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
                         <Download className="mr-2 h-4 w-4" />
                         현재 목록 다운로드
                       </Button>
-                    <Button size="sm" onClick={handleAdd}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        상품 추가
-                    </Button>
+                    {isHeadOfficeAdmin && (
+                        <Button size="sm" onClick={handleAdd}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            상품 추가
+                        </Button>
+                    )}
                   </div>
-                )}
             </div>
         </CardContent>
       </Card>
