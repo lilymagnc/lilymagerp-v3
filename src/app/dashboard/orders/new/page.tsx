@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBranches, Branch } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export default function NewOrderPage() {
   const { branches, loading: branchesLoading } = useBranches();
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
-  const { findCustomersByContact } = useCustomers();
+  const { customers, findCustomersByContact, updateCustomer } = useCustomers();
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id');
@@ -71,6 +71,9 @@ export default function NewOrderPage() {
 
   const [contactSearchResults, setContactSearchResults] = useState<Customer[]>([]);
   const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [usedPoints, setUsedPoints] = useState(0);
+
   
   const [orderType, setOrderType] = useState<OrderType>("store");
   const [receiptType, setReceiptType] = useState<ReceiptType>("pickup");
@@ -99,7 +102,7 @@ export default function NewOrderPage() {
 
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [selectedMidCategory, setSelectedMidCategory] = useState<string | null>(null);
-  
+
   const timeOptions = useMemo(() => {
     const options = [];
     for (let h = 7; h <= 22; h++) {
@@ -120,20 +123,17 @@ export default function NewOrderPage() {
   }, [allProducts, selectedBranch]);
 
   const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
-  
-  const groupedProducts = useMemo(() => {
-    if (!selectedMainCategory) return {};
-    return branchProducts
-        .filter(p => p.mainCategory === selectedMainCategory)
-        .reduce((acc, product) => {
-            const { midCategory } = product;
-            if (!acc[midCategory]) {
-                acc[midCategory] = [];
-            }
-            acc[midCategory].push(product);
-            return acc;
-        }, {} as Record<string, Product[]>);
+  const midCategories = useMemo(() => {
+    if (!selectedMainCategory) return [];
+    return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
   }, [branchProducts, selectedMainCategory]);
+
+  const filteredProducts = useMemo(() => {
+    return branchProducts.filter(p => 
+        (!selectedMainCategory || p.mainCategory === selectedMainCategory) &&
+        (!selectedMidCategory || p.midCategory === selectedMidCategory)
+    );
+  }, [branchProducts, selectedMainCategory, selectedMidCategory]);
 
 
   const todaysOrders = useMemo(() => {
@@ -199,7 +199,7 @@ export default function NewOrderPage() {
             setSpecialRequest(foundOrder.request || "");
 
             setPaymentMethod(foundOrder.payment.method);
-            setPaymentStatus(foundOrder.payment.status);
+            setPaymentStatus(foundOrder.payment.status as PaymentStatus);
         }
       }
   }, [orderId, orders, ordersLoading, branches, branchesLoading, allProducts, productsLoading])
@@ -211,13 +211,15 @@ export default function NewOrderPage() {
       setPickerContact(ordererContact);
     }
   }, [ordererName, ordererContact, receiptType]);
-
+  
   const debouncedSearch = useCallback(
     debounce(async (contact: string) => {
       if (contact.length >= 4) {
         const results = await findCustomersByContact(contact);
         setContactSearchResults(results);
-        setIsContactSearchOpen(results.length > 0);
+        if (results.length > 0) {
+          setIsContactSearchOpen(true);
+        }
       } else {
         setContactSearchResults([]);
         setIsContactSearchOpen(false);
@@ -230,9 +232,12 @@ export default function NewOrderPage() {
     const formattedPhoneNumber = formatPhoneNumber(e.target.value);
     setOrdererContact(formattedPhoneNumber);
     debouncedSearch(formattedPhoneNumber);
+    setSelectedCustomer(null); // Reset selected customer when contact changes
+    setUsedPoints(0);
   }
 
   const handleCustomerSelect = (customer: Customer) => {
+    setSelectedCustomer(customer);
     setOrdererName(customer.name);
     setOrdererCompany(customer.companyName || "");
     setOrdererEmail(customer.email || "");
@@ -275,6 +280,7 @@ export default function NewOrderPage() {
   }, [selectedBranch, existingOrder]);
 
   const handleAddProduct = (docId: string) => {
+    if (!docId) return;
     const productToAdd = branchProducts.find(p => p.docId === docId);
     if (!productToAdd) return;
 
@@ -314,10 +320,20 @@ export default function NewOrderPage() {
   
   const orderSummary = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const discount = 0; // Placeholder for discount logic
-    const total = subtotal - discount + deliveryFee;
-    return { subtotal, discount, total, deliveryFee };
-  }, [orderItems, deliveryFee]);
+    const pointsToUse = Math.min(subtotal, usedPoints);
+    const total = subtotal - pointsToUse + deliveryFee;
+    const pointsEarned = Math.floor(subtotal * 0.02);
+
+    return { subtotal, deliveryFee, pointsUsed: pointsToUse, pointsEarned, total, discount: 0 };
+  }, [orderItems, deliveryFee, usedPoints]);
+
+
+  const handleUseAllPoints = () => {
+    if (!selectedCustomer) return;
+    const maxPoints = Math.min(selectedCustomer.points || 0, orderSummary.subtotal);
+    setUsedPoints(maxPoints);
+  };
+
 
   const handleCompleteOrder = async () => {
     setIsSubmitting(true);
@@ -341,7 +357,7 @@ export default function NewOrderPage() {
         items: orderItems.map(({id, name, quantity, price}) => ({id, name, quantity, price})),
         summary: orderSummary,
 
-        orderer: { name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
+        orderer: { id: selectedCustomer?.id, name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
         isAnonymous: isAnonymous,
         registerCustomer: registerCustomer,
         orderType,
@@ -535,7 +551,7 @@ export default function NewOrderPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                            <div className="mt-2 p-2 border-t space-y-2">
+                             <div className="mt-2 p-2 border-t space-y-2">
                                 <div className="grid grid-cols-2 gap-2">
                                     <Select 
                                         value={selectedMainCategory || ""}
@@ -552,34 +568,40 @@ export default function NewOrderPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                     <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" className="w-full justify-start" disabled={!selectedMainCategory}>
-                                                {selectedMidCategory || "중분류 선택"}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                            <Command>
-                                                <CommandList>
-                                                    {Object.entries(groupedProducts).map(([midCategory, products]) => (
-                                                        <CommandGroup key={midCategory} heading={midCategory}>
-                                                            {products.map(product => (
-                                                                <CommandItem
-                                                                    key={product.docId}
-                                                                    onSelect={() => handleAddProduct(product.docId)}
-                                                                    disabled={product.stock === 0}
-                                                                    className="flex justify-between"
-                                                                >
-                                                                    <span>{product.name}</span>
-                                                                    <span className="text-xs text-muted-foreground">₩{product.price.toLocaleString()} (재고: {product.stock})</span>
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    ))}
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <Select
+                                        value={selectedMidCategory || ""}
+                                        onValueChange={(value) => {
+                                            setSelectedMidCategory(value);
+                                        }}
+                                        disabled={!selectedMainCategory}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="중분류 선택" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {midCategories.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                {productsLoading ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                    <Select onValueChange={handleAddProduct} value="">
+                                        <SelectTrigger className="flex-1">
+                                            <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {filteredProducts.map(p => (
+                                                <SelectItem key={p.docId} value={p.docId} disabled={p.stock === 0}>
+                                                    {p.name} - ₩{p.price.toLocaleString()} (재고: {p.stock})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
                                 </div>
                             </div>
                             </CardContent>
@@ -627,31 +649,31 @@ export default function NewOrderPage() {
                                         <Label htmlFor="orderer-name">주문자명</Label>
                                         <Input id="orderer-name" placeholder="주문자명 입력" value={ordererName} onChange={e => setOrdererName(e.target.value)} />
                                     </div>
-                                    <Popover open={isContactSearchOpen} onOpenChange={setIsContactSearchOpen}>
-                                      <PopoverTrigger asChild>
-                                        <div className="space-y-2">
-                                          <Label htmlFor="orderer-contact">연락처</Label>
+                                    <div className="space-y-2">
+                                      <Label htmlFor="orderer-contact">연락처</Label>
+                                      <Popover open={isContactSearchOpen} onOpenChange={setIsContactSearchOpen}>
+                                        <PopoverTrigger asChild>
                                           <div className="relative">
                                             <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                             <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={handleContactChange} className="pl-10" />
                                           </div>
-                                        </div>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                          <CommandList>
-                                            {contactSearchResults.map((customer) => (
-                                                <CommandItem key={customer.id} onSelect={() => handleCustomerSelect(customer)}>
-                                                  <div className="flex flex-col">
-                                                    <span className="font-medium">{customer.name} {customer.companyName && `(${customer.companyName})`}</span>
-                                                    <span className="text-xs text-muted-foreground">{customer.contact}</span>
-                                                  </div>
-                                                </CommandItem>
-                                              ))}
-                                          </CommandList>
-                                        </Command>
-                                      </PopoverContent>
-                                    </Popover>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                          <Command>
+                                            <CommandList>
+                                              {contactSearchResults.map((customer) => (
+                                                  <CommandItem key={customer.id} onSelect={() => handleCustomerSelect(customer)}>
+                                                    <div className="flex flex-col">
+                                                      <span className="font-medium">{customer.name} {customer.companyName && `(${customer.companyName})`}</span>
+                                                      <span className="text-xs text-muted-foreground">{customer.contact}</span>
+                                                    </div>
+                                                  </CommandItem>
+                                                ))}
+                                            </CommandList>
+                                          </Command>
+                                        </PopoverContent>
+                                      </Popover>
+                                    </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-email">이메일</Label>
                                         <Input id="orderer-email" type="email" placeholder="email@example.com" value={ordererEmail} onChange={e => setOrdererEmail(e.target.value)} />
@@ -865,11 +887,35 @@ export default function NewOrderPage() {
                             <span>배송비</span>
                             <span>₩{orderSummary.deliveryFee.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between">
-                            <span>할인</span>
-                            <span className="text-destructive">-₩{orderSummary.discount.toLocaleString()}</span>
-                        </div>
+                        
                         <Separator />
+                        
+                        <div className="space-y-2">
+                            <Label>포인트 사용</Label>
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    type="number" 
+                                    value={usedPoints}
+                                    onChange={(e) => setUsedPoints(Number(e.target.value))}
+                                    max={selectedCustomer?.points || 0}
+                                    disabled={!selectedCustomer}
+                                />
+                                <Button variant="outline" size="sm" onClick={handleUseAllPoints} disabled={!selectedCustomer}>전액 사용</Button>
+                            </div>
+                            {selectedCustomer && <p className="text-xs text-muted-foreground">사용 가능: {selectedCustomer.points?.toLocaleString() || 0} P</p>}
+                        </div>
+
+                        <div className="flex justify-between text-muted-foreground text-sm">
+                            <span>포인트 할인</span>
+                            <span className="text-destructive">-₩{orderSummary.pointsUsed.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground text-sm">
+                            <span>적립 예정 포인트</span>
+                            <span>{orderSummary.pointsEarned.toLocaleString()} P</span>
+                        </div>
+
+                        <Separator />
+
                         <div className="flex justify-between font-bold text-lg">
                             <span>총 결제 금액</span>
                             <span>₩{orderSummary.total.toLocaleString()}</span>
