@@ -257,8 +257,11 @@ export default function NewOrderPage() {
   }
 
   const deliveryFee = useMemo(() => {
-    if (receiptType === 'pickup' || !selectedDistrict) return 0;
-    const feeInfo = selectedBranch?.deliveryFees?.find(df => df.district === selectedDistrict);
+    if (receiptType === 'pickup') return 0;
+    if (!selectedBranch || !selectedDistrict) {
+      return 0;
+    }
+    const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
     return feeInfo?.fee ?? 0;
   }, [selectedDistrict, selectedBranch, receiptType]);
 
@@ -689,18 +692,6 @@ export default function NewOrderPage() {
                           </Card>
                       </div>
 
-                      {/* 주문 유형 */}
-                      <div>
-                          <Label>주문 유형</Label>
-                          <RadioGroup value={orderType} onValueChange={(v) => setOrderType(v as OrderType)} className="flex items-center gap-4 mt-2">
-                              <div className="flex items-center space-x-2"><RadioGroupItem value="store" id="type-store" /><Label htmlFor="type-store">매장방문</Label></div>
-                              <div className="flex items-center space-x-2"><RadioGroupItem value="phone" id="type-phone" /><Label htmlFor="type-phone">전화</Label></div>
-                              <div className="flex items-center space-x-2"><RadioGroupItem value="naver" id="type-naver" /><Label htmlFor="type-naver">네이버</Label></div>
-                              <div className="flex items-center space-x-2"><RadioGroupItem value="kakao" id="type-kakao" /><Label htmlFor="type-kakao">카카오톡</Label></div>
-                              <div className="flex items-center space-x-2"><RadioGroupItem value="etc" id="type-etc" /><Label htmlFor="type-etc">기타</Label></div>
-                          </RadioGroup>
-                      </div>
-
                       {/* 수령 정보 */}
                       <div>
                           <Label>수령 정보</Label>
@@ -746,7 +737,7 @@ export default function NewOrderPage() {
                                       </div>
                                       <div className="space-y-2">
                                           <Label htmlFor="picker-contact">픽업자 연락처</Label>
-                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleGenericContactChange(e, setPickerContact)} />
+                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleContactChange(e, setPickerContact)} />
                                       </div>
                                   </CardContent>
                               </Card>
@@ -789,7 +780,7 @@ export default function NewOrderPage() {
                                           </div>
                                           <div className="space-y-2">
                                               <Label htmlFor="recipient-contact">받는 분 연락처</Label>
-                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleGenericContactChange(e, setRecipientContact)} />
+                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleContactChange(e, setRecipientContact)} />
                                           </div>
                                       </div>
                                       <div className="space-y-2">
@@ -802,7 +793,7 @@ export default function NewOrderPage() {
                                           </div>
                                           <Input id="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
                                       </div>
-                                      <div className="space-y-2">
+                                       <div className="space-y-2">
                                           <Label>배송비</Label>
                                           <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''}>
                                               <SelectTrigger>
@@ -950,4 +941,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
