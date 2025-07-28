@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search, MoreHorizontal } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
+import { MessagePrintDialog } from "./components/message-print-dialog";
 
 export default function OrdersPage() {
   const { orders, loading, updateOrderStatus, updatePaymentStatus } = useOrders();
@@ -25,10 +26,28 @@ export default function OrdersPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
-  
+  const [isMessagePrintDialogOpen, setIsMessagePrintDialogOpen] = useState(false);
+  const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<Order | null>(null);
+
   const handlePrint = (orderId: string) => {
     router.push(`/dashboard/orders/print-preview/${orderId}`);
   };
+
+  const handleMessagePrintClick = (order: Order) => {
+    setSelectedOrderForPrint(order);
+    setIsMessagePrintDialogOpen(true);
+  };
+
+  const handleMessagePrintSubmit = ({ orderId, labelType, startPosition }: { orderId: string; labelType: string; startPosition: number }) => {
+    const params = new URLSearchParams({
+        orderId,
+        labelType,
+        start: String(startPosition),
+    });
+    router.push(`/dashboard/orders/print-message?${params.toString()}`);
+    setIsMessagePrintDialogOpen(false);
+  };
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -160,6 +179,7 @@ export default function OrdersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>작업</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => handlePrint(order.id)}>주문서 인쇄</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleMessagePrintClick(order)}>메시지 인쇄</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>주문 상태 변경</DropdownMenuSubTrigger>
@@ -186,6 +206,14 @@ export default function OrdersPage() {
         </Table>
         </CardContent>
       </Card>
+      {selectedOrderForPrint && (
+        <MessagePrintDialog
+            isOpen={isMessagePrintDialogOpen}
+            onOpenChange={setIsMessagePrintDialogOpen}
+            order={selectedOrderForPrint}
+            onSubmit={handleMessagePrintSubmit}
+        />
+      )}
     </>
   );
 }
