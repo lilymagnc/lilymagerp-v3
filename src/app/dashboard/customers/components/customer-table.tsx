@@ -14,9 +14,10 @@ interface CustomerTableProps {
   customers: Customer[];
   onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
+  onRowClick: (customer: Customer) => void;
 }
 
-export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProps) {
+export function CustomerTable({ customers, onEdit, onDelete, onRowClick }: CustomerTableProps) {
     
     const getGradeBadge = (grade?: string) => {
         switch (grade) {
@@ -49,7 +50,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
           <TableBody>
             {customers.length > 0 ? (
               customers.map((customer) => (
-                <TableRow key={customer.id}>
+                <TableRow key={customer.id} onClick={() => onRowClick(customer)} className="cursor-pointer">
                   <TableCell>
                     <div className="font-medium">{customer.name}</div>
                     {customer.type === 'company' && <div className="text-xs text-muted-foreground">{customer.companyName}</div>}
@@ -67,7 +68,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                     </div>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">{customer.branch}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                      <AlertDialog>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

@@ -12,15 +12,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
-import { useCustomers } from "@/hooks/use-customers";
+import { useCustomers, Customer } from "@/hooks/use-customers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { ImportButton } from "@/components/import-button";
+import { CustomerDetails } from "./components/customer-details";
 
 export default function CustomersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBranch, setSelectedBranch] = useState("all");
     const [selectedType, setSelectedType] = useState("all");
@@ -47,9 +49,15 @@ export default function CustomersPage() {
         setIsFormOpen(true);
     };
 
-    const handleEdit = (customer: any) => {
+    const handleEdit = (customer: Customer) => {
+        setIsDetailOpen(false);
         setSelectedCustomer(customer);
         setIsFormOpen(true);
+    };
+
+    const handleRowClick = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setIsDetailOpen(true);
     };
 
     const handleFormSubmit = async (data: CustomerFormValues) => {
@@ -183,6 +191,7 @@ export default function CustomersPage() {
                     customers={filteredCustomers}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onRowClick={handleRowClick}
                 />
             )}
             <CustomerForm
@@ -190,6 +199,12 @@ export default function CustomersPage() {
                 onOpenChange={setIsFormOpen}
                 onSubmit={handleFormSubmit}
                 customer={selectedCustomer}
+            />
+            <CustomerDetails
+                isOpen={isDetailOpen}
+                onOpenChange={setIsDetailOpen}
+                customer={selectedCustomer}
+                onEdit={() => selectedCustomer && handleEdit(selectedCustomer)}
             />
         </div>
     );
