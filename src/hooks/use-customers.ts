@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, getDocsFromCache, deleteDoc, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
@@ -103,7 +103,7 @@ export function useCustomers() {
     setLoading(true);
     try {
       const customerDocRef = doc(db, 'customers', id);
-      await deleteDoc(customerDocRef);
+      await setDoc(customerDocRef, { isDeleted: true }, { merge: true });
       toast({ title: "성공", description: "고객 정보가 삭제되었습니다." });
       await fetchCustomers();
     } catch (error) {
@@ -182,6 +182,23 @@ export function useCustomers() {
         return [];
     }
   }, [toast]);
+  
+  const getCustomerOrderHistory = useCallback(async (customerContact: string): Promise<Order[]> => {
+    try {
+      const ordersCollection = collection(db, 'orders');
+      const q = query(ordersCollection, where("orderer.contact", "==", customerContact), orderBy("orderDate", "desc"));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+    } catch (error) {
+      console.error("Error fetching customer order history:", error);
+      toast({
+        variant: 'destructive',
+        title: '주문 내역 조회 오류',
+        description: '고객의 주문 내역을 불러오는 중 오류가 발생했습니다.',
+      });
+      return [];
+    }
+  }, [toast]);
 
-  return { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers, findCustomersByContact };
+  return { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers, findCustomersByContact, getCustomerOrderHistory };
 }
