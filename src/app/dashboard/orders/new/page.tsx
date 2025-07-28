@@ -144,11 +144,12 @@ export default function NewOrderPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return orders.filter(order => {
+      if (!selectedBranch || order.branchName !== selectedBranch.name) return false;
       const orderDate = (order.orderDate as Timestamp).toDate();
       orderDate.setHours(0,0,0,0);
       return orderDate.getTime() === today.getTime();
     })
-  }, [orders]);
+  }, [orders, selectedBranch]);
 
   useEffect(() => {
       if (orderId && !ordersLoading && orders.length > 0 && !productsLoading && allProducts.length > 0 && !branchesLoading && branches.length > 0) {
@@ -987,4 +988,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
