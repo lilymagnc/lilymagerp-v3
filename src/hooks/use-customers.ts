@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
@@ -167,7 +167,7 @@ export function useCustomers() {
     if (!contact || contact.length < 4) return [];
     try {
         const customersCollection = collection(db, 'customers');
-        const q = query(customersCollection, where("contact", "==", contact), where("isDeleted", "!=", true));
+        const q = query(customersCollection, where("contact", "==", contact), where("isDeleted", "==", false));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
     } catch (error) {
