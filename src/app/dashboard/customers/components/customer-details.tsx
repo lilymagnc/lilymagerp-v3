@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,9 @@ import type { Order } from "@/hooks/use-orders";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Timestamp } from "firebase/firestore";
+import { downloadXLSX } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { Download } from "lucide-react";
 
 interface CustomerDetailsProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
   const { getCustomerOrderHistory } = useCustomers();
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen && customer) {
@@ -47,6 +50,37 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
         setOrderHistory([]);
     }
   }, [isOpen, customer, getCustomerOrderHistory]);
+
+  const handleDownloadOrderHistory = () => {
+    if (!customer || orderHistory.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "내보낼 데이터 없음",
+        description: "해당 고객의 주문 내역이 없습니다.",
+      });
+      return;
+    }
+
+    const dataToExport = orderHistory.flatMap(order => 
+      order.items.map(item => ({
+        '주문일': format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd HH:mm"),
+        '주문ID': order.id,
+        '주문자': order.orderer.name,
+        '항목명': item.name,
+        '수량': item.quantity,
+        '단가': item.price,
+        '합계': item.price * item.quantity,
+        '주문상태': order.status,
+        '결제상태': order.payment.status,
+      }))
+    );
+
+    downloadXLSX(dataToExport, `${customer.name}_주문내역`);
+    toast({
+      title: "다운로드 성공",
+      description: `고객의 주문 내역 ${dataToExport.length}건이 다운로드되었습니다.`,
+    });
+  };
   
   if (!customer) return null;
 
@@ -166,13 +200,20 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
             </div>
         </div>
         <DialogFooter className="sm:justify-between pt-4">
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={handleDownloadOrderHistory} disabled={loadingHistory}>
+                <Download className="mr-2 h-4 w-4" />
+                주문 내역 다운로드
+            </Button>
+          </div>
+          <div className="flex gap-2">
             <DialogClose asChild>
                 <Button type="button" variant="secondary">닫기</Button>
             </DialogClose>
             <Button onClick={onEdit}>정보 수정</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
