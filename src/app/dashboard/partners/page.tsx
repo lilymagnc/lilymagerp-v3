@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, FileText } from "lucide-react";
+import { PlusCircle, Search } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { usePartners, Partner } from "@/hooks/use-partners";
 import { PartnerForm, PartnerFormValues } from "./components/partner-form";
 import { PartnerTable } from "./components/partner-table";
-import { useRouter } from "next/navigation";
 
 export default function PartnersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -22,7 +21,6 @@ export default function PartnersPage() {
     const [selectedType, setSelectedType] = useState("all");
 
     const { toast } = useToast();
-    const router = useRouter();
     const { partners, loading: partnersLoading, addPartner, updatePartner, deletePartner } = usePartners();
 
     const partnerTypes = useMemo(() => [...new Set(partners.map(p => p.type))], [partners]);
@@ -66,10 +64,6 @@ export default function PartnersPage() {
         <div>
             <PageHeader title="거래처 관리" description="상품 및 자재를 공급하는 매입처 정보를 관리합니다.">
                  <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => router.push('/dashboard/partners/statement')}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        거래명세서 발급
-                    </Button>
                     <Button onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         거래처 추가

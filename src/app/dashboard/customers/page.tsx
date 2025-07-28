@@ -2,9 +2,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, Download, FileUp } from "lucide-react";
+import { PlusCircle, Search, Download, FileUp, FileText } from "lucide-react";
 import { CustomerTable } from "./components/customer-table";
 import { CustomerForm, CustomerFormValues } from "./components/customer-form";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ export default function CustomersPage() {
     const [selectedType, setSelectedType] = useState("all");
 
     const { toast } = useToast();
+    const router = useRouter();
     const { user } = useAuth();
     const { branches } = useBranches();
     const { customers, loading: customersLoading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers } = useCustomers();
@@ -111,6 +113,10 @@ export default function CustomersPage() {
         <div>
             <PageHeader title="통합 고객 관리" description="개인 및 기업 고객 정보를 등록하고 마케팅에 활용하세요.">
                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => router.push('/dashboard/customers/statement')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        거래명세서 발급
+                    </Button>
                     <ImportButton resourceName="고객" onImport={handleImport}>
                         <FileUp className="mr-2 h-4 w-4" />
                         엑셀로 가져오기
