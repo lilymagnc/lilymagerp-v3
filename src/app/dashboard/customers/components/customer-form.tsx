@@ -1,3 +1,4 @@
+
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -30,6 +31,7 @@ import { CalendarIcon } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
+import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 
 const customerSchema = z.object({
@@ -258,15 +260,16 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                                 variant={"outline"}
                                 className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                                 >
-                                {field.value ? format(field.value, "MM-dd") : <span>날짜 선택</span>}
+                                {field.value ? format(field.value, "yyyy년 MM월 dd일") : <span>날짜 선택</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                             </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
+                                locale={ko}
                                 mode="single"
-                                selected={field.value}
+                                selected={field.value ?? undefined}
                                 onSelect={field.onChange}
                                 captionLayout="dropdown-buttons"
                                 fromYear={1920}
@@ -291,15 +294,16 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                                 variant={"outline"}
                                 className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                                 >
-                                {field.value ? format(field.value, "MM-dd") : <span>날짜 선택</span>}
+                                {field.value ? format(field.value, "yyyy년 MM월 dd일") : <span>날짜 선택</span>}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                             </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                             <Calendar 
+                                locale={ko}
                                 mode="single" 
-                                selected={field.value} 
+                                selected={field.value ?? undefined}
                                 onSelect={field.onChange}
                                 captionLayout="dropdown-buttons"
                                 fromYear={1950}
