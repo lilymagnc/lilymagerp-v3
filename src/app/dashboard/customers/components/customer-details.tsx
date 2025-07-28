@@ -32,12 +32,14 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{customer.name} {customer.companyName && `(${customer.companyName})`}</DialogTitle>
-          <DialogDescription>
-            <Badge variant={customer.type === 'company' ? 'secondary' : 'outline'}>
-              {customer.type === 'company' ? '기업' : '개인'}
-            </Badge>
-            <span className="mx-2">|</span>
-            {customer.contact}
+          <DialogDescription asChild>
+            <div className="text-sm text-muted-foreground">
+              <Badge variant={customer.type === 'company' ? 'secondary' : 'outline'}>
+                {customer.type === 'company' ? '기업' : '개인'}
+              </Badge>
+              <span className="mx-2">|</span>
+              <span>{customer.contact}</span>
+            </div>
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4">
