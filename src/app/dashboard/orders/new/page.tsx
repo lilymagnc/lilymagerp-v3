@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useOrders, OrderData, Order } from "@/hooks/use-orders";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -122,18 +123,20 @@ export default function NewOrderPage() {
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
 
-  const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
-  const midCategories = useMemo(() => {
-    if (!selectedMainCategory) return [];
-    return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
-  }, [branchProducts, selectedMainCategory]);
-
-  const filteredProducts = useMemo(() => {
-    return branchProducts.filter(p => 
-        (!selectedMainCategory || p.mainCategory === selectedMainCategory) &&
-        (!selectedMidCategory || p.midCategory === selectedMidCategory)
-    );
-  }, [branchProducts, selectedMainCategory, selectedMidCategory]);
+  const groupedProducts = useMemo(() => {
+    if (!branchProducts) return {};
+    return branchProducts.reduce((acc, product) => {
+        const { mainCategory, midCategory } = product;
+        if (!acc[mainCategory]) {
+            acc[mainCategory] = {};
+        }
+        if (!acc[mainCategory][midCategory]) {
+            acc[mainCategory][midCategory] = [];
+        }
+        acc[mainCategory][midCategory].push(product);
+        return acc;
+    }, {} as Record<string, Record<string, Product[]>>);
+  }, [branchProducts]);
 
 
   const todaysOrders = useMemo(() => {
@@ -218,9 +221,9 @@ export default function NewOrderPage() {
         const results = await findCustomersByContact(contact);
         setContactSearchResults(results);
         if (results.length > 0) {
-          setIsContactSearchOpen(true);
+            setIsContactSearchOpen(true);
         } else {
-          setIsContactSearchOpen(false);
+            setIsContactSearchOpen(false);
         }
       } else {
         setContactSearchResults([]);
@@ -281,9 +284,8 @@ export default function NewOrderPage() {
     }
   }, [selectedBranch, existingOrder]);
 
-  const handleAddProduct = (docId: string) => {
-    if (!docId) return;
-    const productToAdd = branchProducts.find(p => p.docId === docId);
+  const handleAddProduct = (productToAddId: string) => {
+    const productToAdd = branchProducts.find(p => p.docId === productToAddId);
     if (!productToAdd) return;
 
     setOrderItems(prevItems => {
@@ -553,7 +555,7 @@ export default function NewOrderPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                             <div className="mt-2 p-2 border-t space-y-2">
+                            <div className="mt-2 p-2 border-t space-y-2">
                                 <div className="grid grid-cols-2 gap-2">
                                     <Select 
                                         value={selectedMainCategory || ""}
@@ -736,11 +738,11 @@ export default function NewOrderPage() {
                                                       className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}
                                                   >
                                                       <CalendarIcon className="mr-2 h-4 w-4" />
-                                                      {scheduleDate ? format(scheduleDate, "PPP") : <span>날짜 선택</span>}
+                                                      {scheduleDate ? format(scheduleDate, "PPP", { locale: ko }) : <span>날짜 선택</span>}
                                                   </Button>
                                                   </PopoverTrigger>
                                                   <PopoverContent className="w-auto p-0">
-                                                  <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
+                                                  <Calendar locale={ko} mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
                                                   </PopoverContent>
                                               </Popover>
                                               <Select value={scheduleTime} onValueChange={setScheduleTime}>
@@ -779,11 +781,11 @@ export default function NewOrderPage() {
                                                       className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}
                                                   >
                                                       <CalendarIcon className="mr-2 h-4 w-4" />
-                                                      {scheduleDate ? format(scheduleDate, "PPP") : <span>날짜 선택</span>}
+                                                      {scheduleDate ? format(scheduleDate, "PPP", { locale: ko }) : <span>날짜 선택</span>}
                                                   </Button>
                                                   </PopoverTrigger>
                                                   <PopoverContent className="w-auto p-0">
-                                                  <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
+                                                  <Calendar locale={ko} mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
                                                   </PopoverContent>
                                               </Popover>
                                               <Select value={scheduleTime} onValueChange={setScheduleTime}>
@@ -926,7 +928,7 @@ export default function NewOrderPage() {
                     <CardFooter className="flex-col gap-2 items-stretch">
                         <Button className="w-full" size="lg" onClick={handleCompleteOrder} disabled={orderItems.length === 0 || !selectedBranch || isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            주문 완료
+                            {existingOrder ? "주문 수정" : "주문 완료"}
                         </Button>
                     </CardFooter>
                 </Card>

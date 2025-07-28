@@ -12,6 +12,7 @@ export interface Customer extends CustomerFormValues {
   createdAt: string;
   lastOrderDate?: string;
   totalSpent?: number;
+  orderCount?: number;
   points?: number;
 }
 
