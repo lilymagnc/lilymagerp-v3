@@ -274,6 +274,11 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                                 captionLayout="dropdown-buttons"
                                 fromYear={1920}
                                 toYear={new Date().getFullYear()}
+                                classNames={{
+                                  caption_label: 'text-lg font-medium',
+                                  caption_dropdowns: 'flex flex-row-reverse gap-1 text-xs',
+                                  vhidden: 'hidden',
+                                }}
                              />
                             </PopoverContent>
                         </Popover>
@@ -308,6 +313,11 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                                 captionLayout="dropdown-buttons"
                                 fromYear={1950}
                                 toYear={new Date().getFullYear()}
+                                classNames={{
+                                  caption_label: 'text-lg font-medium',
+                                  caption_dropdowns: 'flex flex-row-reverse gap-1 text-xs',
+                                  vhidden: 'hidden',
+                                }}
                              />
                             </PopoverContent>
                         </Popover>
