@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -13,8 +12,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Customer, useCustomers } from "@/hooks/use-customers";
-import { Order } from "@/hooks/use-orders";
+import { Customer } from "@/hooks/use-customers";
+import { Order, useOrders } from "@/hooks/use-orders";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -30,21 +29,20 @@ interface CustomerDetailsProps {
 }
 
 export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: CustomerDetailsProps) {
-  const { getCustomerOrderHistory } = useCustomers();
+  const { orders, loading: ordersLoading } = useOrders();
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && customer) {
-      const fetchHistory = async () => {
+    if (isOpen && customer && !ordersLoading) {
         setHistoryLoading(true);
-        const history = await getCustomerOrderHistory(customer.contact);
+        const history = orders
+            .filter(order => order.orderer.contact === customer.contact)
+            .sort((a, b) => (b.orderDate as Timestamp).toMillis() - (a.orderDate as Timestamp).toMillis());
         setOrderHistory(history);
         setHistoryLoading(false);
-      };
-      fetchHistory();
     }
-  }, [isOpen, customer, getCustomerOrderHistory]);
+  }, [isOpen, customer, orders, ordersLoading]);
 
   if (!customer) return null;
 
