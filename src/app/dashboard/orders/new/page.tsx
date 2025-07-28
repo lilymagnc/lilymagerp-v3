@@ -92,12 +92,28 @@ export default function NewOrderPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
 
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
-  const [productToAdd, setProductToAdd] = useState<Product | null>(null);
+
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
+  const [selectedMidCategory, setSelectedMidCategory] = useState<string | null>(null);
 
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
+
+  const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
+  const midCategories = useMemo(() => {
+    if (!selectedMainCategory) return [];
+    return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
+  }, [branchProducts, selectedMainCategory]);
+
+  const filteredProducts = useMemo(() => {
+    return branchProducts.filter(p => 
+        (!selectedMainCategory || p.mainCategory === selectedMainCategory) &&
+        (!selectedMidCategory || p.midCategory === selectedMidCategory)
+    );
+  }, [branchProducts, selectedMainCategory, selectedMidCategory]);
+
   
   const todaysOrders = useMemo(() => {
     const today = new Date();
@@ -177,11 +193,10 @@ export default function NewOrderPage() {
     setSelectedDistrict(null);
   }, [selectedBranch]);
 
-  const handleAddProduct = () => {
-    if (!productToAdd) {
-        toast({ variant: 'destructive', title: '상품 미선택', description: '추가할 상품을 선택해주세요.' });
-        return;
-    }
+  const handleAddProduct = (productId: string) => {
+    if (!productId) return;
+    const productToAdd = branchProducts.find(p => p.id === productId);
+    if (!productToAdd) return;
 
     setOrderItems(prevItems => {
         const existingItem = prevItems.find(item => item.id === productToAdd.id);
@@ -281,12 +296,10 @@ export default function NewOrderPage() {
   const handleBranchChange = (branchId: string) => {
     const branch = branches.find(b => b.id === branchId);
     setSelectedBranch(branch || null);
-  }
-
-  const resetBranchSelection = () => {
-    setSelectedBranch(null);
     setOrderItems([]);
     setSelectedDistrict(null);
+    setSelectedMainCategory(null);
+    setSelectedMidCategory(null);
   }
 
   const handleAddressSearch = () => {
@@ -366,7 +379,7 @@ export default function NewOrderPage() {
                       <p className="text-lg font-medium">
                           안녕하세요, <span className="text-primary">{selectedBranch.name}</span>입니다.
                       </p>
-                      <Button variant="outline" size="sm" onClick={resetBranchSelection}>
+                      <Button variant="outline" size="sm" onClick={() => handleBranchChange("")}>
                           지점 변경
                       </Button>
                     </div>
@@ -424,27 +437,58 @@ export default function NewOrderPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                             <div className="mt-2 p-2 border-t flex items-center gap-2">
-                                {productsLoading ? (<Loader2 className="h-5 w-5 animate-spin"/>) : (
-                                  <>
-                                    <Select onValueChange={(value) => setProductToAdd(branchProducts.find(p => p.id === value) || null)}>
-                                        <SelectTrigger className="flex-1">
-                                            <SelectValue placeholder="상품을 선택하세요..."/>
+                             <div className="mt-2 p-2 border-t space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Select 
+                                        value={selectedMainCategory || ""}
+                                        onValueChange={(value) => {
+                                            setSelectedMainCategory(value);
+                                            setSelectedMidCategory(null);
+                                        }}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="대분류 선택" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {branchProducts.map(p => (
+                                            {mainCategories.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Select
+                                        value={selectedMidCategory || ""}
+                                        onValueChange={(value) => {
+                                            setSelectedMidCategory(value);
+                                        }}
+                                        disabled={!selectedMainCategory}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="중분류 선택" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {midCategories.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                {productsLoading ? (
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                    <Select onValueChange={handleAddProduct}>
+                                        <SelectTrigger className="flex-1">
+                                            <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {filteredProducts.map(p => (
                                                 <SelectItem key={p.id} value={p.id} disabled={p.stock === 0}>
-                                                    {p.name} (재고: {p.stock})
+                                                    {p.name} - ₩{p.price.toLocaleString()} (재고: {p.stock})
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <Button onClick={handleAddProduct}>
-                                        <PlusCircle className="mr-2 h-4 w-4"/>
-                                        추가
-                                    </Button>
-                                  </>
-                                  )}
+                                )}
+                                </div>
                             </div>
                             </CardContent>
                           </Card>
