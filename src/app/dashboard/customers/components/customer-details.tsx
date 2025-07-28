@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,10 +13,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Customer } from "@/hooks/use-customers";
+import { Customer, useCustomers } from "@/hooks/use-customers";
+import { Order } from "@/hooks/use-orders";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Timestamp } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CustomerDetailsProps {
   isOpen: boolean;
@@ -25,12 +30,27 @@ interface CustomerDetailsProps {
 }
 
 export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: CustomerDetailsProps) {
+  const { getCustomerOrderHistory } = useCustomers();
+  const [orderHistory, setOrderHistory] = useState<Order[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && customer) {
+      const fetchHistory = async () => {
+        setHistoryLoading(true);
+        const history = await getCustomerOrderHistory(customer.contact);
+        setOrderHistory(history);
+        setHistoryLoading(false);
+      };
+      fetchHistory();
+    }
+  }, [isOpen, customer, getCustomerOrderHistory]);
 
   if (!customer) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{customer.name} {customer.companyName && `(${customer.companyName})`}</DialogTitle>
           <DialogDescription asChild>
@@ -102,6 +122,50 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
                     <p className="col-span-2 text-sm whitespace-pre-wrap">{customer.memo || "-"}</p>
                 </div>
             </div>
+             <Separator />
+              <div>
+                <h4 className="font-semibold text-lg mb-2">주문 내역</h4>
+                <div className="border rounded-md">
+                   <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>주문일</TableHead>
+                          <TableHead>주문 지점</TableHead>
+                          <TableHead>총액</TableHead>
+                          <TableHead>상태</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {historyLoading ? (
+                          Array.from({ length: 3 }).map((_, i) => (
+                            <TableRow key={i}>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                              <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                              <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                            </TableRow>
+                          ))
+                        ) : orderHistory.length > 0 ? (
+                          orderHistory.map(order => (
+                            <TableRow key={order.id}>
+                              <TableCell>{format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd")}</TableCell>
+                              <TableCell>{order.branchName}</TableCell>
+                              <TableCell>₩{order.summary.total.toLocaleString()}</TableCell>
+                              <TableCell><Badge>{order.status}</Badge></TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center h-24">
+                              주문 내역이 없습니다.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                </div>
+              </div>
+
         </div>
         <DialogFooter className="sm:justify-end pt-4">
           <div className="flex gap-2">
