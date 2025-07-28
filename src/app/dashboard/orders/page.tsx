@@ -11,13 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, toDate } from "date-fns";
+import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { MessagePrintDialog } from "./components/message-print-dialog";
+import { Timestamp } from "firebase/firestore";
 
 export default function OrdersPage() {
   const { orders, loading, updateOrderStatus, updatePaymentStatus } = useOrders();
@@ -161,7 +162,9 @@ export default function OrdersPage() {
                   <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
                   <TableCell>{order.orderer.name}</TableCell>
-                  <TableCell>{format(toDate(order.orderDate), 'yyyy-MM-dd')}</TableCell>
+                  <TableCell>
+                    {order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}
+                  </TableCell>
                   <TableCell>{order.branchName}</TableCell>
                   <TableCell>
                       <div className="flex flex-col gap-1">
