@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc, getDoc, Firestore, Transaction } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc, getDoc, Firestore, Transaction, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -196,7 +196,7 @@ export function useOrders() {
         };
         const orderDate = getOrderDate();
         const { registerCustomer, ...restOfOrderData } = orderData;
-        const orderPayload = { ...restOfOrderData, orderDate: Timestamp.fromDate(orderDate) };
+        const orderPayload: Partial<OrderData> & {orderDate: Timestamp} = { ...restOfOrderData, orderDate: Timestamp.fromDate(orderDate) };
         if (orderPayload.orderer.id === undefined) {
           delete orderPayload.orderer.id;
         }
@@ -211,8 +211,6 @@ export function useOrders() {
             }
         }
         
-        const historyBatch = writeBatch(db);
-
         for (const { productDocRef, productDoc, item } of productsToUpdate) {
             const currentStock = productDoc.data()?.stock || 0;
             const newStock = currentStock - item.quantity;
@@ -265,7 +263,7 @@ export function useOrders() {
        setLoading(true);
        const orderRef = doc(db, "orders", orderId);
        const { registerCustomer, ...restOfOrderData } = orderData;
-       const orderPayload = { ...restOfOrderData };
+       const orderPayload: Partial<OrderData> = { ...restOfOrderData };
        if (orderPayload.orderer.id === undefined) {
           delete orderPayload.orderer.id;
        }
@@ -326,5 +324,32 @@ export function useOrders() {
     }
   };
 
-  return { orders, loading, addOrder, updateOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
+  const getOrdersByCustomerAndDateRange = useCallback(async (customerId: string, from: Date, to: Date, branchName: string): Promise<Order[]> => {
+    try {
+        setLoading(true);
+        const ordersCollection = collection(db, 'orders');
+        const q = query(
+            ordersCollection, 
+            where("orderer.id", "==", customerId),
+            where("branchName", "==", branchName),
+            where("orderDate", ">=", Timestamp.fromDate(from)),
+            where("orderDate", "<=", Timestamp.fromDate(to)),
+            orderBy("orderDate", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+    } catch (error) {
+        console.error("Error fetching orders by customer and date range:", error);
+        toast({
+            variant: 'destructive',
+            title: '조회 오류',
+            description: '주문 내역을 불러오는 중 오류가 발생했습니다.',
+        });
+        return [];
+    } finally {
+        setLoading(false);
+    }
+  }, [toast]);
+
+  return { orders, loading, addOrder, updateOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, getOrdersByCustomerAndDateRange };
 }
