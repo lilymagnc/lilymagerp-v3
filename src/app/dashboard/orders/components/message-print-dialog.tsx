@@ -18,9 +18,9 @@ interface MessagePrintDialogProps {
 }
 
 const labelTypes = [
-    { value: 'formtec-3107', label: '폼텍 3107 (6칸)', cells: 6 },
-    { value: 'formtec-3108', label: '폼텍 3108 (8칸)', cells: 8 },
-    { value: 'formtec-3109', label: '폼텍 3109 (12칸)', cells: 12 },
+    { value: 'formtec-3107', label: '폼텍 3107 (6칸)', cells: 6, gridCols: 'grid-cols-2' },
+    { value: 'formtec-3108', label: '폼텍 3108 (8칸)', cells: 8, gridCols: 'grid-cols-2' },
+    { value: 'formtec-3109', label: '폼텍 3109 (12칸)', cells: 12, gridCols: 'grid-cols-3' },
 ];
 
 export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: MessagePrintDialogProps) {
@@ -55,7 +55,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
             </div>
             <div>
                 <Label htmlFor="label-type">라벨지 종류</Label>
-                <Select value={labelType} onValueChange={setLabelType}>
+                <Select value={labelType} onValueChange={(value) => { setLabelType(value); setStartPosition(1); }}>
                     <SelectTrigger id="label-type">
                         <SelectValue placeholder="라벨지 선택" />
                     </SelectTrigger>
@@ -68,7 +68,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
             </div>
             <div>
                 <Label htmlFor="start-position">시작 위치 (1-{selectedLabel.cells})</Label>
-                <div className="grid grid-cols-4 gap-1 mt-2 border p-2 rounded-md">
+                <div className={cn("grid gap-1 mt-2 border p-2 rounded-md", selectedLabel.gridCols)}>
                     {Array.from({ length: selectedLabel.cells }).map((_, i) => {
                         const position = i + 1;
                         return (
