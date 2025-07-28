@@ -49,6 +49,11 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
     });
   };
 
+  const previewStyle = {
+    fontFamily: font,
+    fontSize: `${fontSize}pt`,
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -60,8 +65,11 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
         </DialogHeader>
         <div className="space-y-4 py-4">
             <div>
-                <Label>인쇄할 메시지</Label>
-                <div className="mt-1 p-3 border rounded-md bg-muted text-sm whitespace-pre-wrap h-24 overflow-y-auto">
+                <Label>인쇄할 메시지 (미리보기)</Label>
+                <div 
+                  className="mt-1 p-3 border rounded-md bg-muted text-sm whitespace-pre-wrap h-24 overflow-y-auto flex items-center justify-center text-center"
+                  style={previewStyle}
+                >
                     {order.message?.content || "메시지 내용이 없습니다."}
                 </div>
             </div>
@@ -74,7 +82,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                         </SelectTrigger>
                         <SelectContent>
                             {fontOptions.map(fo => (
-                                <SelectItem key={fo.value} value={fo.value}>{fo.label}</SelectItem>
+                                <SelectItem key={fo.value} value={fo.value} style={{fontFamily: fo.value}}>{fo.label}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
