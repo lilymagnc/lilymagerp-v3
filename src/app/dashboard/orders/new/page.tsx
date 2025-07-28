@@ -11,13 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp, UserSearch } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp, UserSearch, ChevronsUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -92,6 +92,7 @@ export default function NewOrderPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("completed");
 
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
 
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
@@ -211,6 +212,7 @@ export default function NewOrderPage() {
             return [...prevItems, { ...productToAdd, quantity: 1 }];
         }
     });
+    setProductSearchOpen(false);
   };
 
   const updateItemQuantity = (productId: string, newQuantity: number) => {
@@ -437,28 +439,47 @@ export default function NewOrderPage() {
                             </Table>
                              <div className="mt-2 p-2 border-t">
                                 {productsLoading ? (<Loader2 className="h-5 w-5 animate-spin"/>) : (
-                                    <Select onValueChange={handleAddProduct}>
-                                        <SelectTrigger className="flex-1">
-                                            <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {Object.entries(groupedProducts).map(([mainCategory, midCategories]) => (
-                                                <SelectGroup key={mainCategory}>
-                                                    <SelectLabel>{mainCategory}</SelectLabel>
-                                                    {Object.entries(midCategories).map(([midCategory, products]) => (
-                                                        <SelectGroup key={midCategory}>
-                                                             <SelectLabel className="pl-6 text-xs">{midCategory}</SelectLabel>
-                                                             {products.map(p => (
-                                                                <SelectItem key={p.id} value={p.id} disabled={p.stock === 0} className="pl-8">
-                                                                    {p.name} (재고: {p.stock})
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectGroup>
-                                                    ))}
-                                                </SelectGroup>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <Popover open={productSearchOpen} onOpenChange={setProductSearchOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            aria-expanded={productSearchOpen}
+                                            className="w-full justify-between"
+                                            >
+                                            상품을 검색하여 추가하세요...
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                            <CommandInput placeholder="상품 검색..." />
+                                            <CommandList>
+                                                <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
+                                                 {Object.entries(groupedProducts).map(([mainCategory, midCategories]) => (
+                                                    <CommandGroup key={mainCategory} heading={mainCategory}>
+                                                        {Object.entries(midCategories).map(([midCategory, products]) => (
+                                                            <React.Fragment key={midCategory}>
+                                                                <div className="pl-4 py-1 text-xs text-muted-foreground">{midCategory}</div>
+                                                                {products.map(product => (
+                                                                     <CommandItem
+                                                                        key={product.id}
+                                                                        value={`${product.name} ${product.id}`}
+                                                                        onSelect={() => handleAddProduct(product.id)}
+                                                                        disabled={product.stock === 0}
+                                                                        className="pl-8"
+                                                                    >
+                                                                        {product.name} (재고: {product.stock})
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </CommandGroup>
+                                                ))}
+                                            </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                   )}
                             </div>
                             </CardContent>
@@ -813,3 +834,4 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
