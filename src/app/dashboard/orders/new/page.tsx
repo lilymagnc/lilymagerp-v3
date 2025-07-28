@@ -813,7 +813,7 @@ export default function NewOrderPage() {
                                       <div className="space-y-2">
                                           <Label>배송지</Label>
                                           <div className="flex gap-2">
-                                          <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
+                                          <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} />
                                           <Button type="button" variant="outline" onClick={handleAddressSearch}>
                                               <Search className="mr-2 h-4 w-4" /> 주소 검색
                                           </Button>
@@ -833,27 +833,27 @@ export default function NewOrderPage() {
                                           </div>
                                           </RadioGroup>
                                           <div className="flex items-center gap-2 mt-2">
-                                              <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch || deliveryFeeType !== 'auto'}>
-                                                  <SelectTrigger>
-                                                      <SelectValue placeholder="지역 선택" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                      {deliveryDistricts.map(df => (
-                                                      <SelectItem key={df.district} value={df.district}>
-                                                          {df.district} ({df.fee.toLocaleString()}원)
-                                                      </SelectItem>
-                                                      ))}
-                                                  </SelectContent>
-                                              </Select>
-                                              {deliveryFeeType === 'manual' && (
-                                              <Input 
-                                                  type="number" 
-                                                  placeholder="배송비 직접 입력" 
-                                                  value={manualDeliveryFee}
-                                                  onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
-                                              />
-                                              )}
-                                          </div>
+                                                <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ""} disabled={deliveryFeeType !== 'auto'}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="지역 선택" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {deliveryDistricts.map(df => (
+                                                            <SelectItem key={df.district} value={df.district}>
+                                                                {df.district} ({df.fee.toLocaleString()}원)
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                {deliveryFeeType === 'manual' && (
+                                                <Input 
+                                                    type="number" 
+                                                    placeholder="배송비 직접 입력" 
+                                                    value={manualDeliveryFee}
+                                                    onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
+                                                />
+                                                )}
+                                            </div>
                                       </div>
                                   </CardContent>
                               </Card>
