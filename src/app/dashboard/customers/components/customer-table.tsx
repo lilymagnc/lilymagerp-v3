@@ -1,0 +1,120 @@
+"use client";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { MoreHorizontal } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Customer } from "@/hooks/use-customers";
+
+interface CustomerTableProps {
+  customers: Customer[];
+  onEdit: (customer: Customer) => void;
+  onDelete: (id: string) => void;
+}
+
+export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProps) {
+    
+    const getGradeBadge = (grade?: string) => {
+        switch (grade) {
+            case 'VIP':
+            case 'VVIP':
+                return <Badge variant="default" className="bg-yellow-500 text-white">{grade}</Badge>;
+            case '일반':
+                return <Badge variant="secondary">{grade}</Badge>;
+            case '신규':
+            default:
+                return <Badge variant="outline">{grade || '신규'}</Badge>;
+        }
+    }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">고객명</TableHead>
+              <TableHead className="w-[100px]">유형</TableHead>
+              <TableHead>연락처</TableHead>
+              <TableHead className="hidden md:table-cell">등급</TableHead>
+              <TableHead className="hidden md:table-cell">태그</TableHead>
+              <TableHead className="hidden lg:table-cell">담당지점</TableHead>
+              <TableHead className="text-right">작업</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {customers.length > 0 ? (
+              customers.map((customer) => (
+                <TableRow key={customer.id}>
+                  <TableCell>
+                    <div className="font-medium">{customer.name}</div>
+                    {customer.type === 'company' && <div className="text-xs text-muted-foreground">{customer.company}</div>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={customer.type === 'company' ? 'secondary' : 'outline'}>
+                      {customer.type === 'company' ? '기업' : '개인'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{customer.contact}</TableCell>
+                  <TableCell className="hidden md:table-cell">{getGradeBadge(customer.grade)}</TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex flex-wrap gap-1">
+                      {customer.tags?.split(',').map(tag => tag.trim() && <Badge key={tag} variant="outline" className="font-normal">{tag.trim()}</Badge>)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">{customer.branch}</TableCell>
+                  <TableCell className="text-right">
+                     <AlertDialog>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">메뉴 토글</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>작업</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => onEdit(customer)}>수정</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                           <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>
+                          </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>정말로 삭제하시겠습니까?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                           이 작업은 되돌릴 수 없습니다. '{customer.name}' 고객 데이터가 서버에서 영구적으로 삭제됩니다.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>취소</AlertDialogCancel>
+                          <AlertDialogAction 
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => onDelete(customer.id)}
+                          >
+                            삭제
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  조회된 고객이 없습니다.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}

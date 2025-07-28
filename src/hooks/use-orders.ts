@@ -1,8 +1,7 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, writeBatch, serverTimestamp, Timestamp, query, orderBy, runTransaction, where, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -36,6 +35,7 @@ export interface OrderData {
     email: string;
   };
   isAnonymous: boolean;
+  registerCustomer: boolean;
   orderType: "store" | "phone" | "naver" | "kakao" | "etc";
   receiptType: "pickup" | "delivery";
 
@@ -104,6 +104,47 @@ export function useOrders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+  
+  const addCustomerFromOrder = async (orderData: OrderData) => {
+    if (!orderData.registerCustomer) return;
+
+    const customerQuery = query(collection(db, "customers"), where("contact", "==", orderData.orderer.contact), where("branch", "==", orderData.branchName));
+    const querySnapshot = await getDocs(customerQuery);
+    
+    const customerData = {
+        name: orderData.orderer.name,
+        contact: orderData.orderer.contact,
+        email: orderData.orderer.email || '',
+        company: orderData.orderer.company || '',
+        branch: orderData.branchName,
+        type: orderData.orderer.company ? 'company' : 'personal',
+        lastOrderDate: serverTimestamp(),
+        totalSpent: orderData.summary.total,
+    };
+
+    if (!querySnapshot.empty) {
+        // Update existing customer
+        const customerDocRef = querySnapshot.docs[0].ref;
+        const existingCustomer = querySnapshot.docs[0].data();
+        const updatedData = {
+            ...customerData,
+            totalSpent: (existingCustomer.totalSpent || 0) + orderData.summary.total,
+            orderCount: (existingCustomer.orderCount || 0) + 1,
+        };
+        await setDoc(customerDocRef, updatedData, { merge: true });
+    } else {
+        // Add new customer
+        const newCustomerData = {
+            ...customerData,
+            grade: '신규',
+            createdAt: serverTimestamp(),
+            orderCount: 1,
+            isDeleted: false,
+        };
+        await addDoc(collection(db, 'customers'), newCustomerData);
+    }
+  }
+
 
   const addOrder = async (orderData: OrderData) => {
     setLoading(true);
@@ -118,19 +159,24 @@ export function useOrders() {
         if (orderDate instanceof Date) {
             return orderDate;
         }
-        // Attempt to parse if it's a string or number, otherwise, default to now
         const parsedDate = new Date(orderDate);
         return isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
       };
 
       const orderDate = getOrderDate();
 
+      const { registerCustomer, ...restOfOrderData } = orderData;
+
       const orderPayload = {
-        ...orderData,
+        ...restOfOrderData,
         orderDate: Timestamp.fromDate(orderDate),
       };
 
       await addDoc(collection(db, 'orders'), orderPayload);
+
+      if (registerCustomer) {
+        await addCustomerFromOrder(orderData);
+      }
 
       const historyBatch = writeBatch(db);
 

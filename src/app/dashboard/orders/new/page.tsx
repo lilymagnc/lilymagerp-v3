@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -61,6 +60,7 @@ export default function NewOrderPage() {
   const [ordererCompany, setOrdererCompany] = useState("");
   const [ordererEmail, setOrdererEmail] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [registerCustomer, setRegisterCustomer] = useState(true);
   
   const [orderType, setOrderType] = useState<OrderType>("phone");
   const [receiptType, setReceiptType] = useState<ReceiptType>("delivery");
@@ -208,6 +208,7 @@ export default function NewOrderPage() {
 
         orderer: { name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
         isAnonymous: isAnonymous,
+        registerCustomer: registerCustomer,
         orderType,
         receiptType,
 
@@ -466,11 +467,14 @@ export default function NewOrderPage() {
                                 </div>
                                 <div className="flex items-center space-x-2 mt-4">
                                   <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={(checked) => setIsAnonymous(!!checked)} />
-                                  <label
-                                    htmlFor="anonymous"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                  >
+                                  <label htmlFor="anonymous" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                                     익명으로 보내기 (인수증에 주문자 정보 미표시)
+                                  </label>
+                                </div>
+                                <div className="flex items-center space-x-2 mt-4">
+                                  <Checkbox id="register-customer" checked={registerCustomer} onCheckedChange={(checked) => setRegisterCustomer(!!checked)} />
+                                  <label htmlFor="register-customer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                    이 주문자 정보를 고객으로 등록/업데이트합니다
                                   </label>
                                 </div>
                               </CardContent>
