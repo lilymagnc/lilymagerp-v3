@@ -126,11 +126,13 @@ export function useCustomers() {
             const customerData = {
                 name: String(row['고객명'] || row.name),
                 type: (String(row['유형'] || row.type) === '기업' ? 'company' : 'personal'),
-                company: String(row['회사명'] || row.company || ''),
+                companyName: String(row['회사명'] || row.companyName || ''),
                 contact: String(row['연락처'] || row.contact),
                 email: String(row['이메일'] || row.email || ''),
                 branch: String(row['담당지점'] || row.branch),
                 grade: String(row['등급'] || row.grade || '신규'),
+                businessNumber: String(row['사업자등록번호'] || row.businessNumber || ''),
+                ceoName: String(row['대표자명'] || row.ceoName || ''),
                 createdAt: serverTimestamp(),
                 totalSpent: 0,
                 orderCount: 0,
@@ -165,7 +167,7 @@ export function useCustomers() {
     if (!contact || contact.length < 4) return [];
     try {
         const customersCollection = collection(db, 'customers');
-        const q = query(customersCollection, where("contact", "==", contact));
+        const q = query(customersCollection, where("contact", "==", contact), where("isDeleted", "!=", true));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
     } catch (error) {

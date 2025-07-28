@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +37,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">고객명</TableHead>
+              <TableHead className="w-[100px]">고객명/회사명</TableHead>
               <TableHead className="w-[100px]">유형</TableHead>
               <TableHead>연락처</TableHead>
               <TableHead className="hidden md:table-cell">등급</TableHead>
@@ -51,7 +52,7 @@ export function CustomerTable({ customers, onEdit, onDelete }: CustomerTableProp
                 <TableRow key={customer.id}>
                   <TableCell>
                     <div className="font-medium">{customer.name}</div>
-                    {customer.type === 'company' && <div className="text-xs text-muted-foreground">{customer.company}</div>}
+                    {customer.type === 'company' && <div className="text-xs text-muted-foreground">{customer.companyName}</div>}
                   </TableCell>
                   <TableCell>
                     <Badge variant={customer.type === 'company' ? 'secondary' : 'outline'}>

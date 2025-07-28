@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -115,7 +116,7 @@ export function useOrders() {
         name: orderData.orderer.name,
         contact: orderData.orderer.contact,
         email: orderData.orderer.email || '',
-        company: orderData.orderer.company || '',
+        companyName: orderData.orderer.company || '',
         branch: orderData.branchName,
         type: orderData.orderer.company ? 'company' : 'personal',
         lastOrderDate: serverTimestamp(),

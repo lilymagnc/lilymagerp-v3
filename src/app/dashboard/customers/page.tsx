@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -37,7 +38,7 @@ export default function CustomersPage() {
             )
             .filter(customer => 
                 customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (customer.company && customer.company.toLowerCase().includes(searchTerm.toLowerCase()))
+                (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
             );
     }, [customers, searchTerm, selectedBranch, selectedType]);
 
@@ -75,16 +76,17 @@ export default function CustomersPage() {
             return;
         }
         const dataToExport = filteredCustomers.map(c => ({
-            '유형': c.type,
+            '유형': c.type === 'company' ? '기업' : '개인',
             '고객명': c.name,
-            '회사명': c.company,
+            '회사명': c.companyName,
             '연락처': c.contact,
             '이메일': c.email,
             '등급': c.grade,
             '담당지점': c.branch,
-            '생성일': c.createdAt,
             '최근 주문일': c.lastOrderDate,
             '누적 구매액': c.totalSpent,
+            '사업자등록번호': c.businessNumber,
+            '대표자명': c.ceoName
         }));
         downloadXLSX(dataToExport, "customers_list");
         toast({
@@ -99,7 +101,7 @@ export default function CustomersPage() {
 
     return (
         <div>
-            <PageHeader title="고객 관리" description="고객 정보를 등록하고 마케팅에 활용하세요.">
+            <PageHeader title="통합 고객 관리" description="개인 및 기업 고객 정보를 등록하고 마케팅에 활용하세요.">
                  <div className="flex items-center gap-2">
                     <ImportButton resourceName="고객" onImport={handleImport}>
                         <FileUp className="mr-2 h-4 w-4" />

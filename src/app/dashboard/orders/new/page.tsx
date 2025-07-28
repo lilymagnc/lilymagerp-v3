@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBranches, Branch } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -137,7 +138,7 @@ export default function NewOrderPage() {
 
   const handleCustomerSelect = (customer: Customer) => {
     setOrdererName(customer.name);
-    setOrdererCompany(customer.company || "");
+    setOrdererCompany(customer.companyName || "");
     setOrdererEmail(customer.email || "");
     setOrdererContact(customer.contact);
     setIsContactSearchOpen(false);
@@ -509,7 +510,7 @@ export default function NewOrderPage() {
                                               contactSearchResults.map((customer) => (
                                                 <CommandItem key={customer.id} onSelect={() => handleCustomerSelect(customer)}>
                                                   <div className="flex flex-col">
-                                                    <span className="font-medium">{customer.name} {customer.company && `(${customer.company})`}</span>
+                                                    <span className="font-medium">{customer.name} {customer.companyName && `(${customer.companyName})`}</span>
                                                     <span className="text-xs text-muted-foreground">{customer.contact}</span>
                                                   </div>
                                                 </CommandItem>
