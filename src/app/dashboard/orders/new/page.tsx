@@ -461,6 +461,11 @@ export default function NewOrderPage() {
   const pageDescription = existingOrder ? '기존 주문 정보를 수정합니다.' : '고객의 주문을 받아 시스템에 등록합니다.';
 
   const isLoading = ordersLoading || productsLoading || branchesLoading;
+  
+  const deliveryDistricts = useMemo(() => {
+    if (!selectedBranch || !selectedBranch.deliveryFees) return [];
+    return selectedBranch.deliveryFees;
+  }, [selectedBranch]);
 
   return (
     <div>
@@ -809,7 +814,7 @@ export default function NewOrderPage() {
                                       <div className="space-y-2">
                                           <Label>배송지</Label>
                                           <div className="flex gap-2">
-                                          <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly/>
+                                          <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
                                           <Button type="button" variant="outline" onClick={handleAddressSearch}>
                                               <Search className="mr-2 h-4 w-4" /> 주소 검색
                                           </Button>
@@ -829,17 +834,16 @@ export default function NewOrderPage() {
                                           </div>
                                           </RadioGroup>
                                           <div className="flex items-center gap-2 mt-2">
-                                              <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ""} disabled={deliveryFeeType !== 'auto'}>
+                                              <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={deliveryFeeType !== 'auto'}>
                                                   <SelectTrigger>
                                                       <SelectValue placeholder="지역 선택" />
                                                   </SelectTrigger>
                                                   <SelectContent>
-                                                      {selectedBranch?.deliveryFees?.map(df => (
-                                                          <SelectItem key={df.district} value={df.district}>
-                                                              {df.district} ({df.fee.toLocaleString()}원)
-                                                          </SelectItem>
+                                                      {deliveryDistricts.map(df => (
+                                                      <SelectItem key={df.district} value={df.district}>
+                                                          {df.district} ({df.fee.toLocaleString()}원)
+                                                      </SelectItem>
                                                       ))}
-                                                      <SelectItem value="기타">기타</SelectItem>
                                                   </SelectContent>
                                               </Select>
                                               {deliveryFeeType === 'manual' && (
@@ -985,4 +989,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-

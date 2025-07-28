@@ -67,13 +67,19 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
 
   useEffect(() => {
     if (isOpen) {
-      const { deliveryFees, surcharges, ...formData } = branch || {};
-      form.reset(formData as BranchFormValues || defaultValues);
+      // Keep all branch data for the form, even if not all fields are visible.
+      // This prevents data loss on save.
+      form.reset(branch || defaultValues);
     }
   }, [branch, form, isOpen]);
   
   const handleFormSubmit = (data: BranchFormValues) => {
-    onSubmit(data);
+    // When submitting, combine form data with non-form data like deliveryFees
+    const fullBranchData = {
+        ...branch, // old data including deliveryFees
+        ...data,    // new data from the form
+    };
+    onSubmit(fullBranchData);
   }
 
   return (
@@ -213,5 +219,3 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
     </Dialog>
   )
 }
-
-    
