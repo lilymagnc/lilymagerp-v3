@@ -26,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -209,7 +210,7 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "yyyy-MM-dd")
+                            format(field.value, "yyyy년 MM월 dd일", { locale: ko })
                           ) : (
                             <span>날짜 선택</span>
                           )}
@@ -219,13 +220,21 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
+                        locale={ko}
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
+                        captionLayout="dropdown-buttons"
+                        fromYear={1920}
+                        toYear={new Date().getFullYear()}
                         disabled={(date) =>
                           date > new Date() || date < new Date("1900-01-01")
                         }
-                        initialFocus
+                        classNames={{
+                          caption_label: 'text-lg font-medium',
+                          caption_dropdowns: 'flex flex-row-reverse gap-1 text-xs',
+                          vhidden: 'hidden',
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -250,7 +259,7 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "yyyy-MM-dd")
+                            format(field.value, "yyyy년 MM월 dd일", { locale: ko })
                           ) : (
                             <span>날짜 선택</span>
                           )}
@@ -260,10 +269,18 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
+                        locale={ko}
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        initialFocus
+                        captionLayout="dropdown-buttons"
+                        fromYear={2010}
+                        toYear={new Date().getFullYear()}
+                        classNames={{
+                          caption_label: 'text-lg font-medium',
+                          caption_dropdowns: 'flex flex-row-reverse gap-1 text-xs',
+                          vhidden: 'hidden',
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -283,4 +300,3 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
     </Dialog>
   )
 }
-
