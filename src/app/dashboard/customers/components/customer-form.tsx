@@ -33,7 +33,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
-import { useDayPicker, CaptionProps } from "react-day-picker"
 
 const customerSchema = z.object({
   name: z.string().min(1, "고객명을 입력해주세요."),
@@ -71,16 +70,6 @@ const defaultValues: CustomerFormValues = {
   anniversary: null,
   memo: "",
 }
-
-function CustomCaption(props: CaptionProps) {
-  const { goToMonth, nextMonth, previousMonth } = useDayPicker();
-  return (
-    <h2 className="flex items-center justify-center text-sm font-medium pt-1 relative">
-      {format(props.displayMonth, 'yyyy년 LLL', { locale: ko })}
-    </h2>
-  );
-}
-
 
 export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: CustomerFormProps) {
   const { branches } = useBranches()
@@ -282,10 +271,9 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                                 mode="single"
                                 selected={field.value ?? undefined}
                                 onSelect={field.onChange}
-                                captionLayout="dropdown"
+                                captionLayout="dropdown-buttons"
                                 fromYear={1920}
                                 toYear={new Date().getFullYear()}
-                                components={{ Caption: CustomCaption }}
                              />
                             </PopoverContent>
                         </Popover>
@@ -317,10 +305,9 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                                 mode="single" 
                                 selected={field.value ?? undefined}
                                 onSelect={field.onChange}
-                                captionLayout="dropdown"
+                                captionLayout="dropdown-buttons"
                                 fromYear={1950}
                                 toYear={new Date().getFullYear()}
-                                components={{ Caption: CustomCaption }}
                              />
                             </PopoverContent>
                         </Popover>
