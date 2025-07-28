@@ -4,14 +4,14 @@
 import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
+import { format, toDate } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,11 +38,13 @@ export default function OrdersPage() {
     setIsMessagePrintDialogOpen(true);
   };
 
-  const handleMessagePrintSubmit = ({ orderId, labelType, startPosition }: { orderId: string; labelType: string; startPosition: number }) => {
+  const handleMessagePrintSubmit = ({ orderId, labelType, startPosition, font, fontSize }: { orderId: string; labelType: string; startPosition: number; font: string; fontSize: number; }) => {
     const params = new URLSearchParams({
         orderId,
         labelType,
         start: String(startPosition),
+        font,
+        fontSize: String(fontSize),
     });
     router.push(`/dashboard/orders/print-message?${params.toString()}`);
     setIsMessagePrintDialogOpen(false);
@@ -159,7 +161,7 @@ export default function OrdersPage() {
                   <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
                   <TableCell>{order.orderer.name}</TableCell>
-                  <TableCell>{format(order.orderDate.toDate(), 'yyyy-MM-dd')}</TableCell>
+                  <TableCell>{format(toDate(order.orderDate), 'yyyy-MM-dd')}</TableCell>
                   <TableCell>{order.branchName}</TableCell>
                   <TableCell>
                       <div className="flex flex-col gap-1">
@@ -179,7 +181,10 @@ export default function OrdersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>작업</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => handlePrint(order.id)}>주문서 인쇄</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleMessagePrintClick(order)}>메시지 인쇄</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleMessagePrintClick(order)}>
+                          <MessageSquareText className="mr-2 h-4 w-4" />
+                          메시지 인쇄
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuSub>
                           <DropdownMenuSubTrigger>주문 상태 변경</DropdownMenuSubTrigger>
