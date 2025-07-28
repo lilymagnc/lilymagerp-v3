@@ -1,10 +1,10 @@
 
-"use client"
+"use client";
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -12,8 +12,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -21,14 +21,17 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+} from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Employee } from "@/hooks/use-employees";
+import { useBranches } from "@/hooks/use-branches";
+import { useEffect } from "react";
 
 const employeeSchema = z.object({
   name: z.string().min(1, "이름을 입력해주세요."),
@@ -41,31 +44,48 @@ const employeeSchema = z.object({
   address: z.string().optional(),
 })
 
-type EmployeeFormValues = z.infer<typeof employeeSchema>
+export type EmployeeFormValues = z.infer<typeof employeeSchema>
 
 interface EmployeeFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  employee?: EmployeeFormValues & { id: string } | null
+  onSubmit: (data: EmployeeFormValues) => void;
+  employee?: Employee | null;
 }
 
-export function EmployeeForm({ isOpen, onOpenChange, employee }: EmployeeFormProps) {
+const defaultValues: EmployeeFormValues = {
+  name: "",
+  position: "",
+  department: "",
+  contact: "",
+  email: "",
+  hireDate: new Date(),
+  birthDate: new Date(),
+  address: "",
+}
+
+export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: EmployeeFormProps) {
+  const { branches } = useBranches();
+  
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
-    defaultValues: employee || {
-      name: "",
-      position: "",
-      department: "",
-      contact: "",
-      email: "",
-      address: "",
-    },
+    defaultValues,
   })
 
-  const onSubmit = (data: EmployeeFormValues) => {
-    console.log(data)
-    onOpenChange(false)
-  }
+  useEffect(() => {
+    if (isOpen) {
+      if (employee) {
+        form.reset({
+          ...employee,
+          hireDate: employee.hireDate ? new Date(employee.hireDate) : new Date(),
+          birthDate: employee.birthDate ? new Date(employee.birthDate) : new Date(),
+        })
+      } else {
+        form.reset(defaultValues)
+      }
+    }
+  }, [isOpen, employee, form])
+  
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -95,7 +115,7 @@ export function EmployeeForm({ isOpen, onOpenChange, employee }: EmployeeFormPro
                 <FormItem>
                   <FormLabel>이메일</FormLabel>
                   <FormControl>
-                    <Input placeholder="employee@ggotgil.com" {...field} />
+                    <Input placeholder="employee@ggotgil.com" {...field} disabled={!!employee} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -120,7 +140,7 @@ export function EmployeeForm({ isOpen, onOpenChange, employee }: EmployeeFormPro
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>직위</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                   <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="직위 선택" />
@@ -143,16 +163,16 @@ export function EmployeeForm({ isOpen, onOpenChange, employee }: EmployeeFormPro
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>소속</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                   <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="소속 지점 선택" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="본사">본사</SelectItem>
-                      <SelectItem value="강남점">강남점</SelectItem>
-                      <SelectItem value="홍대점">홍대점</SelectItem>
+                      {branches.map(branch => (
+                        <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -189,7 +209,7 @@ export function EmployeeForm({ isOpen, onOpenChange, employee }: EmployeeFormPro
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, "yyyy-MM-dd")
                           ) : (
                             <span>날짜 선택</span>
                           )}
@@ -230,7 +250,7 @@ export function EmployeeForm({ isOpen, onOpenChange, employee }: EmployeeFormPro
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, "yyyy-MM-dd")
                           ) : (
                             <span>날짜 선택</span>
                           )}
@@ -263,3 +283,4 @@ export function EmployeeForm({ isOpen, onOpenChange, employee }: EmployeeFormPro
     </Dialog>
   )
 }
+
