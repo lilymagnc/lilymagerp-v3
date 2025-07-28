@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -153,12 +152,10 @@ export default function ProductsPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                     {isHeadOfficeAdmin && (
-                        <ImportButton resourceName="상품" onImport={handleImport}>
-                            <FileUp className="mr-2 h-4 w-4" />
-                            엑셀로 가져오기
-                        </ImportButton>
-                     )}
+                     <ImportButton resourceName="상품" onImport={handleImport}>
+                        <FileUp className="mr-2 h-4 w-4" />
+                         엑셀로 가져오기
+                     </ImportButton>
                      <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
                         <Download className="mr-2 h-4 w-4" />
                         현재 목록 다운로드

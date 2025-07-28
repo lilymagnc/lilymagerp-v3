@@ -20,6 +20,10 @@ import { ko } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Download } from "lucide-react";
+import { downloadXLSX } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
 
 interface CustomerDetailsProps {
   isOpen: boolean;
@@ -32,6 +36,7 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
   const { orders, loading: ordersLoading } = useOrders();
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isOpen && customer && !ordersLoading) {
@@ -43,6 +48,33 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
         setHistoryLoading(false);
     }
   }, [isOpen, customer, orders, ordersLoading]);
+
+  const handleDownloadOrderHistory = () => {
+    if (!customer || orderHistory.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "내보낼 데이터 없음",
+        description: "해당 고객의 주문 내역이 없습니다.",
+      });
+      return;
+    }
+
+    const dataToExport = orderHistory.map(order => ({
+      "주문일": format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd HH:mm"),
+      "주문지점": order.branchName,
+      "주문상품": order.items.map(item => `${item.name}(${item.quantity})`).join(', '),
+      "총액": order.summary.total,
+      "결제수단": order.payment.method,
+      "결제상태": order.payment.status,
+      "주문상태": order.status,
+    }));
+
+    downloadXLSX(dataToExport, `${customer.name}_주문내역`);
+     toast({
+      title: "다운로드 성공",
+      description: `${customer.name}님의 주문 내역 ${dataToExport.length}건이 다운로드되었습니다.`,
+    });
+  }
 
   if (!customer) return null;
 
@@ -165,7 +197,11 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
               </div>
 
         </div>
-        <DialogFooter className="sm:justify-end pt-4">
+        <DialogFooter className="sm:justify-between items-center pt-4">
+            <Button variant="outline" size="sm" onClick={handleDownloadOrderHistory}>
+              <Download className="mr-2 h-4 w-4" />
+              주문 내역 다운로드
+            </Button>
           <div className="flex gap-2">
             <DialogClose asChild>
                 <Button type="button" variant="secondary">닫기</Button>

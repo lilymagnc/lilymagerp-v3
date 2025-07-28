@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -190,24 +189,22 @@ export default function MaterialsPage() {
                         </Button>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
-                     {isHeadOfficeAdmin && (
+                 <div className="flex items-center gap-2">
                          <ImportButton resourceName="자재" onImport={handleImport}>
                             <FileUp className="mr-2 h-4 w-4" />
                              엑셀로 가져오기
                          </ImportButton>
-                     )}
-                    <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
-                    <Download className="mr-2 h-4 w-4" />
-                    현재 목록 다운로드
-                    </Button>
-                    {isHeadOfficeAdmin && (
-                        <Button size="sm" onClick={handleAdd}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            자재 추가
+                        <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
+                        <Download className="mr-2 h-4 w-4" />
+                        현재 목록 다운로드
                         </Button>
-                    )}
-                </div>
+                        {isHeadOfficeAdmin && (
+                          <Button size="sm" onClick={handleAdd}>
+                              <PlusCircle className="mr-2 h-4 w-4" />
+                              자재 추가
+                          </Button>
+                        )}
+                    </div>
             </div>
         </CardContent>
       </Card>
