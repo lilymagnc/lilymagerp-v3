@@ -176,10 +176,16 @@ export function useOrders() {
 
         const orderDate = getOrderDate();
         const { registerCustomer, ...restOfOrderData } = orderData;
+        
         const orderPayload = {
           ...restOfOrderData,
           orderDate: Timestamp.fromDate(orderDate),
         };
+
+        if (orderPayload.orderer.id === undefined) {
+          delete orderPayload.orderer.id;
+        }
+
         const orderRef = doc(collection(db, 'orders'));
         transaction.set(orderRef, orderPayload);
 
@@ -262,7 +268,11 @@ export function useOrders() {
      try {
        setLoading(true);
        const orderRef = doc(db, "orders", orderId);
-       await setDoc(orderRef, orderData, { merge: true });
+       const orderPayload = { ...orderData };
+       if (orderPayload.orderer.id === undefined) {
+          delete orderPayload.orderer.id;
+       }
+       await setDoc(orderRef, orderPayload, { merge: true });
        toast({
          title: "성공",
          description: "주문 정보가 업데이트되었습니다."
