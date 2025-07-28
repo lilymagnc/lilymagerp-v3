@@ -60,6 +60,7 @@ export default function NewOrderPage() {
   
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   
   const [ordererName, setOrdererName] = useState("");
   const [ordererContact, setOrdererContact] = useState("");
@@ -159,6 +160,9 @@ export default function NewOrderPage() {
             }).filter(item => item.id)); 
             
             setDeliveryFee(foundOrder.summary.deliveryFee);
+            if(foundOrder.deliveryInfo?.district) {
+              setSelectedDistrict(foundOrder.deliveryInfo.district);
+            }
             
             setOrdererName(foundOrder.orderer.name);
             setOrdererContact(foundOrder.orderer.contact);
@@ -203,9 +207,20 @@ export default function NewOrderPage() {
       setPickerName(ordererName);
       setPickerContact(ordererContact);
       setDeliveryFee(0);
+      setSelectedDistrict(null);
     }
   }, [ordererName, ordererContact, receiptType]);
   
+  useEffect(() => {
+    if (receiptType === 'delivery' && selectedBranch && selectedDistrict) {
+        const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
+        const fee = feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
+        setDeliveryFee(fee);
+    } else if (receiptType === 'pickup') {
+        setDeliveryFee(0);
+    }
+  }, [selectedDistrict, selectedBranch, receiptType]);
+
   const debouncedSearch = useCallback(
     debounce(async (contact: string) => {
       if (contact.length >= 4) {
@@ -228,7 +243,7 @@ export default function NewOrderPage() {
     const formattedPhoneNumber = formatPhoneNumber(e.target.value);
     setOrdererContact(formattedPhoneNumber);
     debouncedSearch(formattedPhoneNumber);
-    setSelectedCustomer(null); // Reset selected customer when contact changes
+    setSelectedCustomer(null);
     setUsedPoints(0);
   }
 
@@ -358,7 +373,7 @@ export default function NewOrderPage() {
             recipientName, 
             recipientContact, 
             address: `${deliveryAddress} ${deliveryAddressDetail}`,
-            district: '', // District info is removed from this simplified version
+            district: selectedDistrict ?? '',
         } : null,
 
         message: { type: messageType, content: messageContent },
@@ -383,6 +398,7 @@ export default function NewOrderPage() {
     const branch = branches.find(b => b.id === branchId);
     setSelectedBranch(branch || null);
     setOrderItems([]);
+    setSelectedDistrict(null);
     setSelectedMainCategory(null);
     setSelectedMidCategory(null);
   }
@@ -406,6 +422,13 @@ export default function NewOrderPage() {
           
           setDeliveryAddress(fullAddress);
           setDeliveryAddressDetail('');
+
+          const district = data.sigungu;
+          if(selectedBranch?.deliveryFees?.some(df => df.district === district)) {
+            setSelectedDistrict(district);
+          } else {
+            setSelectedDistrict("기타");
+          }
         }
       }).open();
     }
@@ -772,13 +795,21 @@ export default function NewOrderPage() {
                                           <Input id="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
                                       </div>
                                       <div className="space-y-2">
-                                          <Label>배송비</Label>
-                                           <Input 
-                                                type="number" 
-                                                placeholder="배송비 직접 입력" 
-                                                value={deliveryFee}
-                                                onChange={(e) => setDeliveryFee(Number(e.target.value))}
-                                            />
+                                        <Label>배송비</Label>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="지역 선택" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {selectedBranch?.deliveryFees?.map(df => (
+                                                    <SelectItem key={df.district} value={df.district}>
+                                                        {df.district}
+                                                    </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                       </div>
                                   </CardContent>
                               </Card>
