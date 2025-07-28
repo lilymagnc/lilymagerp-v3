@@ -9,23 +9,33 @@ import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Order } from "@/hooks/use-orders";
+import { Input } from "@/components/ui/input";
 
 interface MessagePrintDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSubmit: (data: { orderId: string, labelType: string, startPosition: number }) => void;
+  onSubmit: (data: { orderId: string, labelType: string, startPosition: number, font: string, fontSize: number }) => void;
   order: Order;
 }
 
 const labelTypes = [
     { value: 'formtec-3107', label: '폼텍 3107 (6칸)', cells: 6, gridCols: 'grid-cols-2' },
     { value: 'formtec-3108', label: '폼텍 3108 (8칸)', cells: 8, gridCols: 'grid-cols-2' },
-    { value: 'formtec-3109', label: '폼텍 3109 (12칸)', cells: 12, gridCols: 'grid-cols-3' },
+    { value: 'formtec-3109', label: '폼텍 3109 (12칸)', cells: 12, gridCols: 'grid-cols-2' },
 ];
+
+const fontOptions = [
+    { value: 'Noto Sans KR', label: '기본 고딕체' },
+    { value: 'Noto Serif KR', label: '기본 명조체' },
+    { value: 'Gaegu', label: '개구체 (손글씨)' },
+];
+
 
 export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: MessagePrintDialogProps) {
   const [labelType, setLabelType] = useState(labelTypes[0].value);
   const [startPosition, setStartPosition] = useState(1);
+  const [font, setFont] = useState(fontOptions[0].value);
+  const [fontSize, setFontSize] = useState(14);
   
   const selectedLabel = labelTypes.find(lt => lt.value === labelType) || labelTypes[0];
 
@@ -33,7 +43,9 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
     onSubmit({
         orderId: order.id,
         labelType,
-        startPosition
+        startPosition,
+        font,
+        fontSize,
     });
   };
 
@@ -51,6 +63,25 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                 <Label>인쇄할 메시지</Label>
                 <div className="mt-1 p-3 border rounded-md bg-muted text-sm whitespace-pre-wrap h-24 overflow-y-auto">
                     {order.message?.content || "메시지 내용이 없습니다."}
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="font-family">폰트</Label>
+                    <Select value={font} onValueChange={setFont}>
+                        <SelectTrigger id="font-family">
+                            <SelectValue placeholder="폰트 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {fontOptions.map(fo => (
+                                <SelectItem key={fo.value} value={fo.value}>{fo.label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div>
+                    <Label htmlFor="font-size">글자 크기 (pt)</Label>
+                    <Input id="font-size" type="number" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value) || 14)} />
                 </div>
             </div>
             <div>

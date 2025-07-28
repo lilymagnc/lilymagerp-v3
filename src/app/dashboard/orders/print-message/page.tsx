@@ -51,6 +51,8 @@ export default async function PrintMessagePage({ searchParams }: PageProps) {
     const orderId = searchParams.orderId as string;
     const labelType = searchParams.labelType as string || 'formtec-3108';
     const startPosition = parseInt(searchParams.start as string) || 1;
+    const font = searchParams.font as string || 'Noto Sans KR';
+    const fontSize = parseInt(searchParams.fontSize as string) || 14;
 
     if (!orderId) {
         notFound();
@@ -68,8 +70,9 @@ export default async function PrintMessagePage({ searchParams }: PageProps) {
                 order={orderData}
                 labelType={labelType}
                 startPosition={startPosition}
+                font={font}
+                fontSize={fontSize}
             />
         </Suspense>
     );
 }
-

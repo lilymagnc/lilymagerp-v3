@@ -12,15 +12,17 @@ interface MessagePrintLayoutProps {
   order: SerializableOrder;
   labelType: string;
   startPosition: number;
+  font: string;
+  fontSize: number;
 }
 
 const labelConfigs: Record<string, { cells: number; gridCols: string; height: string, className?: string }> = {
     'formtec-3107': { cells: 6, gridCols: 'grid-cols-2', height: '99.1mm', className: 'gap-x-0' }, // 2x3
     'formtec-3108': { cells: 8, gridCols: 'grid-cols-2', height: '70mm', className: 'gap-x-[4.5mm]' }, // 2x4
-    'formtec-3109': { cells: 12, gridCols: 'grid-cols-3', height: '67.7mm', className: 'gap-x-[2.5mm]' }, // 3x4
+    'formtec-3109': { cells: 12, gridCols: 'grid-cols-2', height: '67.7mm', className: 'gap-x-[2.5mm]' }, // 2x6
 };
 
-export function MessagePrintLayout({ order, labelType, startPosition }: MessagePrintLayoutProps) {
+export function MessagePrintLayout({ order, labelType, startPosition, font, fontSize }: MessagePrintLayoutProps) {
   const router = useRouter();
   const config = labelConfigs[labelType] || labelConfigs['formtec-3108'];
   const labels = Array(config.cells).fill(null);
@@ -30,6 +32,11 @@ export function MessagePrintLayout({ order, labelType, startPosition }: MessageP
           labels[startPosition - 1] = order.message.content;
       }
   }
+
+  const fontStyle = {
+    fontFamily: font,
+    fontSize: `${fontSize}pt`,
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -63,9 +70,9 @@ export function MessagePrintLayout({ order, labelType, startPosition }: MessageP
             <div 
               key={index} 
               className="bg-white p-4 flex flex-col items-center justify-center text-center border border-dashed border-gray-300 print:border-none"
-              style={{ height: config.height }}
+              style={{ height: config.height, ...fontStyle }}
             >
-              <p className="text-sm font-medium whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap">
                 {content}
               </p>
             </div>
