@@ -59,7 +59,7 @@ export default function NewOrderPage() {
   const { toast } = useToast();
   
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState(0);
   
   const [ordererName, setOrdererName] = useState("");
   const [ordererContact, setOrdererContact] = useState("");
@@ -158,7 +158,7 @@ export default function NewOrderPage() {
                 return { ...product!, quantity: item.quantity };
             }).filter(item => item.id)); 
             
-            setSelectedDistrict(foundOrder.deliveryInfo?.district || null);
+            setDeliveryFee(foundOrder.summary.deliveryFee);
             
             setOrdererName(foundOrder.orderer.name);
             setOrdererContact(foundOrder.orderer.contact);
@@ -202,6 +202,7 @@ export default function NewOrderPage() {
     if (receiptType === 'pickup') {
       setPickerName(ordererName);
       setPickerContact(ordererContact);
+      setDeliveryFee(0);
     }
   }, [ordererName, ordererContact, receiptType]);
   
@@ -255,21 +256,6 @@ export default function NewOrderPage() {
     const formattedPhoneNumber = formatPhoneNumber(e.target.value);
     setter(formattedPhoneNumber);
   }
-
-  const deliveryFee = useMemo(() => {
-    if (receiptType === 'pickup') return 0;
-    if (!selectedBranch || !selectedDistrict) {
-      return 0;
-    }
-    const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
-    return feeInfo?.fee ?? 0;
-  }, [selectedDistrict, selectedBranch, receiptType]);
-
-  useEffect(() => {
-    if(!existingOrder) {
-        setSelectedDistrict(null);
-    }
-  }, [selectedBranch, existingOrder]);
 
   const handleAddProduct = (docId: string) => {
     const productToAdd = branchProducts.find(p => p.docId === docId);
@@ -372,7 +358,7 @@ export default function NewOrderPage() {
             recipientName, 
             recipientContact, 
             address: `${deliveryAddress} ${deliveryAddressDetail}`,
-            district: selectedDistrict ?? '',
+            district: '', // District info is removed from this simplified version
         } : null,
 
         message: { type: messageType, content: messageContent },
@@ -397,7 +383,6 @@ export default function NewOrderPage() {
     const branch = branches.find(b => b.id === branchId);
     setSelectedBranch(branch || null);
     setOrderItems([]);
-    setSelectedDistrict(null);
     setSelectedMainCategory(null);
     setSelectedMidCategory(null);
   }
@@ -421,13 +406,6 @@ export default function NewOrderPage() {
           
           setDeliveryAddress(fullAddress);
           setDeliveryAddressDetail('');
-
-          const district = data.sigungu;
-          if(selectedBranch?.deliveryFees?.some(df => df.district === district)) {
-            setSelectedDistrict(district);
-          } else {
-            setSelectedDistrict("기타");
-          }
         }
       }).open();
     }
@@ -737,7 +715,7 @@ export default function NewOrderPage() {
                                       </div>
                                       <div className="space-y-2">
                                           <Label htmlFor="picker-contact">픽업자 연락처</Label>
-                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleContactChange(e, setPickerContact)} />
+                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleGenericContactChange(e, setPickerContact)} />
                                       </div>
                                   </CardContent>
                               </Card>
@@ -780,7 +758,7 @@ export default function NewOrderPage() {
                                           </div>
                                           <div className="space-y-2">
                                               <Label htmlFor="recipient-contact">받는 분 연락처</Label>
-                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleContactChange(e, setRecipientContact)} />
+                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleGenericContactChange(e, setRecipientContact)} />
                                           </div>
                                       </div>
                                       <div className="space-y-2">
@@ -793,20 +771,14 @@ export default function NewOrderPage() {
                                           </div>
                                           <Input id="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
                                       </div>
-                                       <div className="space-y-2">
+                                      <div className="space-y-2">
                                           <Label>배송비</Label>
-                                          <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''}>
-                                              <SelectTrigger>
-                                                  <SelectValue placeholder="배송 지역 선택" />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                  {selectedBranch?.deliveryFees?.map(df => (
-                                                  <SelectItem key={df.district} value={df.district}>
-                                                      {df.district} ({df.fee.toLocaleString()}원)
-                                                  </SelectItem>
-                                                  ))}
-                                              </SelectContent>
-                                          </Select>
+                                           <Input 
+                                                type="number" 
+                                                placeholder="배송비 직접 입력" 
+                                                value={deliveryFee}
+                                                onChange={(e) => setDeliveryFee(Number(e.target.value))}
+                                            />
                                       </div>
                                   </CardContent>
                               </Card>
