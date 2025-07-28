@@ -59,8 +59,6 @@ export default function NewOrderPage() {
   const { toast } = useToast();
   
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-  const [deliveryFeeType, setDeliveryFeeType] = useState<"auto" | "manual">("auto");
-  const [manualDeliveryFee, setManualDeliveryFee] = useState(0);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   
   const [ordererName, setOrdererName] = useState("");
@@ -160,13 +158,7 @@ export default function NewOrderPage() {
                 return { ...product!, quantity: item.quantity };
             }).filter(item => item.id)); 
             
-            if(foundOrder.deliveryInfo?.district && foundOrder.deliveryInfo.district !== '') {
-                setDeliveryFeeType("auto");
-                setSelectedDistrict(foundOrder.deliveryInfo.district);
-            } else {
-                setDeliveryFeeType("manual");
-                setManualDeliveryFee(foundOrder.summary.deliveryFee);
-            }
+            setSelectedDistrict(foundOrder.deliveryInfo?.district || null);
             
             setOrdererName(foundOrder.orderer.name);
             setOrdererContact(foundOrder.orderer.contact);
@@ -265,16 +257,10 @@ export default function NewOrderPage() {
   }
 
   const deliveryFee = useMemo(() => {
-    if (receiptType === 'pickup') return 0;
-    if (deliveryFeeType === 'manual') {
-      return manualDeliveryFee;
-    }
-    if (!selectedBranch || !selectedDistrict) {
-      return 0;
-    }
-    const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
-    return feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
-  }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, receiptType]);
+    if (receiptType === 'pickup' || !selectedDistrict) return 0;
+    const feeInfo = selectedBranch?.deliveryFees?.find(df => df.district === selectedDistrict);
+    return feeInfo?.fee ?? 0;
+  }, [selectedDistrict, selectedBranch, receiptType]);
 
   useEffect(() => {
     if(!existingOrder) {
@@ -461,11 +447,6 @@ export default function NewOrderPage() {
   const pageDescription = existingOrder ? '기존 주문 정보를 수정합니다.' : '고객의 주문을 받아 시스템에 등록합니다.';
 
   const isLoading = ordersLoading || productsLoading || branchesLoading;
-  
-  const deliveryDistricts = useMemo(() => {
-    if (!selectedBranch || !selectedBranch.deliveryFees) return [];
-    return selectedBranch.deliveryFees;
-  }, [selectedBranch]);
 
   return (
     <div>
@@ -823,38 +804,18 @@ export default function NewOrderPage() {
                                       </div>
                                       <div className="space-y-2">
                                           <Label>배송비</Label>
-                                          <RadioGroup value={deliveryFeeType} className="flex items-center gap-4" onValueChange={(value) => setDeliveryFeeType(value as "auto" | "manual")}>
-                                          <div className="flex items-center space-x-2">
-                                              <RadioGroupItem value="auto" id="auto" />
-                                              <Label htmlFor="auto">자동 계산</Label>
-                                          </div>
-                                          <div className="flex items-center space-x-2">
-                                              <RadioGroupItem value="manual" id="manual" />
-                                              <Label htmlFor="manual">직접 입력</Label>
-                                          </div>
-                                          </RadioGroup>
-                                          <div className="flex items-center gap-2 mt-2">
-                                              <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={deliveryFeeType !== 'auto'}>
-                                                  <SelectTrigger>
-                                                      <SelectValue placeholder="지역 선택" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                      {deliveryDistricts.map(df => (
-                                                      <SelectItem key={df.district} value={df.district}>
-                                                          {df.district} ({df.fee.toLocaleString()}원)
-                                                      </SelectItem>
-                                                      ))}
-                                                  </SelectContent>
-                                              </Select>
-                                              {deliveryFeeType === 'manual' && (
-                                              <Input 
-                                                  type="number" 
-                                                  placeholder="배송비 직접 입력" 
-                                                  value={manualDeliveryFee}
-                                                  onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
-                                              />
-                                              )}
-                                          </div>
+                                          <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''}>
+                                              <SelectTrigger>
+                                                  <SelectValue placeholder="배송 지역 선택" />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                  {selectedBranch?.deliveryFees?.map(df => (
+                                                  <SelectItem key={df.district} value={df.district}>
+                                                      {df.district} ({df.fee.toLocaleString()}원)
+                                                  </SelectItem>
+                                                  ))}
+                                              </SelectContent>
+                                          </Select>
                                       </div>
                                   </CardContent>
                               </Card>
@@ -989,3 +950,4 @@ export default function NewOrderPage() {
     </div>
   );
 }
+

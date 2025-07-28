@@ -44,11 +44,11 @@ export type BranchFormValues = z.infer<typeof branchSchema>
 interface BranchFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  onSubmit: (data: BranchFormValues) => void
+  onSubmit: (data: Branch) => void
   branch?: Branch | null
 }
 
-const defaultValues = {
+const defaultValues: BranchFormValues = {
   name: "",
   type: "",
   manager: "",
@@ -67,18 +67,18 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
 
   useEffect(() => {
     if (isOpen) {
-      // Keep all branch data for the form, even if not all fields are visible.
-      // This prevents data loss on save.
+      // Reset form with all data, including non-form fields to preserve them
       form.reset(branch || defaultValues);
     }
   }, [branch, form, isOpen]);
   
   const handleFormSubmit = (data: BranchFormValues) => {
     // When submitting, combine form data with non-form data like deliveryFees
+    // This ensures that data not present in the form is not lost on update.
     const fullBranchData = {
-        ...branch, // old data including deliveryFees
-        ...data,    // new data from the form
-    };
+        ...(branch || {}), // old data including deliveryFees
+        ...data,           // new data from the form
+    } as Branch;
     onSubmit(fullBranchData);
   }
 
@@ -219,3 +219,4 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
     </Dialog>
   )
 }
+
