@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -22,9 +23,9 @@ export function useCustomers() {
     try {
       setLoading(true);
       const customersCollection = collection(db, 'customers');
-      const querySnapshot = await getDocs(query(customersCollection, where("isDeleted", "!=", true)));
+      const q = query(customersCollection, where("isDeleted", "!=", true));
       
-      const customersData = querySnapshot.docs.map(doc => {
+      const customersData = (await getDocs(q)).docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -160,5 +161,19 @@ export function useCustomers() {
     await fetchCustomers();
   }
 
-  return { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers };
+  const findCustomersByContact = useCallback(async (contact: string): Promise<Customer[]> => {
+    if (!contact || contact.length < 4) return [];
+    try {
+        const customersCollection = collection(db, 'customers');
+        const q = query(customersCollection, where("contact", "==", contact));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+    } catch (error) {
+        console.error("Error finding customers by contact:", error);
+        toast({ variant: 'destructive', title: '고객 검색 오류', description: '연락처로 고객을 찾는 중 오류가 발생했습니다.'});
+        return [];
+    }
+  }, [toast]);
+
+  return { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers, findCustomersByContact };
 }

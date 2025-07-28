@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp, UserSearch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch } from "@/hooks/use-branches";
@@ -23,7 +24,9 @@ import { useOrders, OrderData, Order } from "@/hooks/use-orders";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useProducts, Product } from "@/hooks/use-products";
+import { useCustomers, Customer } from "@/hooks/use-customers";
 import { Timestamp } from "firebase/firestore";
+import { debounce } from "lodash";
 
 interface OrderItem extends Product {
   quantity: number;
@@ -45,6 +48,7 @@ export default function NewOrderPage() {
   const { branches } = useBranches();
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, addOrder, loading: isSubmitting } = useOrders();
+  const { findCustomersByContact } = useCustomers();
   const router = useRouter();
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -61,6 +65,9 @@ export default function NewOrderPage() {
   const [ordererEmail, setOrdererEmail] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [registerCustomer, setRegisterCustomer] = useState(true);
+
+  const [contactSearchResults, setContactSearchResults] = useState<Customer[]>([]);
+  const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
   
   const [orderType, setOrderType] = useState<OrderType>("phone");
   const [receiptType, setReceiptType] = useState<ReceiptType>("delivery");
@@ -108,6 +115,35 @@ export default function NewOrderPage() {
     }
   }, [ordererName, ordererContact, receiptType]);
 
+  const debouncedSearch = useCallback(
+    debounce(async (contact: string) => {
+        if (contact.length >= 4) {
+            const results = await findCustomersByContact(contact);
+            setContactSearchResults(results);
+            if(results.length > 0) setIsContactSearchOpen(true);
+        } else {
+            setContactSearchResults([]);
+            setIsContactSearchOpen(false);
+        }
+    }, 500),
+    [findCustomersByContact]
+  );
+  
+  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedPhoneNumber = formatPhoneNumber(e.target.value);
+    setOrdererContact(formattedPhoneNumber);
+    debouncedSearch(formattedPhoneNumber);
+  }
+
+  const handleCustomerSelect = (customer: Customer) => {
+    setOrdererName(customer.name);
+    setOrdererCompany(customer.company || "");
+    setOrdererEmail(customer.email || "");
+    setOrdererContact(customer.contact);
+    setIsContactSearchOpen(false);
+  }
+
+
   const formatPhoneNumber = (value: string) => {
     if (!value) return value;
     const phoneNumber = value.replace(/[^\d]/g, '');
@@ -119,7 +155,7 @@ export default function NewOrderPage() {
     return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 7)}-${phoneNumber.slice(7, 11)}`;
   }
 
-  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+  const handleGenericContactChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
     const formattedPhoneNumber = formatPhoneNumber(e.target.value);
     setter(formattedPhoneNumber);
   }
@@ -456,10 +492,35 @@ export default function NewOrderPage() {
                                         <Label htmlFor="orderer-name">주문자명</Label>
                                         <Input id="orderer-name" placeholder="주문자명 입력" value={ordererName} onChange={e => setOrdererName(e.target.value)} />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="orderer-contact">연락처</Label>
-                                        <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={(e) => handleContactChange(e, setOrdererContact)} />
-                                    </div>
+                                    <Popover open={isContactSearchOpen} onOpenChange={setIsContactSearchOpen}>
+                                      <PopoverTrigger asChild>
+                                        <div className="space-y-2">
+                                          <Label htmlFor="orderer-contact">연락처</Label>
+                                          <div className="relative">
+                                            <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                            <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={handleContactChange} className="pl-10" />
+                                          </div>
+                                        </div>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                          <CommandList>
+                                            {contactSearchResults.length > 0 ? (
+                                              contactSearchResults.map((customer) => (
+                                                <CommandItem key={customer.id} onSelect={() => handleCustomerSelect(customer)}>
+                                                  <div className="flex flex-col">
+                                                    <span className="font-medium">{customer.name} {customer.company && `(${customer.company})`}</span>
+                                                    <span className="text-xs text-muted-foreground">{customer.contact}</span>
+                                                  </div>
+                                                </CommandItem>
+                                              ))
+                                            ) : (
+                                              <div className="p-4 text-sm text-center text-muted-foreground">일치하는 고객이 없습니다.</div>
+                                            )}
+                                          </CommandList>
+                                        </Command>
+                                      </PopoverContent>
+                                    </Popover>
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-email">이메일</Label>
                                         <Input id="orderer-email" type="email" placeholder="email@example.com" value={ordererEmail} onChange={e => setOrdererEmail(e.target.value)} />
@@ -538,7 +599,7 @@ export default function NewOrderPage() {
                                       </div>
                                       <div className="space-y-2">
                                           <Label htmlFor="picker-contact">픽업자 연락처</Label>
-                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleContactChange(e, setPickerContact)} />
+                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleGenericContactChange(e, setPickerContact)} />
                                       </div>
                                   </CardContent>
                               </Card>
@@ -581,7 +642,7 @@ export default function NewOrderPage() {
                                           </div>
                                           <div className="space-y-2">
                                               <Label htmlFor="recipient-contact">받는 분 연락처</Label>
-                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleContactChange(e, setRecipientContact)} />
+                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleGenericContactChange(e, setRecipientContact)} />
                                           </div>
                                       </div>
                                       <div className="space-y-2">
