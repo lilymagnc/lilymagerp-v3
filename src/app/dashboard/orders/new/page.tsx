@@ -1199,6 +1199,6 @@ const handleCustomerSelect = (customer: Customer) => {
         </fieldset>
     </div>
   );
+}
 
-
-    
+}
