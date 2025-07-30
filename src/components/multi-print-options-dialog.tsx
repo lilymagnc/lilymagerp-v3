@@ -28,35 +28,35 @@ interface ItemWithQuantity {
 }
 
 interface MultiPrintOptionsDialogProps {
-  isOpen: boolean
-  onOpenChange: (isOpen: boolean) => void
-  onSubmit: (items: { id: string, quantity: number }[], startPosition: number) => void
-  itemIds: string[]
-  itemType: 'product' | 'material'
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (items: { id: string; quantity: number; }[], startPosition: number) => void;
+  itemIds: string[];
+  itemType: "product" | "material";
 }
 
 export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemIds, itemType }: MultiPrintOptionsDialogProps) {
-    const [items, setItems] = useState<ItemWithQuantity[]>([]);
-    const [startPosition, setStartPosition] = useState(1);
-    const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<ItemWithQuantity[]>([]);
+  const [startPosition, setStartPosition] = useState(1);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (isOpen) {
-            const fetchItems = async () => {
-                setLoading(true);
-                const fetched = await Promise.all(
-                    itemIds.map(async (id) => {
-                        const itemData = await getItemData(id, itemType);
-                        return { id, name: itemData?.name || 'Unknown', quantity: 1 };
-                    })
-                );
-                setItems(fetched);
-                setLoading(false);
-            };
-            fetchItems();
-        }
-    }, [isOpen, itemIds, itemType]);
-  
+  useEffect(() => {
+    if (isOpen) {
+      const fetchItems = async () => {
+        setLoading(true);
+        const fetched = await Promise.all(
+          itemIds.map(async (id) => {
+            const itemData = await getItemData(id, itemType);
+            return { id, name: itemData?.name || 'Unknown', quantity: 1 };
+          })
+        );
+        setItems(fetched);
+        setLoading(false);
+      };
+      fetchItems();
+    }
+  }, [isOpen, itemIds, itemType]);
+
   const handleQuantityChange = (id: string, quantity: number) => {
     const newQuantity = Math.max(1, quantity);
     setItems(prev => prev.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
@@ -88,16 +88,16 @@ export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemId
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {items.map(item => (
-                            <div key={item.id} className="flex items-center justify-between gap-4 p-2 rounded-md hover:bg-muted/50">
-                                <p className="text-sm font-medium truncate" title={item.name}>{item.name}</p>
-                                <Input 
-                                    type="number" 
-                                    value={item.quantity}
-                                    onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
-                                    className="w-20 h-8"
-                                    min="1"
-                                />
+                        {items.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between py-2">
+                              <span className="text-sm">{item.name}</span>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                                className="w-20"
+                              />
                             </div>
                         ))}
                     </div>

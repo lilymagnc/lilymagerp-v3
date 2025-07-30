@@ -51,7 +51,7 @@ declare global {
 export default function NewOrderPage() {
   const { branches, loading: branchesLoading, fetchBranches } = useBranches();
   const [isUpdatingDeliveryFees, setIsUpdatingDeliveryFees] = useState(false);
-  const { products: allProducts, loading: productsLoading } = useProducts();
+ const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
   const { findCustomersByContact } = useCustomers();
   const router = useRouter();
@@ -383,6 +383,8 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         branchName: selectedBranch.name,
         orderDate: existingOrder?.orderDate || new Date(),
         status: existingOrder?.status || 'processing', 
+        orderType: orderType,
+        receiptType: receiptType,
         
         items: orderItems.map(({id, name, quantity, price}) => ({id, name, quantity, price})),
         summary: orderSummary,
@@ -390,12 +392,9 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         orderer: { id: selectedCustomer?.id || "", name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
         isAnonymous: isAnonymous,
         registerCustomer: registerCustomer,
-        orderType,
-        receiptType,
-
         payment: {
             method: paymentMethod,
-            status: paymentStatus,
+            status: paymentStatus === "paid" ? "completed" : paymentStatus,
         },
 
         pickupInfo: receiptType === 'pickup' ? { 

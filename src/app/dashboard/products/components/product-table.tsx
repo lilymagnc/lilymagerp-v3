@@ -37,9 +37,11 @@ interface ProductTableProps {
   onSelectionChange: (selectedIds: string[]) => void;
   onEdit: (product: Product) => void;
   onDelete: (docId: string) => void;
+  selectedProducts?: string[];
+  isAdmin?: boolean;
 }
 
-export function ProductTable({ products, onSelectionChange, onEdit, onDelete }: ProductTableProps) {
+export function ProductTable({ products, onSelectionChange, onEdit, onDelete, selectedProducts, isAdmin }: ProductTableProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);

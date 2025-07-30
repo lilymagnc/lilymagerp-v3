@@ -42,10 +42,13 @@ const productSchema = z.object({
 export type ProductFormValues = z.infer<typeof productSchema>
 
 interface ProductFormProps {
-  isOpen: boolean
-  onOpenChange: (isOpen: boolean) => void
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onSubmit: (data: ProductFormValues) => void;
-  product?: (ProductFormValues & { id: string; docId: string }) | null
+  product?: (ProductFormValues & { id: string; docId: string }) | null;
+  initialData?: (ProductFormValues & { id: string; docId: string }) | null;
+  branches?: any[];
+  selectedBranch?: string;
 }
 
 const defaultValues: ProductFormValues = {
@@ -60,9 +63,9 @@ const defaultValues: ProductFormValues = {
   stock: 0,
 }
 
-
-export function ProductForm({ isOpen, onOpenChange, onSubmit, product }: ProductFormProps) {
+export function ProductForm({ isOpen, onOpenChange, onSubmit, product, initialData, branches: propBranches, selectedBranch }: ProductFormProps) {
   const { branches } = useBranches();
+  const availableBranches = propBranches || branches;
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),

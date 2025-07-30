@@ -14,6 +14,8 @@ export interface Customer extends CustomerFormValues {
   totalSpent?: number;
   orderCount?: number;
   points?: number;
+  address?: string;
+  companyName?: string;
 }
 
 export function useCustomers() {
@@ -56,16 +58,13 @@ export function useCustomers() {
   const addCustomer = async (data: CustomerFormValues) => {
     setLoading(true);
     try {
-        const customerWithTimestamp = {
-            ...data,
-            birthday: data.birthday ? data.birthday.toISOString().split('T')[0] : null,
-            anniversary: data.anniversary ? data.anniversary.toISOString().split('T')[0] : null,
-            createdAt: serverTimestamp(),
-            totalSpent: 0,
-            orderCount: 0,
-            points: 0, 
-            isDeleted: false,
-        };
+      const customerWithTimestamp = {
+        ...data,
+        createdAt: serverTimestamp(),
+        totalSpent: 0,
+        orderCount: 0,
+        points: 0,
+      };
       await addDoc(collection(db, 'customers'), customerWithTimestamp);
       toast({ title: "성공", description: "새 고객이 추가되었습니다." });
       await fetchCustomers();
@@ -81,12 +80,7 @@ export function useCustomers() {
     setLoading(true);
     try {
       const customerDocRef = doc(db, 'customers', id);
-      const customerWithTimestamp = {
-          ...data,
-          birthday: data.birthday ? data.birthday.toISOString().split('T')[0] : null,
-          anniversary: data.anniversary ? data.anniversary.toISOString().split('T')[0] : null,
-      };
-      await setDoc(customerDocRef, customerWithTimestamp, { merge: true });
+      await setDoc(customerDocRef, data, { merge: true });
       toast({ title: "성공", description: "고객 정보가 수정되었습니다." });
       await fetchCustomers();
     } catch (error) {
@@ -111,88 +105,83 @@ export function useCustomers() {
       setLoading(false);
     }
   };
-  
-  const bulkAddCustomers = async (data: any[], currentBranch: string) => {
-     setLoading(true);
+
+  const bulkAddCustomers = async (data: any[], selectedBranch?: string) => {
+    setLoading(true);
     let newCount = 0;
     let updateCount = 0;
     let errorCount = 0;
-
-    const dataToProcess = data.filter(row => {
-        const branchMatch = currentBranch === 'all' || row.branch === currentBranch;
-        const hasName = row.name && String(row.name).trim() !== '';
-        return branchMatch && hasName;
-    });
-
-    await Promise.all(dataToProcess.map(async (row) => {
-        try {
-            const customerData = {
-                name: String(row['고객명'] || row.name),
-                type: (String(row['유형'] || row.type) === '기업' ? 'company' : 'personal'),
-                companyName: String(row['회사명'] || row.companyName || ''),
-                contact: String(row['연락처'] || row.contact),
-                email: String(row['이메일'] || row.email || ''),
-                branch: String(row['담당지점'] || row.branch),
-                grade: String(row['등급'] || row.grade || '신규'),
-                businessNumber: String(row['사업자등록번호'] || row.businessNumber || ''),
-                ceoName: String(row['대표자명'] || row.ceoName || ''),
-                createdAt: serverTimestamp(),
-                totalSpent: 0,
-                orderCount: 0,
-                points: 0,
-                isDeleted: false,
-            };
-
-            const q = query(collection(db, "customers"), where("contact", "==", customerData.contact), where("branch", "==", customerData.branch), where("isDeleted", "!=", true));
-            const querySnapshot = await getDocs(q);
-            
-            if (!querySnapshot.empty) {
-                const docRef = querySnapshot.docs[0].ref;
-                await setDoc(docRef, customerData, { merge: true });
-                updateCount++;
-            } else {
-                await addDoc(collection(db, "customers"), customerData);
-                newCount++;
-            }
-        } catch (error) {
-            console.error("Error processing row:", row, error);
-            errorCount++;
-        }
-    }));
-
-    if (errorCount > 0) {
-        toast({ variant: 'destructive', title: '일부 처리 오류', description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` });
-    }
-    toast({ title: '처리 완료', description: `성공: 신규 고객 ${newCount}명 추가, ${updateCount}명 업데이트 완료.`});
-    await fetchCustomers();
-  }
-
-  const findCustomersByContact = useCallback(async (contact: string): Promise<Customer[]> => {
-    if (!contact || contact.length < 4) return [];
-    try {
-        const customersCollection = collection(db, 'customers');
-        
-        // 전체 연락처 가져와서 클라이언트에서 필터링
-        const q = query(customersCollection, where("isDeleted", "!=", true));
+  
+    await Promise.all(data.map(async (row) => {
+      try {
+        if (!row.contact || !row.name) return;
+  
+        const customerData = {
+          name: String(row.name),
+          contact: String(row.contact),
+          companyName: String(row.companyName || ''),
+          address: String(row.address || ''),
+          email: String(row.email || ''),
+          branch: selectedBranch || '',
+          totalSpent: 0,
+          orderCount: 0,
+          points: 0,
+        };
+  
+        const q = query(collection(db, "customers"), where("contact", "==", customerData.contact));
         const querySnapshot = await getDocs(q);
         
-        return querySnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Customer))
-          .filter(customer => {
-            if (!customer.contact) return false;
-            // 입력된 연락처가 4자리 이하면 끝자리 매칭
-            if (contact.length <= 4) {
-              return customer.contact.replace(/[^0-9]/g, '').endsWith(contact.replace(/[^0-9]/g, ''));
-            }
-            // 4자리 초과면 포함 검색
-            return customer.contact.includes(contact);
-          });
-    } catch (error) {
-        console.error("Error finding customers by contact:", error);
-        toast({ variant: 'destructive', title: '고객 검색 오류', description: '연락처로 고객을 찾는 중 오류가 발생했습니다.'});
-        return [];
+        if (!querySnapshot.empty) {
+          const docRef = querySnapshot.docs[0].ref;
+          await setDoc(docRef, customerData, { merge: true });
+          updateCount++;
+        } else {
+          await addDoc(collection(db, "customers"), { ...customerData, createdAt: serverTimestamp() });
+          newCount++;
+        }
+      } catch (error) {
+        console.error("Error processing row:", row, error);
+        errorCount++;
+      }
+    }));
+  
+    setLoading(false);
+    
+    if (errorCount > 0) {
+      toast({ 
+        variant: 'destructive', 
+        title: '일부 처리 오류', 
+        description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
+      });
     }
-  }, [toast]);
-
-  return { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers, findCustomersByContact };
+    
+    toast({ 
+      title: '처리 완료', 
+      description: `성공: 신규 고객 ${newCount}명 추가, ${updateCount}명 업데이트 완료.`
+    });
+    
+    await fetchCustomers();
+  };
+  
+  // findCustomersByContact 함수 추가
+  const findCustomersByContact = useCallback(async (contact: string) => {
+    try {
+      const q = query(collection(db, 'customers'), where('contact', '==', contact));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+    } catch (error) {
+      console.error('Error finding customers by contact:', error);
+      return [];
+    }
+  }, []);
+  
+  return { 
+    customers, 
+    loading, 
+    addCustomer, 
+    updateCustomer, 
+    deleteCustomer, 
+    bulkAddCustomers,
+    findCustomersByContact
+  };
 }

@@ -43,7 +43,7 @@ export interface OrderData {
 
   payment: {
     method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
-    status: "pending" | "completed";
+    status: PaymentStatus;
   };
 
   pickupInfo: {
@@ -75,6 +75,8 @@ export interface Order extends Omit<OrderData, 'orderDate'> {
   id: string;
   orderDate: Timestamp;
 }
+
+export type PaymentStatus = "paid" | "pending" | "completed";
 
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -246,7 +248,22 @@ export function useOrders() {
     }
   };
 
-  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
+  const updateOrder = async (orderId: string, data: Partial<OrderData>) => {
+    setLoading(true);
+    try {
+      const orderDocRef = doc(db, 'orders', orderId);
+      await setDoc(orderDocRef, data, { merge: true });
+      toast({ title: "성공", description: "주문 정보가 수정되었습니다." });
+      await fetchOrders();
+    } catch (error) {
+      console.error("Error updating order:", error);
+      toast({ variant: 'destructive', title: '오류', description: '주문 수정 중 오류가 발생했습니다.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, updateOrder };
 }
 
 

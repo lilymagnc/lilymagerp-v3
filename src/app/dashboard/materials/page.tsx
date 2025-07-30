@@ -290,26 +290,20 @@ export default function MaterialsPage() {
       )}
 
       <MaterialForm
-        open={isFormOpen}
+        isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSubmit={handleFormSubmit}
-        initialData={selectedMaterial}
+        material={selectedMaterial}
         branches={availableBranches}
         selectedBranch={!isAdmin ? userBranch : selectedBranch}
       />
 
       <MultiPrintOptionsDialog
-        open={isMultiPrintDialogOpen}
+        isOpen={isMultiPrintDialogOpen}
         onOpenChange={setIsMultiPrintDialogOpen}
         onSubmit={handleMultiPrintSubmit}
-        items={selectedMaterials.map(id => {
-          const material = materials.find(m => m.id === id);
-          return {
-            id,
-            name: material?.name || '',
-            currentStock: material?.stock || 0
-          };
-        })}
+        itemIds={selectedMaterials}
+        itemType="material"
       />
     </div>
   );

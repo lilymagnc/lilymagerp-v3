@@ -37,6 +37,8 @@ interface MaterialTableProps {
   onSelectionChange: (selectedIds: string[]) => void;
   onEdit: (material: Material) => void;
   onDelete: (docId: string) => void;
+  selectedMaterials?: string[];
+  isAdmin?: boolean;
 }
 
 export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete }: MaterialTableProps) {

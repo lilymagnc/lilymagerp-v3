@@ -42,10 +42,13 @@ const materialSchema = z.object({
 export type MaterialFormValues = z.infer<typeof materialSchema>
 
 interface MaterialFormProps {
-  isOpen: boolean
-  onOpenChange: (isOpen: boolean) => void
-  onSubmit: (data: MaterialFormValues) => void;
-  material?: (MaterialFormValues & { id: string; docId: string }) | null
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: MaterialFormValues) => Promise<void>;
+  material?: any;
+  initialData?: any;
+  branches?: any[];
+  selectedBranch?: string;
 }
 
 const defaultValues: MaterialFormValues = {
@@ -60,8 +63,9 @@ const defaultValues: MaterialFormValues = {
   stock: 0,
 }
 
-export function MaterialForm({ isOpen, onOpenChange, onSubmit, material }: MaterialFormProps) {
+export function MaterialForm({ isOpen, onOpenChange, onSubmit, material, initialData, branches: propBranches, selectedBranch }: MaterialFormProps) {
   const { branches } = useBranches();
+  const availableBranches = propBranches || branches;
 
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(materialSchema),

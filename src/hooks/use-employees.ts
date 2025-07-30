@@ -2,7 +2,18 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, deleteDoc, Timestamp } from 'firebase/firestore';
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  setDoc, 
+  addDoc, 
+  serverTimestamp, 
+  query, 
+  where,
+  deleteDoc, 
+  Timestamp 
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { EmployeeFormValues } from '@/app/dashboard/hr/components/employee-form';
@@ -33,7 +44,7 @@ export function useEmployees() {
           createdAt: data.createdAt,
         } as Employee;
       });
-      setEmployees(employeesData.sort((a,b) => a.name.localeCompare(b.name)));
+      setEmployees(employeesData.sort((a, b) => a.name.localeCompare(b.name)));
     } catch (error) {
       console.error("Error fetching employees: ", error);
       toast({
@@ -104,43 +115,61 @@ export function useEmployees() {
     let errorCount = 0;
 
     await Promise.all(data.map(async (row) => {
-        try {
-            if (!row.email || !row.name) return;
+      try {
+        if (!row.email || !row.name) return;
 
-            const employeeData = {
-                email: String(row.email),
-                name: String(row.name),
-                position: String(row.position || '직원'),
-                department: String(row.department || '미지정'),
-                contact: String(row.contact || ''),
-                hireDate: row.hireDate ? new Date(row.hireDate) : new Date(),
-                birthDate: row.birthDate ? new Date(row.birthDate) : new Date(),
-                address: String(row.address || ''),
-            };
+        const employeeData = {
+          email: String(row.email),
+          name: String(row.name),
+          position: String(row.position || '직원'),
+          department: String(row.department || '미지정'),
+          contact: String(row.contact || ''),
+          hireDate: row.hireDate ? new Date(row.hireDate) : new Date(),
+          birthDate: row.birthDate ? new Date(row.birthDate) : new Date(),
+          address: String(row.address || ''),
+        };
 
-            const q = query(collection(db, "employees"), where("email", "==", employeeData.email));
-            const querySnapshot = await getDocs(q);
-            
-            if (!querySnapshot.empty) {
-                const docRef = querySnapshot.docs[0].ref;
-                await setDoc(docRef, employeeData, { merge: true });
-                updateCount++;
-            } else {
-                await addDoc(collection(db, "employees"), { ...employeeData, createdAt: serverTimestamp() });
-                newCount++;
-            }
-        } catch (error) {
-            console.error("Error processing row:", row, error);
-            errorCount++;
+        const q = query(collection(db, "employees"), where("email", "==", employeeData.email));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const docRef = querySnapshot.docs[0].ref;
+          await setDoc(docRef, employeeData, { merge: true });
+          updateCount++;
+        } else {
+          await addDoc(collection(db, "employees"), { ...employeeData, createdAt: serverTimestamp() });
+          newCount++;
         }
+      } catch (error) {
+        console.error("Error processing row:", row, error);
+        errorCount++;
+      }
     }));
 
+    setLoading(false);
+    
     if (errorCount > 0) {
-        toast({ variant: 'destructive', title: '일부 처리 오류', description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` });
+      toast({ 
+        variant: 'destructive', 
+        title: '일부 처리 오류', 
+        description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
+      });
     }
-    toast({ title: '처리 완료', description: `성공: 신규 직원 ${newCount}명 추가, ${updateCount}명 업데이트 완료.`});
+    
+    toast({ 
+      title: '처리 완료', 
+      description: `성공: 신규 직원 ${newCount}명 추가, ${updateCount}명 업데이트 완료.`
+    });
+    
     await fetchEmployees();
-  }
+  };
 
-  return { employees, loading, addEmployee, updateEmployee, deleteEmployee, bulkAddEmployees };
+  return { 
+    employees, 
+    loading, 
+    addEmployee, 
+    updateEmployee, 
+    deleteEmployee, 
+    bulkAddEmployees 
+  };
 }
