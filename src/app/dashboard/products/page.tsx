@@ -35,16 +35,45 @@ export default function ProductsPage() {
 
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
 
+  // 사용자 권한에 따른 지점 필터링
+  const isAdmin = user?.role === '본사 관리자';
+  const userBranch = user?.franchise;
+
+  // 사용자가 볼 수 있는 지점 목록
+  const availableBranches = useMemo(() => {
+    if (isAdmin) {
+      return branches; // 관리자는 모든 지점
+    } else {
+      return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
+    }
+  }, [branches, isAdmin, userBranch]);
+
+  // 직원의 경우 자동으로 소속 지점으로 필터링
+  useEffect(() => {
+    if (!isAdmin && userBranch && selectedBranch === "all") {
+      setSelectedBranch(userBranch);
+    }
+  }, [isAdmin, userBranch, selectedBranch]);
+
   const filteredProducts = useMemo(() => {
-    return products
-      .filter(product => 
-        (selectedBranch === "all" || product.branch === selectedBranch)
-      )
-      .filter(product => 
+    let filtered = products;
+
+    // 권한에 따른 지점 필터링
+    if (!isAdmin && userBranch) {
+      filtered = filtered.filter(product => product.branch === userBranch);
+    } else if (selectedBranch !== "all") {
+      filtered = filtered.filter(product => product.branch === selectedBranch);
+    }
+
+    // 검색어 필터링
+    if (searchTerm) {
+      filtered = filtered.filter(product =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
-  }, [products, searchTerm, selectedBranch]);
+    }
 
+    return filtered;
+  }, [products, searchTerm, selectedBranch, isAdmin, userBranch]);
 
   const handleAdd = () => {
     setSelectedProduct(null);
@@ -105,71 +134,62 @@ export default function ProductsPage() {
   };
   
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="상품 관리"
-        description="모든 상품을 등록하고 재고를 관리하세요."
-      />
-      <Card className="mb-4">
+        description={`상품 정보를 관리하고 재고를 추적하세요.${!isAdmin ? ` (${userBranch})` : ''}`}
+      >
+        {isHeadOfficeAdmin && (
+          <Button onClick={handleAdd}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            상품 추가
+          </Button>
+        )}
+      </PageHeader>
+
+      <Card>
         <CardHeader>
-            <CardTitle>상품 목록</CardTitle>
-            <CardDescription>
-                지점별 상품을 검색하고 관리하세요.
-            </CardDescription>
+          <CardTitle>상품 목록</CardTitle>
+          <CardDescription>
+            등록된 상품을 확인하고 관리합니다.
+            {!isAdmin && ` 현재 ${userBranch} 지점의 상품만 표시됩니다.`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-            <div className="flex flex-col sm:flex-row items-center gap-2">
-                <div className="relative w-full sm:w-auto flex-1 sm:flex-initial">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="상품명 검색..."
-                        className="w-full rounded-lg bg-background pl-8 sm:w-[200px] lg:w-[300px]"
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                 <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="지점 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">모든 지점</SelectItem>
-                        {branches.map(branch => (
-                            <SelectItem key={branch.id} value={branch.name}>
-                                {branch.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+          <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
+            <div className="relative w-full sm:w-auto flex-1 sm:flex-initial">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="상품명 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
             </div>
-             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                    {selectedProducts.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
-                          <Printer className="mr-2 h-4 w-4" />
-                          라벨 인쇄 ({selectedProducts.length})
-                        </Button>
-                    )}
-                </div>
-                <div className="flex items-center gap-2">
-                     <ImportButton resourceName="상품" onImport={handleImport}>
-                        <FileUp className="mr-2 h-4 w-4" />
-                         엑셀로 가져오기
-                     </ImportButton>
-                     <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
-                        <Download className="mr-2 h-4 w-4" />
-                        현재 목록 다운로드
-                      </Button>
-                    {isHeadOfficeAdmin && (
-                        <Button size="sm" onClick={handleAdd}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            상품 추가
-                        </Button>
-                    )}
-                  </div>
-            </div>
+            {isAdmin && (
+              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="지점 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 지점</SelectItem>
+                  {availableBranches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.name}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* ... existing code ... */}
+          </div>
+
+          {/* ... existing code ... */}
         </CardContent>
       </Card>
+
       {productsLoading ? (
         <Card>
           <CardContent className="pt-6">

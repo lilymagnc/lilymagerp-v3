@@ -11,14 +11,15 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp, UserSearch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useBranches, Branch } from "@/hooks/use-branches";
+import { useBranches, Branch, initialBranches } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandItem, CommandList } from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
+import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+// 20번째 줄 - 이것은 유지
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ import { useProducts, Product } from "@/hooks/use-products";
 import { useCustomers, Customer } from "@/hooks/use-customers";
 import { Timestamp } from "firebase/firestore";
 import { debounce } from "lodash";
+import { updateBranchesWithDeliveryFees } from "@/scripts/update-branches-delivery-fees";
 
 interface OrderItem extends Product {
   quantity: number;
@@ -47,7 +49,8 @@ declare global {
 }
 
 export default function NewOrderPage() {
-  const { branches, loading: branchesLoading } = useBranches();
+  const { branches, loading: branchesLoading, fetchBranches } = useBranches();
+  const [isUpdatingDeliveryFees, setIsUpdatingDeliveryFees] = useState(false);
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
   const { findCustomersByContact } = useCustomers();
@@ -103,6 +106,37 @@ export default function NewOrderPage() {
 
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [selectedMidCategory, setSelectedMidCategory] = useState<string | null>(null);
+
+  // 배송비 정보 업데이트 함수
+  const handleUpdateDeliveryFees = async () => {
+    setIsUpdatingDeliveryFees(true);
+    try {
+      const result = await updateBranchesWithDeliveryFees();
+      if (result.success) {
+        toast({
+          title: '성공',
+          description: `${result.updatedCount}개 지점의 배송비 정보가 업데이트되었습니다.`,
+        });
+        // 지점 데이터 새로고침
+        await fetchBranches();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: '오류',
+          description: '배송비 정보 업데이트 중 오류가 발생했습니다.',
+        });
+      }
+    } catch (error) {
+      console.error('배송비 업데이트 오류:', error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '배송비 정보 업데이트 중 오류가 발생했습니다.',
+      });
+    } finally {
+      setIsUpdatingDeliveryFees(false);
+    }
+  };
 
   const timeOptions = useMemo(() => {
     const options = [];
@@ -213,8 +247,22 @@ export default function NewOrderPage() {
       setDeliveryFeeType("manual");
       setManualDeliveryFee(0);
       setSelectedDistrict(null);
+    } else if (receiptType === 'delivery') {
+      // 배송일 경우 기본값을 자동계산으로 설정
+      setDeliveryFeeType("auto");
     }
   }, [ordererName, ordererContact, receiptType]);
+  
+  // 자동계산이 불가능할 경우 직접입력으로 변경하는 로직 추가
+  useEffect(() => {
+    if (receiptType === 'delivery' && deliveryFeeType === 'auto') {
+      // 지점이 선택되지 않았거나 배송비 정보가 없는 경우
+      if (!selectedBranch || !selectedBranch.deliveryFees || selectedBranch.deliveryFees.length === 0) {
+        setDeliveryFeeType("manual");
+        setManualDeliveryFee(0);
+      }
+    }
+  }, [selectedBranch, deliveryFeeType, receiptType]);
   
   const deliveryFee = useMemo(() => {
     if (receiptType === 'pickup') return 0;
@@ -246,22 +294,19 @@ export default function NewOrderPage() {
     [findCustomersByContact]
   );
   
-  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formattedPhoneNumber = formatPhoneNumber(e.target.value);
-    setOrdererContact(formattedPhoneNumber);
+const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const formattedPhoneNumber = formatPhoneNumber(e.target.value);
+  setOrdererContact(formattedPhoneNumber);
+  
+  // 고객 검색 실행
+  if (formattedPhoneNumber.replace(/[^0-9]/g, '').length >= 4) {
     debouncedSearch(formattedPhoneNumber);
-    setSelectedCustomer(null);
-    setUsedPoints(0);
-  }
-
-  const handleCustomerSelect = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setOrdererName(customer.name);
-    setOrdererCompany(customer.companyName || "");
-    setOrdererEmail(customer.email || "");
-    setOrdererContact(customer.contact);
+  } else {
+    setContactSearchResults([]);
     setIsContactSearchOpen(false);
+    setSelectedCustomer(null);
   }
+};
 
   const formatPhoneNumber = (value: string) => {
     if (!value) return value;
@@ -269,7 +314,7 @@ export default function NewOrderPage() {
     const phoneNumberLength = phoneNumber.length;
     if (phoneNumberLength < 4) return phoneNumber;
     if (phoneNumberLength < 8) {
-        return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3)}`;
+      return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3)}`;
     }
     return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 7)}-${phoneNumber.slice(7, 11)}`;
   }
@@ -317,21 +362,7 @@ export default function NewOrderPage() {
     setOrderItems(orderItems.filter(item => item.docId !== docId));
   };
   
-  const orderSummary = useMemo(() => {
-    const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const pointsToUse = Math.min(subtotal, usedPoints);
-    const total = subtotal - pointsToUse + deliveryFee;
-    const pointsEarned = Math.floor(subtotal * 0.02);
 
-    return { subtotal, deliveryFee, pointsUsed: pointsToUse, pointsEarned, total, discount: 0 };
-  }, [orderItems, deliveryFee, usedPoints]);
-
-
-  const handleUseAllPoints = () => {
-    if (!selectedCustomer) return;
-    const maxPoints = Math.min(selectedCustomer.points || 0, orderSummary.subtotal);
-    setUsedPoints(maxPoints);
-  };
 
 
   const handleCompleteOrder = async () => {
@@ -401,14 +432,71 @@ export default function NewOrderPage() {
     }
   }
 
+  // 지점 데이터 디버깅을 위한 useEffect 추가
+  useEffect(() => {
+    if (selectedBranch) {
+      console.log('Selected Branch:', selectedBranch);
+      console.log('Delivery Fees:', selectedBranch.deliveryFees);
+    }
+  }, [selectedBranch]);
+
   const handleBranchChange = (branchId: string) => {
+    if (!branchId) {
+      setSelectedBranch(null);
+      setOrderItems([]);
+      setSelectedDistrict(null);
+      setSelectedMainCategory(null);
+      setSelectedMidCategory(null);
+      return;
+    }
+    
     const branch = branches.find(b => b.id === branchId);
-    setSelectedBranch(branch || null);
+    if (branch) {
+      setSelectedBranch(branch);
+    }
     setOrderItems([]);
     setSelectedDistrict(null);
     setSelectedMainCategory(null);
     setSelectedMidCategory(null);
-  }
+  };
+
+const handleCustomerSelect = (customer: Customer) => {
+  setSelectedCustomer(customer);
+  setOrdererName(customer.name);
+  setOrdererCompany(customer.companyName || "");
+  setOrdererEmail(customer.email || "");
+  setOrdererContact(customer.contact);
+  setIsContactSearchOpen(false);
+  setUsedPoints(0);
+};
+
+  const orderSummary = useMemo(() => {
+    const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const maxUsablePoints = selectedCustomer ? Math.min(selectedCustomer.points || 0, subtotal) : 0;
+    const pointsToUse = Math.min(subtotal, usedPoints, maxUsablePoints);
+    const total = subtotal - pointsToUse + deliveryFee;
+    const pointsEarned = Math.floor(subtotal * 0.02);
+
+    return { 
+      subtotal, 
+      deliveryFee, 
+      pointsUsed: pointsToUse, 
+      pointsEarned, 
+      total, 
+      discount: 0,
+      availablePoints: selectedCustomer?.points || 0,
+      maxUsablePoints
+    };
+  }, [orderItems, deliveryFee, usedPoints, selectedCustomer]);
+
+  const handleUseAllPoints = () => {
+    if (!selectedCustomer) return;
+    const maxPoints = Math.min(selectedCustomer.points || 0, orderSummary.subtotal);
+    setUsedPoints(maxPoints);
+  };
+
+
+
 
   const handleAddressSearch = () => {
     if (window.daum && window.daum.Postcode) {
@@ -454,8 +542,8 @@ export default function NewOrderPage() {
     }
   };
 
-  const pageTitle = existingOrder ? '주문 수정' : '새 주문 접수';
-  const pageDescription = existingOrder ? '기존 주문 정보를 수정합니다.' : '고객의 주문을 받아 시스템에 등록합니다.';
+  const pageTitle = existingOrder ? '주문 수정' : '주문테이블';
+  const pageDescription = existingOrder ? '기존 주문을 수정합니다.' : '새로운 주문을 등록합니다.';
 
   const isLoading = ordersLoading || productsLoading || branchesLoading;
 
@@ -464,7 +552,20 @@ export default function NewOrderPage() {
         <PageHeader
           title={pageTitle}
           description={pageDescription}
-        />
+        >
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleUpdateDeliveryFees} disabled={isUpdatingDeliveryFees}>
+              {isUpdatingDeliveryFees ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  업데이트 중...
+                </>
+              ) : (
+                '배송비 정보 업데이트'
+              )}
+            </Button>
+          </div>
+        </PageHeader>
         <Card className="mb-6">
             <CardHeader>
                 <CardTitle>지점 선택</CardTitle>
@@ -642,42 +743,115 @@ export default function NewOrderPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-company">회사명</Label>
-                                        <Input id="orderer-company" placeholder="회사명 입력" value={ordererCompany} onChange={e => setOrdererCompany(e.target.value)} />
+                                        <Input 
+                                            id="orderer-company" 
+                                            placeholder="회사명 입력" 
+                                            value={ordererCompany} 
+                                            onChange={e => setOrdererCompany(e.target.value)} 
+                                            disabled={!!selectedCustomer}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-name">주문자명</Label>
-                                        <Input id="orderer-name" placeholder="주문자명 입력" value={ordererName} onChange={e => setOrdererName(e.target.value)} />
+                                        <Input 
+                                            id="orderer-name" 
+                                            placeholder="주문자명 입력" 
+                                            value={ordererName} 
+                                            onChange={e => setOrdererName(e.target.value)}
+                                            disabled={!!selectedCustomer}
+                                        />
                                     </div>
-                                    <div className="space-y-2">
-                                      <Label htmlFor="orderer-contact">연락처</Label>
-                                      <Popover open={isContactSearchOpen} onOpenChange={setIsContactSearchOpen}>
-                                        <PopoverTrigger asChild>
-                                          <div className="relative">
-                                            <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            <Input id="orderer-contact" placeholder="010-1234-5678" value={ordererContact} onChange={handleContactChange} className="pl-10" />
-                                          </div>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                          <Command>
-                                            <CommandList>
-                                              {contactSearchResults.map((customer) => (
-                                                  <CommandItem key={customer.id} onSelect={() => handleCustomerSelect(customer)}>
-                                                    <div className="flex flex-col">
-                                                      <span className="font-medium">{customer.name} {customer.companyName && `(${customer.companyName})`}</span>
-                                                      <span className="text-xs text-muted-foreground">{customer.contact}</span>
+                                    <div className="space-y-2 relative">
+                                        <Label htmlFor="orderer-contact">주문자 연락처</Label>
+                                        <Popover open={isContactSearchOpen} onOpenChange={setIsContactSearchOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Input 
+                                                    id="orderer-contact" 
+                                                    placeholder="010-1234-5678 (뒷 4자리로 검색 가능)" 
+                                                    value={ordererContact} 
+                                                    onChange={handleOrdererContactChange}
+                                                />
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                                <Command>
+                                                    <CommandList>
+                                                        {contactSearchResults.length > 0 ? (
+                                                            contactSearchResults.map(customer => (
+                                                                <CommandItem 
+                                                                    key={customer.id} 
+                                                                    onSelect={() => handleCustomerSelect(customer)}
+                                                                    className="cursor-pointer"
+                                                                >
+                                                                    <div className="flex flex-col w-full">
+                                                                        <div className="flex justify-between items-center">
+                                                                            <span className="font-medium">{customer.name}</span>
+                                                                            <span className="text-xs text-blue-600 font-medium">
+                                                                                {(customer.points || 0).toLocaleString()} P
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="text-xs text-muted-foreground">
+                                                                            {customer.companyName && `${customer.companyName} | `}
+                                                                            {customer.contact}
+                                                                            {customer.email && ` | ${customer.email}`}
+                                                                        </div>
+                                                                    </div>
+                                                                </CommandItem>
+                                                            ))
+                                                        ) : (
+                                                            <div className="py-6 text-center text-sm text-muted-foreground">
+                                                                연락처 뒷 4자리를 입력하여 고객을 검색하세요
+                                                            </div>
+                                                        )}
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        
+                                        {/* 선택된 고객 정보 표시 */}
+                                        {selectedCustomer && (
+                                            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-blue-900">{selectedCustomer.name}</p>
+                                                        {selectedCustomer.companyName && (
+                                                            <p className="text-sm text-blue-700">{selectedCustomer.companyName}</p>
+                                                        )}
+                                                        {selectedCustomer.email && (
+                                                            <p className="text-sm text-blue-600">{selectedCustomer.email}</p>
+                                                        )}
+                                                        <p className="text-sm text-blue-600 font-medium mt-1">
+                                                            보유 포인트: {(selectedCustomer.points || 0).toLocaleString()} P
+                                                        </p>
                                                     </div>
-                                                  </CommandItem>
-                                                ))}
-                                            </CommandList>
-                                          </Command>
-                                        </PopoverContent>
-                                      </Popover>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => {
+                                                            setSelectedCustomer(null);
+                                                            setUsedPoints(0);
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-800"
+                                                    >
+                                                        선택 해제
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-email">이메일</Label>
-                                        <Input id="orderer-email" type="email" placeholder="email@example.com" value={ordererEmail} onChange={e => setOrdererEmail(e.target.value)} />
+                                        <Input 
+                                            id="orderer-email" 
+                                            type="email" 
+                                            placeholder="email@example.com" 
+                                            value={ordererEmail} 
+                                            onChange={e => setOrdererEmail(e.target.value)}
+                                            disabled={!!selectedCustomer}
+                                        />
                                     </div>
                                 </div>
+                                
+                                
                                 <div className="flex items-center space-x-2 mt-4">
                                   <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={(checked) => setIsAnonymous(!!checked)} />
                                   <label
@@ -815,26 +989,47 @@ export default function NewOrderPage() {
                                           </RadioGroup>
                                           <div className="flex items-center gap-2 mt-2">
                                               {deliveryFeeType === 'auto' ? (
-                                                  <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch}>
-                                                      <SelectTrigger>
-                                                          <SelectValue placeholder="지역 선택" />
-                                                      </SelectTrigger>
-                                                      <SelectContent>
-                                                          {selectedBranch?.deliveryFees?.map(df => (
-                                                          <SelectItem key={df.district} value={df.district}>
-                                                              {df.district}
-                                                          </SelectItem>
-                                                          ))}
-                                                          <SelectItem value="기타">기타</SelectItem>
-                                                      </SelectContent>
-                                                  </Select>
+                                                  <div className="space-y-2 w-full">
+                                                      <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch}>
+                                                          <SelectTrigger>
+                                                              <SelectValue placeholder={!selectedBranch ? "지점을 먼저 선택하세요" : "지역 선택"} />
+                                                          </SelectTrigger>
+                                                          <SelectContent>
+                                                              {selectedBranch?.deliveryFees && selectedBranch.deliveryFees.length > 0 ? (
+                                                                  selectedBranch.deliveryFees.map(df => (
+                                                                      <SelectItem key={df.district} value={df.district}>
+                                                                          {df.district} - ₩{df.fee.toLocaleString()}
+                                                                      </SelectItem>
+                                                                  ))
+                                                              ) : (
+                                                                  <SelectItem value="no-data" disabled>
+                                                                      배송비 정보가 없습니다
+                                                                  </SelectItem>
+                                                              )}
+                                                          </SelectContent>
+                                                      </Select>
+                                                      {selectedDistrict && selectedBranch?.deliveryFees && (
+                                                          <div className="text-xs text-green-600 bg-green-50 p-2 rounded border">
+                                                              ✅ 선택된 지역: {selectedDistrict} - ₩{deliveryFee.toLocaleString()}
+                                                          </div>
+                                                      )}
+                                                      {(!selectedBranch?.deliveryFees || selectedBranch.deliveryFees.length === 0) && (
+                                                          <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border">
+                                                              ⚠️ 이 지점에는 배송비 정보가 설정되지 않았습니다. 직접 입력을 사용하세요.
+                                                          </div>
+                                                      )}
+                                                  </div>
                                               ) : (
-                                                  <Input 
-                                                      type="number" 
-                                                      placeholder="배송비 직접 입력" 
-                                                      value={manualDeliveryFee}
-                                                      onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
-                                                  />
+                                                  <div className="flex items-center gap-2">
+                                                      <span className="text-sm">₩</span>
+                                                      <Input
+                                                          type="number"
+                                                          placeholder="배송비 입력"
+                                                          value={manualDeliveryFee}
+                                                          onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
+                                                          className="w-32"
+                                                      />
+                                                  </div>
                                               )}
                                           </div>
                                       </div>
@@ -863,11 +1058,12 @@ export default function NewOrderPage() {
             </div>
 
             <div className="md:col-span-1">
-                <Card className="sticky top-6">
+                <Card>
                     <CardHeader>
                         <CardTitle>주문 요약</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid gap-4">
+                    <CardContent className="space-y-4">
+                        {/* 기존 주문 요약 내용 */}
                         <div className="flex justify-between">
                             <span>상품 합계</span>
                             <span>₩{orderSummary.subtotal.toLocaleString()}</span>
@@ -885,15 +1081,39 @@ export default function NewOrderPage() {
                                 <Input 
                                     type="number" 
                                     value={usedPoints}
-                                    onChange={(e) => setUsedPoints(Number(e.target.value))}
-                                    max={selectedCustomer?.points || 0}
-                                    disabled={!selectedCustomer}
+                                    onChange={(e) => {
+                                      const value = Number(e.target.value);
+                                      const maxPoints = orderSummary.maxUsablePoints;
+                                      setUsedPoints(Math.min(Math.max(0, value), maxPoints));
+                                    }}
+                                    max={orderSummary.maxUsablePoints}
+                                    disabled={!selectedCustomer || orderSummary.availablePoints === 0}
+                                    placeholder={selectedCustomer ? "사용할 포인트 입력" : "고객을 먼저 선택하세요"}
                                 />
-                                <Button variant="outline" size="sm" onClick={handleUseAllPoints} disabled={!selectedCustomer}>전액 사용</Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={handleUseAllPoints} 
+                                  disabled={!selectedCustomer || orderSummary.availablePoints === 0}
+                                >
+                                  전액 사용
+                                </Button>
                             </div>
-                            {selectedCustomer && <p className="text-xs text-muted-foreground">사용 가능: {selectedCustomer.points?.toLocaleString() || 0} P</p>}
+                            {selectedCustomer ? (
+                              <div className="text-xs space-y-1">
+                                <p className="text-muted-foreground">
+                                  보유 포인트: <span className="font-medium text-blue-600">{orderSummary.availablePoints.toLocaleString()} P</span>
+                                </p>
+                                <p className="text-muted-foreground">
+                                  사용 가능: <span className="font-medium text-green-600">{orderSummary.maxUsablePoints.toLocaleString()} P</span>
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                고객을 선택하면 포인트를 사용할 수 있습니다.
+                              </p>
+                            )}
                         </div>
-
                         <div className="flex justify-between text-muted-foreground text-sm">
                             <span>포인트 할인</span>
                             <span className="text-destructive">-₩{orderSummary.pointsUsed.toLocaleString()}</span>
@@ -909,13 +1129,22 @@ export default function NewOrderPage() {
                             <span>총 결제 금액</span>
                             <span>₩{orderSummary.total.toLocaleString()}</span>
                         </div>
+                        
+                        {/* 주문등록 버튼을 총결제금액 아래에 추가 */}
+                        <div className="pt-4">
+                            <Button onClick={handleCompleteOrder} disabled={isSubmitting} className="w-full">
+                              {isSubmitting ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  {existingOrder ? "수정 중..." : "등록 중..."}
+                                </>
+                              ) : (
+                                existingOrder ? "주문 수정" : "주문 등록"
+                              )}
+                            </Button>
+                        </div>
                     </CardContent>
-                    <CardFooter className="flex-col gap-2 items-stretch">
-                        <Button className="w-full" size="lg" onClick={handleCompleteOrder} disabled={orderItems.length === 0 || !selectedBranch || isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {existingOrder ? "주문 수정" : "주문 완료"}
-                        </Button>
-                    </CardFooter>
+
                 </Card>
             </div>
           </div>
@@ -970,6 +1199,6 @@ export default function NewOrderPage() {
         </fieldset>
     </div>
   );
-}
+
 
     

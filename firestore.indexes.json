@@ -1,12 +1,21 @@
-
 {
   "indexes": [
     {
       "collectionGroup": "customers",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "contact", "order": "ASCENDING" },
-        { "fieldPath": "isDeleted", "order": "ASCENDING" }
+        {
+          "fieldPath": "contact",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "isDeleted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
       ]
     }
   ],

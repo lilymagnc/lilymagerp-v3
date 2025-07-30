@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, FileText } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Customer } from "@/hooks/use-customers";
 
@@ -31,6 +31,12 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick }: Custo
                 return <Badge variant="outline">{grade || '신규'}</Badge>;
         }
     }
+
+    const handleStatementPrint = (customer: Customer) => {
+        // 거래명세서 출력 기능 구현
+        // 예: 거래명세서 페이지로 이동하거나 모달 열기
+        window.open(`/dashboard/partners/statement?customerId=${customer.id}&customerName=${encodeURIComponent(customer.name)}`, '_blank');
+    };
 
   return (
     <Card>
@@ -80,6 +86,11 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick }: Custo
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>작업</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => onEdit(customer)}>수정</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleStatementPrint(customer)}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            거래명세서 출력
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                            <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive" onSelect={(e) => e.preventDefault()}>삭제</DropdownMenuItem>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { PlusCircle, Printer, Search, Download, FileUp } from "lucide-react";
@@ -37,36 +37,71 @@ export default function MaterialsPage() {
   const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials } = useMaterials();
   
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
+  const isAdmin = user?.role === '본사 관리자';
+  const userBranch = user?.franchise;
+
+  // 사용자가 볼 수 있는 지점 목록
+  const availableBranches = useMemo(() => {
+    if (isAdmin) {
+      return branches;
+    } else {
+      return branches.filter(branch => branch.name === userBranch);
+    }
+  }, [branches, isAdmin, userBranch]);
+
+  // 직원의 경우 자동으로 소속 지점으로 필터링
+  useEffect(() => {
+    if (!isAdmin && userBranch && selectedBranch === "all") {
+      setSelectedBranch(userBranch);
+    }
+  }, [isAdmin, userBranch, selectedBranch]);
 
   const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
   const midCategories = useMemo(() => {
-      if (selectedMainCategory === "all") {
-          return [...new Set(materials.map(m => m.midCategory))];
-      }
-      return [...new Set(materials.filter(m => m.mainCategory === selectedMainCategory).map(m => m.midCategory))];
+    if (selectedMainCategory === "all") {
+      return [...new Set(materials.map(m => m.midCategory))];
+    }
+    return [...new Set(materials.filter(m => m.mainCategory === selectedMainCategory).map(m => m.midCategory))];
   }, [materials, selectedMainCategory]);
 
   const filteredMaterials = useMemo(() => {
-    return materials
-      .filter(material => 
-        (selectedBranch === "all" || material.branch === selectedBranch) &&
-        (selectedMainCategory === "all" || material.mainCategory === selectedMainCategory) &&
-        (selectedMidCategory === "all" || material.midCategory === selectedMidCategory)
-      )
-      .filter(material => 
-        material.name.toLowerCase().includes(searchTerm.toLowerCase())
+    let filtered = materials;
+
+    // 권한에 따른 지점 필터링
+    if (!isAdmin && userBranch) {
+      filtered = filtered.filter(material => material.branch === userBranch);
+    } else if (selectedBranch !== "all") {
+      filtered = filtered.filter(material => material.branch === selectedBranch);
+    }
+
+    // 검색어 필터링
+    if (searchTerm) {
+      filtered = filtered.filter(material => 
+        material.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        material.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
-  }, [materials, searchTerm, selectedBranch, selectedMainCategory, selectedMidCategory]);
+    }
+
+    // 카테고리 필터링
+    if (selectedMainCategory !== "all") {
+      filtered = filtered.filter(material => material.mainCategory === selectedMainCategory);
+    }
+    if (selectedMidCategory !== "all") {
+      filtered = filtered.filter(material => material.midCategory === selectedMidCategory);
+    }
+
+    return filtered;
+  }, [materials, searchTerm, selectedBranch, selectedMainCategory, selectedMidCategory, isAdmin, userBranch]);
 
   const handleAdd = () => {
     setSelectedMaterial(null);
     setIsFormOpen(true);
-  }
+  };
 
   const handleEdit = (material: any) => {
     setSelectedMaterial(material);
     setIsFormOpen(true);
-  }
+  };
 
   const handleFormSubmit = async (data: MaterialFormValues) => {
     if (selectedMaterial?.docId) {
@@ -76,11 +111,11 @@ export default function MaterialsPage() {
     }
     setIsFormOpen(false);
     setSelectedMaterial(null);
-  }
+  };
 
   const handleDelete = async (docId: string) => {
     await deleteMaterial(docId);
-  }
+  };
 
   const handleDownloadCurrentList = () => {
     if (filteredMaterials.length === 0) {
@@ -99,11 +134,11 @@ export default function MaterialsPage() {
       title: "목록 다운로드 성공",
       description: `현재 필터링된 ${dataToExport.length}개 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
     });
-  }
+  };
 
   const handleImport = async (data: any[]) => {
     await bulkAddMaterials(data, selectedBranch);
-  }
+  };
   
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
     const itemsQuery = items.map(item => `${item.id}:${item.quantity}`).join(',');
@@ -117,142 +152,165 @@ export default function MaterialsPage() {
   };
   
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="자재 관리"
-        description="자재 정보를 등록하고 재고를 관리합니다."
-      />
-       <Card className="mb-4">
+        description={`자재 정보를 관리하고 재고를 추적하세요.${!isAdmin ? ` (${userBranch})` : ''}`}
+      >
+        {isHeadOfficeAdmin && (
+          <Button onClick={handleAdd}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            자재 추가
+          </Button>
+        )}
+      </PageHeader>
+
+      <Card>
         <CardHeader>
-            <CardTitle>자재 목록</CardTitle>
-            <CardDescription>
-                지점 및 카테고리별로 자재를 검색하고 관리하세요.
-            </CardDescription>
+          <CardTitle>자재 검색 및 필터</CardTitle>
+          <CardDescription>
+            자재명이나 ID로 검색하고 카테고리별로 필터링할 수 있습니다.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-            <div className="flex flex-col gap-2 sm:flex-row">
-                <div className="relative w-full sm:w-auto flex-1 sm:flex-initial">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="자재명 검색..."
-                        className="w-full rounded-lg bg-background pl-8"
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                 <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
-                        <SelectValue placeholder="지점 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">모든 지점</SelectItem>
-                        {branches.map(branch => (
-                            <SelectItem key={branch.id} value={branch.name}>
-                                {branch.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                 <Select value={selectedMainCategory} onValueChange={(value) => { setSelectedMainCategory(value); setSelectedMidCategory("all"); }}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
-                        <SelectValue placeholder="대분류 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">모든 대분류</SelectItem>
-                        {mainCategories.map(category => (
-                            <SelectItem key={category} value={category}>
-                                {category}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                 <Select value={selectedMidCategory} onValueChange={setSelectedMidCategory}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
-                        <SelectValue placeholder="중분류 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">모든 중분류</SelectItem>
-                        {midCategories.map(category => (
-                            <SelectItem key={category} value={category}>
-                                {category}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="자재명 또는 ID로 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
             </div>
-            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                    {selectedMaterials.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={() => setIsMultiPrintDialogOpen(true)}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            라벨 인쇄 ({selectedMaterials.length})
-                        </Button>
-                    )}
-                </div>
-                 <div className="flex items-center gap-2">
-                         <ImportButton resourceName="자재" onImport={handleImport}>
-                            <FileUp className="mr-2 h-4 w-4" />
-                             엑셀로 가져오기
-                         </ImportButton>
-                        <Button variant="outline" size="sm" onClick={handleDownloadCurrentList}>
-                        <Download className="mr-2 h-4 w-4" />
-                        현재 목록 다운로드
-                        </Button>
-                        {isHeadOfficeAdmin && (
-                          <Button size="sm" onClick={handleAdd}>
-                              <PlusCircle className="mr-2 h-4 w-4" />
-                              자재 추가
-                          </Button>
-                        )}
-                    </div>
-            </div>
+            {isAdmin && (
+              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="지점 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">모든 지점</SelectItem>
+                  {availableBranches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.name}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={selectedMainCategory} onValueChange={setSelectedMainCategory}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="대분류" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">모든 대분류</SelectItem>
+                {mainCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedMidCategory} onValueChange={setSelectedMidCategory}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="중분류" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">모든 중분류</SelectItem>
+                {midCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadCurrentList}
+              disabled={filteredMaterials.length === 0}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              현재 목록 다운로드
+            </Button>
+            {isHeadOfficeAdmin && (
+              <>
+                <ImportButton
+                  onImport={handleImport}
+                  templateData={[
+                    {
+                      id: "MAT001",
+                      name: "예시 자재",
+                      mainCategory: "대분류",
+                      midCategory: "중분류",
+                      price: 10000,
+                      supplier: "공급업체",
+                      size: "크기",
+                      color: "색상",
+                      stock: 100
+                    }
+                  ]}
+                  fileName="materials_template"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsMultiPrintDialogOpen(true)}
+                  disabled={selectedMaterials.length === 0}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  선택 항목 라벨 출력
+                </Button>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
+
       {materialsLoading ? (
         <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-4 p-2">
-                  <Skeleton className="h-5 w-5 rounded-sm" />
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-5 w-48" />
-                   <Skeleton className="h-6 w-20 rounded-full" />
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-5 w-24" />
-                  <Skeleton className="h-5 w-24" />
-                  <Skeleton className="h-5 w-12" />
-                  <Skeleton className="h-8 w-8" />
-                </div>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
           </CardContent>
         </Card>
       ) : (
-        <MaterialTable 
-          materials={filteredMaterials} 
-          onSelectionChange={setSelectedMaterials} 
+        <MaterialTable
+          materials={filteredMaterials}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          selectedMaterials={selectedMaterials}
+          onSelectionChange={setSelectedMaterials}
+          isAdmin={isHeadOfficeAdmin}
         />
       )}
-       {isHeadOfficeAdmin && (
-        <MaterialForm 
-            isOpen={isFormOpen} 
-            onOpenChange={setIsFormOpen}
-            onSubmit={handleFormSubmit}
-            material={selectedMaterial}
-        />
-      )}
-      {isMultiPrintDialogOpen && (
-        <MultiPrintOptionsDialog
-            isOpen={isMultiPrintDialogOpen}
-            onOpenChange={setIsMultiPrintDialogOpen}
-            itemIds={selectedMaterials}
-            itemType="material"
-            onSubmit={handleMultiPrintSubmit}
-        />
-       )}
+
+      <MaterialForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        onSubmit={handleFormSubmit}
+        initialData={selectedMaterial}
+        branches={availableBranches}
+        selectedBranch={!isAdmin ? userBranch : selectedBranch}
+      />
+
+      <MultiPrintOptionsDialog
+        open={isMultiPrintDialogOpen}
+        onOpenChange={setIsMultiPrintDialogOpen}
+        onSubmit={handleMultiPrintSubmit}
+        items={selectedMaterials.map(id => {
+          const material = materials.find(m => m.id === id);
+          return {
+            id,
+            name: material?.name || '',
+            currentStock: material?.stock || 0
+          };
+        })}
+      />
     </div>
   );
 }

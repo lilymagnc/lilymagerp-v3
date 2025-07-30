@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -30,12 +30,14 @@ export interface OrderData {
   };
 
   orderer: {
+    id?: string; // 기존 고객 ID (선택사항)
     name: string;
     contact: string;
     company: string;
     email: string;
   };
   isAnonymous: boolean;
+  registerCustomer: boolean; // 고객 등록 여부 필드 추가
   orderType: "store" | "phone" | "naver" | "kakao" | "etc";
   receiptType: "pickup" | "delivery";
 
@@ -120,8 +122,19 @@ export function useOrders() {
         orderDate: Timestamp.fromDate(orderDate),
       };
 
-      await addDoc(collection(db, 'orders'), orderPayload);
-
+      // 주문 추가
+      const orderDocRef = await addDoc(collection(db, 'orders'), orderPayload);
+      
+      // 고객 등록 로직 추가
+      if (orderData.registerCustomer && !orderData.isAnonymous) {
+        await registerCustomerFromOrder(orderData);
+      }
+      
+      // 수령자 정보 별도 저장 (배송인 경우)
+      if (orderData.receiptType === 'delivery' && orderData.deliveryInfo) {
+        await saveRecipientInfo(orderData.deliveryInfo, orderData.branchName, orderDocRef.id);
+      }
+      
       const historyBatch = writeBatch(db);
 
       for (const item of orderData.items) {
@@ -235,3 +248,85 @@ export function useOrders() {
 
   return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus };
 }
+
+
+// 주문자 정보로 고객 등록/업데이트 함수
+const registerCustomerFromOrder = async (orderData: OrderData) => {
+  try {
+    console.log('고객 등록 시작:', orderData.orderer);
+    console.log('registerCustomer:', orderData.registerCustomer);
+    console.log('isAnonymous:', orderData.isAnonymous);
+    
+    // 기존 고객 검색 (연락처 기준)
+    const customersQuery = query(
+      collection(db, 'customers'),
+      where('contact', '==', orderData.orderer.contact),
+      where('isDeleted', '!=', true)
+    );
+    const existingCustomers = await getDocs(customersQuery);
+    
+    console.log('기존 고객 검색 결과:', existingCustomers.size);
+    
+    const customerData = {
+      name: orderData.orderer.name,
+      contact: orderData.orderer.contact,
+      email: orderData.orderer.email || '',
+      companyName: orderData.orderer.company || '',
+      type: orderData.orderer.company ? 'company' : 'personal',
+      branch: orderData.branchName,
+      grade: '신규',
+      totalSpent: orderData.summary.total,
+      orderCount: 1,
+      points: Math.floor(orderData.summary.total * 0.02), // 2% 적립
+      lastOrderDate: serverTimestamp(),
+      isDeleted: false,
+    };
+    
+    if (!existingCustomers.empty) {
+      // 기존 고객 업데이트
+      const customerDoc = existingCustomers.docs[0];
+      const existingData = customerDoc.data();
+      
+      await setDoc(customerDoc.ref, {
+        ...customerData,
+        totalSpent: (existingData.totalSpent || 0) + orderData.summary.total,
+        orderCount: (existingData.orderCount || 0) + 1,
+        points: (existingData.points || 0) + Math.floor(orderData.summary.total * 0.02),
+        grade: existingData.grade || '신규',
+        createdAt: existingData.createdAt, // 기존 생성일 유지
+      }, { merge: true });
+    } else {
+      // 신규 고객 등록
+      await addDoc(collection(db, 'customers'), {
+        ...customerData,
+        createdAt: serverTimestamp(),
+      });
+    }
+  } catch (error) {
+    console.error('고객 등록 중 오류:', error);
+    // 고객 등록 실패해도 주문은 계속 진행
+  }
+};
+
+// 수령자 정보 별도 저장 함수
+const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId: string) => {
+  try {
+    const recipientData = {
+      name: deliveryInfo.recipientName,
+      contact: deliveryInfo.recipientContact,
+      address: deliveryInfo.address,
+      district: deliveryInfo.district,
+      branchName: branchName,
+      orderId: orderId,
+      deliveryDate: deliveryInfo.date,
+      createdAt: serverTimestamp(),
+      // 마케팅 활용을 위한 추가 필드
+      isMarketingConsent: true, // 기본값 (나중에 UI에서 선택 가능하도록 수정)
+      source: 'order', // 데이터 출처
+    };
+    
+    await addDoc(collection(db, 'recipients'), recipientData);
+  } catch (error) {
+    console.error('수령자 정보 저장 중 오류:', error);
+  }
+};

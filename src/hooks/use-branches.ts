@@ -24,7 +24,7 @@ export interface Branch extends BranchFormValues {
   surcharges?: Surcharges;
 }
 
-const initialBranches: Omit<Branch, 'id'>[] = [
+export const initialBranches: Omit<Branch, 'id'>[] = [
     { 
         name: "릴리맥광화문점", 
         type: "직영점", 

@@ -32,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let userDoc = await getDoc(userDocRef);
       
       if (!userDoc.exists()) {
+        // 기존 로직: 새 사용자 자동 생성
         const usersCollectionRef = collection(db, 'users');
         const usersSnapshot = await getDocs(usersCollectionRef);
         const isFirstUser = usersSnapshot.empty;
@@ -43,12 +44,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
         
         await setDoc(userDocRef, newUserProfile);
-        userDoc = await getDoc(userDocRef); // Re-fetch the document
+        userDoc = await getDoc(userDocRef);
+      } else {
+        // 이미 관리자가 미리 등록한 사용자 정보가 있는 경우
+        console.log('기존 등록된 사용자 정보를 사용합니다:', userDoc.data());
       }
       
       const userData = userDoc.data();
       return { ...firebaseUser, role: userData?.role, franchise: userData?.franchise } as UserProfile;
-
     } catch (error) {
       console.error("Error fetching or creating user role:", error);
     }

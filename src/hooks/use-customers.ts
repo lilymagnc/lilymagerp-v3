@@ -171,9 +171,22 @@ export function useCustomers() {
     if (!contact || contact.length < 4) return [];
     try {
         const customersCollection = collection(db, 'customers');
-        const q = query(customersCollection, where("contact", "==", contact), where("isDeleted", "!=", true));
+        
+        // 전체 연락처 가져와서 클라이언트에서 필터링
+        const q = query(customersCollection, where("isDeleted", "!=", true));
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+        
+        return querySnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Customer))
+          .filter(customer => {
+            if (!customer.contact) return false;
+            // 입력된 연락처가 4자리 이하면 끝자리 매칭
+            if (contact.length <= 4) {
+              return customer.contact.replace(/[^0-9]/g, '').endsWith(contact.replace(/[^0-9]/g, ''));
+            }
+            // 4자리 초과면 포함 검색
+            return customer.contact.includes(contact);
+          });
     } catch (error) {
         console.error("Error finding customers by contact:", error);
         toast({ variant: 'destructive', title: '고객 검색 오류', description: '연락처로 고객을 찾는 중 오류가 발생했습니다.'});
