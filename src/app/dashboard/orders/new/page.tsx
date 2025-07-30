@@ -1200,5 +1200,3 @@ const handleCustomerSelect = (customer: Customer) => {
     </div>
   );
 }
-
-}
