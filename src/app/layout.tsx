@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "꽃길 ERP",
-    description: "가맹점 관리를 위한 ERP 시스템",
+    title: "Lilymag ERP",
+    description: "플라워샵 주문관리및 가맹점 관리를 위한 ERP 시스템",
 };
 
 export default function RootLayout({

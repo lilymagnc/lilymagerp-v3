@@ -1,10 +1,12 @@
 {
-  "hosting": {
-    "public": ".next",
+  "apphosting": {
+    "source": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/out/**"
     ]
   },
   "firestore": {

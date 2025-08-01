@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // 환경 변수 검증
 const requiredEnvVars = {
@@ -30,9 +31,10 @@ const firebaseConfig = requiredEnvVars;
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
+const storage = getStorage(app);
 
 const db = initializeFirestore(app, {
      localCache: memoryLocalCache()
 });
 
-export { app, auth, db };
+export { app, auth, db, storage };
