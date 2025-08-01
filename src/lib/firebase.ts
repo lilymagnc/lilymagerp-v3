@@ -4,15 +4,15 @@ import { getAuth } from "firebase/auth";
 import { initializeFirestore, memoryLocalCache, getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// 환경 변수 검증
-const requiredEnvVars = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+// Firebase 설정 (직접 하드코딩)
+const firebaseConfig = {
+  apiKey: "AIzaSyApy5zme7H15h1UZd1B9hBDOOWgpbvOLJ4",
+  authDomain: "lilymagerp-fs1.firebaseapp.com",
+  databaseURL: "https://lilymagerp-fs1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "lilymagerp-fs1",
+  storageBucket: "lilymagerp-fs1.firebasestorage.app",
+  messagingSenderId: "1069828102888",
+  appId: "1:1069828102888:web:24927eab4719f3e75d475d",
 };
 
 // 누락된 환경 변수 확인 (빌드 시에는 경고만 출력)
