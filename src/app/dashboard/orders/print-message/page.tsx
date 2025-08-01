@@ -8,7 +8,7 @@ import { MessagePrintLayout } from './components/message-print-layout';
 import type { Order as OrderType } from '@/hooks/use-orders';
 
 interface PageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
@@ -48,12 +48,11 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
 
 
 export default async function PrintMessagePage({ searchParams }: PageProps) {
-    const params = await searchParams;
-    const orderId = params.orderId as string;
-    const labelType = params.labelType as string || 'formtec-3108';
-    const startPosition = parseInt(params.start as string) || 1;
-    const font = params.font as string || 'Noto Sans KR';
-    const fontSize = parseInt(params.fontSize as string) || 14;
+    const orderId = searchParams.orderId as string;
+    const labelType = searchParams.labelType as string || 'formtec-3108';
+    const startPosition = parseInt(searchParams.start as string) || 1;
+    const font = searchParams.font as string || 'Noto Sans KR';
+    const fontSize = parseInt(searchParams.fontSize as string) || 14;
 
     if (!orderId) {
         notFound();
