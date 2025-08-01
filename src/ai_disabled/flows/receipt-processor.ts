@@ -9,7 +9,7 @@
  */
 
 // import { ai } from '@/ai/genkit'; // 임시 비활성화
-import { z } from 'genkit';
+import { z } from 'zod';
 
 // Mock data of available materials. In a real app, this would be fetched from the database.
 const AVAILABLE_MATERIALS = [
