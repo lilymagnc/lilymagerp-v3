@@ -1,7 +1,7 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache, getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // 환경 변수 검증
@@ -49,7 +49,6 @@ try {
 } catch (error) {
   console.error('Firestore initialization error:', error);
   // Fallback to default Firestore initialization
-  const { getFirestore } = require('firebase/firestore');
   db = getFirestore(app);
 }
 
