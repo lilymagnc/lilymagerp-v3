@@ -66,8 +66,7 @@ const nextConfig = {
     
     // 실험적 기능
     experimental: {
-        // App Hosting 최적화
-        serverComponentsExternalPackages: ['xlsx', 'jsbarcode'],
+        // App Hosting 최적화 - 이 설정은 더 이상 필요하지 않음
     },
 };
 
