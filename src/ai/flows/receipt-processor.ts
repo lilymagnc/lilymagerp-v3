@@ -8,7 +8,7 @@
  * - ReceiptProcessOutput - The return type for the processReceipt function.
  */
 
-import { ai } from '@/ai/genkit';
+// import { ai } from '@/ai/genkit'; // 임시 비활성화
 import { z } from 'genkit';
 
 // Mock data of available materials. In a real app, this would be fetched from the database.
@@ -33,9 +33,12 @@ const ReceiptProcessOutputSchema = z.object({
 export type ReceiptProcessOutput = z.infer<typeof ReceiptProcessOutputSchema>;
 
 export async function processReceipt(input: ReceiptProcessInput): Promise<ReceiptProcessOutput> {
-  return processReceiptFlow(input);
+  // 임시로 빈 결과 반환
+  return { items: [] };
 }
 
+// AI 관련 코드 임시 비활성화
+/*
 const prompt = ai.definePrompt({
   name: 'receiptProcessPrompt',
   input: { schema: z.object({
@@ -93,3 +96,4 @@ const processReceiptFlow = ai.defineFlow(
     return output;
   }
 );
+*/
