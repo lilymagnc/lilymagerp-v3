@@ -1,40 +1,57 @@
-# Firebase App Hosting 설정
+# Settings for Backend (on Cloud Run).
+# See https://firebase.google.com/docs/app-hosting/configure#cloud-run
 runConfig:
-  # CPU 및 메모리 설정 (ERP 시스템에 맞게 조정)
+  minInstances: 1
+  maxInstances: 10
+  concurrency: 80
   cpu: 1
-  memoryMiB: 1024  # 메모리 증가 (엑셀 처리, 바코드 등)
-  # 최소/최대 인스턴스 수
-  minInstances: 0
-  maxInstances: 20  # 최대 인스턴스 증가
-  # 동시 요청 수
-  concurrency: 80   # 안정성을 위해 약간 감소
+  memoryMiB: 1024
 
-# 환경 변수
+# Environment variables and secrets.
 env:
-  - variable: NODE_ENV
-    value: production
-  - variable: NEXT_TELEMETRY_DISABLED
-    value: "1"
-  # Firebase 환경 변수들
+  # Next.js public environment variables
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: AIzaSyApy5zme7H15h1UZd1B9hBDOOWgpbvOLJ4
+    value: "AIzaSyApy5zme7H15h1UZd1B9hBDOOWgpbvOLJ4"
+    availability:
+      - BUILD
+      - RUNTIME
+  
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: lilymagerp-fs1.firebaseapp.com
-  - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
-    value: https://lilymagerp-fs1-default-rtdb.asia-southeast1.firebasedatabase.app
+    value: "lilymagerp-fs1.firebaseapp.com"
+    availability:
+      - BUILD
+      - RUNTIME
+  
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: lilymagerp-fs1
+    value: "lilymagerp-fs1"
+    availability:
+      - BUILD
+      - RUNTIME
+  
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: lilymagerp-fs1.firebasestorage.app
+    value: "lilymagerp-fs1.firebasestorage.app"
+    availability:
+      - BUILD
+      - RUNTIME
+  
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "1051472045444"
+    value: "1069828102888"
+    availability:
+      - BUILD
+      - RUNTIME
+  
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: 1:1051472045444:web:056090d13ecd48bab61a02
+    value: "1:1069828102888:web:24927eab4719f3e75d475d"
+    availability:
+      - BUILD
+      - RUNTIME
 
-# 빌드 설정
-buildConfig:
-  runtime: nodejs22
-  commands:
-    - npm ci --production=false  # devDependencies도 설치
-    - npm run build
-  outputDir: .next
+# Build and run scripts override
+scripts:
+  buildCommand: npm run build
+  runCommand: npm start
+
+# Output files configuration
+outputFiles:
+  serverApp:
+    include: [".next", "public", "package.json"]

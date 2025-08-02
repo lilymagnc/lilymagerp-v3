@@ -73,7 +73,7 @@ export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
                         left: 0;
                         top: 0;
                         width: 100%;
-                        height: auto;
+                        height: 45px;
                     }
                 }
              `}</style>

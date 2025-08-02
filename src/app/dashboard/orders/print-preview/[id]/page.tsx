@@ -13,7 +13,7 @@ export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
 
 // Correctly type the props for a Next.js Page component with dynamic routes
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 async function getOrder(orderId: string): Promise<SerializableOrder | null> {
@@ -48,7 +48,8 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
 
 
 export default async function PrintPreviewPage({ params }: PageProps) {
-  const orderData = await getOrder(params.id);
+  const { id } = await params;
+  const orderData = await getOrder(id);
 
   if (!orderData) {
     notFound();
