@@ -13,7 +13,7 @@ import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2, Paperclip } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { processReceipt } from "@/ai/flows/receipt-processor";
+// import { processReceipt } from "@/ai/flows/receipt-processor";
 import { useMaterials } from "@/hooks/use-materials";
 import { useAuth } from "@/hooks/use-auth";
 import { Label } from "@/components/ui/label";
@@ -151,65 +151,65 @@ export function StockMovement() {
     });
   }
 
-  const handleAiProcess = async () => {
-    if (!receiptText.trim() && !receiptPhoto) {
-        toast({ variant: "destructive", title: "내용 없음", description: "분석할 영수증 텍스트나 사진을 제공해주세요." });
-        return;
-    }
-    setIsAiProcessing(true);
-    try {
-        let photoDataUri: string | undefined;
-        if (receiptPhoto) {
-            photoDataUri = await fileToDataUri(receiptPhoto);
-        }
+  // const handleAiProcess = async () => {
+  //   if (!receiptText.trim() && !receiptPhoto) {
+  //       toast({ variant: "destructive", title: "내용 없음", description: "분석할 영수증 텍스트나 사진을 제공해주세요." });
+  //       return;
+  //   }
+  //   setIsAiProcessing(true);
+  //   try {
+  //       let photoDataUri: string | undefined;
+  //       if (receiptPhoto) {
+  //           photoDataUri = await fileToDataUri(receiptPhoto);
+  //   }
 
-        const result = await processReceipt({ receiptText, photoDataUri });
-        const newItems: ScannedItem[] = [];
+  //       const result = await processReceipt({ receiptText, photoDataUri });
+  //       const newItems: ScannedItem[] = [];
         
-        result.items.forEach(processedItem => {
-            const material = materials.find(m => m.name === processedItem.itemName);
-            if (material) {
-                newItems.push({
-                    id: material.id,
-                    name: material.name,
-                    quantity: processedItem.quantity,
-                });
-            }
-        });
+  //       result.items.forEach(processedItem => {
+  //           const material = materials.find(m => m.name === processedItem.itemName);
+  //           if (material) {
+  //               newItems.push({
+  //                   id: material.id,
+  //                   name: material.name,
+  //                   quantity: processedItem.quantity,
+  //               });
+  //           }
+  //       });
 
-        setStockInList(prevList => {
-            const updatedList = [...prevList];
-            newItems.forEach(newItem => {
-                const existingItemIndex = updatedList.findIndex(item => item.id === newItem.id);
-                if (existingItemIndex > -1) {
-                    updatedList[existingItemIndex].quantity += newItem.quantity;
-                } else {
-                    updatedList.push(newItem);
-                }
-            });
-            return updatedList;
-        });
+  //       setStockInList(prevList => {
+  //           const updatedList = [...prevList];
+  //           newItems.forEach(newItem => {
+  //               const existingItemIndex = updatedList.findIndex(item => item.id === newItem.id);
+  //               if (existingItemIndex > -1) {
+  //                   updatedList[existingItemIndex].quantity += newItem.quantity;
+  //               } else {
+  //                   updatedList.push(newItem);
+  //               }
+  //           });
+  //           return updatedList;
+  //       });
 
-        toast({
-            title: "AI 분석 완료",
-            description: `${newItems.length}개의 항목이 입고 목록에 추가되었습니다. 내용을 확인하고 입고 처리를 완료해주세요.`,
-        });
-        setReceiptText("");
-        setReceiptPhoto(null);
-        setReceiptPhotoPreview(null);
+  //       toast({
+  //           title: "AI 분석 완료",
+  //           description: `${newItems.length}개의 항목이 입고 목록에 추가되었습니다. 내용을 확인하고 입고 처리를 완료해주세요.`,
+  //       });
+  //       setReceiptText("");
+  //       setReceiptPhoto(null);
+  //       setReceiptPhotoPreview(null);
 
 
-    } catch (error) {
-        console.error("AI processing error:", error);
-        toast({
-            variant: "destructive",
-            title: "AI 분석 오류",
-            description: "영수증 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-        });
-    } finally {
-        setIsAiProcessing(false);
-    }
-  };
+  //   } catch (error) {
+  //       console.error("AI processing error:", error);
+  //       toast({
+  //           variant: "destructive",
+  //           title: "AI 분석 오류",
+  //           description: "영수증 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+  //       });
+  //   } finally {
+  //       setIsAiProcessing(false);
+  //   }
+  // };
 
 
   const renderList = (list: ScannedItem[], type: 'in' | 'out') => (
@@ -325,12 +325,12 @@ export function StockMovement() {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                     <Button onClick={handleAiProcess} disabled={isAiProcessing}>
                         {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                         AI로 분석하기
                     </Button>
-                </div>
+                </div> */}
             </CardContent>
           </Card>
 
