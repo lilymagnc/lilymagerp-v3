@@ -261,27 +261,60 @@ export default function OrdersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>작업</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handlePrint(order.id)}>주문서 인쇄</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleMessagePrintClick(order)}>
-                          <MessageSquareText className="mr-2 h-4 w-4" />
-                          메시지 인쇄
-                        </DropdownMenuItem>
+                                                 <DropdownMenuItem onClick={(e) => {
+                           e.stopPropagation();
+                           handlePrint(order.id);
+                         }}>
+                           주문서 인쇄
+                         </DropdownMenuItem>
+                         <DropdownMenuItem onClick={(e) => {
+                           e.stopPropagation();
+                           handleMessagePrintClick(order);
+                         }}>
+                           <MessageSquareText className="mr-2 h-4 w-4" />
+                           메시지 인쇄
+                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>주문 상태 변경</DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'processing')}>처리중</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'completed')}>완료</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updateOrderStatus(order.id, 'canceled')}>취소</DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger>결제 상태 변경</DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent>
-                            <DropdownMenuItem onClick={() => updatePaymentStatus(order.id, 'completed')}>완결</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => updatePaymentStatus(order.id, 'pending')}>미결</DropdownMenuItem>
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
+                                                 <DropdownMenuSub>
+                           <DropdownMenuSubTrigger>주문 상태 변경</DropdownMenuSubTrigger>
+                           <DropdownMenuSubContent>
+                             <DropdownMenuItem onClick={(e) => {
+                               e.stopPropagation();
+                               updateOrderStatus(order.id, 'processing');
+                             }}>
+                               처리중
+                             </DropdownMenuItem>
+                             <DropdownMenuItem onClick={(e) => {
+                               e.stopPropagation();
+                               updateOrderStatus(order.id, 'completed');
+                             }}>
+                               완료
+                             </DropdownMenuItem>
+                             <DropdownMenuItem onClick={(e) => {
+                               e.stopPropagation();
+                               updateOrderStatus(order.id, 'canceled');
+                             }}>
+                               취소
+                             </DropdownMenuItem>
+                           </DropdownMenuSubContent>
+                         </DropdownMenuSub>
+                         <DropdownMenuSub>
+                           <DropdownMenuSubTrigger>결제 상태 변경</DropdownMenuSubTrigger>
+                           <DropdownMenuSubContent>
+                             <DropdownMenuItem onClick={(e) => {
+                               e.stopPropagation();
+                               updatePaymentStatus(order.id, 'completed');
+                             }}>
+                               완결
+                             </DropdownMenuItem>
+                             <DropdownMenuItem onClick={(e) => {
+                               e.stopPropagation();
+                               updatePaymentStatus(order.id, 'pending');
+                             }}>
+                               미결
+                             </DropdownMenuItem>
+                           </DropdownMenuSubContent>
+                         </DropdownMenuSub>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
