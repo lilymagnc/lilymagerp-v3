@@ -15,9 +15,10 @@ interface CustomerTableProps {
   onEdit: (customer: Customer) => void;
   onDelete: (id: string) => void;
   onRowClick: (customer: Customer) => void;
+  onStatementPrint: (customer: Customer) => void;
 }
 
-export function CustomerTable({ customers, onEdit, onDelete, onRowClick }: CustomerTableProps) {
+export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onStatementPrint }: CustomerTableProps) {
     
     const getGradeBadge = (grade?: string) => {
         switch (grade) {
@@ -31,12 +32,6 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick }: Custo
                 return <Badge variant="outline">{grade || '신규'}</Badge>;
         }
     }
-
-    const handleStatementPrint = (customer: Customer) => {
-        // 거래명세서 출력 기능 구현
-        // 예: 거래명세서 페이지로 이동하거나 모달 열기
-        window.open(`/dashboard/partners/statement?customerId=${customer.id}&customerName=${encodeURIComponent(customer.name)}`, '_blank');
-    };
 
   return (
     <Card>
@@ -87,7 +82,7 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick }: Custo
                           <DropdownMenuLabel>작업</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => onEdit(customer)}>수정</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleStatementPrint(customer)}>
+                          <DropdownMenuItem onClick={() => onStatementPrint(customer)}>
                             <FileText className="mr-2 h-4 w-4" />
                             거래명세서 출력
                           </DropdownMenuItem>

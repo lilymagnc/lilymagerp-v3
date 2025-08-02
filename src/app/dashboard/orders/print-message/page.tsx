@@ -48,11 +48,16 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
 
 
 export default async function PrintMessagePage({ searchParams }: PageProps) {
-    const orderId = searchParams.orderId as string;
-    const labelType = searchParams.labelType as string || 'formtec-3108';
-    const startPosition = parseInt(searchParams.start as string) || 1;
-    const font = searchParams.font as string || 'Noto Sans KR';
-    const fontSize = parseInt(searchParams.fontSize as string) || 14;
+    const params = await searchParams;
+    const orderId = params.orderId as string;
+    const labelType = params.labelType as string || 'formtec-3108';
+    const startPosition = parseInt(params.start as string) || 1;
+    const messageFont = params.messageFont as string || 'Noto Sans KR';
+    const messageFontSize = parseInt(params.messageFontSize as string) || 14;
+    const senderFont = params.senderFont as string || 'Noto Sans KR';
+    const senderFontSize = parseInt(params.senderFontSize as string) || 12;
+    const messageContent = params.messageContent as string || '';
+    const senderName = params.senderName as string || '';
 
     if (!orderId) {
         notFound();
@@ -70,8 +75,12 @@ export default async function PrintMessagePage({ searchParams }: PageProps) {
                 order={orderData}
                 labelType={labelType}
                 startPosition={startPosition}
-                font={font}
-                fontSize={fontSize}
+                messageFont={messageFont}
+                messageFontSize={messageFontSize}
+                senderFont={senderFont}
+                senderFontSize={senderFontSize}
+                messageContent={messageContent}
+                senderName={senderName}
             />
         </Suspense>
     );

@@ -95,6 +95,7 @@ export default function NewOrderPage() {
 
   const [messageType, setMessageType] = useState<MessageType>("card");
   const [messageContent, setMessageContent] = useState("");
+  const [messageSender, setMessageSender] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
@@ -230,7 +231,16 @@ export default function NewOrderPage() {
             }
 
             setMessageType(foundOrder.message.type);
-            setMessageContent(foundOrder.message.content);
+            
+            // 메시지 내용에서 보내는 사람 분리
+            const messageParts = foundOrder.message.content.split('\n---\n');
+            if (messageParts.length > 1) {
+              setMessageContent(messageParts[0]);
+              setMessageSender(messageParts[1]);
+            } else {
+              setMessageContent(foundOrder.message.content);
+              setMessageSender("");
+            }
             setSpecialRequest(foundOrder.request || "");
 
             setPaymentMethod(foundOrder.payment.method);
@@ -413,7 +423,10 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             district: selectedDistrict ?? '',
         } : null,
 
-        message: { type: messageType, content: messageContent },
+        message: { 
+          type: messageType, 
+          content: messageSender ? `${messageContent}\n---\n${messageSender}` : messageContent 
+        },
         request: specialRequest,
     };
 
@@ -1038,13 +1051,32 @@ const handleCustomerSelect = (customer: Customer) => {
                       </div>
                       
                       {/* 메시지 */}
-                      <div>
+                      <div className="space-y-3">
                           <Label>메시지</Label>
                           <RadioGroup value={messageType} onValueChange={(v) => setMessageType(v as MessageType)} className="flex items-center gap-4 mt-2">
                               <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="msg-card" /><Label htmlFor="msg-card">카드 메시지</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="ribbon" id="msg-ribbon" /><Label htmlFor="msg-ribbon">리본 메시지</Label></div>
                           </RadioGroup>
-                          <Textarea id="message-content" placeholder={messageType === 'card' ? "카드 메시지 내용을 입력하세요." : "리본 문구(좌/우)를 입력하세요."} className="mt-2" value={messageContent} onChange={e => setMessageContent(e.target.value)} />
+                          <div>
+                              <Label htmlFor="message-content">메시지 내용</Label>
+                              <Textarea 
+                                  id="message-content" 
+                                  placeholder={messageType === 'card' ? "카드 메시지 내용을 입력하세요." : "리본 문구(좌/우)를 입력하세요."} 
+                                  className="mt-2" 
+                                  value={messageContent} 
+                                  onChange={e => setMessageContent(e.target.value)} 
+                              />
+                          </div>
+                          <div>
+                              <Label htmlFor="message-sender">보내는 사람</Label>
+                              <Input 
+                                  id="message-sender" 
+                                  placeholder="보내는 사람 이름을 입력하세요" 
+                                  className="mt-2" 
+                                  value={messageSender} 
+                                  onChange={e => setMessageSender(e.target.value)} 
+                              />
+                          </div>
                       </div>
 
                       {/* 요청사항 */}

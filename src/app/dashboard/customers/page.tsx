@@ -13,6 +13,7 @@ import { useCustomers, Customer } from "@/hooks/use-customers";
 import { CustomerForm, CustomerFormValues } from "./components/customer-form";
 import { CustomerTable } from "./components/customer-table";
 import { CustomerDetails } from "./components/customer-details";
+import { StatementDialog } from "./components/statement-dialog";
 import { ImportButton } from "@/components/import-button";
 import { FileUp } from "lucide-react";
 import { useBranches } from "@/hooks/use-branches";
@@ -21,6 +22,7 @@ import { useBranches } from "@/hooks/use-branches";
 export default function CustomersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isStatementOpen, setIsStatementOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedBranch, setSelectedBranch] = useState("all");
@@ -61,6 +63,11 @@ export default function CustomersPage() {
         setSelectedCustomer(customer);
         setIsDetailOpen(true);
     }
+
+    const handleStatementPrint = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setIsStatementOpen(true);
+    };
 
     const handleFormSubmit = async (data: CustomerFormValues) => {
         if (selectedCustomer?.id) {
@@ -156,6 +163,7 @@ export default function CustomersPage() {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onRowClick={handleDetails}
+                    onStatementPrint={handleStatementPrint}
                 />
             )}
             
@@ -170,6 +178,12 @@ export default function CustomersPage() {
                 isOpen={isDetailOpen}
                 onOpenChange={setIsDetailOpen}
                 onEdit={() => selectedCustomer && handleEdit(selectedCustomer)}
+                customer={selectedCustomer}
+            />
+
+            <StatementDialog
+                isOpen={isStatementOpen}
+                onOpenChange={setIsStatementOpen}
                 customer={selectedCustomer}
             />
         </div>

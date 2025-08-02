@@ -61,13 +61,37 @@ export default function OrdersPage() {
     setIsMessagePrintDialogOpen(true);
   };
 
-  const handleMessagePrintSubmit = ({ orderId, labelType, startPosition, font, fontSize }: { orderId: string; labelType: string; startPosition: number; font: string; fontSize: number; }) => {
+  const handleMessagePrintSubmit = ({ 
+    orderId, 
+    labelType, 
+    startPosition, 
+    messageFont, 
+    messageFontSize,
+    senderFont,
+    senderFontSize,
+    messageContent,
+    senderName
+  }: { 
+    orderId: string; 
+    labelType: string; 
+    startPosition: number; 
+    messageFont: string; 
+    messageFontSize: number;
+    senderFont: string;
+    senderFontSize: number;
+    messageContent: string;
+    senderName: string;
+  }) => {
     const params = new URLSearchParams({
         orderId,
         labelType,
         start: String(startPosition),
-        font,
-        fontSize: String(fontSize),
+        messageFont,
+        messageFontSize: String(messageFontSize),
+        senderFont,
+        senderFontSize: String(senderFontSize),
+        messageContent,
+        senderName,
     });
     router.push(`/dashboard/orders/print-message?${params.toString()}`);
     setIsMessagePrintDialogOpen(false);

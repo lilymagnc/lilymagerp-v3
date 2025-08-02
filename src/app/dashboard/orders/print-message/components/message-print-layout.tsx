@@ -12,8 +12,12 @@ interface MessagePrintLayoutProps {
   order: SerializableOrder;
   labelType: string;
   startPosition: number;
-  font: string;
-  fontSize: number;
+  messageFont: string;
+  messageFontSize: number;
+  senderFont: string;
+  senderFontSize: number;
+  messageContent: string;
+  senderName: string;
 }
 
 const labelConfigs: Record<string, { cells: number; gridCols: string; height: string, className?: string }> = {
@@ -22,20 +26,48 @@ const labelConfigs: Record<string, { cells: number; gridCols: string; height: st
     'formtec-3109': { cells: 12, gridCols: 'grid-cols-2', height: '67.7mm', className: 'gap-x-[2.5mm]' }, // 2x6
 };
 
-export function MessagePrintLayout({ order, labelType, startPosition, font, fontSize }: MessagePrintLayoutProps) {
+export function MessagePrintLayout({ 
+  order, 
+  labelType, 
+  startPosition, 
+  messageFont, 
+  messageFontSize, 
+  senderFont, 
+  senderFontSize, 
+  messageContent, 
+  senderName 
+}: MessagePrintLayoutProps) {
   const router = useRouter();
   const config = labelConfigs[labelType] || labelConfigs['formtec-3108'];
   const labels = Array(config.cells).fill(null);
 
-  if (order.message?.content) {
+  // 편집된 메시지 내용 또는 원본 메시지 사용
+  let finalMessageContent = messageContent || order.message?.content || "";
+  let finalSenderName = senderName || order.orderer.name || "";
+
+  // 원본 메시지에서 보내는 사람 분리 (--- 구분자 사용)
+  if (!messageContent && order.message?.content) {
+    const messageParts = order.message.content.split('\n---\n');
+    if (messageParts.length > 1) {
+      finalMessageContent = messageParts[0];
+      finalSenderName = messageParts[1];
+    }
+  }
+
+  if (finalMessageContent) {
       if (startPosition - 1 < config.cells) {
-          labels[startPosition - 1] = order.message.content;
+          labels[startPosition - 1] = { content: finalMessageContent, senderName: finalSenderName };
       }
   }
 
-  const fontStyle: React.CSSProperties = {
-    fontFamily: font,
-    fontSize: `${fontSize}pt`,
+  const messageFontStyle: React.CSSProperties = {
+    fontFamily: messageFont,
+    fontSize: `${messageFontSize}pt`,
+  };
+
+  const senderFontStyle: React.CSSProperties = {
+    fontFamily: senderFont,
+    fontSize: `${senderFontSize}pt`,
   };
 
   return (
@@ -87,15 +119,30 @@ export function MessagePrintLayout({ order, labelType, startPosition, font, font
             config.className
           )}
         >
-          {labels.map((content, index) => (
+          {labels.map((labelData, index) => (
             <div 
               key={index} 
-              className="bg-white p-4 flex flex-col items-center justify-center text-center border border-dashed border-gray-300 print:border-transparent"
-              style={{ height: config.height, ...fontStyle }}
+              className="bg-white p-4 flex flex-col items-center justify-center text-center border border-dashed border-gray-300 print:border-transparent relative"
+              style={{ height: config.height }}
             >
-              <p className="whitespace-pre-wrap">
-                {content}
-              </p>
+              {labelData ? (
+                <>
+                  <div 
+                    className="whitespace-pre-wrap flex-1 flex items-center justify-center"
+                    style={messageFontStyle}
+                  >
+                    {labelData.content}
+                  </div>
+                  <div 
+                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2"
+                    style={senderFontStyle}
+                  >
+                    - {labelData.senderName} -
+                  </div>
+                </>
+              ) : (
+                <div className="text-gray-400">빈 라벨</div>
+              )}
             </div>
           ))}
         </div>

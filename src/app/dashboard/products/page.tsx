@@ -28,7 +28,7 @@ export default function ProductsPage() {
   
   const [selectedBranch, setSelectedBranch] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
@@ -44,7 +44,7 @@ export default function ProductsPage() {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           product.code?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesBranch = !selectedBranch || product.branch === selectedBranch;
-      const matchesCategory = !selectedCategory || product.mainCategory === selectedCategory;
+      const matchesCategory = !selectedCategory || selectedCategory === "all" || product.mainCategory === selectedCategory;
       return matchesSearch && matchesBranch && matchesCategory;
     });
   }, [products, searchTerm, selectedBranch, selectedCategory]);
@@ -96,7 +96,7 @@ export default function ProductsPage() {
             <SelectValue placeholder="카테고리 선택" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">전체 카테고리</SelectItem>
+            <SelectItem value="all">전체 카테고리</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category} value={category}>
                 {category}
