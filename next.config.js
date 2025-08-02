@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Firebase App Hosting 최적화
-    output: 'standalone',
+    // Firebase App Hosting 최적화 - standalone 제거
+    // output: 'standalone',
     
     // 빌드 최적화
     typescript: {
@@ -41,6 +41,11 @@ const nextConfig = {
         'xlsx',
         'jsbarcode'
     ],
+    
+    // CSS 최적화
+    experimental: {
+        optimizeCss: true,
+    },
 };
 
 module.exports = nextConfig;

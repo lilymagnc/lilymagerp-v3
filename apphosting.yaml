@@ -50,3 +50,8 @@ env:
 scripts:
   buildCommand: npm run build
   runCommand: npm start
+
+# Output files configuration
+outputFiles:
+  serverApp:
+    include: [".next", "public", "package.json"]
