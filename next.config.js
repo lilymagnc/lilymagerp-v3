@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // Firebase App Hosting 최적화 - standalone 제거
-    // output: 'standalone',
-    
     // 빌드 최적화
     typescript: {
         ignoreBuildErrors: true,
@@ -35,12 +32,6 @@ const nextConfig = {
         ],
         unoptimized: false,
     },
-    
-    // 서버 외부 패키지 설정 (Firebase App Hosting용)
-    serverExternalPackages: [
-        'xlsx',
-        'jsbarcode'
-    ],
     
     // CSS 최적화
     experimental: {
