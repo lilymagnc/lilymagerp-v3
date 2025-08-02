@@ -33,10 +33,10 @@ const nextConfig = {
         unoptimized: false,
     },
     
-    // CSS 최적화 (Vercel 배포 시 문제가 있어서 비활성화)
-    // experimental: {
-    //     optimizeCss: true,
-    // },
+    // CSS 최적화
+    experimental: {
+        // optimizeCss: true, // Vercel에서 문제가 있어서 비활성화
+    },
 };
 
 module.exports = nextConfig;
