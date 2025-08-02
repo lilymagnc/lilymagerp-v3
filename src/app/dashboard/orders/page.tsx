@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +20,7 @@ import { useBranches } from "@/hooks/use-branches";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { MessagePrintDialog } from "./components/message-print-dialog";
 import { OrderDetailDialog } from "./components/order-detail-dialog";
+import { ExcelUploadDialog } from "./components/excel-upload-dialog";
 import { Timestamp } from "firebase/firestore";
 
 export default function OrdersPage() {
@@ -34,6 +35,7 @@ export default function OrdersPage() {
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<Order | null>(null);
   const [isOrderDetailDialogOpen, setIsOrderDetailDialogOpen] = useState(false);
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
+  const [isExcelUploadDialogOpen, setIsExcelUploadDialogOpen] = useState(false);
 
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -158,12 +160,18 @@ export default function OrdersPage() {
         title="주문 현황"
         description={`모든 주문 내역을 확인하고 관리하세요.${!isAdmin ? ` (${userBranch})` : ''}`}
       >
-        <Button asChild>
-            <Link href="/dashboard/orders/new">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                주문 접수
-            </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild>
+              <Link href="/dashboard/orders/new">
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  주문 접수
+              </Link>
+          </Button>
+          <Button variant="outline" onClick={() => setIsExcelUploadDialogOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              엑셀 업로드
+          </Button>
+        </div>
       </PageHeader>
       <Card>
         <CardHeader>
@@ -340,6 +348,10 @@ export default function OrdersPage() {
             order={selectedOrderForDetail}
         />
       )}
+      <ExcelUploadDialog
+        isOpen={isExcelUploadDialogOpen}
+        onOpenChange={setIsExcelUploadDialogOpen}
+      />
     </>
   );
 }
