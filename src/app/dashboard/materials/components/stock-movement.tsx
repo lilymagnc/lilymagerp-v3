@@ -13,7 +13,7 @@ import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2, Paperclip } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { processReceipt } from "@/ai/flows/receipt-processor";
+// import { processReceipt } from "@/ai/flows/receipt-processor"; // AI 기능 임시 비활성화
 import { useMaterials } from "@/hooks/use-materials";
 import { useAuth } from "@/hooks/use-auth";
 import { Label } from "@/components/ui/label";
@@ -163,19 +163,21 @@ export function StockMovement() {
             photoDataUri = await fileToDataUri(receiptPhoto);
         }
 
-        const result = await processReceipt({ receiptText, photoDataUri });
+        // AI 기능 임시 비활성화
+        // const result = await processReceipt({ receiptText, photoDataUri });
         const newItems: ScannedItem[] = [];
         
-        result.items.forEach(processedItem => {
-            const material = materials.find(m => m.name === processedItem.itemName);
-            if (material) {
-                newItems.push({
-                    id: material.id,
-                    name: material.name,
-                    quantity: processedItem.quantity,
-                });
-            }
-        });
+        // 임시로 빈 결과 처리
+        // result.items.forEach(processedItem => {
+        //     const material = materials.find(m => m.name === processedItem.itemName);
+        //     if (material) {
+        //         newItems.push({
+        //             id: material.id,
+        //             name: material.name,
+        //             quantity: processedItem.quantity,
+        //         });
+        //     }
+        // });
 
         setStockInList(prevList => {
             const updatedList = [...prevList];

@@ -33,42 +33,14 @@ const nextConfig = {
                 pathname: '/**',
             },
         ],
-        // App Hosting에서 이미지 최적화
         unoptimized: false,
     },
     
-    // 서버 외부 패키지 설정
+    // 서버 외부 패키지 설정 (Firebase App Hosting용)
     serverExternalPackages: [
-        '@opentelemetry/winston-transport',
-        '@opentelemetry/exporter-jaeger',
-        '@opentelemetry/sdk-node',
-        '@opentelemetry/instrumentation-winston'
+        'xlsx',
+        'jsbarcode'
     ],
-    
-    // Webpack 설정
-    webpack: (config, { isServer }) => {
-        if (isServer) {
-            config.externals.push({
-                '@opentelemetry/winston-transport': 'commonjs @opentelemetry/winston-transport',
-                '@opentelemetry/exporter-jaeger': 'commonjs @opentelemetry/exporter-jaeger'
-            });
-        }
-        
-        // 파일 크기 경고 제한 증가 (엑셀 라이브러리 등)
-        config.performance = {
-            ...config.performance,
-            maxAssetSize: 1000000, // 1MB
-            maxEntrypointSize: 1000000, // 1MB
-        };
-        
-        return config;
-    },
-    
-    // 실험적 기능
-    experimental: {
-        // App Hosting 최적화
-        serverComponentsExternalPackages: ['xlsx', 'jsbarcode'],
-    },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

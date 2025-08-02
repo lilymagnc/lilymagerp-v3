@@ -6,7 +6,11 @@
       "**/.*",
       "**/node_modules/**",
       "**/.next/**",
-      "**/out/**"
+      "**/out/**",
+      "functions/**",
+      "lilymagerp/**",
+      "docs/**",
+      "lib/**"
     ]
   },
   "firestore": {
