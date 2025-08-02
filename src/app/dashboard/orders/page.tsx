@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBranches } from "@/hooks/use-branches";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { MessagePrintDialog } from "./components/message-print-dialog";
+import { OrderDetailDialog } from "./components/order-detail-dialog";
 import { Timestamp } from "firebase/firestore";
 
 export default function OrdersPage() {
@@ -31,6 +32,8 @@ export default function OrdersPage() {
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [isMessagePrintDialogOpen, setIsMessagePrintDialogOpen] = useState(false);
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<Order | null>(null);
+  const [isOrderDetailDialogOpen, setIsOrderDetailDialogOpen] = useState(false);
+  const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
 
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -59,6 +62,11 @@ export default function OrdersPage() {
   const handleMessagePrintClick = (order: Order) => {
     setSelectedOrderForPrint(order);
     setIsMessagePrintDialogOpen(true);
+  };
+
+  const handleOrderRowClick = (order: Order) => {
+    setSelectedOrderForDetail(order);
+    setIsOrderDetailDialogOpen(true);
   };
 
   const handleMessagePrintSubmit = ({ 
@@ -220,7 +228,11 @@ export default function OrdersPage() {
               ))
             ) : (
               filteredOrders.map((order) => (
-                  <TableRow key={order.id}>
+                  <TableRow 
+                    key={order.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleOrderRowClick(order)}
+                  >
                   <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
                   <TableCell>{order.orderer.name}</TableCell>
                   <TableCell>
@@ -237,7 +249,12 @@ export default function OrdersPage() {
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
+                        <Button 
+                          aria-haspopup="true" 
+                          size="icon" 
+                          variant="ghost"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">메뉴 토글</span>
                         </Button>
@@ -281,6 +298,13 @@ export default function OrdersPage() {
             onOpenChange={setIsMessagePrintDialogOpen}
             order={selectedOrderForPrint}
             onSubmit={handleMessagePrintSubmit}
+        />
+      )}
+      {selectedOrderForDetail && (
+        <OrderDetailDialog
+            isOpen={isOrderDetailDialogOpen}
+            onOpenChange={setIsOrderDetailDialogOpen}
+            order={selectedOrderForDetail}
         />
       )}
     </>
