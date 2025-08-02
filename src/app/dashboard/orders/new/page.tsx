@@ -53,7 +53,7 @@ export default function NewOrderPage() {
   const [isUpdatingDeliveryFees, setIsUpdatingDeliveryFees] = useState(false);
  const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
-  const { findCustomersByContact } = useCustomers();
+  const { findCustomersByContact, customers } = useCustomers();
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id');
@@ -77,6 +77,15 @@ export default function NewOrderPage() {
   const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [usedPoints, setUsedPoints] = useState(0);
+  
+  // 고객 검색 관련 상태
+  const [customerSearch, setCustomerSearch] = useState({
+    company: "",
+    name: "",
+    contact: ""
+  });
+  const [customerSearchResults, setCustomerSearchResults] = useState<Customer[]>([]);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
 
   
   const [orderType, setOrderType] = useState<OrderType>("store");
@@ -482,9 +491,48 @@ const handleCustomerSelect = (customer: Customer) => {
   setUsedPoints(0);
 };
 
+const handleCustomerSearch = async () => {
+  setCustomerSearchLoading(true);
+  try {
+    let results = customers;
+    
+    // 회사명으로 필터링
+    if (customerSearch.company) {
+      results = results.filter(c => 
+        c.companyName?.toLowerCase().includes(customerSearch.company.toLowerCase())
+      );
+    }
+    
+    // 주문자명으로 필터링
+    if (customerSearch.name) {
+      results = results.filter(c => 
+        c.name.toLowerCase().includes(customerSearch.name.toLowerCase())
+      );
+    }
+    
+    // 연락처 뒷4자리로 필터링
+    if (customerSearch.contact) {
+      results = results.filter(c => 
+        c.contact.replace(/[^0-9]/g, '').endsWith(customerSearch.contact)
+      );
+    }
+    
+    setCustomerSearchResults(results);
+  } catch (error) {
+    console.error('고객 검색 오류:', error);
+    toast({
+      variant: 'destructive',
+      title: '검색 오류',
+      description: '고객 검색 중 오류가 발생했습니다.',
+    });
+  } finally {
+    setCustomerSearchLoading(false);
+  }
+};
+
   const orderSummary = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const maxUsablePoints = selectedCustomer ? Math.min(selectedCustomer.points || 0, subtotal) : 0;
+    const maxUsablePoints = selectedCustomer && subtotal >= 5000 ? Math.min(selectedCustomer.points || 0, subtotal) : 0;
     const pointsToUse = Math.min(subtotal, usedPoints, maxUsablePoints);
     const total = subtotal - pointsToUse + deliveryFee;
     const pointsEarned = Math.floor(subtotal * 0.02);
@@ -752,6 +800,125 @@ const handleCustomerSelect = (customer: Customer) => {
                           <Label>주문자 정보</Label>
                           <Card className="mt-2">
                               <CardContent className="p-4">
+                                {/* 고객 검색 섹션 */}
+                                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center justify-between mb-4">
+                                    <h4 className="font-medium text-gray-900">고객 검색</h4>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      onClick={() => {
+                                        setSelectedCustomer(null);
+                                        setUsedPoints(0);
+                                      }}
+                                      disabled={!selectedCustomer}
+                                    >
+                                      고객 선택 해제
+                                    </Button>
+                                  </div>
+                                  
+                                  {!selectedCustomer ? (
+                                    <div className="space-y-4">
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">회사명</Label>
+                                          <Input 
+                                            placeholder="회사명으로 검색"
+                                            value={customerSearch.company || ""}
+                                            onChange={(e) => setCustomerSearch(prev => ({ ...prev, company: e.target.value }))}
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">주문자명</Label>
+                                          <Input 
+                                            placeholder="주문자명으로 검색"
+                                            value={customerSearch.name || ""}
+                                            onChange={(e) => setCustomerSearch(prev => ({ ...prev, name: e.target.value }))}
+                                          />
+                                        </div>
+                                        <div className="space-y-2">
+                                          <Label className="text-xs">연락처 뒷4자리</Label>
+                                          <Input 
+                                            placeholder="연락처 뒷4자리"
+                                            value={customerSearch.contact || ""}
+                                            onChange={(e) => setCustomerSearch(prev => ({ ...prev, contact: e.target.value }))}
+                                          />
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button 
+                                          onClick={handleCustomerSearch}
+                                          disabled={customerSearchLoading}
+                                          className="flex-1"
+                                        >
+                                          {customerSearchLoading ? (
+                                            <>
+                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                              검색 중...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Search className="mr-2 h-4 w-4" />
+                                              고객 검색
+                                            </>
+                                          )}
+                                        </Button>
+                                      </div>
+                                      
+                                      {/* 검색 결과 */}
+                                      {customerSearchResults.length > 0 && (
+                                        <div className="mt-4">
+                                          <Label className="text-xs text-muted-foreground mb-2 block">검색 결과</Label>
+                                          <div className="space-y-2 max-h-60 overflow-y-auto">
+                                            {customerSearchResults.map(customer => (
+                                              <div 
+                                                key={customer.id}
+                                                className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                onClick={() => handleCustomerSelect(customer)}
+                                              >
+                                                <div className="flex justify-between items-start">
+                                                  <div className="flex-1">
+                                                    <p className="font-medium">{customer.name}</p>
+                                                    {customer.companyName && (
+                                                      <p className="text-sm text-gray-600">{customer.companyName}</p>
+                                                    )}
+                                                    <p className="text-sm text-gray-500">{customer.contact}</p>
+                                                    {customer.email && (
+                                                      <p className="text-sm text-gray-500">{customer.email}</p>
+                                                    )}
+                                                  </div>
+                                                  <div className="text-right">
+                                                    <p className="text-sm font-medium text-blue-600">
+                                                      {(customer.points || 0).toLocaleString()} P
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                                      <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                          <p className="font-medium text-blue-900">{selectedCustomer.name}</p>
+                                          {selectedCustomer.companyName && (
+                                            <p className="text-sm text-blue-700">{selectedCustomer.companyName}</p>
+                                          )}
+                                          {selectedCustomer.email && (
+                                            <p className="text-sm text-blue-600">{selectedCustomer.email}</p>
+                                          )}
+                                          <p className="text-sm text-blue-600 font-medium mt-1">
+                                            보유 포인트: {(selectedCustomer.points || 0).toLocaleString()} P
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-company">회사명</Label>
@@ -773,82 +940,14 @@ const handleCustomerSelect = (customer: Customer) => {
                                             disabled={!!selectedCustomer}
                                         />
                                     </div>
-                                    <div className="space-y-2 relative">
+                                    <div className="space-y-2">
                                         <Label htmlFor="orderer-contact">주문자 연락처</Label>
-                                        <Popover open={isContactSearchOpen} onOpenChange={setIsContactSearchOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Input 
-                                                    id="orderer-contact" 
-                                                    placeholder="010-1234-5678 (뒷 4자리로 검색 가능)" 
-                                                    value={ordererContact} 
-                                                    onChange={handleOrdererContactChange}
-                                                />
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                                                <Command>
-                                                    <CommandList>
-                                                        {contactSearchResults.length > 0 ? (
-                                                            contactSearchResults.map(customer => (
-                                                                <CommandItem 
-                                                                    key={customer.id} 
-                                                                    onSelect={() => handleCustomerSelect(customer)}
-                                                                    className="cursor-pointer"
-                                                                >
-                                                                    <div className="flex flex-col w-full">
-                                                                        <div className="flex justify-between items-center">
-                                                                            <span className="font-medium">{customer.name}</span>
-                                                                            <span className="text-xs text-blue-600 font-medium">
-                                                                                {(customer.points || 0).toLocaleString()} P
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="text-xs text-muted-foreground">
-                                                                            {customer.companyName && `${customer.companyName} | `}
-                                                                            {customer.contact}
-                                                                            {customer.email && ` | ${customer.email}`}
-                                                                        </div>
-                                                                    </div>
-                                                                </CommandItem>
-                                                            ))
-                                                        ) : (
-                                                            <div className="py-6 text-center text-sm text-muted-foreground">
-                                                                연락처 뒷 4자리를 입력하여 고객을 검색하세요
-                                                            </div>
-                                                        )}
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                        
-                                        {/* 선택된 고객 정보 표시 */}
-                                        {selectedCustomer && (
-                                            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
-                                                        <p className="font-medium text-blue-900">{selectedCustomer.name}</p>
-                                                        {selectedCustomer.companyName && (
-                                                            <p className="text-sm text-blue-700">{selectedCustomer.companyName}</p>
-                                                        )}
-                                                        {selectedCustomer.email && (
-                                                            <p className="text-sm text-blue-600">{selectedCustomer.email}</p>
-                                                        )}
-                                                        <p className="text-sm text-blue-600 font-medium mt-1">
-                                                            보유 포인트: {(selectedCustomer.points || 0).toLocaleString()} P
-                                                        </p>
-                                                    </div>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        onClick={() => {
-                                                            setSelectedCustomer(null);
-                                                            setUsedPoints(0);
-                                                        }}
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                    >
-                                                        선택 해제
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
+                                        <Input 
+                                            id="orderer-contact" 
+                                            placeholder="010-1234-5678" 
+                                            value={ordererContact} 
+                                            onChange={(e) => handleGenericContactChange(e, setOrdererContact)}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-email">이메일</Label>
@@ -1118,14 +1217,17 @@ const handleCustomerSelect = (customer: Customer) => {
                                       setUsedPoints(Math.min(Math.max(0, value), maxPoints));
                                     }}
                                     max={orderSummary.maxUsablePoints}
-                                    disabled={!selectedCustomer || orderSummary.availablePoints === 0}
-                                    placeholder={selectedCustomer ? "사용할 포인트 입력" : "고객을 먼저 선택하세요"}
+                                    disabled={!selectedCustomer || orderSummary.availablePoints === 0 || orderSummary.subtotal < 5000}
+                                    placeholder={selectedCustomer ? 
+                                      (orderSummary.subtotal >= 5000 ? "사용할 포인트 입력" : "5천원 이상 주문 시 사용 가능") : 
+                                      "고객을 먼저 선택하세요"
+                                    }
                                 />
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
                                   onClick={handleUseAllPoints} 
-                                  disabled={!selectedCustomer || orderSummary.availablePoints === 0}
+                                  disabled={!selectedCustomer || orderSummary.availablePoints === 0 || orderSummary.subtotal < 5000}
                                 >
                                   전액 사용
                                 </Button>
@@ -1135,9 +1237,15 @@ const handleCustomerSelect = (customer: Customer) => {
                                 <p className="text-muted-foreground">
                                   보유 포인트: <span className="font-medium text-blue-600">{orderSummary.availablePoints.toLocaleString()} P</span>
                                 </p>
-                                <p className="text-muted-foreground">
-                                  사용 가능: <span className="font-medium text-green-600">{orderSummary.maxUsablePoints.toLocaleString()} P</span>
-                                </p>
+                                {orderSummary.subtotal >= 5000 ? (
+                                  <p className="text-muted-foreground">
+                                    사용 가능: <span className="font-medium text-green-600">{orderSummary.maxUsablePoints.toLocaleString()} P</span>
+                                  </p>
+                                ) : (
+                                  <p className="text-muted-foreground text-amber-600">
+                                    ⚠️ 5천원 이상 주문 시 포인트 사용 가능
+                                  </p>
+                                )}
                               </div>
                             ) : (
                               <p className="text-xs text-muted-foreground">
