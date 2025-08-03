@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useProducts, Product } from "@/hooks/use-products";
 import { useCustomers, Customer } from "@/hooks/use-customers";
+import { useAuth } from "@/hooks/use-auth";
 import { Timestamp } from "firebase/firestore";
 import { debounce } from "lodash";
 import { updateBranchesWithDeliveryFees } from "@/scripts/update-branches-delivery-fees";
@@ -49,9 +50,10 @@ declare global {
 }
 
 export default function NewOrderPage() {
+  const { user } = useAuth();
   const { branches, loading: branchesLoading, fetchBranches } = useBranches();
   const [isUpdatingDeliveryFees, setIsUpdatingDeliveryFees] = useState(false);
- const { products: allProducts, loading: productsLoading } = useProducts();
+  const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
   const { findCustomersByContact, customers } = useCustomers();
   const router = useRouter();
@@ -190,6 +192,19 @@ export default function NewOrderPage() {
       return orderDate.getTime() === today.getTime();
     })
   }, [orders, selectedBranch]);
+
+  // 사용자 역할에 따른 자동 지점 선택
+  useEffect(() => {
+    if (user && branches.length > 0 && !selectedBranch) {
+      // 본사 관리자가 아닌 경우 해당 지점 자동 선택
+      if (user.role !== '본사 관리자' && user.franchise && user.franchise !== '본사') {
+        const userBranch = branches.find(branch => branch.name === user.franchise);
+        if (userBranch) {
+          setSelectedBranch(userBranch);
+        }
+      }
+    }
+  }, [user, branches, selectedBranch]);
 
   useEffect(() => {
       if (orderId && !ordersLoading && orders.length > 0 && !productsLoading && allProducts.length > 0 && !branchesLoading && branches.length > 0) {
@@ -635,9 +650,16 @@ const handleCustomerSearch = async () => {
                   {!selectedBranch ? (
                     <div className="flex items-center gap-2">
                         <Store className="h-5 w-5 text-muted-foreground" />
-                        <Select onValueChange={handleBranchChange} disabled={isLoading || !!existingOrder}>
+                        <Select 
+                          onValueChange={handleBranchChange} 
+                          disabled={isLoading || !!existingOrder || (user?.role !== '본사 관리자')}
+                        >
                             <SelectTrigger className="w-[300px]">
-                                <SelectValue placeholder={isLoading ? "지점 불러오는 중..." : "지점 선택"} />
+                                <SelectValue placeholder={
+                                  isLoading ? "지점 불러오는 중..." : 
+                                  user?.role !== '본사 관리자' ? `${user?.franchise || '지점'} 자동 선택` : 
+                                  "지점 선택"
+                                } />
                             </SelectTrigger>
                             <SelectContent>
                                 {branches.filter(b => b.type !== '본사').map(branch => (
@@ -652,10 +674,15 @@ const handleCustomerSearch = async () => {
                     <div className="flex items-center gap-4">
                       <p className="text-lg font-medium">
                           <span className="text-primary">{selectedBranch.name}</span>
+                          {user?.role !== '본사 관리자' && (
+                            <Badge variant="secondary" className="ml-2">자동 선택</Badge>
+                          )}
                       </p>
-                      <Button variant="outline" size="sm" onClick={() => handleBranchChange("")} disabled={!!existingOrder}>
-                          지점 변경
-                      </Button>
+                      {user?.role === '본사 관리자' && (
+                        <Button variant="outline" size="sm" onClick={() => handleBranchChange("")} disabled={!!existingOrder}>
+                            지점 변경
+                        </Button>
+                      )}
                     </div>
                   )}
               </div>

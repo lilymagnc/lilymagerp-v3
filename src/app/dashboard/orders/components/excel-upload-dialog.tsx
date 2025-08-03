@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useOrders } from "@/hooks/use-orders";
 import { useBranches } from "@/hooks/use-branches";
-import { GoogleSheetsService, getGoogleSheetsConfig, convertOrderToSheetFormat } from "@/lib/google-sheets";
+import { GoogleSheetsAppScriptService, getGoogleAppScriptConfig, convertOrderToSheetFormat } from "@/lib/google-sheets-appscript";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, XCircle, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Timestamp } from "firebase/firestore";
@@ -59,9 +59,9 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
   const { addOrder } = useOrders();
   const { branches } = useBranches();
   
-  // 구글 시트 서비스 초기화
-  const googleSheetsConfig = getGoogleSheetsConfig();
-  const googleSheetsService = new GoogleSheetsService(googleSheetsConfig);
+  // 구글 시트 서비스 초기화 (앱스크립트 방식)
+  const googleAppScriptConfig = getGoogleAppScriptConfig();
+  const googleSheetsService = new GoogleSheetsAppScriptService(googleAppScriptConfig.webAppUrl);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -218,10 +218,15 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
            } else {
              await addOrder(order);
              
-             // 구글 시트에도 저장
-             if (googleSheetsConfig.spreadsheetId && googleSheetsConfig.apiKey) {
+             // 구글 시트에도 저장 (앱스크립트 방식)
+             if (googleAppScriptConfig.webAppUrl) {
+               console.log('구글 시트 저장 시도:', googleAppScriptConfig.webAppUrl);
                const sheetData = convertOrderToSheetFormat(order);
-               await googleSheetsService.saveOrderToSheet(sheetData);
+               console.log('시트 데이터:', sheetData);
+               const result = await googleSheetsService.saveOrderToSheet(sheetData);
+               console.log('구글 시트 저장 결과:', result);
+             } else {
+               console.log('구글 앱스크립트 URL이 설정되지 않음');
              }
              
              result.success++;
