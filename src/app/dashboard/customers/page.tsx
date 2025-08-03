@@ -13,6 +13,7 @@ import { useCustomers, Customer } from "@/hooks/use-customers";
 import { CustomerForm, CustomerFormValues } from "./components/customer-form";
 import { CustomerTable } from "./components/customer-table";
 import { CustomerDetails } from "./components/customer-details";
+import { CustomerDetailDialog } from "./components/customer-detail-dialog";
 import { StatementDialog } from "./components/statement-dialog";
 import { ImportButton } from "@/components/import-button";
 import { FileUp } from "lucide-react";
@@ -22,6 +23,7 @@ import { useBranches } from "@/hooks/use-branches";
 export default function CustomersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [isCustomerDetailOpen, setIsCustomerDetailOpen] = useState(false);
     const [isStatementOpen, setIsStatementOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
@@ -63,6 +65,11 @@ export default function CustomersPage() {
         setSelectedCustomer(customer);
         setIsDetailOpen(true);
     }
+
+    const handleRowClick = (customer: Customer) => {
+        setSelectedCustomer(customer);
+        setIsCustomerDetailOpen(true);
+    };
 
     const handleStatementPrint = (customer: Customer) => {
         setSelectedCustomer(customer);
@@ -162,7 +169,7 @@ export default function CustomersPage() {
                     customers={filteredCustomers}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
-                    onRowClick={handleDetails}
+                    onRowClick={handleRowClick}
                     onStatementPrint={handleStatementPrint}
                 />
             )}
@@ -178,6 +185,12 @@ export default function CustomersPage() {
                 isOpen={isDetailOpen}
                 onOpenChange={setIsDetailOpen}
                 onEdit={() => selectedCustomer && handleEdit(selectedCustomer)}
+                customer={selectedCustomer}
+            />
+
+            <CustomerDetailDialog
+                isOpen={isCustomerDetailOpen}
+                onOpenChange={setIsCustomerDetailOpen}
                 customer={selectedCustomer}
             />
 
