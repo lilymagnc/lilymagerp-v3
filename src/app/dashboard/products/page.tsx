@@ -24,9 +24,8 @@ export default function ProductsPage() {
   const { branches } = useBranches();
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise || "";
-  const availableBranches = isAdmin ? branches : branches.filter(b => b.name === userBranch);
   
-  const [selectedBranch, setSelectedBranch] = useState<string>("");
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -34,20 +33,45 @@ export default function ProductsPage() {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
 
+  // 사용자가 볼 수 있는 지점 목록
+  const availableBranches = useMemo(() => {
+    if (isAdmin) {
+      return branches; // 관리자는 모든 지점
+    } else {
+      return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
+    }
+  }, [branches, isAdmin, userBranch]);
+  
+  // 직원의 경우 자동으로 소속 지점으로 필터링
+  useEffect(() => {
+    if (!isAdmin && userBranch && selectedBranch === "all") {
+      setSelectedBranch(userBranch);
+    }
+  }, [isAdmin, userBranch, selectedBranch]);
+
   // 카테고리 목록 생성
   const categories = useMemo(() => {
     return [...new Set(products.map(product => product.mainCategory))];
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
+    let filtered = products;
+
+    // 권한에 따른 지점 필터링
+    if (!isAdmin && userBranch) {
+      filtered = filtered.filter(product => product.branch === userBranch);
+    } else if (selectedBranch && selectedBranch !== "all") {
+      filtered = filtered.filter(product => product.branch === selectedBranch);
+    }
+
+    // 검색어 및 카테고리 필터링
+    return filtered.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           product.code?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesBranch = !selectedBranch || product.branch === selectedBranch;
       const matchesCategory = !selectedCategory || selectedCategory === "all" || product.mainCategory === selectedCategory;
-      return matchesSearch && matchesBranch && matchesCategory;
+      return matchesSearch && matchesCategory;
     });
-  }, [products, searchTerm, selectedBranch, selectedCategory]);
+  }, [products, searchTerm, selectedBranch, selectedCategory, isAdmin, userBranch]);
 
   const handleFormSubmit = async (data: any) => {
     try {
@@ -81,7 +105,7 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <PageHeader 
         title="상품 관리" 
-        description="상품 정보를 관리합니다."
+        description={!isAdmin ? `${userBranch} 지점의 상품 정보를 관리합니다.` : "상품 정보를 관리합니다."}
       />
       
       <div className="flex flex-col sm:flex-row gap-4">
@@ -91,6 +115,21 @@ export default function ProductsPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1"
         />
+        {isAdmin && (
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="지점 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">모든 지점</SelectItem>
+              {availableBranches.map((branch) => (
+                <SelectItem key={branch.id} value={branch.name}>
+                  {branch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="카테고리 선택" />

@@ -155,7 +155,7 @@ export default function MaterialsPage() {
     <div className="space-y-6">
       <PageHeader
         title="자재 관리"
-        description={`자재 정보를 관리하고 재고를 추적하세요.${!isAdmin ? ` (${userBranch})` : ''}`}
+        description={!isAdmin ? `${userBranch} 지점의 자재 정보를 관리합니다.` : "자재 정보를 관리하고 재고를 추적하세요."}
       >
         {isHeadOfficeAdmin && (
           <Button onClick={handleAdd}>
