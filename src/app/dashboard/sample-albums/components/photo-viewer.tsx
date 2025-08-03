@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Download } from 'lucide-react';
 import { Photo } from '@/types/album';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+
 import Image from 'next/image';
 
 interface PhotoViewerProps {
@@ -139,9 +139,10 @@ export function PhotoViewer({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95">
-        <VisuallyHidden>
-          <DialogTitle>사진 뷰어: {currentPhoto.filename}</DialogTitle>
-        </VisuallyHidden>
+        <DialogTitle className="sr-only">사진 뷰어: {currentPhoto.filename}</DialogTitle>
+        <DialogDescription className="sr-only">
+          {currentPhoto.filename} - {currentPhoto.width} × {currentPhoto.height} • {formatFileSize(currentPhoto.size)}
+        </DialogDescription>
         <div className="relative w-full h-[95vh] flex flex-col">
           {/* 헤더 */}
           <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/70 to-transparent p-4">

@@ -124,6 +124,7 @@ export function PhotoGrid({
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-200"
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+            priority={index < 4}
           />
 
           {/* 드래그 핸들 */}
