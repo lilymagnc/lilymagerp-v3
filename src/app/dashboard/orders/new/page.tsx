@@ -672,12 +672,12 @@ const handleCustomerSearch = async () => {
                     </div>
                   ) : (
                     <div className="flex items-center gap-4">
-                      <p className="text-lg font-medium">
+                      <div className="text-lg font-medium">
                           <span className="text-primary">{selectedBranch.name}</span>
                           {user?.role !== '본사 관리자' && (
                             <Badge variant="secondary" className="ml-2">자동 선택</Badge>
                           )}
-                      </p>
+                      </div>
                       {user?.role === '본사 관리자' && (
                         <Button variant="outline" size="sm" onClick={() => handleBranchChange("")} disabled={!!existingOrder}>
                             지점 변경
