@@ -272,6 +272,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
 
   const downloadTemplate = () => {
     const template = [
+      // === 기본 정보 (업로드/다운로드 공통) ===
       ['주문일시', '지점명', '주문상품', '상품금액', '배송비', '결제수단', '총금액', '주문상태', '결제상태', '주문자명', '주문자연락처', '주문자이메일', '수령방법', '픽업/배송일시', '수령인명', '수령인연락처', '배송주소', '메세지타입', '메세지내용', '요청사항'],
       ['2024-01-15 14:30', '강남점', '장미 10송이', '50000', '3000', '카드', '53000', 'processing', 'pending', '김철수', '010-1234-5678', 'kim@example.com', 'pickup', '2024-01-16 15:00', '', '', '', 'card', '생일 축하해요!', '']
     ];
@@ -305,7 +306,9 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
                 템플릿 다운로드
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                템플릿을 다운로드하여 데이터를 입력한 후 업로드하세요.
+                템플릿을 다운로드하여 데이터를 입력한 후 업로드하세요. 
+                <br />
+                <span className="text-blue-600 font-medium">💡 팁:</span> 다운로드한 엑셀 파일을 수정하여 다시 업로드할 수 있습니다!
               </p>
             </CardContent>
           </Card>

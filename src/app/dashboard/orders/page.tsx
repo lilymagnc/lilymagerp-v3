@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,11 +22,14 @@ import { MessagePrintDialog } from "./components/message-print-dialog";
 import { OrderDetailDialog } from "./components/order-detail-dialog";
 import { ExcelUploadDialog } from "./components/excel-upload-dialog";
 import { Timestamp } from "firebase/firestore";
+import { exportOrdersToExcel } from "@/lib/excel-export";
+import { useToast } from "@/hooks/use-toast";
 
 export default function OrdersPage() {
   const { orders, loading, updateOrderStatus, updatePaymentStatus } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
   const { user } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -107,6 +110,36 @@ export default function OrdersPage() {
     setIsMessagePrintDialogOpen(false);
   };
 
+  const handleExcelDownload = () => {
+    const ordersToExport = filteredOrders.length > 0 ? filteredOrders : orders;
+    const filename = selectedBranch !== "all" ? `${selectedBranch}_주문내역` : "전체_주문내역";
+    
+    if (ordersToExport.length === 0) {
+      toast({
+        title: "다운로드할 데이터가 없습니다",
+        description: "다운로드할 주문 내역이 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      console.log('다운로드 시작:', ordersToExport.length, '건의 주문');
+      exportOrdersToExcel(ordersToExport, filename);
+      toast({
+        title: "엑셀 다운로드 완료",
+        description: `${ordersToExport.length}건의 주문 내역이 다운로드되었습니다.`,
+      });
+    } catch (error) {
+      console.error('다운로드 오류:', error);
+      toast({
+        title: "다운로드 실패",
+        description: error.message || "엑셀 파일 다운로드 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -171,6 +204,10 @@ export default function OrdersPage() {
               <Upload className="mr-2 h-4 w-4" />
               엑셀 업로드
           </Button>
+          <Button variant="outline" onClick={handleExcelDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              엑셀 다운로드
+          </Button>
         </div>
       </PageHeader>
       <Card>
@@ -179,6 +216,8 @@ export default function OrdersPage() {
             <CardDescription>
               최근 주문 목록을 검색하고 관리합니다.
               {!isAdmin && ` 현재 ${userBranch} 지점의 주문만 표시됩니다.`}
+              <br />
+              <span className="text-blue-600">💡 엑셀 다운로드:</span> 업로드 템플릿과 동일한 형식으로 다운로드되어 수정 후 재업로드가 가능합니다.
             </CardDescription>
         </CardHeader>
         <CardContent>
@@ -208,6 +247,9 @@ export default function OrdersPage() {
                     </SelectContent>
                 </Select>
               )}
+              <div className="text-sm text-muted-foreground">
+                총 {filteredOrders.length}건의 주문
+              </div>
           </div>
         <Table>
           <TableHeader>
