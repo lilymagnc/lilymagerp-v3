@@ -93,8 +93,28 @@ export default function NewOrderPage() {
   const [orderType, setOrderType] = useState<OrderType>("store");
   const [receiptType, setReceiptType] = useState<ReceiptType>("pickup");
   
+  // 현재 시간을 30분 단위로 반올림하는 함수
+  const getInitialTime = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    
+    // 30분 단위로 반올림
+    const roundedMinutes = minutes < 15 ? 0 : minutes < 45 ? 30 : 0;
+    const adjustedHours = minutes >= 45 ? hours + 1 : hours;
+    
+    // 영업시간 체크 (7:30 - 22:00)
+    if (adjustedHours < 7 || (adjustedHours === 7 && roundedMinutes < 30)) {
+      return "07:30"; // 영업시간 전이면 첫 영업시간
+    } else if (adjustedHours >= 22) {
+      return "07:30"; // 영업시간 후면 다음날 첫 영업시간
+    }
+    
+    return `${String(adjustedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
+  };
+
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
-  const [scheduleTime, setScheduleTime] = useState("10:00");
+  const [scheduleTime, setScheduleTime] = useState(getInitialTime());
   
   const [pickerName, setPickerName] = useState("");
   const [pickerContact, setPickerContact] = useState("");
@@ -455,6 +475,12 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     };
 
     try {
+      console.log('주문 데이터:', {
+        customerId: selectedCustomer?.id,
+        pointsUsed: orderSummary.pointsUsed,
+        customerPoints: selectedCustomer?.points
+      });
+      
       if (existingOrder) {
         await updateOrder(existingOrder.id, orderPayload);
       } else {
@@ -699,7 +725,7 @@ const handleCustomerSearch = async () => {
                   <CardContent className="space-y-6">
                       {/* 주문 상품 */}
                       <div>
-                          <Label>주문 상품</Label>
+                          <Label className="text-sm font-medium">주문 상품</Label>
                           <Card className="mt-2">
                             <CardContent className="p-2">
                             <Table>
@@ -797,7 +823,7 @@ const handleCustomerSearch = async () => {
 
                        {/* 결제 정보 */}
                       <div>
-                          <Label>결제 정보</Label>
+                          <Label className="text-sm font-medium">결제 정보</Label>
                           <Card className="mt-2">
                             <CardContent className="p-4 space-y-4">
                                 <div>
@@ -824,7 +850,7 @@ const handleCustomerSearch = async () => {
 
                       {/* 주문자 정보 */}
                       <div>
-                          <Label>주문자 정보</Label>
+                          <Label className="text-sm font-medium">주문자 정보</Label>
                           <Card className="mt-2">
                               <CardContent className="p-4">
                                 {/* 고객 검색 섹션 */}
@@ -848,24 +874,30 @@ const handleCustomerSearch = async () => {
                                     <div className="space-y-4">
                                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         <div className="space-y-2">
-                                          <Label className="text-xs">회사명</Label>
+                                          <Label htmlFor="customer-search-company" className="text-xs">회사명</Label>
                                           <Input 
+                                            id="customer-search-company"
+                                            name="customer-search-company"
                                             placeholder="회사명으로 검색"
                                             value={customerSearch.company || ""}
                                             onChange={(e) => setCustomerSearch(prev => ({ ...prev, company: e.target.value }))}
                                           />
                                         </div>
                                         <div className="space-y-2">
-                                          <Label className="text-xs">주문자명</Label>
+                                          <Label htmlFor="customer-search-name" className="text-xs">주문자명</Label>
                                           <Input 
+                                            id="customer-search-name"
+                                            name="customer-search-name"
                                             placeholder="주문자명으로 검색"
                                             value={customerSearch.name || ""}
                                             onChange={(e) => setCustomerSearch(prev => ({ ...prev, name: e.target.value }))}
                                           />
                                         </div>
                                         <div className="space-y-2">
-                                          <Label className="text-xs">연락처 뒷4자리</Label>
+                                          <Label htmlFor="customer-search-contact" className="text-xs">연락처 뒷4자리</Label>
                                           <Input 
+                                            id="customer-search-contact"
+                                            name="customer-search-contact"
                                             placeholder="연락처 뒷4자리"
                                             value={customerSearch.contact || ""}
                                             onChange={(e) => setCustomerSearch(prev => ({ ...prev, contact: e.target.value }))}
@@ -895,7 +927,7 @@ const handleCustomerSearch = async () => {
                                       {/* 검색 결과 */}
                                       {customerSearchResults.length > 0 && (
                                         <div className="mt-4">
-                                          <Label className="text-xs text-muted-foreground mb-2 block">검색 결과</Label>
+                                          <div className="text-xs text-muted-foreground mb-2 block">검색 결과</div>
                                           <div className="space-y-2 max-h-60 overflow-y-auto">
                                             {customerSearchResults.map(customer => (
                                               <div 
@@ -1014,7 +1046,7 @@ const handleCustomerSearch = async () => {
 
                       {/* 수령 정보 */}
                       <div>
-                          <Label>수령 정보</Label>
+                          <Label className="text-sm font-medium">수령 정보</Label>
                           <RadioGroup value={receiptType} onValueChange={(v) => setReceiptType(v as ReceiptType)} className="flex items-center gap-4 mt-2">
                               <div className="flex items-center space-x-2"><RadioGroupItem value="pickup" id="receipt-pickup" /><Label htmlFor="receipt-pickup">매장픽업</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="delivery" id="receipt-delivery" /><Label htmlFor="receipt-delivery">배송</Label></div>

@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { HistoryTable, StockHistory } from "./components/history-table";
+import { HistoryTable } from "./components/history-table";
 import { HistoryFilters } from "./components/history-filters";
 import { useBranches } from "@/hooks/use-branches";
+import { useStockHistory } from "@/hooks/use-stock-history";
 import { useToast } from "@/hooks/use-toast";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
 import { format } from "date-fns";
@@ -17,9 +16,8 @@ import { DateRange } from "react-day-picker";
 
 export default function StockHistoryPage() {
     const { branches } = useBranches();
+    const { history, loading, deleteHistoryRecord } = useStockHistory();
     const { toast } = useToast();
-    const [history, setHistory] = useState<StockHistory[]>([]);
-    const [loading, setLoading] = useState(true);
     
     const [filters, setFilters] = useState<{
         dateRange: DateRange;
@@ -35,33 +33,7 @@ export default function StockHistoryPage() {
         search: "",
     });
 
-    useEffect(() => {
-        setLoading(true);
-        const q = query(collection(db, "stockHistory"), orderBy("date", "desc"));
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const historyData: StockHistory[] = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                historyData.push({
-                    id: doc.id,
-                    ...data,
-                    date: data.date.toDate().toISOString(),
-                } as StockHistory);
-            });
-            setHistory(historyData);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching stock history:", error);
-            toast({
-                variant: "destructive",
-                title: "오류",
-                description: "재고 기록을 불러오는 중 오류가 발생했습니다."
-            });
-            setLoading(false);
-        });
 
-        return () => unsubscribe();
-    }, [toast]);
 
     const filteredHistory = useMemo(() => {
         return history.filter(item => {
@@ -138,7 +110,7 @@ export default function StockHistoryPage() {
             ))}
         </div>
       ) : (
-        <HistoryTable history={filteredHistory} />
+        <HistoryTable history={filteredHistory} onDelete={deleteHistoryRecord} />
       )}
     </div>
   );

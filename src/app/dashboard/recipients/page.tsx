@@ -4,12 +4,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
-import { useRecipients, Recipient } from "@/hooks/use-recipients";
+import { useRecipients } from "@/hooks/use-recipients";
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
 import { Search, MapPin, Phone, Calendar, TrendingUp } from "lucide-react";
@@ -20,11 +20,11 @@ export default function RecipientsPage() {
   const { recipients, loading, fetchRecipients, getRecipientsByDistrict, getFrequentRecipients } = useRecipients();
   const { branches } = useBranches();
   const { user } = useAuth();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"list" | "stats">("list");
+  const [viewMode] = useState<"list" | "stats">("list");
 
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -58,8 +58,8 @@ export default function RecipientsPage() {
   const filteredRecipients = useMemo(() => {
     let filtered = recipients.filter(recipient => {
       const matchesSearch = recipient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           recipient.contact.includes(searchTerm) ||
-                           recipient.address.toLowerCase().includes(searchTerm.toLowerCase());
+        recipient.contact.includes(searchTerm) ||
+        recipient.address.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDistrict = selectedDistrict === "all" || recipient.district === selectedDistrict;
       return matchesSearch && matchesDistrict;
     });
@@ -97,7 +97,7 @@ export default function RecipientsPage() {
             <div className="text-2xl font-bold">{recipients.length}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">단골 수령자</CardTitle>
@@ -108,7 +108,7 @@ export default function RecipientsPage() {
             <p className="text-xs text-muted-foreground">3회 이상 주문</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">지역 수</CardTitle>
@@ -118,7 +118,7 @@ export default function RecipientsPage() {
             <div className="text-2xl font-bold">{Object.keys(districtStats).length}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">이번 달 신규</CardTitle>
@@ -129,8 +129,8 @@ export default function RecipientsPage() {
               {recipients.filter(r => {
                 const now = new Date();
                 const recipientDate = r.lastOrderDate.toDate();
-                return recipientDate.getMonth() === now.getMonth() && 
-                       recipientDate.getFullYear() === now.getFullYear();
+                return recipientDate.getMonth() === now.getMonth() &&
+                  recipientDate.getFullYear() === now.getFullYear();
               }).length}
             </div>
           </CardContent>
@@ -162,12 +162,12 @@ export default function RecipientsPage() {
                 />
               </div>
             </div>
-            
+
             {isAdmin && (
               <div>
-                <Label htmlFor="branch">지점</Label>
+                <Label htmlFor="branch-select">지점</Label>
                 <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                  <SelectTrigger>
+                  <SelectTrigger id="branch-select">
                     <SelectValue placeholder="지점 선택" />
                   </SelectTrigger>
                   <SelectContent>
@@ -182,19 +182,22 @@ export default function RecipientsPage() {
               </div>
             )}
 
-            <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="지역 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 지역</SelectItem>
-                {uniqueDistricts.map((district) => (
-                  <SelectItem key={district} value={district}>
-                    {district}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <Label htmlFor="district-select">지역</Label>
+              <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
+                <SelectTrigger id="district-select" className="w-40">
+                  <SelectValue placeholder="지역 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 지역</SelectItem>
+                  {uniqueDistricts.map((district) => (
+                    <SelectItem key={district} value={district}>
+                      {district}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -215,8 +218,8 @@ export default function RecipientsPage() {
                     <TableHead>주소</TableHead>
                     <TableHead>지역</TableHead>
                     <TableHead>지점</TableHead>
-                    <TableHead>주문횟수</TableHead>
-                    <TableHead>최근주문</TableHead>
+                    <TableHead>수령횟수</TableHead>
+                    <TableHead>최근수령</TableHead>
                     <TableHead>등급</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -257,12 +260,12 @@ export default function RecipientsPage() {
                           {format(recipient.lastOrderDate.toDate(), "yyyy-MM-dd", { locale: ko })}
                         </TableCell>
                         <TableCell>
-                          <Badge 
-                            variant={recipient.orderCount >= 5 ? "default" : 
-                                   recipient.orderCount >= 3 ? "secondary" : "outline"}
+                          <Badge
+                            variant={recipient.orderCount >= 5 ? "default" :
+                              recipient.orderCount >= 3 ? "secondary" : "outline"}
                           >
-                            {recipient.orderCount >= 5 ? "VIP" : 
-                             recipient.orderCount >= 3 ? "단골" : "일반"}
+                            {recipient.orderCount >= 5 ? "VIP" :
+                              recipient.orderCount >= 3 ? "단골" : "일반"}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -284,24 +287,24 @@ export default function RecipientsPage() {
             <CardContent>
               <div className="space-y-4">
                 {Object.entries(districtStats)
-                  .sort(([,a], [,b]) => b.totalOrders - a.totalOrders)
+                  .sort(([, a], [, b]) => b.totalOrders - a.totalOrders)
                   .map(([district, stats]) => (
-                  <div key={district} className="flex items-center justify-between p-3 border rounded">
-                    <div>
-                      <div className="font-medium">{district}</div>
-                      <div className="text-sm text-muted-foreground">
-                        수령자 {stats.count}명 • 총 주문 {stats.totalOrders}회
+                    <div key={district} className="flex items-center justify-between p-3 border rounded">
+                      <div>
+                        <div className="font-medium">{district}</div>
+                        <div className="text-sm text-muted-foreground">
+                          수령자 {stats.count}명 • 총 주문 {stats.totalOrders}회
+                        </div>
                       </div>
+                      <Badge variant="outline">
+                        평균 {Math.round(stats.totalOrders / stats.count)}회
+                      </Badge>
                     </div>
-                    <Badge variant="outline">
-                      평균 {Math.round(stats.totalOrders / stats.count)}회
-                    </Badge>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>
-          
+
           {/* 단골 수령자 */}
           <Card>
             <CardHeader>
@@ -314,21 +317,21 @@ export default function RecipientsPage() {
                   .sort((a, b) => b.orderCount - a.orderCount)
                   .slice(0, 10)
                   .map((recipient, index) => (
-                  <div key={recipient.id} className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center space-x-3">
-                      <Badge variant="outline">#{index + 1}</Badge>
-                      <div>
-                        <div className="font-medium">{recipient.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {recipient.district} • {recipient.contact}
+                    <div key={recipient.id} className="flex items-center justify-between p-3 border rounded">
+                      <div className="flex items-center space-x-3">
+                        <Badge variant="outline">#{index + 1}</Badge>
+                        <div>
+                          <div className="font-medium">{recipient.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {recipient.district} • {recipient.contact}
+                          </div>
                         </div>
                       </div>
+                      <Badge variant="default">
+                        {recipient.orderCount}회
+                      </Badge>
                     </div>
-                    <Badge variant="default">
-                      {recipient.orderCount}회
-                    </Badge>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>

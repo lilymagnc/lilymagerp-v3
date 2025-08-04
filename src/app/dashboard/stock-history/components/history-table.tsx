@@ -4,8 +4,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Trash2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export type StockHistory = {
   id: string;
@@ -26,9 +28,12 @@ export type StockHistory = {
 
 interface HistoryTableProps {
   history: StockHistory[];
+  onDelete?: (id: string) => void;
 }
 
-export function HistoryTable({ history }: HistoryTableProps) {
+export function HistoryTable({ history, onDelete }: HistoryTableProps) {
+    const { user } = useAuth();
+    const isAdmin = user?.role === '본사 관리자';
     const getTypeBadge = (type: StockHistory['type']) => {
         switch (type) {
             case 'in': return <Badge variant="secondary">입고</Badge>;
@@ -71,6 +76,7 @@ export function HistoryTable({ history }: HistoryTableProps) {
               <TableHead className="text-right">총액</TableHead>
               <TableHead className="text-right">재고</TableHead>
               <TableHead>처리자</TableHead>
+              {isAdmin && onDelete && <TableHead className="text-center">작업</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -95,11 +101,27 @@ export function HistoryTable({ history }: HistoryTableProps) {
                   </TableCell>
                   <TableCell className="text-right">{item.resultingStock}</TableCell>
                   <TableCell>{item.operator}</TableCell>
+                  {isAdmin && onDelete && (
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm('이 재고 변동 기록을 삭제하시겠습니까?')) {
+                            onDelete(item.id);
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={10} className="h-24 text-center">
+                <TableCell colSpan={isAdmin && onDelete ? 11 : 10} className="h-24 text-center">
                   조회된 기록이 없습니다.
                 </TableCell>
               </TableRow>

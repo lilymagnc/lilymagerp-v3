@@ -1,4 +1,3 @@
-
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -23,7 +22,7 @@ import {
   DialogClose,
   DialogDescription
 } from "@/components/ui/dialog"
-import { useProducts } from "@/hooks/use-products"
+import { useMaterials } from "@/hooks/use-materials"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
@@ -35,15 +34,15 @@ const stockUpdateSchema = z.object({
 
 type StockUpdateFormValues = z.infer<typeof stockUpdateSchema>
 
-interface StockUpdateFormProps {
+interface MaterialStockUpdateFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
-  product: { id: string; name: string; stock: number; branch: string; } | null
+  material: { id: string; name: string; stock: number; branch: string; } | null
   onStockUpdated?: () => void // 새로 추가
 }
 
-export function StockUpdateForm({ isOpen, onOpenChange, product, onStockUpdated }: StockUpdateFormProps) {
-  const { manualUpdateStock } = useProducts();
+export function MaterialStockUpdateForm({ isOpen, onOpenChange, material, onStockUpdated }: MaterialStockUpdateFormProps) {
+  const { manualUpdateStock } = useMaterials();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,22 +50,22 @@ export function StockUpdateForm({ isOpen, onOpenChange, product, onStockUpdated 
   const form = useForm<StockUpdateFormValues>({
     resolver: zodResolver(stockUpdateSchema),
     defaultValues: {
-      stock: product?.stock || 0,
+      stock: material?.stock || 0,
     },
   })
 
   const onSubmit = async (data: StockUpdateFormValues) => {
-    if (!product || !user) {
+    if (!material || !user) {
         toast({
             variant: "destructive",
             title: "오류",
-            description: "상품 또는 사용자 정보가 없어 업데이트할 수 없습니다.",
+            description: "자재 또는 사용자 정보가 없어 업데이트할 수 없습니다.",
         });
         return;
     }
     setIsSubmitting(true);
     try {
-      await manualUpdateStock(product.id, product.name, data.stock, product.branch, user.email || "Unknown User");
+      await manualUpdateStock(material.id, material.name, data.stock, material.branch, user.email || "Unknown User");
       onStockUpdated?.(); // 업데이트 완료 후 콜백 호출
       onOpenChange(false);
     } catch (error) {
@@ -80,8 +79,8 @@ export function StockUpdateForm({ isOpen, onOpenChange, product, onStockUpdated 
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>재고 업데이트</DialogTitle>
-          <DialogDescription>'{product?.name}'의 현재 재고 수량을 업데이트합니다.</DialogDescription>
+          <DialogTitle>자재 재고 업데이트</DialogTitle>
+          <DialogDescription>'{material?.name}'의 현재 재고 수량을 업데이트합니다.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-4">
@@ -92,12 +91,7 @@ export function StockUpdateForm({ isOpen, onOpenChange, product, onStockUpdated 
                 <FormItem>
                   <FormLabel>변경할 재고</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      id="stock-input"
-                      name="stock"
-                      {...field} 
-                    />
+                    <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

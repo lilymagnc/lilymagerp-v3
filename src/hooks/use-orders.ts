@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -26,6 +26,8 @@ export interface OrderData {
     subtotal: number;
     discount: number;
     deliveryFee: number;
+    pointsUsed?: number;
+    pointsEarned?: number;
     total: number;
   };
 
@@ -127,9 +129,12 @@ export function useOrders() {
       // 주문 추가
       const orderDocRef = await addDoc(collection(db, 'orders'), orderPayload);
       
-      // 고객 등록 로직 추가
+      // 고객 등록/업데이트 로직 (포인트 차감 포함)
       if (orderData.registerCustomer && !orderData.isAnonymous) {
         await registerCustomerFromOrder(orderData);
+      } else if (orderData.orderer.id && orderData.summary.pointsUsed > 0) {
+        // 고객 등록을 하지 않지만 기존 고객이 포인트를 사용한 경우에만 별도 차감
+        await deductCustomerPoints(orderData.orderer.id, orderData.summary.pointsUsed);
       }
       
       // 수령자 정보 별도 저장 (배송인 경우)
@@ -274,15 +279,20 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
     console.log('registerCustomer:', orderData.registerCustomer);
     console.log('isAnonymous:', orderData.isAnonymous);
     
-    // 기존 고객 검색 (연락처 기준)
+    // 기존 고객 검색 (연락처 기준) - 인덱스 오류 방지를 위해 단일 조건으로 검색
     const customersQuery = query(
       collection(db, 'customers'),
-      where('contact', '==', orderData.orderer.contact),
-      where('isDeleted', '!=', true)
+      where('contact', '==', orderData.orderer.contact)
     );
     const existingCustomers = await getDocs(customersQuery);
     
-    console.log('기존 고객 검색 결과:', existingCustomers.size);
+    // 삭제된 고객 필터링 (클라이언트 사이드에서 처리)
+    const validCustomers = existingCustomers.docs.filter(doc => {
+      const data = doc.data();
+      return !data.isDeleted;
+    });
+    
+    console.log('기존 고객 검색 결과:', validCustomers.length);
     
     const customerData = {
       name: orderData.orderer.name,
@@ -294,21 +304,21 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
       grade: '신규',
       totalSpent: orderData.summary.total,
       orderCount: 1,
-      points: Math.floor(orderData.summary.total * 0.02), // 2% 적립
+      points: Math.floor(orderData.summary.total * 0.02) - (orderData.summary.pointsUsed || 0), // 2% 적립 - 사용 포인트
       lastOrderDate: serverTimestamp(),
       isDeleted: false,
     };
     
-    if (!existingCustomers.empty) {
+    if (validCustomers.length > 0) {
       // 기존 고객 업데이트
-      const customerDoc = existingCustomers.docs[0];
+      const customerDoc = validCustomers[0];
       const existingData = customerDoc.data();
       
       await setDoc(customerDoc.ref, {
         ...customerData,
         totalSpent: (existingData.totalSpent || 0) + orderData.summary.total,
         orderCount: (existingData.orderCount || 0) + 1,
-        points: (existingData.points || 0) + Math.floor(orderData.summary.total * 0.02),
+        points: (existingData.points || 0) - (orderData.summary.pointsUsed || 0) + Math.floor(orderData.summary.total * 0.02),
         grade: existingData.grade || '신규',
         createdAt: existingData.createdAt, // 기존 생성일 유지
       }, { merge: true });
@@ -325,25 +335,73 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
   }
 };
 
+// 고객 포인트 차감 함수
+const deductCustomerPoints = async (customerId: string, pointsToDeduct: number) => {
+  try {
+    const customerRef = doc(db, 'customers', customerId);
+    const customerDoc = await getDoc(customerRef);
+    
+    if (customerDoc.exists()) {
+      const currentPoints = customerDoc.data().points || 0;
+      const newPoints = Math.max(0, currentPoints - pointsToDeduct);
+      
+      await setDoc(customerRef, {
+        points: newPoints,
+        lastUpdated: serverTimestamp(),
+      }, { merge: true });
+      
+      console.log(`고객 포인트 차감: ${currentPoints} → ${newPoints} (차감: ${pointsToDeduct})`);
+    }
+  } catch (error) {
+    console.error('포인트 차감 중 오류:', error);
+    // 포인트 차감 실패해도 주문은 계속 진행
+  }
+};
+
 // 수령자 정보 별도 저장 함수
 const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId: string) => {
   try {
-    const recipientData = {
-      name: deliveryInfo.recipientName,
-      contact: deliveryInfo.recipientContact,
-      address: deliveryInfo.address,
-      district: deliveryInfo.district,
-      branchName: branchName,
-      orderId: orderId,
-      deliveryDate: deliveryInfo.date,
-      createdAt: serverTimestamp(),
-      // 마케팅 활용을 위한 추가 필드
-      isMarketingConsent: true, // 기본값 (나중에 UI에서 선택 가능하도록 수정)
-      source: 'order', // 데이터 출처
-    };
+    // 기존 수령자 검색 (연락처와 지점명 기준)
+    const recipientsQuery = query(
+      collection(db, 'recipients'),
+      where('contact', '==', deliveryInfo.recipientContact),
+      where('branchName', '==', branchName)
+    );
+    const existingRecipients = await getDocs(recipientsQuery);
     
-    await addDoc(collection(db, 'recipients'), recipientData);
+    if (!existingRecipients.empty) {
+      // 기존 수령자 업데이트
+      const recipientDoc = existingRecipients.docs[0];
+      const existingData = recipientDoc.data();
+      
+      await setDoc(recipientDoc.ref, {
+        name: deliveryInfo.recipientName, // 이름은 최신으로 업데이트
+        address: deliveryInfo.address, // 주소도 최신으로 업데이트
+        district: deliveryInfo.district,
+        orderCount: (existingData.orderCount || 0) + 1,
+        lastOrderDate: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } else {
+      // 신규 수령자 등록
+      const recipientData = {
+        name: deliveryInfo.recipientName,
+        contact: deliveryInfo.recipientContact,
+        address: deliveryInfo.address,
+        district: deliveryInfo.district,
+        branchName: branchName,
+        orderCount: 1,
+        lastOrderDate: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        // 마케팅 활용을 위한 추가 필드
+        marketingConsent: true, // 기본값 (나중에 UI에서 선택 가능하도록 수정)
+        source: 'order', // 데이터 출처
+      };
+      
+      await addDoc(collection(db, 'recipients'), recipientData);
+    }
   } catch (error) {
     console.error('수령자 정보 저장 중 오류:', error);
+    // 수령자 저장 실패해도 주문은 계속 진행
   }
 };

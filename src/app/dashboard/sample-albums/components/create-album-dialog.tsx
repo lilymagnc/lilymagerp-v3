@@ -99,7 +99,7 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
               value={formData.category}
               onValueChange={(value: AlbumCategory) => handleInputChange('category', value)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="category">
                 <SelectValue placeholder="카테고리 선택" />
               </SelectTrigger>
               <SelectContent>

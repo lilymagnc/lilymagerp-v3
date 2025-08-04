@@ -15,6 +15,7 @@ import { Barcode } from "@/components/barcode";
 import { PrintOptionsDialog } from "@/components/print-options-dialog";
 import { useRouter } from "next/navigation";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MaterialStockUpdateForm } from "./material-stock-update-form";
 
 export type Material = {
   docId: string;
@@ -39,9 +40,10 @@ interface MaterialTableProps {
   onDelete: (docId: string) => void;
   selectedMaterials?: string[];
   isAdmin?: boolean;
+  onRefresh?: () => void; // 새로 추가
 }
 
-export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete }: MaterialTableProps) {
+export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, onRefresh }: MaterialTableProps) {
   const router = useRouter();
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -229,8 +231,14 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete }
           </Table>
         </CardContent>
       </Card>
-      {isStockFormOpen && <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedMaterial} />}
-       {selectedMaterial && (
+      {/* 기존 StockUpdateForm 대신 MaterialStockUpdateForm 사용 */}
+      {isStockFormOpen && <MaterialStockUpdateForm 
+        isOpen={isStockFormOpen} 
+        onOpenChange={handleCloseForms} 
+        material={selectedMaterial}
+        onStockUpdated={onRefresh} // 콜백 함수 전달
+      />}
+      {selectedMaterial && (
         <PrintOptionsDialog
           isOpen={isPrintDialogOpen}
           onOpenChange={setIsPrintDialogOpen}

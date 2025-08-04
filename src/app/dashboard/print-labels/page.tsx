@@ -7,16 +7,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 // Correctly type the props for a Next.js Page component with searchParams
 interface PageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function PrintLabelsPage({ searchParams }: PageProps) {
-    const type = searchParams.type as 'product' | 'material';
-    const startPosition = parseInt(searchParams.start as string) || 1;
+    const params = await searchParams;
+    const type = params.type as 'product' | 'material';
+    const startPosition = parseInt(params.start as string) || 1;
     
-    const itemsParam = searchParams.items as string;
-    const idsParam = searchParams.ids as string;
-    const quantity = parseInt(searchParams.quantity as string) || 1;
+    const itemsParam = params.items as string;
+    const idsParam = params.ids as string;
+    const quantity = parseInt(params.quantity as string) || 1;
     
     let labelsToPrint: LabelItemData[] = [];
 

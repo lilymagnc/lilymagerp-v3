@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search, Download, FileUp } from "lucide-react";
+import { PlusCircle, Printer, Search, Download, FileUp, ScanLine } from "lucide-react";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +34,7 @@ export default function MaterialsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials } = useMaterials();
+  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials, fetchMaterials } = useMaterials();
   
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
   const isAdmin = user?.role === '본사 관리자';
@@ -151,18 +151,31 @@ export default function MaterialsPage() {
     setIsMultiPrintDialogOpen(false);
   };
   
+  const handleRefresh = async () => {
+    await fetchMaterials();
+  };
+  
   return (
     <div className="space-y-6">
       <PageHeader
         title="자재 관리"
         description={!isAdmin ? `${userBranch} 지점의 자재 정보를 관리합니다.` : "자재 정보를 관리하고 재고를 추적하세요."}
       >
-        {isHeadOfficeAdmin && (
-          <Button onClick={handleAdd}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            자재 추가
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => router.push('/dashboard/barcode-scanner')}
+          >
+            <ScanLine className="mr-2 h-4 w-4" />
+            바코드 스캔
           </Button>
-        )}
+          {isHeadOfficeAdmin && (
+            <Button onClick={handleAdd}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              자재 추가
+            </Button>
+          )}
+        </div>
       </PageHeader>
 
       <Card>
@@ -281,11 +294,10 @@ export default function MaterialsPage() {
       ) : (
         <MaterialTable
           materials={filteredMaterials}
+          onSelectionChange={setSelectedMaterials}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          selectedMaterials={selectedMaterials}
-          onSelectionChange={setSelectedMaterials}
-          isAdmin={isHeadOfficeAdmin}
+          onRefresh={handleRefresh} // 새로고침 함수 전달
         />
       )}
 

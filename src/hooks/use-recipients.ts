@@ -14,6 +14,9 @@ export interface Recipient {
   orderCount: number;
   lastOrderDate: Timestamp;
   marketingConsent?: boolean;
+  source?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export function useRecipients() {

@@ -9,8 +9,8 @@ import { CustomerFormValues } from '@/app/dashboard/customers/components/custome
 
 export interface Customer extends CustomerFormValues {
   id: string;
-  createdAt: string;
-  lastOrderDate?: string;
+  createdAt: string | any;
+  lastOrderDate?: string | any;
   totalSpent?: number;
   orderCount?: number;
   points?: number;
@@ -27,17 +27,23 @@ export function useCustomers() {
     try {
       setLoading(true);
       const customersCollection = collection(db, 'customers');
-      const q = query(customersCollection, where("isDeleted", "!=", true));
+      const querySnapshot = await getDocs(customersCollection);
       
-      const customersData = (await getDocs(q)).docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate().toISOString(),
-          lastOrderDate: data.lastOrderDate?.toDate().toISOString(),
-        } as Customer;
-      });
+      // 삭제되지 않은 고객만 필터링 (클라이언트 사이드에서 처리)
+      const customersData = querySnapshot.docs
+        .filter(doc => {
+          const data = doc.data();
+          return !data.isDeleted;
+        })
+        .map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            lastOrderDate: data.lastOrderDate?.toDate ? data.lastOrderDate.toDate().toISOString() : data.lastOrderDate,
+          } as Customer;
+        });
       setCustomers(customersData);
     } catch (error) {
       console.error("Error fetching customers: ", error);
@@ -168,7 +174,21 @@ export function useCustomers() {
     try {
       const q = query(collection(db, 'customers'), where('contact', '==', contact));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer));
+      // 삭제되지 않은 고객만 반환
+      return querySnapshot.docs
+        .filter(doc => {
+          const data = doc.data();
+          return !data.isDeleted;
+        })
+        .map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            lastOrderDate: data.lastOrderDate?.toDate ? data.lastOrderDate.toDate().toISOString() : data.lastOrderDate,
+          } as Customer;
+        });
     } catch (error) {
       console.error('Error finding customers by contact:', error);
       return [];

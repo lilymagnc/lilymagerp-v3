@@ -39,9 +39,10 @@ interface ProductTableProps {
   onDelete: (docId: string) => void;
   selectedProducts?: string[];
   isAdmin?: boolean;
+  onRefresh?: () => void; // 새로 추가
 }
 
-export function ProductTable({ products, onSelectionChange, onEdit, onDelete, selectedProducts, isAdmin }: ProductTableProps) {
+export function ProductTable({ products, onSelectionChange, onEdit, onDelete, selectedProducts, isAdmin, onRefresh }: ProductTableProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
@@ -152,6 +153,7 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
                 <TableRow key={`${product.docId}-${idx}`}>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
+                      id={`product-${product.id}`}
                       checked={!!selectedRows[product.id]}
                       onCheckedChange={() => handleSelectionChange(product.id)}
                       aria-label={`${product.name} 선택`}
@@ -178,7 +180,7 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>{product.mainCategory} &gt; {product.midCategory}</TableCell>
-                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>₩{product.price.toLocaleString()}</TableCell>
+                  <TableCell className="hidden sm:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>₩{(product.price || 0).toLocaleString()}</TableCell>
                   <TableCell className="hidden md:table-cell cursor-pointer" onClick={() => handleRowClick(product)}>{product.branch}</TableCell>
                   <TableCell className="text-right cursor-pointer" onClick={() => handleRowClick(product)}>{product.stock}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -236,7 +238,12 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
           </Table>
         </CardContent>
       </Card>
-      <StockUpdateForm isOpen={isStockFormOpen} onOpenChange={handleCloseForms} product={selectedProduct} />
+      <StockUpdateForm 
+        isOpen={isStockFormOpen} 
+        onOpenChange={handleCloseForms} 
+        product={selectedProduct}
+        onStockUpdated={onRefresh} // 콜백 함수 전달
+      />
       {selectedProduct && (
         <PrintOptionsDialog
           isOpen={isPrintDialogOpen}

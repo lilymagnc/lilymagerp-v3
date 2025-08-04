@@ -24,6 +24,23 @@ export function PrintLayout({ labels }: PrintLayoutProps) {
               margin: 0;
               padding: 0;
             }
+            /* 사이드바와 네비게이션 완전히 숨기기 */
+            .sidebar, nav, header, .no-print, aside, [data-sidebar] {
+              display: none !important;
+            }
+            /* 메인 콘텐츠만 표시 */
+            main {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+            }
+            /* 전체 페이지 레이아웃 재설정 */
+            * {
+              visibility: hidden;
+            }
+            #printable-area-wrapper, #printable-area-wrapper * {
+              visibility: visible;
+            }
             #printable-area-wrapper {
               position: absolute;
               left: 0;

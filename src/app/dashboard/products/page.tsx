@@ -17,11 +17,23 @@ import { ImportButton } from "@/components/import-button";
 import { ProductForm } from "./components/product-form";
 import { ProductTable } from "./components/product-table";
 import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
+import { ScanLine, Plus } from "lucide-react";
+import { useRouter } from "next/navigation"; // 추가
 
 export default function ProductsPage() {
-  const { user } = useAuth();
-  const { products, loading, addProduct, updateProduct, deleteProduct, bulkAddProducts } = useProducts();
+  const router = useRouter(); // 추가
+  const { 
+    products, 
+    loading, 
+    addProduct, 
+    updateProduct, 
+    deleteProduct, 
+    bulkAddProducts,
+    fetchProducts,
+    // migrateProductIds 제거
+  } = useProducts();
   const { branches } = useBranches();
+  const { user } = useAuth(); // 이 라인도 추가 (이전 오류 해결)
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise || "";
   
@@ -51,7 +63,7 @@ export default function ProductsPage() {
 
   // 카테고리 목록 생성
   const categories = useMemo(() => {
-    return [...new Set(products.map(product => product.mainCategory))];
+    return [...new Set(products.map(product => product.mainCategory).filter(Boolean))];
   }, [products]);
 
   const filteredProducts = useMemo(() => {
@@ -66,8 +78,8 @@ export default function ProductsPage() {
 
     // 검색어 및 카테고리 필터링
     return filtered.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          product.code?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (product.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                          (product.code?.toLowerCase() || '').includes(searchTerm.toLowerCase());
       const matchesCategory = !selectedCategory || selectedCategory === "all" || product.mainCategory === selectedCategory;
       return matchesSearch && matchesCategory;
     });
@@ -88,7 +100,13 @@ export default function ProductsPage() {
   };
 
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
-    console.log('Multi print:', items, 'Start position:', startPosition);
+    const itemsQuery = items.map(item => `${item.id}:${item.quantity}`).join(',');
+    const params = new URLSearchParams({
+      items: itemsQuery,
+      type: 'product',
+      start: String(startPosition),
+    });
+    router.push(`/dashboard/print-labels?${params.toString()}`);
     setIsMultiPrintDialogOpen(false);
   };
 
@@ -101,12 +119,24 @@ export default function ProductsPage() {
     setIsFormOpen(true);
   };
 
+  const handleRefresh = async () => {
+    await fetchProducts();
+  };
+  
   return (
     <div className="space-y-6">
       <PageHeader 
         title="상품 관리" 
         description={!isAdmin ? `${userBranch} 지점의 상품 정보를 관리합니다.` : "상품 정보를 관리합니다."}
-      />
+      >
+        <Button 
+          variant="outline"
+          onClick={() => router.push('/dashboard/barcode-scanner')}
+        >
+          <ScanLine className="mr-2 h-4 w-4" />
+          바코드 스캔
+        </Button>
+      </PageHeader>
       
       <div className="flex flex-col sm:flex-row gap-4">
         <Input
@@ -145,35 +175,40 @@ export default function ProductsPage() {
         </Select>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-2">
-        {isAdmin && (
-          <>
-            <Button onClick={() => setIsFormOpen(true)}>
-              상품 추가
-            </Button>
-            <ImportButton
-              onImport={bulkAddProducts}
-              fileName="products_template.xlsx"
-            />
-            {selectedProducts.length > 0 && (
-              <Button 
-                variant="outline" 
-                onClick={() => setIsMultiPrintDialogOpen(true)}
-              >
-                선택 상품 라벨 출력 ({selectedProducts.length}개)
+      <PageHeader title="상품 관리" description="상품을 추가, 수정, 삭제할 수 있습니다.">
+        <div className="flex gap-2">
+          {isAdmin && (
+            <>
+              <Button onClick={() => setIsFormOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                상품 추가
               </Button>
-            )}
-          </>
-        )}
-      </div>
+              {/* 마이그레이션 버튼 제거 */}
+              <ImportButton
+                onImport={bulkAddProducts}
+                fileName="products_template.xlsx"
+              />
+              {selectedProducts.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsMultiPrintDialogOpen(true)}
+                >
+                  선택 상품 라벨 출력 ({selectedProducts.length}개)
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </PageHeader>
 
       <ProductTable
         products={filteredProducts}
+        onSelectionChange={setSelectedProducts}
         onEdit={handleEdit}
         onDelete={deleteProduct}
         selectedProducts={selectedProducts}
-        onSelectionChange={setSelectedProducts}
         isAdmin={isAdmin}
+        onRefresh={handleRefresh} // 새로고침 함수 전달
       />
 
       <ProductForm
