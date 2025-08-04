@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -292,6 +292,9 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
             <FileSpreadsheet className="h-5 w-5" />
             엑셀 주문 일괄 업로드
           </DialogTitle>
+          <DialogDescription>
+            엑셀 파일을 통해 주문을 일괄 업로드합니다.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

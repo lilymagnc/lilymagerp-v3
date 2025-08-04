@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Employee } from "@/hooks/use-employees";
 import { useBranches } from "@/hooks/use-branches";
 import { useEffect } from "react";
+import { POSITION_OPTIONS } from "@/lib/constants";
 
 const employeeSchema = z.object({
   name: z.string().min(1, "이름을 입력해주세요."),
@@ -93,6 +95,9 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{employee ? "직원 정보 수정" : "새 직원 추가"}</DialogTitle>
+          <DialogDescription>
+            {employee ? "직원의 정보를 수정합니다." : "새 직원을 등록합니다."}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-2 gap-4 py-4">
@@ -148,10 +153,9 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="대표">대표</SelectItem>
-                      <SelectItem value="점장">점장</SelectItem>
-                      <SelectItem value="매니저">매니저</SelectItem>
-                      <SelectItem value="직원">직원</SelectItem>
+                      {POSITION_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

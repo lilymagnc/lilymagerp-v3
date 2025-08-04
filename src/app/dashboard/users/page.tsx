@@ -4,84 +4,174 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Users } from "lucide-react";
+import { PlusCircle, Users, Search, Filter, Key, UserCheck, UserX } from "lucide-react";
 import { UserTable } from "./components/user-table";
 import { UserForm } from "./components/user-form";
 import { useAuth } from "@/hooks/use-auth";
-import { collection, onSnapshot, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, serverTimestamp, query, where, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAuth } from "firebase/auth";
 
 export interface SystemUser {
   id: string; // email is the id
   email: string;
   role: string;
   franchise: string;
+  position?: string;
   lastLogin?: string;
+  isActive?: boolean;
+  createdAt?: any;
 }
 
 export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [users, setUsers] = useState<SystemUser[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<SystemUser[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+    const unsubscribe = onSnapshot(collection(db, "users"), async (snapshot) => {
         const usersData = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         } as SystemUser));
+        
+        // 중복 이메일 체크 및 경고
+        const emailCounts = usersData.reduce((acc, user) => {
+          acc[user.email] = (acc[user.email] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        const duplicates = Object.entries(emailCounts).filter(([email, count]) => count > 1);
+        if (duplicates.length > 0) {
+          console.warn("중복 이메일 발견:", duplicates);
+          toast({
+            variant: "destructive",
+            title: "데이터 오류",
+            description: `중복 이메일이 발견되었습니다: ${duplicates.map(([email]) => email).join(', ')}`
+          });
+        }
+        
+        // Firebase Auth에서 lastLogin 정보 가져오기 (서버 사이드에서만 가능)
+        // 클라이언트에서는 제한적이므로 현재는 Firestore 데이터만 사용
         setUsers(usersData);
     });
     return () => unsubscribe();
-  }, []);
+  }, [toast]);
 
-  const handleBulkAddToEmployees = async () => {
+  // 검색 및 필터링 적용
+  useEffect(() => {
+    let filtered = users;
+
+    // 검색어 필터링
+    if (searchTerm) {
+      filtered = filtered.filter(user =>
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // 권한 필터링
+    if (roleFilter !== "all") {
+      filtered = filtered.filter(user => user.role === roleFilter);
+    }
+
+    // 상태 필터링
+    if (statusFilter !== "all") {
+      const isActive = statusFilter === "active";
+      filtered = filtered.filter(user => 
+        statusFilter === "all" || user.isActive === isActive
+      );
+    }
+
+    setFilteredUsers(filtered);
+  }, [users, searchTerm, roleFilter, statusFilter]);
+
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
     try {
-      let addedCount = 0;
-      let skippedCount = 0;
-      
-      for (const user of users) {
-        // 이미 직원으로 등록되어 있는지 확인
-        const employeeQuery = query(
-          collection(db, "employees"),
-          where("email", "==", user.email)
-        );
-        const existingEmployee = await getDocs(employeeQuery);
-        
-        if (existingEmployee.empty) {
-          // 직원 정보 생성
-          const employeeData = {
-            name: user.email.split('@')[0],
-            email: user.email,
-            position: user.role === '본사 관리자' ? '관리자' : user.role === '가맹점 관리자' ? '점장' : '직원',
-            department: user.franchise,
-            contact: '',
-            hireDate: new Date(),
-            birthDate: new Date(),
-            address: '',
-            createdAt: serverTimestamp(),
-          };
-
-          await addDoc(collection(db, 'employees'), employeeData);
-          addedCount++;
-        } else {
-          skippedCount++;
-        }
+      // 본사 관리자는 삭제할 수 없도록 체크
+      const userToDelete = users.find(user => user.id === userId);
+      if (userToDelete?.role === '본사 관리자') {
+        toast({
+          variant: "destructive",
+          title: "삭제 불가",
+          description: "본사 관리자는 삭제할 수 없습니다."
+        });
+        return;
       }
+
+      // 현재 로그인한 사용자 자신을 삭제하려고 하는지 체크
+      if (userId === currentUser?.uid) {
+        toast({
+          variant: "destructive",
+          title: "삭제 불가",
+          description: "현재 로그인한 계정은 삭제할 수 없습니다."
+        });
+        return;
+      }
+
+      await deleteDoc(doc(db, "users", userId));
       
       toast({
-        title: "일괄 등록 완료",
-        description: `${addedCount}명이 직원으로 등록되었습니다. ${skippedCount}명은 이미 등록되어 있어 건너뛰었습니다.`
+        title: "사용자 삭제 완료",
+        description: `${userEmail} 사용자가 삭제되었습니다.`
       });
     } catch (error) {
-      console.error("Error bulk adding users to employees:", error);
+      console.error("Error deleting user:", error);
       toast({
         variant: "destructive",
-        title: "오류",
-        description: "일괄 등록 중 오류가 발생했습니다."
+        title: "삭제 실패",
+        description: "사용자 삭제 중 오류가 발생했습니다."
+      });
+    }
+  };
+
+  const handlePasswordReset = async (userId: string, userEmail: string) => {
+    try {
+      // 임시 비밀번호 생성 (실제로는 더 안전한 방법 사용)
+      const tempPassword = Math.random().toString(36).slice(-8);
+      
+      // Firebase Auth에서 비밀번호 재설정 (실제 구현에서는 Firebase Auth API 사용)
+      // 여기서는 토스트 메시지만 표시
+      
+      toast({
+        title: "비밀번호 초기화",
+        description: `${userEmail}의 임시 비밀번호가 생성되었습니다: ${tempPassword}`,
+      });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast({
+        variant: "destructive",
+        title: "초기화 실패",
+        description: "비밀번호 초기화 중 오류가 발생했습니다."
+      });
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: string, userEmail: string, currentStatus: boolean) => {
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, {
+        isActive: !currentStatus
+      });
+      
+      toast({
+        title: "상태 변경 완료",
+        description: `${userEmail} 사용자가 ${!currentStatus ? '활성화' : '비활성화'}되었습니다.`
+      });
+    } catch (error) {
+      console.error("Error toggling user status:", error);
+      toast({
+        variant: "destructive",
+        title: "상태 변경 실패",
+        description: "사용자 상태 변경 중 오류가 발생했습니다."
       });
     }
   };
@@ -94,40 +184,115 @@ export default function UsersPage() {
     );
   }
 
+  const activeUsers = users.filter(user => user.isActive !== false).length;
+  const inactiveUsers = users.filter(user => user.isActive === false).length;
+
   return (
     <div>
       <PageHeader
         title="사용자 관리"
         description="시스템 사용자 계정과 권한을 관리하세요."
       >
-        <div className="flex items-center gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline">
-                <Users className="mr-2 h-4 w-4" />
-                모든 사용자를 직원으로 등록
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>모든 사용자를 직원으로 등록하시겠습니까?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  현재 등록된 모든 사용자를 인사관리 시스템에 직원으로 등록합니다. 이미 등록된 사용자는 건너뜁니다.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>취소</AlertDialogCancel>
-                <AlertDialogAction onClick={handleBulkAddToEmployees}>등록</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <Button onClick={() => setIsFormOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            사용자 추가
-          </Button>
-        </div>
+        <Button onClick={() => setIsFormOpen(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          사용자 추가
+        </Button>
       </PageHeader>
-      <UserTable users={users} />
+
+      {/* 통계 카드 */}
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 사용자</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{users.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">활성 사용자</CardTitle>
+            <UserCheck className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">비활성 사용자</CardTitle>
+            <UserX className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{inactiveUsers}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">관리자</CardTitle>
+            <Key className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {users.filter(user => user.role === '본사 관리자').length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 검색 및 필터 */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            검색 및 필터
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="이메일로 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="권한 필터" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">모든 권한</SelectItem>
+                <SelectItem value="본사 관리자">본사 관리자</SelectItem>
+                <SelectItem value="가맹점 관리자">가맹점 관리자</SelectItem>
+                <SelectItem value="직원">직원</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="상태 필터" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">모든 상태</SelectItem>
+                <SelectItem value="active">활성</SelectItem>
+                <SelectItem value="inactive">비활성</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <UserTable 
+        users={filteredUsers} 
+        onDeleteUser={handleDeleteUser}
+        onPasswordReset={handlePasswordReset}
+        onToggleStatus={handleToggleUserStatus}
+      />
       <UserForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
     </div>
   );

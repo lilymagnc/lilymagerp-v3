@@ -72,14 +72,17 @@ export default function DashboardLayout({
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={() => router.push('/dashboard/orders')}><ClipboardList />주문 현황</SidebarMenuButton>
                     </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/pickup-delivery')}><Truck />픽업/배송 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/recipients')}><MapPin />수령자 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
                     {/* 본사 관리자만 접근 가능한 메뉴들 */}
                     {isHeadquartersAdmin && (
                         <>
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/products')}><Boxes />상품 관리</SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => router.push('/dashboard/users')}><UserCog />사용자 관리</SidebarMenuButton>
                             </SidebarMenuItem>
                         </>
                     )}
@@ -101,12 +104,14 @@ export default function DashboardLayout({
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={() => router.push('/dashboard/hr')}><Users />인사 관리</SidebarMenuButton>
                     </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/pickup-delivery')}><Truck />픽업/배송 관리</SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/recipients')}><MapPin />수령자 관리</SidebarMenuButton>
-                    </SidebarMenuItem>
+                    {/* 본사 관리자만 접근 가능한 메뉴들 */}
+                    {isHeadquartersAdmin && (
+                        <>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/users')}><UserCog />사용자 관리</SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </>
+                    )}
                 </SidebarMenu>
             </SidebarContent>
             <SidebarFooter className="p-4">

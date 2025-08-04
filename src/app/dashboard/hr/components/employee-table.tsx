@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Employee } from "@/hooks/use-employees";
 import { EmployeeDetails } from "./employee-details";
 import { format } from "date-fns";
+import { POSITIONS } from "@/lib/constants";
 
 interface EmployeeTableProps {
   employees: Employee[];
@@ -32,6 +33,32 @@ export function EmployeeTable({ employees, onEdit, onDelete }: EmployeeTableProp
     e.stopPropagation();
     onEdit(employee);
   }
+
+  const getPositionBadge = (position: string) => {
+    let variant: "default" | "secondary" | "outline" | "destructive" = "outline";
+    
+    switch (position) {
+      case POSITIONS.CEO:
+        variant = "default";
+        break;
+      case POSITIONS.DIRECTOR:
+        variant = "secondary";
+        break;
+      case POSITIONS.MANAGER:
+        variant = "outline";
+        break;
+      case POSITIONS.SUPERVISOR:
+        variant = "outline";
+        break;
+      case POSITIONS.STAFF:
+        variant = "outline";
+        break;
+      default:
+        variant = "outline";
+    }
+    
+    return <Badge variant={variant}>{position}</Badge>;
+  };
 
   return (
     <>
@@ -56,7 +83,7 @@ export function EmployeeTable({ employees, onEdit, onDelete }: EmployeeTableProp
                 <TableRow key={employee.id} onClick={() => handleRowClick(employee)} className="cursor-pointer">
                   <TableCell className="font-medium">{employee.name}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{employee.position}</Badge>
+                    {getPositionBadge(employee.position)}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{employee.department}</TableCell>
                   <TableCell className="hidden md:table-cell">{employee.email}</TableCell>

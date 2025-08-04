@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { POSITION_OPTIONS } from "@/lib/constants";
 
 export default function HrPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -26,7 +27,13 @@ export default function HrPage() {
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedPosition, setSelectedPosition] = useState("all");
 
-  const positions = useMemo(() => [...new Set(employees.map(e => e.position))], [employees]);
+  // 기존 직원들의 직위를 가져와서 필터 옵션에 추가
+  const existingPositions = useMemo(() => [...new Set(employees.map(e => e.position))], [employees]);
+  const allPositionOptions = useMemo(() => {
+    const standardPositions = POSITION_OPTIONS.map(option => option.value);
+    const additionalPositions = existingPositions.filter(pos => !standardPositions.includes(pos));
+    return [...POSITION_OPTIONS, ...additionalPositions.map(pos => ({ value: pos, label: pos }))];
+  }, [existingPositions]);
 
   const filteredEmployees = useMemo(() => {
     return employees
@@ -110,8 +117,8 @@ export default function HrPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">모든 직책</SelectItem>
-                {positions.map(pos => (
-                    <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                {allPositionOptions.map(pos => (
+                    <SelectItem key={pos.value} value={pos.value}>{pos.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

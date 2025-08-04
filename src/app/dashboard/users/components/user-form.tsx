@@ -27,9 +27,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBranches } from "@/hooks/use-branches"
 import { useToast } from "@/hooks/use-toast"
 import { useState, useEffect } from "react"
-import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc } from "firebase/firestore"
+import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc, query, where, getDocs } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Loader2 } from "lucide-react"
+import { POSITION_OPTIONS, POSITION_TO_ROLE } from "@/lib/constants";
 
 // 직원 데이터 타입 정의
 interface EmployeeData {
@@ -103,7 +104,6 @@ export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
 
           // 직원 데이터 가져오기
           const employeesQuery = collection(db, "employees")
-          const { getDocs, query, where } = await import("firebase/firestore")
           const employeeSnapshot = await getDocs(query(employeesQuery, where("email", "==", user.email)))
           
           if (!employeeSnapshot.empty) {
@@ -160,10 +160,60 @@ export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
   const onSubmit = async (data: UserFormValues) => {
     setLoading(true);
     try {
+      // 중복 이메일 체크 (새 사용자 추가 시에만)
+      if (!isEditMode) {
+        const existingUserQuery = query(
+          collection(db, "users"),
+          where("email", "==", data.email)
+        );
+        const existingUser = await getDocs(existingUserQuery);
+        
+        if (!existingUser.empty) {
+          toast({
+            variant: "destructive",
+            title: "중복 이메일",
+            description: "이미 등록된 이메일입니다."
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 직위에 따른 권한 자동 설정
+      const roleFromPosition = POSITION_TO_ROLE[data.position as keyof typeof POSITION_TO_ROLE] || data.role;
+
       // 사용자 정보 저장
       const { password, name, position, contact, ...userData } = data;
       const userDocRef = doc(db, "users", data.email);
-      await setDoc(userDocRef, userData, { merge: true });
+      
+      // 수정 모드에서는 기존 데이터와 병합
+      if (isEditMode) {
+        const existingUserDoc = await getDoc(userDocRef);
+        if (existingUserDoc.exists()) {
+          const existingData = existingUserDoc.data();
+          await setDoc(userDocRef, {
+            ...existingData,
+            ...userData,
+            role: roleFromPosition, // 직위에 따른 권한 업데이트
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } else {
+          await setDoc(userDocRef, {
+            ...userData,
+            role: roleFromPosition,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        }
+      } else {
+        // 새 사용자 추가
+        await setDoc(userDocRef, {
+          ...userData,
+          role: roleFromPosition,
+          createdAt: serverTimestamp(),
+          isActive: true // 기본적으로 활성 상태
+        });
+      }
       
       if (isEditMode) {
         // 수정 모드: 직원 정보 업데이트
@@ -293,17 +343,23 @@ export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>직위</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={(value) => {
+                    field.onChange(value);
+                    // 직위 변경 시 권한도 자동 업데이트
+                    const newRole = POSITION_TO_ROLE[value as keyof typeof POSITION_TO_ROLE];
+                    if (newRole) {
+                      form.setValue("role", newRole);
+                    }
+                  }} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="직위 선택" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="대표">대표</SelectItem>
-                      <SelectItem value="점장">점장</SelectItem>
-                      <SelectItem value="매니저">매니저</SelectItem>
-                      <SelectItem value="직원">직원</SelectItem>
+                      {POSITION_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

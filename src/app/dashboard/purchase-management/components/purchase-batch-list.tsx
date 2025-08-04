@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Package, 
@@ -249,6 +249,9 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>구매 배치 상세 정보</DialogTitle>
+            <DialogDescription>
+              선택한 구매 배치의 상세 정보를 확인합니다.
+            </DialogDescription>
           </DialogHeader>
           
           {selectedBatch && (

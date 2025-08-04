@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertTriangle, Package, ShoppingCart, Users, Calculator, Truck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
@@ -231,6 +231,9 @@ export function PurchaseBatchManager({
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>구매 배치 생성 확인</DialogTitle>
+                <DialogDescription>
+                  선택한 자재 요청들을 하나의 구매 배치로 생성합니다.
+                </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-4">

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,6 +27,18 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      
+      // 로그인 성공 시 lastLogin 업데이트
+      try {
+        const userRef = doc(db, "users", email);
+        await updateDoc(userRef, {
+          lastLogin: serverTimestamp()
+        });
+      } catch (updateError) {
+        console.warn("lastLogin 업데이트 실패:", updateError);
+        // lastLogin 업데이트 실패해도 로그인은 계속 진행
+      }
+      
       router.push('/dashboard');
     } catch (error: any) {
       toast({
