@@ -1,5 +1,4 @@
-
-"use client";
+"use client"
 
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -82,6 +81,23 @@ export function MessagePrintLayout({
               margin: 0;
               padding: 0;
             }
+            /* 사이드바와 네비게이션 완전히 숨기기 */
+            .sidebar, nav, header, .no-print, aside, [data-sidebar] {
+              display: none !important;
+            }
+            /* 메인 콘텐츠만 표시 */
+            main {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 100% !important;
+            }
+            /* 전체 페이지 레이아웃 재설정 */
+            * {
+              visibility: hidden;
+            }
+            #printable-area-wrapper, #printable-area-wrapper * {
+              visibility: visible;
+            }
             #printable-area-wrapper {
               position: absolute;
               left: 0;
@@ -89,7 +105,7 @@ export function MessagePrintLayout({
               width: 210mm;
               height: 297mm;
               box-sizing: border-box;
-              padding: 10mm 7.5mm; /* Adjust padding for message labels if different */
+              padding: 13.5mm 6.5mm;
             }
           }
         `}</style>
@@ -141,7 +157,7 @@ export function MessagePrintLayout({
                   </div>
                 </>
               ) : (
-                <div className="text-gray-400">빈 라벨</div>
+                null // 빈 라벨일 경우 아무것도 렌더링하지 않음
               )}
             </div>
           ))}

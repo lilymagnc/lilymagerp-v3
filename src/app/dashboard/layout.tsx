@@ -45,7 +45,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider defaultOpen={true}>
-        <Sidebar>
+        <Sidebar className="no-print">
             <SidebarHeader className="p-4">
                 <div className="flex items-center justify-center">
                     <Image 
@@ -123,7 +123,7 @@ export default function DashboardLayout({
                 <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />로그아웃</Button>
             </SidebarFooter>
         </Sidebar>
-        <main className="flex-1">
+        <main className="flex-1 print:flex-grow-0 print:w-full print:max-w-full print:p-0 print:m-0">
              <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
                 <SidebarTrigger className="md:hidden" />
                 <div className="w-full flex-1">

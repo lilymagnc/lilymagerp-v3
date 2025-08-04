@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -99,11 +98,36 @@ body {
 }
 
 @media print {
-  body {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
   }
-  .no-print {
+
+  /* Only show elements with .printable-area and their children */
+  .printable-area, .printable-area * {
+    visibility: visible;
+  }
+
+  /* Ensure printable area takes full page */
+  .printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%; /* Use 100% height for full page */
+    box-sizing: border-box;
+    margin: 0; /* Remove any default margins */
+    padding: 0; /* Remove any default padding */
+  }
+
+  /* Hide elements with no-print class */
+  .no-print, .no-print * {
     display: none !important;
+  }
+
+  /* Page specific styles */
+  @page {
+    size: A4;
+    margin: 0;
   }
 }
