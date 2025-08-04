@@ -3,7 +3,8 @@ import {
   uploadBytes, 
   getDownloadURL, 
   deleteObject,
-  listAll 
+  listAll,
+  getMetadata
 } from 'firebase/storage';
 import { storage } from './firebase';
 
@@ -58,19 +59,14 @@ export class FirebaseStorageService {
 
   static async deletePhoto(albumId: string, photoId: string): Promise<void> {
     try {
-      // 원본, 썸네일, 미리보기 모두 삭제
+      // 원본 파일 삭제 시도
       const originalRef = ref(storage, this.getPhotoPath(albumId, photoId, 'original'));
-      const thumbnailRef = ref(storage, this.getPhotoPath(albumId, photoId, 'thumbnail'));
-      const previewRef = ref(storage, this.getPhotoPath(albumId, photoId, 'preview'));
-
-      await Promise.allSettled([
-        deleteObject(originalRef),
-        deleteObject(thumbnailRef),
-        deleteObject(previewRef)
-      ]);
-    } catch (error) {
-      console.error('Photo deletion failed:', error);
-      throw new Error('사진 삭제에 실패했습니다.');
+      await deleteObject(originalRef);
+    } catch (error: any) {
+      // 파일이 존재하지 않는 경우 무시
+      if (error.code !== 'storage/object-not-found') {
+        throw error;
+      }
     }
   }
 
@@ -89,9 +85,12 @@ export class FirebaseStorageService {
         const folderDeletePromises = folderList.items.map(item => deleteObject(item));
         await Promise.all(folderDeletePromises);
       }
-    } catch (error) {
-      console.error('Album deletion failed:', error);
-      throw new Error('앨범 삭제에 실패했습니다.');
+    } catch (error: any) {
+      // 폴더가 존재하지 않는 경우 무시
+      if (error.code !== 'storage/object-not-found') {
+        console.error('Album deletion failed:', error);
+        throw new Error('앨범 삭제에 실패했습니다.');
+      }
     }
   }
 

@@ -10,6 +10,7 @@ import { CreateAlbumDialog } from './components/create-album-dialog';
 import { CategoryFilter } from './components/category-filter';
 import { useAlbums } from '@/hooks/use-albums';
 import { AlbumCategory } from '@/types/album';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function SampleAlbumsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,6 +18,10 @@ export default function SampleAlbumsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   
   const { albums, loading, createAlbum, deleteAlbum } = useAlbums();
+  const { user } = useAuth();
+  
+  const isHeadOfficeAdmin = user?.role === '본사 관리자';
+  const userBranch = user?.franchise;
 
   // 검색 및 필터링된 앨범
   const filteredAlbums = albums.filter(album => {

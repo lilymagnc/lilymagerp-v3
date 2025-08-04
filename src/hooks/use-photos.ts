@@ -180,10 +180,7 @@ export const usePhotos = (albumId: string) => {
     if (!user || !albumId) throw new Error('로그인이 필요합니다.');
 
     try {
-      // Storage에서 파일 삭제
-      await FirebaseStorageService.deletePhoto(albumId, photoId);
-
-      // Firestore에서 문서 삭제
+      // Firestore에서 문서 삭제만 수행 (Storage 삭제는 무시)
       const photoRef = doc(db, 'albums', albumId, 'photos', photoId);
       await deleteDoc(photoRef);
 

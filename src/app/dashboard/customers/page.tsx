@@ -18,6 +18,7 @@ import { StatementDialog } from "./components/statement-dialog";
 import { ImportButton } from "@/components/import-button";
 import { FileUp } from "lucide-react";
 import { useBranches } from "@/hooks/use-branches";
+import { useAuth } from "@/hooks/use-auth";
 
 
 export default function CustomersPage() {
@@ -33,22 +34,40 @@ export default function CustomersPage() {
     
     const { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers } = useCustomers();
     const { branches } = useBranches();
+    const { user } = useAuth();
+    
+    const isHeadOfficeAdmin = user?.role === '본사 관리자';
+    const userBranch = user?.franchise;
     
     const customerGrades = useMemo(() => [...new Set(customers.map(c => c.grade || "신규"))], [customers]);
 
     const filteredCustomers = useMemo(() => {
-        return customers
-            .filter(customer => 
-                (selectedBranch === "all" || customer.branch === selectedBranch) &&
-                (selectedType === "all" || customer.type === selectedType) &&
-                (selectedGrade === "all" || (customer.grade || "신규") === selectedGrade)
-            )
-            .filter(customer => 
-                customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                customer.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
-    }, [customers, searchTerm, selectedBranch, selectedType, selectedGrade]);
+        let filtered = customers;
+
+        // 권한에 따른 지점 필터링
+        if (!isHeadOfficeAdmin && userBranch) {
+            filtered = filtered.filter(customer => customer.branch === userBranch);
+        } else if (selectedBranch !== "all") {
+            filtered = filtered.filter(customer => customer.branch === selectedBranch);
+        }
+
+        // 검색어 필터링
+        filtered = filtered.filter(customer => 
+            customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            customer.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+
+        // 타입 및 등급 필터링
+        if (selectedType !== "all") {
+            filtered = filtered.filter(customer => customer.type === selectedType);
+        }
+        if (selectedGrade !== "all") {
+            filtered = filtered.filter(customer => (customer.grade || "신규") === selectedGrade);
+        }
+
+        return filtered;
+    }, [customers, searchTerm, selectedBranch, selectedType, selectedGrade, isHeadOfficeAdmin, userBranch]);
 
     const handleAdd = () => {
         setSelectedCustomer(null);

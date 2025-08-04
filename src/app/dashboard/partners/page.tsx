@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePartners, Partner } from "@/hooks/use-partners";
 import { PartnerForm, PartnerFormValues } from "./components/partner-form";
 import { PartnerTable } from "./components/partner-table";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function PartnersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -22,19 +23,34 @@ export default function PartnersPage() {
 
     const { toast } = useToast();
     const { partners, loading: partnersLoading, addPartner, updatePartner, deletePartner } = usePartners();
+    const { user } = useAuth();
+    
+    const isHeadOfficeAdmin = user?.role === '본사 관리자';
+    const userBranch = user?.franchise;
 
     const partnerTypes = useMemo(() => [...new Set(partners.map(p => p.type))], [partners]);
 
     const filteredPartners = useMemo(() => {
-        return partners
-            .filter(partner => 
-                (selectedType === "all" || partner.type === selectedType)
-            )
-            .filter(partner => 
-                partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (partner.contactPerson && partner.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()))
-            );
-    }, [partners, searchTerm, selectedType]);
+        let filtered = partners;
+
+        // 권한에 따른 지점 필터링
+        if (!isHeadOfficeAdmin && userBranch) {
+            filtered = filtered.filter(partner => partner.branch === userBranch);
+        }
+
+        // 검색어 필터링
+        filtered = filtered.filter(partner => 
+            partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (partner.contactPerson && partner.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+
+        // 타입 필터링
+        if (selectedType !== "all") {
+            filtered = filtered.filter(partner => partner.type === selectedType);
+        }
+
+        return filtered;
+    }, [partners, searchTerm, selectedType, isHeadOfficeAdmin, userBranch]);
 
     const handleAdd = () => {
         setSelectedPartner(null);

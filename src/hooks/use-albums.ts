@@ -94,21 +94,35 @@ export const useAlbums = () => {
     if (!user) throw new Error('로그인이 필요합니다.');
 
     try {
-      // 1. 앨범의 모든 사진 삭제
+      // 1. 앨범의 모든 사진 삭제 (Firestore + Storage)
       const photosRef = collection(db, 'albums', albumId, 'photos');
       const photosSnapshot = await getDocs(photosRef);
       
       const deletePromises = photosSnapshot.docs.map(async (photoDoc) => {
-        // Storage에서 사진 파일 삭제
-        await FirebaseStorageService.deletePhoto(albumId, photoDoc.id);
         // Firestore에서 사진 문서 삭제
         await deleteDoc(photoDoc.ref);
+        // Storage에서 사진 파일 삭제 (404 에러는 무시)
+        try {
+          await FirebaseStorageService.deletePhoto(albumId, photoDoc.id);
+        } catch (storageError: any) {
+          // Storage 파일이 없어도 무시
+          if (storageError.code !== 'storage/object-not-found') {
+            console.error('Storage 파일 삭제 실패:', storageError);
+          }
+        }
       });
 
       await Promise.all(deletePromises);
 
-      // 2. Storage에서 앨범 폴더 삭제
-      await FirebaseStorageService.deleteAlbum(albumId);
+      // 2. Storage에서 앨범 폴더 삭제 (404 에러는 무시)
+      try {
+        await FirebaseStorageService.deleteAlbum(albumId);
+      } catch (storageError: any) {
+        // Storage 폴더가 없어도 무시
+        if (storageError.code !== 'storage/object-not-found') {
+          console.error('Storage 앨범 폴더 삭제 실패:', storageError);
+        }
+      }
 
       // 3. 앨범 문서 삭제
       const albumRef = doc(db, 'albums', albumId);

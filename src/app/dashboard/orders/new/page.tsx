@@ -93,6 +93,29 @@ export default function NewOrderPage() {
   const [orderType, setOrderType] = useState<OrderType>("store");
   const [receiptType, setReceiptType] = useState<ReceiptType>("pickup");
   
+  // 사용자 권한에 따른 지점 필터링
+  const isAdmin = user?.role === '본사 관리자';
+  const userBranch = user?.franchise;
+
+  // 사용자가 선택할 수 있는 지점 목록
+  const availableBranches = useMemo(() => {
+    if (isAdmin) {
+      return branches; // 관리자는 모든 지점
+    } else {
+      return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
+    }
+  }, [branches, isAdmin, userBranch]);
+
+  // 직원의 경우 자동으로 소속 지점으로 설정
+  useEffect(() => {
+    if (!isAdmin && userBranch && !selectedBranch) {
+      const userBranchData = branches.find(branch => branch.name === userBranch);
+      if (userBranchData) {
+        setSelectedBranch(userBranchData);
+      }
+    }
+  }, [isAdmin, userBranch, selectedBranch, branches]);
+
   // 현재 시간을 30분 단위로 반올림하는 함수
   const getInitialTime = () => {
     const now = new Date();
@@ -678,17 +701,17 @@ const handleCustomerSearch = async () => {
                         <Store className="h-5 w-5 text-muted-foreground" />
                         <Select 
                           onValueChange={handleBranchChange} 
-                          disabled={isLoading || !!existingOrder || (user?.role !== '본사 관리자')}
+                          disabled={isLoading || !!existingOrder || !isAdmin}
                         >
                             <SelectTrigger className="w-[300px]">
                                 <SelectValue placeholder={
                                   isLoading ? "지점 불러오는 중..." : 
-                                  user?.role !== '본사 관리자' ? `${user?.franchise || '지점'} 자동 선택` : 
+                                  !isAdmin ? `${userBranch || '지점'} 자동 선택` : 
                                   "지점 선택"
                                 } />
                             </SelectTrigger>
                             <SelectContent>
-                                {branches.filter(b => b.type !== '본사').map(branch => (
+                                {availableBranches.filter(b => b.type !== '본사').map(branch => (
                                     <SelectItem key={branch.id} value={branch.id}>
                                         {branch.name}
                                     </SelectItem>
@@ -700,11 +723,11 @@ const handleCustomerSearch = async () => {
                     <div className="flex items-center gap-4">
                       <div className="text-lg font-medium">
                           <span className="text-primary">{selectedBranch.name}</span>
-                          {user?.role !== '본사 관리자' && (
+                          {!isAdmin && (
                             <Badge variant="secondary" className="ml-2">자동 선택</Badge>
                           )}
                       </div>
-                      {user?.role === '본사 관리자' && (
+                      {isAdmin && (
                         <Button variant="outline" size="sm" onClick={() => handleBranchChange("")} disabled={!!existingOrder}>
                             지점 변경
                         </Button>
