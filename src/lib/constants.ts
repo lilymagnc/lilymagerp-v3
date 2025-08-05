@@ -26,7 +26,7 @@ export const ROLE_TO_POSITION = {
 export const POSITION_TO_ROLE = {
   [POSITIONS.CEO]: "본사 관리자",
   [POSITIONS.DIRECTOR]: "가맹점 관리자", 
-  [POSITIONS.MANAGER]: "직원-매니저",
-  [POSITIONS.SUPERVISOR]: "직원-슈퍼바이저",
+  [POSITIONS.MANAGER]: "직원",
+  [POSITIONS.SUPERVISOR]: "직원",
   [POSITIONS.STAFF]: "직원"
 } as const; 

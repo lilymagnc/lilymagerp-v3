@@ -224,7 +224,7 @@ export function usePurchaseBatches() {
     }
   };
 
-  // 배송 시작 처리
+  // 배송 시작 처리 (구매 배치용)
   const startDelivery = async (batchId: string): Promise<boolean> => {
     if (!user) {
       toast({
@@ -235,6 +235,7 @@ export function usePurchaseBatches() {
       return false;
     }
 
+    console.log('구매배치 배송 시작:', batchId);
     try {
       const batch = writeBatch(db);
       const now = Timestamp.now();
@@ -245,8 +246,11 @@ export function usePurchaseBatches() {
       
       if (batchDoc.exists()) {
         const batchData = batchDoc.data() as PurchaseBatch;
+        console.log('배치 데이터:', batchData);
+        console.log('포함된 요청들:', batchData.includedRequests);
         
         for (const requestId of batchData.includedRequests) {
+          console.log('요청 상태 업데이트:', requestId);
           const requestRef = doc(db, 'materialRequests', requestId);
           batch.update(requestRef, {
             status: 'shipping',
@@ -258,9 +262,13 @@ export function usePurchaseBatches() {
             updatedAt: now
           });
         }
+      } else {
+        console.error('배치를 찾을 수 없음:', batchId);
+        throw new Error('배치를 찾을 수 없습니다.');
       }
 
       await batch.commit();
+      console.log('배치 배송 시작 완료');
 
       toast({
         title: "배송 시작",
@@ -273,6 +281,48 @@ export function usePurchaseBatches() {
       return true;
     } catch (error) {
       console.error('배송 시작 오류:', error);
+      toast({
+        title: "오류",
+        description: "배송 시작 처리 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  // 개별 요청 배송 시작 처리
+  const startRequestDelivery = async (requestId: string): Promise<boolean> => {
+    if (!user) {
+      toast({
+        title: "오류",
+        description: "로그인이 필요합니다.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    try {
+      const now = Timestamp.now();
+      const requestRef = doc(db, 'materialRequests', requestId);
+      
+      await updateDoc(requestRef, {
+        status: 'shipping',
+        delivery: {
+          shippingDate: now,
+          deliveryMethod: '직접배송',
+          deliveryStatus: 'shipped'
+        },
+        updatedAt: now
+      });
+
+      toast({
+        title: "배송 시작",
+        description: "요청의 배송이 시작되었습니다.",
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('개별 요청 배송 시작 오류:', error);
       toast({
         title: "오류",
         description: "배송 시작 처리 중 오류가 발생했습니다.",

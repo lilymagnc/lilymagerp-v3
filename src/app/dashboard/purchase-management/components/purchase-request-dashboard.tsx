@@ -32,7 +32,7 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
   
   const { toast } = useToast();
   const { updateRequestStatus } = useMaterialRequests();
-  const { createPurchaseBatch } = usePurchaseBatches();
+  const { createPurchaseBatch, loading: batchLoading } = usePurchaseBatches();
   const { user } = useAuth(); // useAuth 훅을 사용하여 user 객체 가져오기 // usePurchaseBatches 훅에서 createPurchaseBatch 가져오기
 
   // 처리 가능한 요청들 (제출됨, 검토중 상태)
@@ -200,37 +200,11 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
     }
   };
 
-  // 실제 구매 내역 저장
+  // 실제 구매 내역 저장 (이 함수는 실제로는 사용되지 않음 - ActualPurchaseForm에서 직접 처리)
   const handleActualPurchaseSubmit = async (purchaseData: ActualPurchaseInputData) => {
-    try {
-      // Firebase에 실제 구매 내역 저장
-      await useMaterialRequests().saveActualPurchase(
-        currentBatch!.includedRequests,
-        {
-          purchaseDate: purchaseData.purchaseDate,
-          items: purchaseData.items,
-          totalCost: purchaseData.totalCost,
-          notes: purchaseData.notes
-        }
-      );
-
-      toast({
-        title: "구매 내역 저장 완료",
-        description: `${currentBatch!.includedRequests.length}개 요청의 실제 구매 내역이 저장되었습니다.`,
-      });
-
-      setShowActualPurchaseForm(false);
-      setCurrentBatch(null);
-      onRefresh();
-
-    } catch (error) {
-      console.error('구매 내역 저장 오류:', error);
-      toast({
-        title: "오류",
-        description: "구매 내역 저장 중 오류가 발생했습니다.",
-        variant: "destructive"
-      });
-    }
+    // 이 함수는 실제로는 호출되지 않습니다.
+    // ActualPurchaseForm에서 직접 updateActualPurchase를 호출하고 onComplete를 실행합니다.
+    console.log('handleActualPurchaseSubmit 호출됨 (사용되지 않아야 함)');
   };
 
   // 실제 구매 폼 취소
@@ -244,7 +218,9 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
     return (
       <ActualPurchaseForm
         batch={currentBatch}
+        loading={batchLoading}
         onComplete={() => {
+          console.log('실제 구매 완료 - 새로고침 시작');
           setShowActualPurchaseForm(false);
           setCurrentBatch(null);
           onRefresh();

@@ -64,9 +64,10 @@ interface UserFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   user?: UserFormValues & { id: string } | null
+  onUserUpdated?: () => void // 사용자 업데이트 후 콜백 추가
 }
 
-export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
+export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserFormProps) {
   const { branches } = useBranches()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -269,6 +270,11 @@ export function UserForm({ isOpen, onOpenChange, user }: UserFormProps) {
           title: "성공",
           description: "사용자 계정과 직원 정보가 모두 추가되었습니다.",
         });
+      }
+      
+      // 사용자 업데이트 콜백 호출
+      if (onUserUpdated) {
+        onUserUpdated();
       }
       
       onOpenChange(false);

@@ -2,15 +2,17 @@
 "use client";
 
 import { useRouter } from 'next/navigation';
-import { useAuth, UserProfile } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth';
+import { useUserRole } from '@/hooks/use-user-role';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images } from 'lucide-react';
+import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images, DollarSign, Target, BarChart3, Package, Receipt } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import React from 'react';
 import Image from 'next/image';
+import { ROLE_LABELS } from '@/types/user-role';
 
 export default function DashboardLayout({
   children,
@@ -18,6 +20,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, loading } = useAuth();
+  const { userRole, loading: roleLoading, isHQManager, isBranchUser } = useUserRole();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -31,17 +34,22 @@ export default function DashboardLayout({
     router.push('/login');
   };
 
-  if (loading || !user) {
-    return null; // or a loading spinner
+  if (loading || roleLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>로딩 중...</p>
+        </div>
+      </div>
+    );
   }
 
-  const getRoleDisplayName = (user: UserProfile) => {
+  const getRoleDisplayName = () => {
     if (user.isAnonymous) return '익명 사용자';
-    return user.role || '사용자';
-  }
-
-  // 본사 관리자 여부 확인
-  const isHeadquartersAdmin = user.role === '본사 관리자';
+    if (userRole) return ROLE_LABELS[userRole.role];
+    return '사용자';
+  };
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -78,9 +86,19 @@ export default function DashboardLayout({
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={() => router.push('/dashboard/recipients')}><MapPin />수령자 관리</SidebarMenuButton>
                     </SidebarMenuItem>
+                    {/* 자재 요청 관련 메뉴 */}
+                    {(isHQManager() || isBranchUser()) && (
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => router.push('/dashboard/material-request')}><Package />자재 요청</SidebarMenuButton>
+                        </SidebarMenuItem>
+                    )}
+                    
                     {/* 본사 관리자만 접근 가능한 메뉴들 */}
-                    {isHeadquartersAdmin && (
+                    {isHQManager() && (
                         <>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/purchase-management')}><ShoppingCart />구매 관리</SidebarMenuButton>
+                            </SidebarMenuItem>
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/products')}><Boxes />상품 관리</SidebarMenuButton>
                             </SidebarMenuItem>
@@ -101,6 +119,19 @@ export default function DashboardLayout({
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={() => router.push('/dashboard/materials')}><Hammer />자재 관리</SidebarMenuButton>
                     </SidebarMenuItem>
+
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/simple-expenses')}><Receipt />간편 지출관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/expenses')}><DollarSign />비용 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/budgets')}><Target />예산 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/reports')}><BarChart3 />리포트 분석</SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={() => router.push('/dashboard/customers')}><BookUser />고객 관리</SidebarMenuButton>
                     </SidebarMenuItem>
@@ -117,9 +148,13 @@ export default function DashboardLayout({
                     </Avatar>
                     <div className="flex flex-col overflow-hidden">
                         <p className="text-sm font-medium truncate">{user.isAnonymous ? '익명 사용자' : user.email}</p>
-                        <p className="text-xs text-muted-foreground">역할: {getRoleDisplayName(user)}</p>
+                        <p className="text-xs text-muted-foreground">역할: {getRoleDisplayName()}</p>
+                        {userRole?.branchName && (
+                            <p className="text-xs text-muted-foreground">지점: {userRole.branchName}</p>
+                        )}
                     </div>
                 </div>
+
                 <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" />로그아웃</Button>
             </SidebarFooter>
         </Sidebar>

@@ -115,6 +115,35 @@ export interface PurchaseBatch {
   updatedAt: Timestamp;
 }
 
+// 취합 배치 (신규)
+export interface ConsolidatedBatch {
+  id: string;
+  batchNumber: string;
+  createdAt: Timestamp;
+  createdBy: string;
+  status: ConsolidationStatus;
+  includedRequestIds: string[];
+  consolidatedItems: ConsolidatedItem[];
+  totalEstimatedCost: number;
+  notes?: string;
+}
+
+export enum ConsolidationStatus {
+  DRAFT = 'draft',
+  REVIEWING = 'reviewing',
+  APPROVED = 'approved',
+  PURCHASING = 'purchasing',
+  COMPLETED = 'completed'
+}
+
+// 우선순위 enum 추가
+export enum Priority {
+  LOW = 'low',
+  NORMAL = 'normal',
+  HIGH = 'high',
+  URGENT = 'urgent'
+}
+
 // 배송 계획 품목
 export interface DeliveryPlanItem {
   branchId: string;
@@ -127,14 +156,24 @@ export interface DeliveryPlanItem {
 export interface ConsolidatedItem {
   materialId: string;
   materialName: string;
+  category: string;
+  currentPrice: number;
+  supplier: string;
   totalQuantity: number;
-  requestingBranches: {
-    branchName: string;
-    quantity: number;
-    urgency: UrgencyLevel;
-    requestId: string;
-  }[];
+  requestingBranches: BranchRequestSummary[];
   estimatedTotalCost: number;
+  hasUrgent: boolean;
+  priority: Priority;
+}
+
+// 지점별 요청 요약
+export interface BranchRequestSummary {
+  branchId: string;
+  branchName: string;
+  quantity: number;
+  urgency: UrgencyLevel;
+  requestIds: string[];
+  estimatedPrice: number;
 }
 
 // 요청 생성 데이터

@@ -54,8 +54,11 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
   // 배송 시작 처리
   const handleStartDelivery = async (batchId: string) => {
     const success = await startDelivery(batchId);
-    if (success && onRefresh) {
-      onRefresh();
+    if (success) {
+      await fetchBatches(); // 배치 목록 새로고침
+      if (onRefresh) {
+        onRefresh(); // 상위 컴포넌트 새로고침
+      }
     }
   };
 
@@ -355,6 +358,9 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
           <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>실제 구매 내역 입력</DialogTitle>
+              <DialogDescription>
+                선택한 구매 배치의 실제 구매 내역을 입력합니다.
+              </DialogDescription>
             </DialogHeader>
             
             <ActualPurchaseForm

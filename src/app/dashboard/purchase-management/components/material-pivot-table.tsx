@@ -200,7 +200,7 @@ export function MaterialPivotTable({ requests }: MaterialPivotTableProps) {
             <TableRow>
               <TableCell className="no-print"></TableCell>
               <TableCell className="sticky left-0 bg-background z-10 font-bold">합계</TableCell>
-              <TableCell></TableCell> {/* 단가 합계는 의미 없으므로 비워둠 */}
+              <TableCell>{/* 단가 합계는 의미 없으므로 비워둠 */}</TableCell>
               {uniqueColumns.map(col => <TableCell key={col} className="text-center font-bold">{columnTotals[col]}</TableCell>)}
               <TableCell className="text-right font-bold">{Object.values(columnTotals).reduce((sum, val) => sum + val, 0)}</TableCell>
             </TableRow>

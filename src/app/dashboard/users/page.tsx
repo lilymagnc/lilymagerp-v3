@@ -34,15 +34,46 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // 데이터 새로고침 트리거
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+
+  // 데이터 새로고침 함수
+  const handleUserUpdated = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
   
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "users"), async (snapshot) => {
-        const usersData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as SystemUser));
+        const usersData = await Promise.all(
+          snapshot.docs.map(async (doc) => {
+            const userData = {
+              id: doc.id,
+              ...doc.data()
+            } as SystemUser;
+            
+            // 직원 정보에서 직위 가져오기
+            try {
+              const employeesQuery = query(
+                collection(db, "employees"), 
+                where("email", "==", userData.email)
+              );
+              const employeeSnapshot = await getDocs(employeesQuery);
+              
+              if (!employeeSnapshot.empty) {
+                const employeeData = employeeSnapshot.docs[0].data();
+                userData.position = employeeData.position || '직원';
+              } else {
+                userData.position = '직원'; // 기본값
+              }
+            } catch (error) {
+              console.error("직원 정보 조회 오류:", error);
+              userData.position = '직원'; // 오류 시 기본값
+            }
+            
+            return userData;
+          })
+        );
         
         // 중복 이메일 체크 및 경고
         const emailCounts = usersData.reduce((acc, user) => {
@@ -60,12 +91,10 @@ export default function UsersPage() {
           });
         }
         
-        // Firebase Auth에서 lastLogin 정보 가져오기 (서버 사이드에서만 가능)
-        // 클라이언트에서는 제한적이므로 현재는 Firestore 데이터만 사용
         setUsers(usersData);
     });
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast, refreshTrigger]); // refreshTrigger 의존성 추가
 
   // 검색 및 필터링 적용
   useEffect(() => {
@@ -292,8 +321,9 @@ export default function UsersPage() {
         onDeleteUser={handleDeleteUser}
         onPasswordReset={handlePasswordReset}
         onToggleStatus={handleToggleUserStatus}
+        onUserUpdated={handleUserUpdated}
       />
-      <UserForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} />
+      <UserForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} onUserUpdated={handleUserUpdated} />
     </div>
   );
 }

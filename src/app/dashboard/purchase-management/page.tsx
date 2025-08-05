@@ -11,10 +11,11 @@ import { PurchaseRequestDashboard } from './components/purchase-request-dashboar
 import { PurchaseBatchList } from './components/purchase-batch-list';
 import { MaterialPivotTable } from './components/material-pivot-table';
 import { useMaterialRequests } from '@/hooks/use-material-requests';
-import { usePurchaseBatches } from '@/hooks/use-purchase-batches';
+import { useMaterials } from '@/hooks/use-materials';
 import type { MaterialRequest, RequestStatus, UrgencyLevel } from '@/types/material-request';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { Timestamp } from 'firebase/firestore';
 
 export default function PurchaseManagementPage() {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
@@ -27,7 +28,7 @@ export default function PurchaseManagementPage() {
   const [deliveryTabKey, setDeliveryTabKey] = useState(0); // 새로운 key state
 
   const { getAllRequests, updateRequestStatus } = useMaterialRequests();
-  const { startDelivery } = usePurchaseBatches();
+  const { updateStock } = useMaterials();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -86,15 +87,59 @@ export default function PurchaseManagementPage() {
   // 배송 완료 처리
   const handleDeliveryComplete = async (requestId: string) => {
     try {
+      // 현재 요청 정보를 가져와서 기존 배송 정보를 유지
+      const currentRequest = requests.find(r => r.id === requestId);
+      if (!currentRequest) {
+        throw new Error('요청을 찾을 수 없습니다.');
+      }
+      
+      const existingDelivery = currentRequest?.delivery;
+      
+      const deliveryData: any = {
+        shippingDate: existingDelivery?.shippingDate || Timestamp.now(),
+        deliveryDate: Timestamp.now(),
+        deliveryMethod: existingDelivery?.deliveryMethod || '직접배송',
+        deliveryStatus: 'delivered',
+      };
+      
+      // trackingNumber가 존재할 때만 추가
+      if (existingDelivery?.trackingNumber) {
+        deliveryData.trackingNumber = existingDelivery.trackingNumber;
+      }
+      
+      // 1. 배송 상태 업데이트
       await updateRequestStatus(requestId, 'delivered', {
-        delivery: {
-          deliveryDate: Timestamp.now(),
-          deliveryStatus: 'delivered',
-        },
+        delivery: deliveryData,
       });
+      
+      // 2. 재고 업데이트 (입고 처리)
+      // materialId에서 실제 자재 ID 추출 (format: "materialId-branchName")
+      const stockItems = currentRequest.requestedItems.map(item => {
+        // materialId가 "id-branch" 형태인 경우 실제 ID 추출
+        const actualMaterialId = item.materialId.includes('-') 
+          ? item.materialId.split('-')[0] 
+          : item.materialId;
+        
+        return {
+          id: actualMaterialId,
+          name: item.materialName,
+          quantity: item.requestedQuantity,
+          price: item.estimatedPrice
+        };
+      });
+      
+      await updateStock(
+        stockItems,
+        'in', // 입고
+        currentRequest.branchName,
+        user?.displayName || user?.email || '시스템'
+      );
+      
+      console.log('재고 업데이트 완료:', stockItems);
+      
       toast({
         title: "배송 완료 처리",
-        description: "요청의 배송 상태가 완료로 변경되었습니다.",
+        description: "요청의 배송이 완료되고 재고가 업데이트되었습니다.",
       });
       loadRequests(); // 목록 새로고침
       setDeliveryTabKey(prev => prev + 1); // 탭 강제 새로고침
@@ -110,13 +155,23 @@ export default function PurchaseManagementPage() {
 
   // 배송 시작 처리
   const handleStartDelivery = async (requestId: string) => {
+    console.log('배송 시작 처리 시작:', requestId);
     try {
-      await startDelivery(requestId);
+      const deliveryData: any = {
+        shippingDate: Timestamp.now(),
+        deliveryMethod: '직접배송',
+        deliveryStatus: 'shipped'
+      };
+      
+      await updateRequestStatus(requestId, 'shipping', {
+        delivery: deliveryData
+      });
+      console.log('배송 시작 상태 업데이트 완료');
       toast({
         title: "배송 시작 처리",
         description: "요청의 배송이 시작되었습니다.",
       });
-      loadRequests(); // 목록 새로고침
+      await loadRequests(); // 목록 새로고침
       setDeliveryTabKey(prev => prev + 1); // 탭 강제 새로고침
     } catch (error) {
       console.error('배송 시작 처리 오류:', error);
@@ -294,7 +349,7 @@ export default function PurchaseManagementPage() {
         <TabsContent value="dashboard">
           <PurchaseRequestDashboard 
             requests={filteredRequests}
-            onRefresh={() => window.location.reload()}
+            onRefresh={loadRequests}
           />
         </TabsContent>
 
@@ -304,7 +359,7 @@ export default function PurchaseManagementPage() {
         
         <TabsContent value="batches">
           <PurchaseBatchList 
-            onRefresh={() => window.location.reload()}
+            onRefresh={loadRequests}
           />
         </TabsContent>
         
@@ -331,7 +386,8 @@ export default function PurchaseManagementPage() {
                         </div>
                         <Badge variant={
                           request.status === 'purchased' ? 'secondary' :
-                          request.status === 'shipping' ? 'default' : 'outline'
+                          request.status === 'shipping' ? 'default' : 
+                          request.status === 'delivered' ? 'outline' : 'secondary'
                         }>
                           {request.status === 'purchased' && '배송 대기'}
                           {request.status === 'shipping' && '배송 중'}
@@ -362,6 +418,11 @@ export default function PurchaseManagementPage() {
                             {request.delivery?.trackingNumber && (
                               <p className="text-xs font-mono bg-white rounded px-2 py-1">
                                 송장: {request.delivery.trackingNumber}
+                              </p>
+                            )}
+                            {request.delivery?.shippingDate && (
+                              <p className="text-xs text-muted-foreground">
+                                배송 시작: {new Date(request.delivery.shippingDate.seconds * 1000).toLocaleDateString()}
                               </p>
                             )}
                             <Button 

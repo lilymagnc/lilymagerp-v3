@@ -19,9 +19,10 @@ interface UserTableProps {
   onDeleteUser: (userId: string, userEmail: string) => Promise<void>;
   onPasswordReset: (userId: string, userEmail: string) => Promise<void>;
   onToggleStatus: (userId: string, userEmail: string, currentStatus: boolean) => Promise<void>;
+  onUserUpdated?: () => void; // 사용자 업데이트 콜백 추가
 }
 
-export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus }: UserTableProps) {
+export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus, onUserUpdated }: UserTableProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<SystemUser | null>(null);
@@ -235,7 +236,7 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
         </AlertDialogContent>
       </AlertDialog>
 
-      {isFormOpen && <UserForm isOpen={isFormOpen} onOpenChange={handleCloseForm} user={selectedUser} />}
+      {isFormOpen && <UserForm isOpen={isFormOpen} onOpenChange={handleCloseForm} user={selectedUser} onUserUpdated={onUserUpdated} />}
     </>
   );
 }

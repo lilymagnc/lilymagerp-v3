@@ -21,10 +21,20 @@ import type {
   CreateMaterialRequestData,
   RequestStatus
 } from '@/types/material-request';
+import { useSimpleExpenses } from './use-simple-expenses';
 
 export function useMaterialRequests() {
   const [loading, setLoading] = useState(false);
+  const [requests, setRequests] = useState<MaterialRequest[]>([]);
+  const [stats, setStats] = useState({
+    totalRequests: 0,
+    pendingRequests: 0,
+    completedRequests: 0,
+    totalCost: 0,
+    averageProcessingTime: 0
+  });
   const { toast } = useToast();
+  const { addMaterialRequestExpense } = useSimpleExpenses();
 
   // ID로 특정 요청 조회
   const getRequestById = useCallback(async (requestId: string): Promise<MaterialRequest | null> => {
@@ -109,17 +119,22 @@ export function useMaterialRequests() {
 
   // 새 요청 생성
   const createRequest = useCallback(async (requestData: CreateMaterialRequestData): Promise<string> => {
+    console.log('createRequest 시작:', requestData);
     setLoading(true);
     
     try {
       // 요청 데이터 검증
+      console.log('데이터 검증 시작');
       const validationError = validateMaterialRequest(requestData);
       if (validationError) {
+        console.error('검증 오류:', validationError);
         throw new Error(validationError.message);
       }
+      console.log('데이터 검증 완료');
 
       const requestNumber = generateRequestNumber();
       const now = serverTimestamp();
+      console.log('요청 번호 생성:', requestNumber);
 
       const materialRequest: Omit<MaterialRequest, 'id'> = {
         requestNumber,
@@ -133,31 +148,41 @@ export function useMaterialRequests() {
         updatedAt: now as any
       };
 
+      console.log('Firestore에 문서 추가 시작:', materialRequest);
       const docRef = await addDoc(collection(db, 'materialRequests'), materialRequest);
+      console.log('Firestore 문서 추가 완료:', docRef.id);
       
       // 알림 생성 (본사 관리자에게)
-      await createNotification({
-        type: 'material_request',
-        subType: 'request_submitted',
-        title: '새 자재 요청',
-        message: `${requestData.branchName}에서 자재 요청이 접수되었습니다. (${requestNumber})`,
-        role: '본사 관리자',
-        relatedRequestId: docRef.id
-      });
-
-      // 긴급 요청인 경우 추가 알림
-      const hasUrgentItems = requestData.requestedItems.some(item => item.urgency === 'urgent');
-      if (hasUrgentItems) {
+      try {
+        console.log('알림 생성 시작');
         await createNotification({
           type: 'material_request',
-          subType: 'urgent_request',
-          title: '긴급 자재 요청',
-          message: `${requestData.branchName}에서 긴급 자재 요청이 접수되었습니다. (${requestNumber})`,
+          subType: 'request_submitted',
+          title: '새 자재 요청',
+          message: `${requestData.branchName}에서 자재 요청이 접수되었습니다. (${requestNumber})`,
           role: '본사 관리자',
           relatedRequestId: docRef.id
         });
+
+        // 긴급 요청인 경우 추가 알림
+        const hasUrgentItems = requestData.requestedItems.some(item => item.urgency === 'urgent');
+        if (hasUrgentItems) {
+          await createNotification({
+            type: 'material_request',
+            subType: 'urgent_request',
+            title: '긴급 자재 요청',
+            message: `${requestData.branchName}에서 긴급 자재 요청이 접수되었습니다. (${requestNumber})`,
+            role: '본사 관리자',
+            relatedRequestId: docRef.id
+          });
+        }
+        console.log('알림 생성 완료');
+      } catch (notificationError) {
+        console.warn('알림 생성 실패 (무시됨):', notificationError);
+        // 알림 생성 실패는 전체 프로세스를 중단시키지 않음
       }
 
+      console.log('요청 생성 성공:', requestNumber);
       return requestNumber;
 
     } catch (error) {
@@ -197,13 +222,14 @@ export function useMaterialRequests() {
   // 모든 요청 목록 조회 (본사용)
   const getAllRequests = useCallback(async (): Promise<MaterialRequest[]> => {
     try {
+      setLoading(true);
       const q = query(
         collection(db, 'materialRequests'),
         orderBy('createdAt', 'desc')
       );
       
-      const querySnapshot = await getDocs(q, { source: 'server' }); // source: 'server' 추가
-      return querySnapshot.docs.map(doc => {
+      const querySnapshot = await getDocs(q);
+      const requestsData = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -213,11 +239,36 @@ export function useMaterialRequests() {
         } as MaterialRequest;
       });
 
+      // 상태 업데이트
+      setRequests(requestsData);
+      
+      // 통계 계산
+      const totalRequests = requestsData.length;
+      const pendingRequests = requestsData.filter(r => ['submitted', 'reviewing', 'purchasing'].includes(r.status)).length;
+      const completedRequests = requestsData.filter(r => r.status === 'completed').length;
+      const totalCost = requestsData.reduce((sum, request) => 
+        sum + request.requestedItems.reduce((itemSum, item) => 
+          itemSum + (item.requestedQuantity * item.estimatedPrice), 0
+        ), 0
+      );
+
+      setStats({
+        totalRequests,
+        pendingRequests,
+        completedRequests,
+        totalCost,
+        averageProcessingTime: 0 // 계산 로직 필요
+      });
+
+      return requestsData;
+
     } catch (error) {
       console.error('전체 요청 조회 오류:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
-  }, [db]);
+  }, []);
 
   // 요청 상태 업데이트
   const updateRequestStatus = useCallback(async (
@@ -425,8 +476,47 @@ export function useMaterialRequests() {
     }
   }, []);
 
+  // 구매 완료 처리 (기존 함수 수정)
+  const completePurchase = useCallback(async (
+    requestId: string,
+    actualPurchaseInfo: any
+  ): Promise<void> => {
+    setLoading(true);
+    
+    try {
+      // 요청 정보 조회
+      const requestDoc = await getDoc(doc(db, 'materialRequests', requestId));
+      if (!requestDoc.exists()) {
+        throw new Error('요청을 찾을 수 없습니다.');
+      }
+      
+      const requestData = requestDoc.data() as MaterialRequest;
+      
+      // 요청 상태 업데이트
+      await updateDoc(doc(db, 'materialRequests', requestId), {
+        status: 'purchased',
+        actualPurchase: actualPurchaseInfo,
+        updatedAt: serverTimestamp()
+      });
+
+      // 간편지출에 자동 등록
+      await addMaterialRequestExpense({
+        ...requestData,
+        id: requestId
+      }, actualPurchaseInfo);
+
+    } catch (error) {
+      console.error('구매 완료 처리 오류:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [addMaterialRequestExpense]);
+
   return {
     loading,
+    requests,
+    stats,
     createRequest,
     getRequestsByBranch,
     getAllRequests,
@@ -434,6 +524,7 @@ export function useMaterialRequests() {
     getRequestsByStatus,
     saveActualPurchase,
     createPurchaseBatch,
-    getRequestById
+    getRequestById,
+    completePurchase
   };
 }

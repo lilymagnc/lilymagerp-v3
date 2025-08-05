@@ -1,24 +1,99 @@
 import * as XLSX from 'xlsx';
-import { Order } from '@/hooks/use-orders';
-import { format } from 'date-fns';
 
-export const exportOrdersToExcel = (orders: Order[], filename: string = '주문내역') => {
+interface SheetData {
+  name: string;
+  data: any[];
+}
+
+export const exportToExcel = async (sheets: SheetData[], filename: string) => {
   try {
-    // 주문 데이터를 Excel 형식으로 변환 (업로드 템플릿 순서에 맞춤)
+    // 워크북 생성
+    const workbook = XLSX.utils.book_new();
+
+    // 각 시트 추가
+    let hasValidSheet = false;
+    sheets.forEach(sheet => {
+      if (sheet.data.length > 0) {
+        hasValidSheet = true;
+        // 워크시트 생성
+        const worksheet = XLSX.utils.json_to_sheet(sheet.data);
+        
+        // 열 너비 자동 조정
+        const columnWidths = [];
+        const headers = Object.keys(sheet.data[0]);
+        
+        headers.forEach((header, index) => {
+          const maxLength = Math.max(
+            header.length,
+            ...sheet.data.map(row => String(row[header]).length)
+          );
+          columnWidths[index] = { width: Math.min(maxLength + 2, 50) };
+        });
+        
+        worksheet['!cols'] = columnWidths;
+        
+        // 워크북에 시트 추가
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+      }
+    });
+
+    // 유효한 시트가 없으면 기본 시트 생성
+    if (!hasValidSheet && sheets.length > 0) {
+      const firstSheet = sheets[0];
+      const defaultData = [{
+        '메시지': '데이터가 없습니다.',
+        '생성일시': new Date().toLocaleString()
+      }];
+      
+      const worksheet = XLSX.utils.json_to_sheet(defaultData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, firstSheet.name);
+    }
+
+    // 파일 다운로드
+    const excelBuffer = XLSX.write(workbook, { 
+      bookType: 'xlsx', 
+      type: 'array' 
+    });
+    
+    const blob = new Blob([excelBuffer], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+    
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error('Excel 내보내기 오류:', error);
+    throw new Error('Excel 파일 생성에 실패했습니다.');
+  }
+};
+
+// 단일 시트용 간단한 내보내기 함수
+export const exportSingleSheet = async (data: any[], sheetName: string, filename: string) => {
+  await exportToExcel([{ name: sheetName, data }], filename);
+};
+
+// 주문 내역 엑셀 내보내기 (기존 호환성 유지)
+export const exportOrdersToExcel = async (orders: any[], filename: string) => {
+  try {
+    // 주문 데이터를 Excel 형식으로 변환
     const excelData = orders.map(order => {
-      // 안전한 데이터 변환
       const orderDate = order.orderDate ? 
         (typeof order.orderDate === 'object' && 'toDate' in order.orderDate) 
-          ? format(order.orderDate.toDate(), 'yyyy-MM-dd HH:mm')
-          : format(new Date(order.orderDate), 'yyyy-MM-dd HH:mm')
+          ? order.orderDate.toDate().toLocaleDateString()
+          : new Date(order.orderDate).toLocaleDateString()
         : '';
 
-      // 업로드 템플릿과 동일한 순서로 헤더 배치
       return {
-        // === 업로드 템플릿과 동일한 순서 ===
         '주문일시': orderDate,
         '지점명': order.branchName || '',
-        '주문상품': order.items?.map(item => `${item.name || ''} (${item.quantity || 0}개)`).join(', ') || '',
+        '주문상품': order.items?.map((item: any) => `${item.name || ''} (${item.quantity || 0}개)`).join(', ') || '',
         '상품금액': (order.summary?.subtotal || 0).toLocaleString(),
         '배송비': (order.summary?.deliveryFee || 0).toLocaleString(),
         '결제수단': order.payment ? getPaymentMethodText(order.payment.method) : '',
@@ -38,12 +113,10 @@ export const exportOrdersToExcel = (orders: Order[], filename: string = '주문�
         '메세지타입': order.message?.type || '',
         '메세지내용': order.message?.content || '',
         '요청사항': order.request || '',
-        
-        // === 업로드 템플릿에 없는 추가 정보들 (뒤쪽에 배치) ===
         '주문 ID': order.id || '',
         '회사명': order.orderer?.company || '',
         '주문유형': getOrderTypeText(order.orderType),
-        '상품수량': order.items?.reduce((total, item) => total + (item.quantity || 0), 0) || 0,
+        '상품수량': order.items?.reduce((total: number, item: any) => total + (item.quantity || 0), 0) || 0,
         '할인': (order.summary?.discount || 0).toLocaleString(),
         '포인트사용': (order.summary?.pointsUsed || 0).toLocaleString(),
         '포인트적립': (order.summary?.pointsEarned || 0).toLocaleString(),
@@ -52,79 +125,11 @@ export const exportOrdersToExcel = (orders: Order[], filename: string = '주문�
       };
     });
 
-    // 워크북 생성
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    await exportToExcel([{ name: '주문내역', data: excelData }], filename);
 
-    // 열 너비 자동 조정 (업로드 템플릿 순서 + 추가 정보)
-    const columnWidths = [
-      // === 업로드 템플릿과 동일한 순서 ===
-      { wch: 15 }, // 주문일시
-      { wch: 12 }, // 지점명
-      { wch: 50 }, // 주문상품
-      { wch: 12 }, // 상품금액
-      { wch: 10 }, // 배송비
-      { wch: 12 }, // 결제수단
-      { wch: 12 }, // 총금액
-      { wch: 10 }, // 주문상태
-      { wch: 10 }, // 결제상태
-      { wch: 12 }, // 주문자명
-      { wch: 15 }, // 주문자연락처
-      { wch: 20 }, // 주문자이메일
-      { wch: 10 }, // 수령방법
-      { wch: 20 }, // 픽업/배송일시
-      { wch: 12 }, // 수령인명
-      { wch: 15 }, // 수령인연락처
-      { wch: 30 }, // 배송주소
-      { wch: 10 }, // 메세지타입
-      { wch: 30 }, // 메세지내용
-      { wch: 30 }, // 요청사항
-      
-      // === 업로드 템플릿에 없는 추가 정보들 ===
-      { wch: 15 }, // 주문 ID
-      { wch: 15 }, // 회사명
-      { wch: 10 }, // 주문유형
-      { wch: 10 }, // 상품수량
-      { wch: 10 }, // 할인
-      { wch: 12 }, // 포인트사용
-      { wch: 12 }, // 포인트적립
-      { wch: 12 }, // 고객등록여부
-      { wch: 10 }, // 익명주문
-    ];
-    worksheet['!cols'] = columnWidths;
-
-    // 워크시트를 워크북에 추가
-    XLSX.utils.book_append_sheet(workbook, worksheet, '주문내역');
-
-    // 파일 다운로드 - 더 안전한 방법
-    const excelBuffer = XLSX.write(workbook, { 
-      bookType: 'xlsx', 
-      type: 'array',
-      compression: true
-    });
-    
-    const blob = new Blob([excelBuffer], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-    });
-    
-    // 브라우저 호환성을 위한 다운로드 방법
-    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-      // IE/Edge 지원
-      window.navigator.msSaveOrOpenBlob(blob, `${filename}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`);
-    } else {
-      // 다른 브라우저 지원
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${filename}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    }
   } catch (error) {
-    console.error('Excel export error:', error);
-    throw new Error(`엑셀 파일 생성 중 오류가 발생했습니다: ${error.message}`);
+    console.error('주문 엑셀 내보내기 오류:', error);
+    throw new Error('주문 엑셀 파일 생성에 실패했습니다.');
   }
 };
 

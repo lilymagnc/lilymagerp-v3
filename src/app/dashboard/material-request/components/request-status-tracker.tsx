@@ -53,9 +53,18 @@ export function RequestStatusTracker() {
         fetchedRequests = [];
       }
       
-      setRequests(fetchedRequests.sort((a, b) => 
-        b.createdAt.toMillis() - a.createdAt.toMillis()
-      ));
+      // 안전한 timestamp 정렬
+      setRequests(fetchedRequests.sort((a, b) => {
+        const getTimestamp = (timestamp: any) => {
+          if (!timestamp) return 0;
+          if (timestamp.toMillis) return timestamp.toMillis();
+          if (timestamp.seconds) return timestamp.seconds * 1000;
+          if (timestamp instanceof Date) return timestamp.getTime();
+          return new Date(timestamp).getTime();
+        };
+        
+        return getTimestamp(b.createdAt) - getTimestamp(a.createdAt);
+      }));
       setLastUpdated(new Date());
     } catch (error) {
       console.error('요청 목록 로딩 오류:', error);
@@ -128,7 +137,7 @@ export function RequestStatusTracker() {
       return formatDate(request.delivery.deliveryDate);
     }
     
-    const createdDate = request.createdAt.toDate();
+    const createdDate = getDateFromTimestamp(request.createdAt);
     let estimatedDays = 0;
     
     switch (request.status) {
@@ -192,32 +201,51 @@ export function RequestStatusTracker() {
     );
   }, [requests]);
 
+  // 안전한 Date 변환 유틸리티 함수
+  const getDateFromTimestamp = (timestamp: any): Date => {
+    if (!timestamp) return new Date();
+    if (timestamp.toDate) return timestamp.toDate();
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+    if (timestamp instanceof Date) return timestamp;
+    return new Date(timestamp);
+  };
+
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = getDateFromTimestamp(timestamp);
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return '-';
+    }
   };
 
   const formatRelativeTime = (timestamp: any) => {
     if (!timestamp) return '-';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffHours / 24);
-    
-    if (diffDays > 0) {
-      return `${diffDays}일 전`;
-    } else if (diffHours > 0) {
-      return `${diffHours}시간 전`;
-    } else {
-      return '방금 전';
+    try {
+      const date = getDateFromTimestamp(timestamp);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffHours / 24);
+      
+      if (diffDays > 0) {
+        return `${diffDays}일 전`;
+      } else if (diffHours > 0) {
+        return `${diffHours}시간 전`;
+      } else {
+        return '방금 전';
+      }
+    } catch (error) {
+      console.error('Relative time formatting error:', error);
+      return '-';
     }
   };
 
