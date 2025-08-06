@@ -363,7 +363,7 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
     console.log('registerCustomer:', orderData.registerCustomer);
     console.log('isAnonymous:', orderData.isAnonymous);
     
-    // 기존 고객 검색 (연락처 기준) - 인덱스 오류 방지를 위해 단일 조건으로 검색
+    // 기존 고객 검색 (연락처 기준) - 전 지점 공유
     const customersQuery = query(
       collection(db, 'customers'),
       where('contact', '==', orderData.orderer.contact)
@@ -394,9 +394,17 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
     };
     
     if (validCustomers.length > 0) {
-      // 기존 고객 업데이트
+      // 기존 고객 업데이트 (전 지점 공유)
       const customerDoc = validCustomers[0];
       const existingData = customerDoc.data();
+      const currentBranch = orderData.branchName;
+      
+      // 지점별 정보 업데이트
+      const branchInfo = {
+        registeredAt: serverTimestamp(),
+        grade: customerData.grade,
+        notes: `주문으로 자동 등록 - ${new Date().toLocaleDateString()}`
+      };
       
       await setDoc(customerDoc.ref, {
         ...customerData,
@@ -405,13 +413,30 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
         points: (existingData.points || 0) - (orderData.summary.pointsUsed || 0) + Math.floor(orderData.summary.total * 0.02),
         grade: existingData.grade || '신규',
         createdAt: existingData.createdAt, // 기존 생성일 유지
+        [`branches.${currentBranch}`]: branchInfo,
+        // 주 거래 지점 업데이트 (가장 최근 주문 지점)
+        primaryBranch: currentBranch
       }, { merge: true });
+      
+      console.log(`기존 고객 업데이트: ${existingData.name} (${currentBranch} 지점 등록)`);
     } else {
-      // 신규 고객 등록
-      await addDoc(collection(db, 'customers'), {
+      // 신규 고객 등록 (통합 관리)
+      const currentBranch = orderData.branchName;
+      const newCustomerData = {
         ...customerData,
         createdAt: serverTimestamp(),
-      });
+        branches: {
+          [currentBranch]: {
+            registeredAt: serverTimestamp(),
+            grade: customerData.grade,
+            notes: `주문으로 자동 등록 - ${new Date().toLocaleDateString()}`
+          }
+        },
+        primaryBranch: currentBranch
+      };
+      
+      await addDoc(collection(db, 'customers'), newCustomerData);
+      console.log(`신규 고객 등록: ${customerData.name} (${currentBranch} 지점)`);
     }
   } catch (error) {
     console.error('고객 등록 중 오류:', error);

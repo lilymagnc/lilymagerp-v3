@@ -46,14 +46,22 @@ export default function CustomersPage() {
     const filteredCustomers = useMemo(() => {
         let filtered = customers;
 
-        // 권한에 따른 지점 필터링
+        // 권한에 따른 지점 필터링 (통합 관리 시스템)
         if (!isHeadOfficeAdmin && userBranch) {
-            filtered = filtered.filter(customer => customer.branch === userBranch);
+            // 일반 사용자는 자신의 지점에 등록된 고객만 보기
+            filtered = filtered.filter(customer => 
+                customer.branch === userBranch || 
+                (customer.branches && customer.branches[userBranch])
+            );
         } else if (selectedBranch !== "all") {
-            filtered = filtered.filter(customer => customer.branch === selectedBranch);
+            // 본사 관리자는 선택한 지점에 등록된 고객만 보기
+            filtered = filtered.filter(customer => 
+                customer.branch === selectedBranch || 
+                (customer.branches && customer.branches[selectedBranch])
+            );
         }
 
-        // 검색어 필터링
+        // 검색어 필터링 (전 지점 검색)
         filtered = filtered.filter(customer => 
             customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             customer.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||

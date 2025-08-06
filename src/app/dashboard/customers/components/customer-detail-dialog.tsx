@@ -277,20 +277,58 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
 
               <Separator />
 
-              {/* 추가 정보 */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">추가 정보</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">담당 지점</label>
-                    <p className="text-sm mt-1">{customer.branch || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">고객 등급</label>
-                    <p className="text-sm mt-1">{customer.grade || '신규'}</p>
-                  </div>
-                </div>
-              </div>
+                             {/* 추가 정보 */}
+               <div>
+                 <h3 className="text-lg font-semibold mb-3">추가 정보</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div>
+                     <label className="text-sm font-medium text-muted-foreground">주 거래 지점</label>
+                     <p className="text-sm mt-1">{customer.primaryBranch || customer.branch || '-'}</p>
+                   </div>
+                   <div>
+                     <label className="text-sm font-medium text-muted-foreground">고객 등급</label>
+                     <p className="text-sm mt-1">{customer.grade || '신규'}</p>
+                   </div>
+                 </div>
+               </div>
+
+               <Separator />
+
+               {/* 지점별 등록 정보 */}
+               {customer.branches && Object.keys(customer.branches).length > 0 && (
+                 <div>
+                   <h3 className="text-lg font-semibold mb-3">등록된 지점</h3>
+                   <div className="space-y-3">
+                     {Object.entries(customer.branches).map(([branchId, branchInfo]) => (
+                       <div key={branchId} className="border rounded-lg p-3">
+                         <div className="flex items-center justify-between">
+                           <div>
+                             <p className="font-medium">{branchId}</p>
+                             <p className="text-sm text-muted-foreground">
+                               등록일: {formatSafeDate(branchInfo.registeredAt)}
+                             </p>
+                             {branchInfo.grade && (
+                               <p className="text-sm text-muted-foreground">
+                                 등급: {branchInfo.grade}
+                               </p>
+                             )}
+                           </div>
+                           {branchId === customer.primaryBranch && (
+                             <Badge variant="secondary" className="text-xs">
+                               주 거래 지점
+                             </Badge>
+                           )}
+                         </div>
+                         {branchInfo.notes && (
+                           <p className="text-sm text-muted-foreground mt-2">
+                             메모: {branchInfo.notes}
+                           </p>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
 
               <Separator />
 

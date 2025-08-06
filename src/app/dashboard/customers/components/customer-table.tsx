@@ -68,7 +68,18 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onState
                       {customer.tags?.split(',').map(tag => tag.trim() && <Badge key={tag} variant="outline" className="font-normal">{tag.trim()}</Badge>)}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">{customer.branch}</TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium">
+                        {customer.primaryBranch || customer.branch || '-'}
+                      </span>
+                      {customer.branches && Object.keys(customer.branches).length > 1 && (
+                        <span className="text-xs text-muted-foreground">
+                          {Object.keys(customer.branches).length}개 지점
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                      <AlertDialog>
                       <DropdownMenu>
