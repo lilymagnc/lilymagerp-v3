@@ -44,7 +44,8 @@ export default function DashboardLayout({
         '/dashboard/simple-expenses',      // 간편지출관리
         '/dashboard/customers',            // 고객관리
         '/dashboard/partners',             // 거래처관리
-        '/dashboard/sample-albums'         // 샘플앨범
+        '/dashboard/sample-albums',        // 샘플앨범
+        '/dashboard/barcode-scanner'       // 바코드 스캐너
       ];
       
       // 허용된 페이지가 아닌 경우에만 주문접수 페이지로 리다이렉트
