@@ -1,5 +1,5 @@
 
-import PageHeader from "@/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import BranchUsageReport from "./branch-usage-report";
 import MaterialUsageReport from "./material-usage-report";
 
