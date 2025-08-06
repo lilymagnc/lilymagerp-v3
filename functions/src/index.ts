@@ -10,6 +10,10 @@
 import {setGlobalOptions} from "firebase-functions";
 import {onRequest} from "firebase-functions/https";
 import * as logger from "firebase-functions/logger";
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+
+admin.initializeApp();
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -30,3 +34,141 @@ setGlobalOptions({ maxInstances: 10 });
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
+
+// 자동 백업 함수 (매일 새벽 2시에 실행)
+export const autoBackup = functions.pubsub
+  .schedule('0 2 * * *') // 매일 새벽 2시
+  .timeZone('Asia/Seoul')
+  .onRun(async (context) => {
+    try {
+      const db = admin.firestore();
+      const timestamp = admin.firestore.Timestamp.now();
+      
+      // 백업할 컬렉션들
+      const collections = [
+        'orders', 'customers', 'products', 'materials', 
+        'materialRequests', 'branches', 'users', 'recipients',
+        'expenses', 'budgets', 'partners'
+      ];
+      
+      const backupData: any = {};
+      
+      for (const collectionName of collections) {
+        const snapshot = await db.collection(collectionName).get();
+        backupData[collectionName] = snapshot.docs.map(doc => ({
+          id: doc.id,
+          data: doc.data()
+        }));
+      }
+      
+      // 백업 데이터를 Firestore에 저장
+      await db.collection('backups').add({
+        timestamp: timestamp,
+        data: backupData,
+        type: 'auto',
+        status: 'completed'
+      });
+      
+      console.log('자동 백업 완료:', timestamp.toDate());
+      return null;
+    } catch (error) {
+      console.error('자동 백업 실패:', error);
+      return null;
+    }
+  });
+
+// 수동 백업 함수
+export const manualBackup = functions.https.onCall(async (data, context) => {
+  try {
+    // 권한 확인
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', '인증이 필요합니다.');
+    }
+    
+    const db = admin.firestore();
+    const timestamp = admin.firestore.Timestamp.now();
+    
+    // 백업할 컬렉션들
+    const collections = [
+      'orders', 'customers', 'products', 'materials', 
+      'materialRequests', 'branches', 'users', 'recipients',
+      'expenses', 'budgets', 'partners'
+    ];
+    
+    const backupData: any = {};
+    
+    for (const collectionName of collections) {
+      const snapshot = await db.collection(collectionName).get();
+      backupData[collectionName] = snapshot.docs.map(doc => ({
+        id: doc.id,
+        data: doc.data()
+      }));
+    }
+    
+    // 백업 데이터를 Firestore에 저장
+    const backupRef = await db.collection('backups').add({
+      timestamp: timestamp,
+      data: backupData,
+      type: 'manual',
+      createdBy: context.auth.uid,
+      status: 'completed'
+    });
+    
+    return {
+      success: true,
+      backupId: backupRef.id,
+      timestamp: timestamp.toDate()
+    };
+  } catch (error) {
+    console.error('수동 백업 실패:', error);
+    throw new functions.https.HttpsError('internal', '백업 중 오류가 발생했습니다.');
+  }
+});
+
+// 백업 복원 함수
+export const restoreBackup = functions.https.onCall(async (data, context) => {
+  try {
+    // 권한 확인
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', '인증이 필요합니다.');
+    }
+    
+    const { backupId } = data;
+    if (!backupId) {
+      throw new functions.https.HttpsError('invalid-argument', '백업 ID가 필요합니다.');
+    }
+    
+    const db = admin.firestore();
+    
+    // 백업 데이터 조회
+    const backupDoc = await db.collection('backups').doc(backupId).get();
+    if (!backupDoc.exists) {
+      throw new functions.https.HttpsError('not-found', '백업을 찾을 수 없습니다.');
+    }
+    
+    const backupData = backupDoc.data()?.data;
+    if (!backupData) {
+      throw new functions.https.HttpsError('internal', '백업 데이터가 없습니다.');
+    }
+    
+    // 데이터 복원
+    const batch = db.batch();
+    
+    for (const [collectionName, documents] of Object.entries(backupData)) {
+      for (const docData of documents as any[]) {
+        const docRef = db.collection(collectionName).doc(docData.id);
+        batch.set(docRef, docData.data);
+      }
+    }
+    
+    await batch.commit();
+    
+    return {
+      success: true,
+      message: '백업 복원이 완료되었습니다.'
+    };
+  } catch (error) {
+    console.error('백업 복원 실패:', error);
+    throw new functions.https.HttpsError('internal', '백업 복원 중 오류가 발생했습니다.');
+  }
+});
