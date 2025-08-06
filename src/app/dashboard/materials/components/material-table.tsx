@@ -145,7 +145,12 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, 
               </TableRow>
             </TableHeader>
             <TableBody>
-              {materials.length > 0 ? materials.map((material, idx) => {
+              {materials.length > 0 ? materials.filter(material => 
+                material && 
+                material.name && 
+                material.id && 
+                material.docId
+              ).map((material, idx) => {
                 const statusInfo = getStatus(material.status, material.stock);
                 return (
                 <TableRow key={`${material.docId}-${idx}`}>
@@ -153,10 +158,10 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, 
                     <Checkbox
                       checked={!!selectedRows[material.id]}
                       onCheckedChange={() => handleSelectionChange(material.id)}
-                      aria-label={`${material.name} 선택`}
+                      aria-label={`${material.name || '자재'} 선택`}
                     />
                   </TableCell>
-                  <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name}</TableCell>
+                  <TableCell className="font-medium cursor-pointer" onClick={() => handleRowClick(material)}>{material.name || '이름 없음'}</TableCell>
                    <TableCell className="cursor-pointer" onClick={() => handleRowClick(material)}>
                     {material.id && (
                         <Barcode 
@@ -204,7 +209,7 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, 
                         <AlertDialogHeader>
                           <AlertDialogTitle>정말로 삭제하시겠습니까?</AlertDialogTitle>
                           <AlertDialogDescription>
-                           이 작업은 되돌릴 수 없습니다. '{material.name}' ({material.branch}) 자재 데이터가 서버에서 영구적으로 삭제됩니다.
+                           이 작업은 되돌릴 수 없습니다. '{material.name || '자재'}' ({material.branch || '지점 없음'}) 자재 데이터가 서버에서 영구적으로 삭제됩니다.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

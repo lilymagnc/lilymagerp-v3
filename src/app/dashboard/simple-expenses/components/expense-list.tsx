@@ -157,6 +157,7 @@ export function ExpenseList({
     // 날짜 범위 필터
     if (dateRange.start || dateRange.end) {
       filtered = filtered.filter(expense => {
+        if (!expense.date) return false;
         const expenseDate = expense.date.toDate();
         const startDate = dateRange.start ? new Date(dateRange.start) : null;
         const endDate = dateRange.end ? new Date(dateRange.end) : null;
@@ -313,7 +314,7 @@ export function ExpenseList({
     // 시트1: 통합 시트
     const consolidatedData = filteredExpenses.length > 0 ? filteredExpenses.map(expense => ({
       '지점': expense.branchName,
-      '날짜': expense.date.toDate().toLocaleDateString(),
+      '날짜': expense.date?.toDate().toLocaleDateString() || '-',
       '구매처': expense.supplier,
       '분류': SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category],
       '세부분류': expense.subCategory || '-',
@@ -343,7 +344,7 @@ export function ExpenseList({
     // 시트2: 본사
     const headquartersExpenses = filteredExpenses.filter(expense => expense.branchId === '본사');
     const headquartersData = headquartersExpenses.length > 0 ? headquartersExpenses.map(expense => ({
-      '날짜': expense.date.toDate().toLocaleDateString(),
+      '날짜': expense.date?.toDate().toLocaleDateString() || '-',
       '구매처': expense.supplier,
       '분류': SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category],
       '세부분류': expense.subCategory || '-',
@@ -376,7 +377,7 @@ export function ExpenseList({
         branchExpenses[expense.branchId] = [];
       }
       branchExpenses[expense.branchId].push({
-        '날짜': expense.date.toDate().toLocaleDateString(),
+        '날짜': expense.date?.toDate().toLocaleDateString() || '-',
         '구매처': expense.supplier,
         '분류': SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category],
         '세부분류': expense.subCategory || '-',
@@ -663,7 +664,7 @@ export function ExpenseList({
                         </TableCell>
                       )}
                     <TableCell>
-                      {expense.date.toDate().toLocaleDateString()}
+                      {expense.date?.toDate().toLocaleDateString() || '-'}
                     </TableCell>
                     <TableCell>
                       <div className="max-w-[200px] truncate" title={expense.supplier}>

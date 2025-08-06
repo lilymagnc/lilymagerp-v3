@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search } from "lucide-react";
+import { PlusCircle, Search, Download, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +14,9 @@ import { usePartners, Partner } from "@/hooks/use-partners";
 import { PartnerForm, PartnerFormValues } from "./components/partner-form";
 import { PartnerTable } from "./components/partner-table";
 import { useAuth } from "@/hooks/use-auth";
+import { downloadXLSX } from "@/lib/utils";
+import { format } from "date-fns";
+import { ImportButton } from "@/components/import-button";
 
 export default function PartnersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -22,7 +25,7 @@ export default function PartnersPage() {
     const [selectedType, setSelectedType] = useState("all");
 
     const { toast } = useToast();
-    const { partners, loading: partnersLoading, addPartner, updatePartner, deletePartner } = usePartners();
+    const { partners, loading: partnersLoading, addPartner, updatePartner, deletePartner, bulkAddPartners } = usePartners();
     const { user } = useAuth();
     
     const isHeadOfficeAdmin = user?.role === '본사 관리자';
@@ -76,6 +79,52 @@ export default function PartnersPage() {
         await deletePartner(id);
     };
 
+    const handleExport = () => {
+        if (filteredPartners.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "내보낼 데이터 없음",
+                description: "목록에 데이터가 없습니다.",
+            });
+            return;
+        }
+
+        const dataToExport = filteredPartners.map(partner => ({
+            '거래처명': partner.name,
+            '유형': partner.type,
+            '연락처': partner.contact,
+            '담당자': partner.contactPerson || '',
+            '이메일': partner.email || '',
+            '주소': partner.address || '',
+            '지점': partner.branch,
+            '메모': partner.memo || '',
+            '등록일': partner.createdAt ? format(new Date(partner.createdAt), 'yyyy-MM-dd HH:mm') : '',
+        }));
+
+        downloadXLSX(dataToExport, "partners");
+        toast({
+            title: "내보내기 성공",
+            description: `${dataToExport.length}개의 거래처 정보가 XLSX 파일로 다운로드되었습니다.`,
+        });
+    };
+
+    const handleImport = async (data: any[]) => {
+        try {
+            await bulkAddPartners(data);
+            toast({
+                title: "업로드 성공",
+                description: "거래처 정보가 성공적으로 업로드되었습니다.",
+            });
+        } catch (error) {
+            console.error('Import error:', error);
+            toast({
+                variant: "destructive",
+                title: "업로드 실패",
+                description: "거래처 정보 업로드 중 오류가 발생했습니다.",
+            });
+        }
+    };
+
     return (
         <div>
             <PageHeader title="거래처 관리" description="상품 및 자재를 공급하는 매입처 정보를 관리합니다.">
@@ -84,6 +133,11 @@ export default function PartnersPage() {
                         <PlusCircle className="mr-2 h-4 w-4" />
                         거래처 추가
                     </Button>
+                    <Button variant="outline" onClick={handleExport}>
+                        <Download className="mr-2 h-4 w-4" />
+                        내보내기
+                    </Button>
+                    <ImportButton onImport={handleImport} />
                 </div>
             </PageHeader>
             <Card className="mb-4">

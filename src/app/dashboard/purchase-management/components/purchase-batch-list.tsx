@@ -161,7 +161,7 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                               </div>
                               
                               <div className="text-sm text-muted-foreground">
-                                생성일: {format(batch.createdAt.toDate(), 'yyyy-MM-dd HH:mm', { locale: ko })}
+                                생성일: {batch.createdAt?.toDate ? format(batch.createdAt.toDate(), 'yyyy-MM-dd HH:mm', { locale: ko }) : '-'}
                               </div>
                               
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -266,7 +266,7 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                   <div className="space-y-1 text-sm">
                     <div>배치 번호: <strong>{selectedBatch.batchNumber}</strong></div>
                     <div>상태: <Badge variant="outline">{getStatusLabel(selectedBatch.status)}</Badge></div>
-                    <div>생성일: {format(selectedBatch.createdAt.toDate(), 'yyyy-MM-dd HH:mm', { locale: ko })}</div>
+                    <div>생성일: {selectedBatch.createdAt?.toDate ? format(selectedBatch.createdAt.toDate(), 'yyyy-MM-dd HH:mm', { locale: ko }) : '-'}</div>
                     <div>구매자: {selectedBatch.purchaserName}</div>
                   </div>
                 </div>

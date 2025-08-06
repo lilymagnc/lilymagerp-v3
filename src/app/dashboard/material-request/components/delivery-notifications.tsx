@@ -129,14 +129,14 @@ export function DeliveryNotifications() {
           branchName: request.branchName,
           priority: request.requestedItems.some(item => item.urgency === 'urgent') ? 'urgent' : 'normal',
           isRead: false,
-          createdAt: request.delivery.shippingDate.toDate(),
+          createdAt: request.delivery.shippingDate?.toDate ? request.delivery.shippingDate.toDate() : new Date(),
           trackingNumber: request.delivery.trackingNumber
         });
       }
       
       // 입고 요청 알림 (배송 완료 후 24시간 경과)
       if (request.status === 'delivered' && !request.delivery?.deliveryDate) {
-        const shippingDate = request.delivery?.shippingDate?.toDate();
+        const shippingDate = request.delivery?.shippingDate?.toDate ? request.delivery.shippingDate.toDate() : null;
         if (shippingDate && Date.now() - shippingDate.getTime() > 24 * 60 * 60 * 1000) {
           notifications.push({
             id: `delivery-req-${request.id}`,

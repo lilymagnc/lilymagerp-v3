@@ -419,7 +419,7 @@ export function useInventorySync() {
       let movements = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        date: doc.data().date.toDate()
+        date: doc.data().date?.toDate ? doc.data().date.toDate() : new Date()
       }));
 
       // 클라이언트 사이드 필터링

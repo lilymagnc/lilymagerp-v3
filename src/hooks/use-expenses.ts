@@ -85,6 +85,7 @@ export function useExpenses() {
 
       if (filters?.dateFrom) {
         filteredData = filteredData.filter(expense => {
+          if (!expense.createdAt) return false;
           const expenseDate = expense.createdAt.toDate();
           return expenseDate >= filters.dateFrom!;
         });
@@ -92,6 +93,7 @@ export function useExpenses() {
 
       if (filters?.dateTo) {
         filteredData = filteredData.filter(expense => {
+          if (!expense.createdAt) return false;
           const expenseDate = expense.createdAt.toDate();
           return expenseDate <= filters.dateTo!;
         });
@@ -109,6 +111,7 @@ export function useExpenses() {
       currentMonth.setDate(1);
       const monthlyAmount = filteredData
         .filter(e => {
+          if (!e.createdAt) return false;
           const expenseDate = e.createdAt.toDate();
           return expenseDate >= currentMonth;
         })

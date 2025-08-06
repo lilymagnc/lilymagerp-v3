@@ -16,9 +16,11 @@ import { CustomerDetails } from "./components/customer-details";
 import { CustomerDetailDialog } from "./components/customer-detail-dialog";
 import { StatementDialog } from "./components/statement-dialog";
 import { ImportButton } from "@/components/import-button";
-import { FileUp } from "lucide-react";
+import { FileUp, Download } from "lucide-react";
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
+import { downloadXLSX } from "@/lib/utils";
+import { format } from "date-fns";
 
 
 export default function CustomersPage() {
@@ -111,7 +113,37 @@ export default function CustomersPage() {
 
     const handleImport = async (data: any[]) => {
       await bulkAddCustomers(data, selectedBranch);
-    }
+    };
+
+    const handleExport = () => {
+        if (filteredCustomers.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "내보낼 데이터 없음",
+                description: "목록에 데이터가 없습니다.",
+            });
+            return;
+        }
+
+        const dataToExport = filteredCustomers.map(customer => ({
+            '고객명': customer.name,
+            '회사명': customer.companyName || '',
+            '고객유형': customer.type === 'personal' ? '개인' : '기업',
+            '연락처': customer.contact,
+            '이메일': customer.email || '',
+            '주소': customer.address || '',
+            '고객등급': customer.grade || '신규',
+            '담당지점': customer.branch,
+            '메모': customer.memo || '',
+            '등록일': customer.createdAt ? format(new Date(customer.createdAt), 'yyyy-MM-dd HH:mm') : '',
+        }));
+
+        downloadXLSX(dataToExport, "customers");
+        toast({
+            title: "내보내기 성공",
+            description: `${dataToExport.length}개의 고객 정보가 XLSX 파일로 다운로드되었습니다.`,
+        });
+    };
 
     return (
         <div>
@@ -121,6 +153,10 @@ export default function CustomersPage() {
                         <FileUp className="mr-2 h-4 w-4" />
                         엑셀로 가져오기
                     </ImportButton>
+                    <Button variant="outline" onClick={handleExport}>
+                        <Download className="mr-2 h-4 w-4" />
+                        내보내기
+                    </Button>
                     <Button onClick={handleAdd}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         고객 추가

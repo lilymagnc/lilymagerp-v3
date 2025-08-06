@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { testFirebaseConnection } from '@/lib/firebase-test';
 
 export default function MaterialRequestPage() {
   const { user } = useAuth();
@@ -29,6 +30,7 @@ export default function MaterialRequestPage() {
   const { branches, loading: branchesLoading } = useBranches();
   const { createRequest, loading: requestLoading } = useMaterialRequests();
   const { toast } = useToast();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const [cartItems, setCartItems] = useState<RequestItem[]>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
@@ -214,6 +216,32 @@ export default function MaterialRequestPage() {
     }
   };
 
+  // Firebase 연결 테스트
+  const handleTestConnection = async () => {
+    try {
+      const result = await testFirebaseConnection();
+      if (result.success) {
+        toast({
+          title: '연결 테스트 성공',
+          description: `Firebase 연결이 정상입니다. (문서 ID: ${result.docId})`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: '연결 테스트 실패',
+          description: 'Firebase 연결에 문제가 있습니다.',
+        });
+      }
+    } catch (error) {
+      console.error('연결 테스트 오류:', error);
+      toast({
+        variant: 'destructive',
+        title: '연결 테스트 오류',
+        description: 'Firebase 연결 테스트 중 오류가 발생했습니다.',
+      });
+    }
+  };
+
   // 요청 제출
   const handleSubmitRequest = async () => {
     if (cartItems.length === 0) {
@@ -230,6 +258,28 @@ export default function MaterialRequestPage() {
         variant: 'destructive',
         title: '사용자 정보 오류',
         description: '사용자 정보를 확인할 수 없습니다.',
+      });
+      return;
+    }
+
+    // Firebase 인증 상태 확인
+    console.log('현재 사용자 정보:', {
+      uid: user.uid,
+      email: user.email,
+      role: user.role,
+      franchise: user.franchise
+    });
+
+    // Firebase Auth 상태 확인
+    const { auth } = await import('@/lib/firebase');
+    const currentUser = auth.currentUser;
+    console.log('Firebase Auth 현재 사용자:', currentUser);
+
+    if (!currentUser) {
+      toast({
+        variant: 'destructive',
+        title: '인증 오류',
+        description: 'Firebase 인증이 필요합니다. 다시 로그인해주세요.',
       });
       return;
     }
@@ -253,6 +303,8 @@ export default function MaterialRequestPage() {
         requestedItems: cartItems
       };
 
+      console.log('요청 데이터:', requestData);
+
       const requestNumber = await createRequest(requestData);
       
       toast({
@@ -263,6 +315,9 @@ export default function MaterialRequestPage() {
       // 장바구니 초기화
       setCartItems([]);
       setShowCart(false);
+
+      // 요청현황 자동 새로고침
+      setRefreshTrigger(prev => prev + 1);
 
     } catch (error) {
       console.error('요청 제출 오류:', error);
@@ -331,6 +386,13 @@ export default function MaterialRequestPage() {
               장바구니 ({cartItems.length})
             </Button>
           )}
+          <Button 
+            onClick={handleTestConnection}
+            variant="outline"
+            size="sm"
+          >
+            Firebase 연결 테스트
+          </Button>
         </div>
       </div>
 
@@ -498,7 +560,7 @@ export default function MaterialRequestPage() {
           )}
 
           {/* 요청 상태 추적 */}
-          <RequestStatusTracker />
+          <RequestStatusTracker key={refreshTrigger} />
         </div>
       </div>
     </div>

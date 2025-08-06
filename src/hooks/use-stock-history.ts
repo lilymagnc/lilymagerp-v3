@@ -37,7 +37,7 @@ export function useStockHistory() {
         historyData.push({
           id: doc.id,
           ...data,
-          date: data.date.toDate().toISOString(),
+          date: data.date?.toDate ? data.date.toDate().toISOString() : new Date().toISOString(),
         } as StockHistory);
       });
       setHistory(historyData);

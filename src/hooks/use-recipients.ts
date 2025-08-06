@@ -27,15 +27,13 @@ export function useRecipients() {
     setLoading(true);
     try {
       let recipientsQuery = query(
-        collection(db, 'recipients'),
-        orderBy('lastOrderDate', 'desc')
+        collection(db, 'recipients')
       );
       
       if (branchName) {
         recipientsQuery = query(
           collection(db, 'recipients'),
-          where('branchName', '==', branchName),
-          orderBy('lastOrderDate', 'desc')
+          where('branchName', '==', branchName)
         );
       }
       
@@ -44,6 +42,12 @@ export function useRecipients() {
         id: doc.id,
         ...doc.data()
       })) as Recipient[];
+      
+      // 클라이언트 사이드에서 정렬
+      recipientsData.sort((a, b) => {
+        if (!a.lastOrderDate || !b.lastOrderDate) return 0;
+        return b.lastOrderDate.toMillis() - a.lastOrderDate.toMillis();
+      });
       
       setRecipients(recipientsData);
     } catch (error) {

@@ -171,6 +171,7 @@ export function ExpenseInputForm({
         
         // 중복 체크: 같은 날짜, 같은 구매처, 같은 품목명
         const isDuplicate = existingExpenses.some((existing: any) => {
+          if (!existing.date) return false;
           const existingDateStr = existing.date.toDate().toISOString().split('T')[0];
           return (
             existingDateStr === purchaseDateStr &&

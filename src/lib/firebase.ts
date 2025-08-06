@@ -21,17 +21,27 @@ let storage;
 let db;
 
 try {
+  console.log('Firebase 초기화 시작...');
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+  console.log('Firebase 앱 초기화 완료');
+  
   auth = getAuth(app);
+  console.log('Firebase Auth 초기화 완료');
+  
   storage = getStorage(app);
+  console.log('Firebase Storage 초기화 완료');
   
   try {
+    console.log('Firestore 초기화 시작...');
     db = initializeFirestore(app, {
       localCache: memoryLocalCache()
     });
+    console.log('Firestore 초기화 완료');
   } catch (error) {
     console.error('Firestore initialization error:', error);
+    console.log('Fallback to getFirestore...');
     db = getFirestore(app);
+    console.log('Fallback Firestore 초기화 완료');
   }
 } catch (error) {
   console.error('Firebase initialization error:', error);

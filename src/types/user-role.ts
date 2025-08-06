@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 // 사용자 역할 타입
 export enum UserRoleType {
   BRANCH_USER = 'branch_user',
+  BRANCH_MANAGER = 'branch_manager',
   HQ_MANAGER = 'hq_manager',
   ADMIN = 'admin'
 }
@@ -36,6 +37,11 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, Permission[]> = {
   [UserRoleType.BRANCH_USER]: [
     Permission.CREATE_REQUEST
   ],
+  [UserRoleType.BRANCH_MANAGER]: [
+    Permission.CREATE_REQUEST,
+    Permission.VIEW_ALL_REQUESTS,
+    Permission.CHANGE_STATUS
+  ],
   [UserRoleType.HQ_MANAGER]: [
     Permission.CREATE_REQUEST,
     Permission.VIEW_ALL_REQUESTS,
@@ -58,6 +64,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, Permission[]> = {
 // 사용자 역할 생성 데이터
 export interface CreateUserRoleData {
   userId: string;
+  email: string;
   role: UserRoleType;
   branchId?: string;
   branchName?: string;
@@ -89,6 +96,7 @@ export const isAdmin = (userRole: UserRole | null): boolean => {
 // 역할 표시명
 export const ROLE_LABELS: Record<UserRoleType, string> = {
   [UserRoleType.BRANCH_USER]: '지점 사용자',
+  [UserRoleType.BRANCH_MANAGER]: '가맹점 관리자',
   [UserRoleType.HQ_MANAGER]: '본사 관리자',
   [UserRoleType.ADMIN]: '시스템 관리자'
 };

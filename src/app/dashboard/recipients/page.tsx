@@ -127,6 +127,7 @@ export default function RecipientsPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {recipients.filter(r => {
+                if (!r.lastOrderDate) return false;
                 const now = new Date();
                 const recipientDate = r.lastOrderDate.toDate();
                 return recipientDate.getMonth() === now.getMonth() &&
@@ -257,7 +258,10 @@ export default function RecipientsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {format(recipient.lastOrderDate.toDate(), "yyyy-MM-dd", { locale: ko })}
+                          {recipient.lastOrderDate 
+                            ? format(recipient.lastOrderDate.toDate(), "yyyy-MM-dd", { locale: ko })
+                            : '-'
+                          }
                         </TableCell>
                         <TableCell>
                           <Badge

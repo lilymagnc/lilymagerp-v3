@@ -258,7 +258,8 @@ export function useProducts() {
       }, { merge: true });
       
       // 재고 히스토리 추가
-      const currentStock = productSnapshot.docs[0].data()?.stock || 0;
+      const productData = productSnapshot.docs[0].data();
+      const currentStock = productData?.stock || 0;
       const historyDocRef = doc(collection(db, "stockHistory"));
       await setDoc(historyDocRef, {
         date: serverTimestamp(),
@@ -272,6 +273,9 @@ export function useProducts() {
         resultingStock: newStock,
         branch: branch,
         operator: userEmail,
+        supplier: productData.supplier || '',
+        price: productData.price || 0,
+        totalAmount: (productData.price || 0) * Math.abs(newStock - currentStock),
       });
       
       toast({ 

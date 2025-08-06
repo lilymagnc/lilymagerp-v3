@@ -115,7 +115,7 @@ export function useCustomers() {
   const bulkAddCustomers = async (data: any[], selectedBranch?: string) => {
     setLoading(true);
     let newCount = 0;
-    let updateCount = 0;
+    let duplicateCount = 0;
     let errorCount = 0;
   
     await Promise.all(data.map(async (row) => {
@@ -134,17 +134,31 @@ export function useCustomers() {
           points: 0,
         };
   
-        const q = query(collection(db, "customers"), where("contact", "==", customerData.contact));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          const docRef = querySnapshot.docs[0].ref;
-          await setDoc(docRef, customerData, { merge: true });
-          updateCount++;
-        } else {
-          await addDoc(collection(db, "customers"), { ...customerData, createdAt: serverTimestamp() });
-          newCount++;
+        // 중복 체크: 고객명, 회사명, 연락처 중 하나라도 일치하면 중복으로 처리
+        const nameQuery = query(collection(db, "customers"), where("name", "==", customerData.name));
+        const companyQuery = query(collection(db, "customers"), where("companyName", "==", customerData.companyName));
+        const contactQuery = query(collection(db, "customers"), where("contact", "==", customerData.contact));
+
+        const [nameSnapshot, companySnapshot, contactSnapshot] = await Promise.all([
+          getDocs(nameQuery),
+          getDocs(companyQuery),
+          getDocs(contactQuery)
+        ]);
+
+        // 중복 조건: 고객명이 같거나, 회사명이 같거나, 연락처가 같으면 중복
+        const isDuplicate = !nameSnapshot.empty || 
+                           (!customerData.companyName && !companySnapshot.empty) || 
+                           !contactSnapshot.empty;
+
+        if (isDuplicate) {
+          duplicateCount++;
+          return; // 중복 데이터는 저장하지 않음
         }
+
+        // 중복이 아닌 경우에만 새로 추가
+        await addDoc(collection(db, "customers"), { ...customerData, createdAt: serverTimestamp() });
+        newCount++;
+
       } catch (error) {
         console.error("Error processing row:", row, error);
         errorCount++;
@@ -163,7 +177,7 @@ export function useCustomers() {
     
     toast({ 
       title: '처리 완료', 
-      description: `성공: 신규 고객 ${newCount}명 추가, ${updateCount}명 업데이트 완료.`
+      description: `성공: 신규 고객 ${newCount}명 추가, 중복 데이터 ${duplicateCount}개 제외.`
     });
     
     await fetchCustomers();

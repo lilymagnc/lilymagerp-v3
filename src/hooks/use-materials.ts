@@ -59,7 +59,14 @@ export function useMaterials() {
                         ...data,
                         status: getStatus(data.stock)
                     } as Material;
-            }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
+            })
+            .filter(material => 
+                material && 
+                material.name && 
+                material.id && 
+                material.docId
+            )
+            .sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
             setMaterials(materialsData);
             return;
           }
@@ -74,7 +81,14 @@ export function useMaterials() {
                   ...data,
                   status: getStatus(data.stock)
               } as Material;
-      }).sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
+      })
+      .filter(material => 
+          material && 
+          material.name && 
+          material.id && 
+          material.docId
+      )
+      .sort((a,b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
       setMaterials(materialsData);
 
     } catch (error) {
@@ -264,6 +278,7 @@ export function useMaterials() {
 
         transaction.update(materialRef, { stock: newStock });
 
+        const materialData = materialDoc.data();
         const historyDocRef = doc(collection(db, "stockHistory"));
         transaction.set(historyDocRef, {
             date: serverTimestamp(),
@@ -277,6 +292,9 @@ export function useMaterials() {
             resultingStock: newStock,
             branch: branchName,
             operator: operator,
+            supplier: materialData.supplier || '',
+            price: materialData.price || 0,
+            totalAmount: (materialData.price || 0) * Math.abs(newStock - currentStock),
         });
       });
 

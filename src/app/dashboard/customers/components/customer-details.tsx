@@ -60,7 +60,7 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
     }
 
     const dataToExport = orderHistory.map(order => ({
-      "주문일": format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd HH:mm"),
+      "주문일": order.orderDate?.toDate ? format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd HH:mm") : '-',
       "주문지점": order.branchName,
       "주문상품": order.items.map(item => `${item.name}(${item.quantity})`).join(', '),
       "총액": order.summary.total,
@@ -178,7 +178,7 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
                         ) : orderHistory.length > 0 ? (
                           orderHistory.map(order => (
                             <TableRow key={order.id}>
-                              <TableCell>{format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd")}</TableCell>
+                              <TableCell>{order.orderDate?.toDate ? format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd") : '-'}</TableCell>
                               <TableCell>{order.branchName}</TableCell>
                               <TableCell>₩{order.summary.total.toLocaleString()}</TableCell>
                               <TableCell><Badge>{order.status}</Badge></TableCell>

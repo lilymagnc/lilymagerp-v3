@@ -18,6 +18,7 @@ import {
 import { ExpenseInputForm } from './components/expense-input-form';
 import { FixedCostTemplate } from './components/fixed-cost-template';
 import { ExpenseList } from './components/expense-list';
+import { ExpenseCharts } from './components/expense-charts';
 import { useSimpleExpenses } from '@/hooks/use-simple-expenses';
 import { useAuth } from '@/hooks/use-auth';
 import { useBranches } from '@/hooks/use-branches';
@@ -30,7 +31,7 @@ import {
 
 export default function SimpleExpensesPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState('input');
+  const [activeTab, setActiveTab] = useState('charts');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
   
   const { expenses, fetchExpenses, calculateStats } = useSimpleExpenses();
@@ -39,6 +40,9 @@ export default function SimpleExpensesPage() {
 
   // 관리자 여부 확인
   const isAdmin = user?.role === '본사 관리자' || user?.role === '가맹점 관리자';
+  
+  // 본사 관리자 여부 확인 (본사 관리 버튼용)
+  const isHQManager = user?.role === '본사 관리자';
 
   // 성공 시 새로고침
   const handleSuccess = () => {
@@ -61,6 +65,7 @@ export default function SimpleExpensesPage() {
 
   // 이번 달 지출 계산
   const thisMonthExpenses = expenses.filter(expense => {
+    if (!expense.date) return false;
     const expenseDate = expense.date.toDate();
     const now = new Date();
     return expenseDate.getMonth() === now.getMonth() && 
@@ -71,6 +76,7 @@ export default function SimpleExpensesPage() {
 
   // 오늘 지출 계산
   const todayExpenses = expenses.filter(expense => {
+    if (!expense.date) return false;
     const expenseDate = expense.date.toDate();
     const today = new Date();
     return expenseDate.toDateString() === today.toDateString();
@@ -236,28 +242,32 @@ export default function SimpleExpensesPage() {
         </Card>
       )}
 
-      {/* 메인 탭 */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="input" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            지출 입력
-          </TabsTrigger>
-          <TabsTrigger value="fixed" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            고정비 관리
-          </TabsTrigger>
-          <TabsTrigger value="list" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            지출 내역
-          </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="headquarters" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              본사 관리
-            </TabsTrigger>
-          )}
-        </TabsList>
+             {/* 메인 탭 */}
+       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+         <TabsList className="grid w-full grid-cols-5">
+           <TabsTrigger value="input" className="flex items-center gap-2">
+             <Plus className="h-4 w-4" />
+             지출 입력
+           </TabsTrigger>
+           <TabsTrigger value="fixed" className="flex items-center gap-2">
+             <Calendar className="h-4 w-4" />
+             고정비 관리
+           </TabsTrigger>
+           <TabsTrigger value="list" className="flex items-center gap-2">
+             <Receipt className="h-4 w-4" />
+             지출 내역
+           </TabsTrigger>
+           <TabsTrigger value="charts" className="flex items-center gap-2">
+             <BarChart3 className="h-4 w-4" />
+             차트 분석
+           </TabsTrigger>
+           {isHQManager && (
+             <TabsTrigger value="headquarters" className="flex items-center gap-2">
+               <Building className="h-4 w-4" />
+               본사 관리
+             </TabsTrigger>
+           )}
+         </TabsList>
         
         <TabsContent value="input">
           <ExpenseInputForm 
@@ -274,22 +284,29 @@ export default function SimpleExpensesPage() {
           />
         </TabsContent>
         
-        <TabsContent value="list">
-          <ExpenseList 
-            refreshTrigger={refreshTrigger} 
-            selectedBranchId={currentBranchId}
-          />
-        </TabsContent>
+                 <TabsContent value="list">
+           <ExpenseList 
+             refreshTrigger={refreshTrigger} 
+             selectedBranchId={currentBranchId}
+           />
+         </TabsContent>
 
-        {isAdmin && (
-          <TabsContent value="headquarters">
-            <ExpenseList 
-              refreshTrigger={refreshTrigger} 
-              selectedBranchId={currentBranchId}
-              isHeadquarters={true}
-            />
-          </TabsContent>
-        )}
+         <TabsContent value="charts">
+           <ExpenseCharts 
+             expenses={expenses}
+             currentBranchName={currentBranch?.name || ''}
+           />
+         </TabsContent>
+
+         {isHQManager && (
+           <TabsContent value="headquarters">
+             <ExpenseList 
+               refreshTrigger={refreshTrigger} 
+               selectedBranchId={currentBranchId}
+               isHeadquarters={true}
+             />
+           </TabsContent>
+         )}
       </Tabs>
     </div>
   );

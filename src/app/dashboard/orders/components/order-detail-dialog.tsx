@@ -217,7 +217,10 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                       <span className="text-sm font-medium">픽업/배송일시</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {format((order.delivery.pickupDate as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')}
+                      {order.delivery.pickupDate 
+                        ? format((order.delivery.pickupDate as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')
+                        : '-'
+                      }
                     </p>
                   </div>
                 )}

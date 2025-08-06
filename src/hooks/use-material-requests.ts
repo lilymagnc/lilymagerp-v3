@@ -123,6 +123,12 @@ export function useMaterialRequests() {
     setLoading(true);
     
     try {
+      // Firebase 연결 상태 확인
+      console.log('Firebase 연결 상태 확인...');
+      if (!db) {
+        throw new Error('Firestore 데이터베이스가 초기화되지 않았습니다.');
+      }
+
       // 요청 데이터 검증
       console.log('데이터 검증 시작');
       const validationError = validateMaterialRequest(requestData);
@@ -142,14 +148,66 @@ export function useMaterialRequests() {
         branchName: requestData.branchName,
         requesterId: requestData.requesterId,
         requesterName: requestData.requesterName,
-        requestedItems: requestData.requestedItems,
+        requestedItems: requestData.requestedItems.map(item => ({
+          materialId: item.materialId,
+          materialName: item.materialName,
+          requestedQuantity: Number(item.requestedQuantity),
+          estimatedPrice: Number(item.estimatedPrice),
+          urgency: item.urgency || 'normal',
+          memo: item.memo || ''
+        })),
         status: 'submitted',
         createdAt: now as any,
         updatedAt: now as any
       };
 
+      // 필수 필드 검증
+      if (!materialRequest.requestNumber || !materialRequest.branchId || !materialRequest.branchName || 
+          !materialRequest.requesterId || !materialRequest.requesterName || !materialRequest.requestedItems) {
+        console.error('필수 필드 누락:', {
+          requestNumber: !!materialRequest.requestNumber,
+          branchId: !!materialRequest.branchId,
+          branchName: !!materialRequest.branchName,
+          requesterId: !!materialRequest.requesterId,
+          requesterName: !!materialRequest.requesterName,
+          requestedItems: !!materialRequest.requestedItems
+        });
+        throw new Error('필수 필드가 누락되었습니다.');
+      }
+
       console.log('Firestore에 문서 추가 시작:', materialRequest);
-      const docRef = await addDoc(collection(db, 'materialRequests'), materialRequest);
+      
+      // 데이터 구조 검증
+      console.log('데이터 구조 검증:', JSON.stringify(materialRequest, null, 2));
+      
+      // Firestore에 전송할 데이터 정리 (undefined 값 제거)
+      const cleanData = Object.fromEntries(
+        Object.entries(materialRequest).filter(([_, value]) => value !== undefined)
+      );
+      
+      // 더 안전한 데이터 구조로 변환
+      const safeData = {
+        requestNumber: cleanData.requestNumber,
+        branchId: cleanData.branchId,
+        branchName: cleanData.branchName,
+        requesterId: cleanData.requesterId,
+        requesterName: cleanData.requesterName,
+        requestedItems: cleanData.requestedItems,
+        status: cleanData.status,
+        createdAt: cleanData.createdAt,
+        updatedAt: cleanData.updatedAt
+      };
+      
+      console.log('안전한 데이터 구조:', JSON.stringify(safeData, null, 2));
+      
+      // 최종 데이터 검증
+      if (!safeData.requestNumber || !safeData.branchId || !safeData.branchName) {
+        throw new Error('필수 필드가 누락되었습니다: requestNumber, branchId, branchName');
+      }
+      
+      // Firestore에 저장하기 전에 최종 확인
+      console.log('Firestore 저장 시작...');
+      const docRef = await addDoc(collection(db, 'materialRequests'), safeData);
       console.log('Firestore 문서 추가 완료:', docRef.id);
       
       // 알림 생성 (본사 관리자에게)
@@ -187,6 +245,19 @@ export function useMaterialRequests() {
 
     } catch (error) {
       console.error('요청 생성 오류:', error);
+      
+      // Firebase 오류 상세 정보 로깅
+      if (error instanceof Error) {
+        console.error('오류 메시지:', error.message);
+        console.error('오류 스택:', error.stack);
+      }
+      
+      // Firebase 특정 오류 처리
+      if (error && typeof error === 'object' && 'code' in error) {
+        console.error('Firebase 오류 코드:', (error as any).code);
+        console.error('Firebase 오류 메시지:', (error as any).message);
+      }
+      
       throw error;
     } finally {
       setLoading(false);
@@ -194,8 +265,25 @@ export function useMaterialRequests() {
   }, []);
 
   // 지점별 요청 목록 조회
-  const getRequestsByBranch = useCallback(async (branchId: string): Promise<MaterialRequest[]> => {
+  const getRequestsByBranch = useCallback(async (branchName: string): Promise<MaterialRequest[]> => {
     try {
+      console.log('지점별 요청 조회 시작:', branchName);
+      
+      // 먼저 지점 정보를 가져와서 branchId를 찾습니다
+      const branchesQuery = query(
+        collection(db, 'branches'),
+        where('name', '==', branchName)
+      );
+      const branchesSnapshot = await getDocs(branchesQuery);
+      
+      if (branchesSnapshot.empty) {
+        console.log('지점을 찾을 수 없음:', branchName);
+        return [];
+      }
+      
+      const branchId = branchesSnapshot.docs[0].id;
+      console.log('찾은 branchId:', branchId);
+      
       const q = query(
         collection(db, 'materialRequests'),
         where('branchId', '==', branchId),
@@ -203,8 +291,11 @@ export function useMaterialRequests() {
       );
       
       const querySnapshot = await getDocs(q, { source: 'server' }); // source: 'server' 추가
-      return querySnapshot.docs.map(doc => {
+      console.log('조회된 문서 수:', querySnapshot.docs.length);
+      
+      const requests = querySnapshot.docs.map(doc => {
         const data = doc.data();
+        console.log('문서 데이터:', doc.id, data);
         return {
           id: doc.id,
           ...data,
@@ -213,8 +304,45 @@ export function useMaterialRequests() {
         } as MaterialRequest;
       });
 
+      console.log('반환할 요청 목록:', requests);
+      return requests;
+
     } catch (error) {
       console.error('지점별 요청 조회 오류:', error);
+      throw error;
+    }
+  }, []);
+
+  // branchId로 요청 목록 조회
+  const getRequestsByBranchId = useCallback(async (branchId: string): Promise<MaterialRequest[]> => {
+    try {
+      console.log('branchId로 요청 조회 시작:', branchId);
+      
+      const q = query(
+        collection(db, 'materialRequests'),
+        where('branchId', '==', branchId),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q, { source: 'server' });
+      console.log('조회된 문서 수:', querySnapshot.docs.length);
+      
+      const requests = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('문서 데이터:', doc.id, data);
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate(),
+          updatedAt: data.updatedAt?.toDate(),
+        } as MaterialRequest;
+      });
+
+      console.log('반환할 요청 목록:', requests);
+      return requests;
+
+    } catch (error) {
+      console.error('branchId로 요청 조회 오류:', error);
       throw error;
     }
   }, []);
@@ -519,6 +647,7 @@ export function useMaterialRequests() {
     stats,
     createRequest,
     getRequestsByBranch,
+    getRequestsByBranchId,
     getAllRequests,
     updateRequestStatus,
     getRequestsByStatus,

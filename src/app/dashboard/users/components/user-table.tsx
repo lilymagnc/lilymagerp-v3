@@ -29,17 +29,20 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleEdit = (user: SystemUser) => {
+    console.log("사용자 편집 시작:", user);
     setSelectedUser(user);
     setIsFormOpen(true);
   };
 
   const handleDeleteClick = (user: SystemUser) => {
+    console.log("사용자 삭제 클릭:", user);
     setUserToDelete(user);
     setIsDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
     if (userToDelete) {
+      console.log("사용자 삭제 확인:", userToDelete);
       await onDeleteUser(userToDelete.id, userToDelete.email);
       setIsDeleteDialogOpen(false);
       setUserToDelete(null);
@@ -47,14 +50,17 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
   };
 
   const handlePasswordResetClick = async (user: SystemUser) => {
+    console.log("비밀번호 초기화:", user);
     await onPasswordReset(user.id, user.email);
   };
 
   const handleToggleStatusClick = async (user: SystemUser) => {
+    console.log("사용자 상태 변경:", user);
     await onToggleStatus(user.id, user.email, user.isActive !== false);
   };
   
   const handleCloseForm = () => {
+    console.log("사용자 폼 닫기");
     setIsFormOpen(false);
     setSelectedUser(null);
   };

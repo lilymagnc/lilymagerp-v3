@@ -40,17 +40,22 @@ export default function UsersPage() {
 
   // 데이터 새로고침 함수
   const handleUserUpdated = () => {
+    console.log("사용자 업데이트 트리거 실행");
     setRefreshTrigger(prev => prev + 1);
   };
   
   useEffect(() => {
+    console.log("사용자 데이터 로드 시작, refreshTrigger:", refreshTrigger);
     const unsubscribe = onSnapshot(collection(db, "users"), async (snapshot) => {
+        console.log("Firestore users 컬렉션 변경 감지, 문서 수:", snapshot.docs.length);
         const usersData = await Promise.all(
           snapshot.docs.map(async (doc) => {
             const userData = {
               id: doc.id,
               ...doc.data()
             } as SystemUser;
+            
+            console.log("사용자 데이터:", userData);
             
             // 직원 정보에서 직위 가져오기
             try {
@@ -63,8 +68,10 @@ export default function UsersPage() {
               if (!employeeSnapshot.empty) {
                 const employeeData = employeeSnapshot.docs[0].data();
                 userData.position = employeeData.position || '직원';
+                console.log("직원 정보 찾음:", employeeData);
               } else {
                 userData.position = '직원'; // 기본값
+                console.log("직원 정보 없음, 기본값 설정");
               }
             } catch (error) {
               console.error("직원 정보 조회 오류:", error);
@@ -74,6 +81,8 @@ export default function UsersPage() {
             return userData;
           })
         );
+        
+        console.log("최종 사용자 데이터:", usersData);
         
         // 중복 이메일 체크 및 경고
         const emailCounts = usersData.reduce((acc, user) => {

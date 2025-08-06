@@ -35,23 +35,62 @@ import { REQUEST_STATUS_LABELS, URGENCY_LABELS } from '@/types/material-request'
 
 export function RequestStatusTracker() {
   const { user } = useAuth();
-  const { getRequestsByBranch, getAllRequests, loading } = useMaterialRequests();
+  const { getRequestsByBranch, getRequestsByBranchId, getAllRequests, loading } = useMaterialRequests();
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [refreshKey, setRefreshKey] = useState(0); // 새로고침을 위한 키
+
+  // 컴포넌트를 외부에서 제어할 수 있도록 ref로 노출
+  React.useImperativeHandle(React.useRef(), () => ({
+    refresh: () => setRefreshKey(prev => prev + 1)
+  }));
 
   const loadRequests = useCallback(async () => {
     if (!user) return;
 
+    console.log('요청 목록 로딩 시작:', {
+      userRole: user.role,
+      userFranchise: user.franchise
+    });
+
     try {
       let fetchedRequests: MaterialRequest[];
       if (user.role === '본사 관리자') {
+        console.log('본사 관리자 - 전체 요청 조회');
         fetchedRequests = await getAllRequests();
       } else if (user.franchise) {
-        fetchedRequests = await getRequestsByBranch(user.franchise);
+        console.log('지점 사용자 - 지점별 요청 조회:', user.franchise);
+        // branchId로 직접 쿼리 (기존 인덱스 활용)
+        try {
+          // 먼저 지점 정보를 가져와서 branchId를 찾습니다
+          const { getDocs, collection, query, where } = await import('firebase/firestore');
+          const { db } = await import('@/lib/firebase');
+          
+          const branchesQuery = query(
+            collection(db, 'branches'),
+            where('name', '==', user.franchise)
+          );
+          const branchesSnapshot = await getDocs(branchesQuery);
+          
+          if (!branchesSnapshot.empty) {
+            const branchId = branchesSnapshot.docs[0].id;
+            console.log('찾은 branchId:', branchId);
+            fetchedRequests = await getRequestsByBranchId(branchId);
+          } else {
+            console.log('지점을 찾을 수 없음, branchName으로 쿼리');
+            fetchedRequests = await getRequestsByBranch(user.franchise);
+          }
+        } catch (error) {
+          console.error('branchId 조회 실패, branchName으로 대체:', error);
+          fetchedRequests = await getRequestsByBranch(user.franchise);
+        }
       } else {
+        console.log('지점 정보 없음 - 빈 배열 반환');
         fetchedRequests = [];
       }
+      
+      console.log('조회된 요청 수:', fetchedRequests.length);
       
       // 안전한 timestamp 정렬
       setRequests(fetchedRequests.sort((a, b) => {
@@ -73,7 +112,9 @@ export function RequestStatusTracker() {
 
   useEffect(() => {
     loadRequests();
-  }, [loadRequests]);
+  }, [loadRequests, refreshKey]); // refreshKey가 변경되면 새로고침
+
+
 
   const getStatusIcon = (status: RequestStatus) => {
     const iconProps = { className: "h-4 w-4" };
@@ -309,7 +350,7 @@ export function RequestStatusTracker() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={loadRequests} disabled={loading}>
+              <Button variant="ghost" size="sm" onClick={() => setRefreshKey(prev => prev + 1)} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 새로고침
               </Button>

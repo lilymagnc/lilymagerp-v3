@@ -65,7 +65,12 @@ export default function MaterialsPage() {
   }, [materials, selectedMainCategory]);
 
   const filteredMaterials = useMemo(() => {
-    let filtered = materials;
+    let filtered = materials.filter(material => 
+      material && 
+      typeof material === 'object' && 
+      material.name && 
+      material.id
+    );
 
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
@@ -77,8 +82,8 @@ export default function MaterialsPage() {
     // 검색어 필터링
     if (searchTerm) {
       filtered = filtered.filter(material => 
-        material.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        material.id.toLowerCase().includes(searchTerm.toLowerCase())
+        (material.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (material.id?.toLowerCase() || '').includes(searchTerm.toLowerCase())
       );
     }
 

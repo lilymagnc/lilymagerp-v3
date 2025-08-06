@@ -60,6 +60,21 @@ export default function NewOrderPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id');
 
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.customer-search-container')) {
+        setIsCustomerSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const { toast } = useToast();
   
@@ -81,13 +96,10 @@ export default function NewOrderPage() {
   const [usedPoints, setUsedPoints] = useState(0);
   
   // 고객 검색 관련 상태
-  const [customerSearch, setCustomerSearch] = useState({
-    company: "",
-    name: "",
-    contact: ""
-  });
+  const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [customerSearchResults, setCustomerSearchResults] = useState<Customer[]>([]);
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
   
   const [orderType, setOrderType] = useState<OrderType>("store");
@@ -230,6 +242,7 @@ export default function NewOrderPage() {
     today.setHours(0, 0, 0, 0);
     return orders.filter(order => {
       if (!selectedBranch || order.branchName !== selectedBranch.name) return false;
+      if (!order.orderDate) return false;
       const orderDate = (order.orderDate as Timestamp).toDate();
       orderDate.setHours(0,0,0,0);
       return orderDate.getTime() === today.getTime();
@@ -555,31 +568,25 @@ const handleCustomerSelect = (customer: Customer) => {
   setUsedPoints(0);
 };
 
-const handleCustomerSearch = async () => {
+const handleCustomerSearch = async (query: string) => {
+  if (!query.trim()) {
+    setCustomerSearchResults([]);
+    return;
+  }
+
   setCustomerSearchLoading(true);
   try {
     let results = customers;
+    const searchTerm = query.toLowerCase().trim();
     
-    // 회사명으로 필터링
-    if (customerSearch.company) {
-      results = results.filter(c => 
-        c.companyName?.toLowerCase().includes(customerSearch.company.toLowerCase())
-      );
-    }
-    
-    // 주문자명으로 필터링
-    if (customerSearch.name) {
-      results = results.filter(c => 
-        c.name.toLowerCase().includes(customerSearch.name.toLowerCase())
-      );
-    }
-    
-    // 연락처 뒷4자리로 필터링
-    if (customerSearch.contact) {
-      results = results.filter(c => 
-        c.contact.replace(/[^0-9]/g, '').endsWith(customerSearch.contact)
-      );
-    }
+    // 통합 검색: 회사명, 주문자명, 연락처 뒷4자리로 검색
+    results = results.filter(c => {
+      const companyMatch = c.companyName?.toLowerCase().includes(searchTerm);
+      const nameMatch = c.name.toLowerCase().includes(searchTerm);
+      const contactMatch = c.contact.replace(/[^0-9]/g, '').endsWith(searchTerm);
+      
+      return companyMatch || nameMatch || contactMatch;
+    });
     
     setCustomerSearchResults(results);
   } catch (error) {
@@ -593,6 +600,14 @@ const handleCustomerSearch = async () => {
     setCustomerSearchLoading(false);
   }
 };
+
+// 디바운스된 검색 함수
+const debouncedCustomerSearch = useCallback(
+  debounce((query: string) => {
+    handleCustomerSearch(query);
+  }, 300),
+  [customers]
+);
 
   const orderSummary = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -703,7 +718,7 @@ const handleCustomerSearch = async () => {
                           onValueChange={handleBranchChange} 
                           disabled={isLoading || !!existingOrder || !isAdmin}
                         >
-                            <SelectTrigger className="w-[300px]">
+                            <SelectTrigger id="branch-select" className="w-[300px]">
                                 <SelectValue placeholder={
                                   isLoading ? "지점 불러오는 중..." : 
                                   !isAdmin ? `${userBranch || '지점'} 자동 선택` : 
@@ -748,7 +763,7 @@ const handleCustomerSearch = async () => {
                   <CardContent className="space-y-6">
                       {/* 주문 상품 */}
                       <div>
-                          <Label className="text-sm font-medium">주문 상품</Label>
+                          <span className="text-sm font-medium">주문 상품</span>
                           <Card className="mt-2">
                             <CardContent className="p-2">
                             <Table>
@@ -769,7 +784,7 @@ const handleCustomerSearch = async () => {
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.docId, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
-                                                <Input type="number" value={item.quantity} onChange={e => updateItemQuantity(item.docId, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
+                                                <Input id={`quantity-${item.docId}`} type="number" value={item.quantity} onChange={e => updateItemQuantity(item.docId, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
                                                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.docId, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
                                             </div>
                                         </TableCell>
@@ -795,7 +810,7 @@ const handleCustomerSearch = async () => {
                                             setSelectedMainCategory(value);
                                             setSelectedMidCategory(null);
                                         }}>
-                                        <SelectTrigger>
+                                        <SelectTrigger id="main-category-select">
                                             <SelectValue placeholder="대분류 선택" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -811,7 +826,7 @@ const handleCustomerSearch = async () => {
                                         }}
                                         disabled={!selectedMainCategory}
                                     >
-                                        <SelectTrigger>
+                                        <SelectTrigger id="mid-category-select">
                                             <SelectValue placeholder="중분류 선택" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -826,7 +841,7 @@ const handleCustomerSearch = async () => {
                                     <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
                                     <Select onValueChange={handleAddProduct} value="">
-                                        <SelectTrigger className="flex-1">
+                                        <SelectTrigger id="product-select" className="flex-1">
                                             <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -846,7 +861,7 @@ const handleCustomerSearch = async () => {
 
                        {/* 결제 정보 */}
                       <div>
-                          <Label className="text-sm font-medium">결제 정보</Label>
+                          <span className="text-sm font-medium">결제 정보</span>
                           <Card className="mt-2">
                             <CardContent className="p-4 space-y-4">
                                 <div>
@@ -873,7 +888,7 @@ const handleCustomerSearch = async () => {
 
                       {/* 주문자 정보 */}
                       <div>
-                          <Label className="text-sm font-medium">주문자 정보</Label>
+                          <span className="text-sm font-medium">주문자 정보</span>
                           <Card className="mt-2">
                               <CardContent className="p-4">
                                 {/* 고객 검색 섹션 */}
@@ -894,92 +909,74 @@ const handleCustomerSearch = async () => {
                                   </div>
                                   
                                   {!selectedCustomer ? (
-                                    <div className="space-y-4">
-                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        <div className="space-y-2">
-                                          <Label htmlFor="customer-search-company" className="text-xs">회사명</Label>
+                                    <div className="space-y-4 customer-search-container">
+                                      <div className="space-y-2">
+                                        <Label htmlFor="customer-search-unified" className="text-xs">고객 검색</Label>
+                                        <div className="relative">
                                           <Input 
-                                            id="customer-search-company"
-                                            name="customer-search-company"
-                                            placeholder="회사명으로 검색"
-                                            value={customerSearch.company || ""}
-                                            onChange={(e) => setCustomerSearch(prev => ({ ...prev, company: e.target.value }))}
+                                            id="customer-search-unified"
+                                            name="customer-search-unified"
+                                            placeholder="회사명, 주문자명, 연락처 뒷4자리로 검색"
+                                            value={customerSearchQuery}
+                                            onChange={(e) => {
+                                              const value = e.target.value;
+                                              setCustomerSearchQuery(value);
+                                              setIsCustomerSearchOpen(true);
+                                              debouncedCustomerSearch(value);
+                                            }}
+                                            onFocus={() => setIsCustomerSearchOpen(true)}
                                           />
-                                        </div>
-                                        <div className="space-y-2">
-                                          <Label htmlFor="customer-search-name" className="text-xs">주문자명</Label>
-                                          <Input 
-                                            id="customer-search-name"
-                                            name="customer-search-name"
-                                            placeholder="주문자명으로 검색"
-                                            value={customerSearch.name || ""}
-                                            onChange={(e) => setCustomerSearch(prev => ({ ...prev, name: e.target.value }))}
-                                          />
-                                        </div>
-                                        <div className="space-y-2">
-                                          <Label htmlFor="customer-search-contact" className="text-xs">연락처 뒷4자리</Label>
-                                          <Input 
-                                            id="customer-search-contact"
-                                            name="customer-search-contact"
-                                            placeholder="연락처 뒷4자리"
-                                            value={customerSearch.contact || ""}
-                                            onChange={(e) => setCustomerSearch(prev => ({ ...prev, contact: e.target.value }))}
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="flex gap-2">
-                                        <Button 
-                                          onClick={handleCustomerSearch}
-                                          disabled={customerSearchLoading}
-                                          className="flex-1"
-                                        >
-                                          {customerSearchLoading ? (
-                                            <>
-                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                              검색 중...
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Search className="mr-2 h-4 w-4" />
-                                              고객 검색
-                                            </>
+                                          {customerSearchLoading && (
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            </div>
                                           )}
-                                        </Button>
-                                      </div>
-                                      
-                                      {/* 검색 결과 */}
-                                      {customerSearchResults.length > 0 && (
-                                        <div className="mt-4">
-                                          <div className="text-xs text-muted-foreground mb-2 block">검색 결과</div>
-                                          <div className="space-y-2 max-h-60 overflow-y-auto">
-                                            {customerSearchResults.map(customer => (
-                                              <div 
-                                                key={customer.id}
-                                                className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                                                onClick={() => handleCustomerSelect(customer)}
-                                              >
-                                                <div className="flex justify-between items-start">
-                                                  <div className="flex-1">
-                                                    <p className="font-medium">{customer.name}</p>
-                                                    {customer.companyName && (
-                                                      <p className="text-sm text-gray-600">{customer.companyName}</p>
-                                                    )}
-                                                    <p className="text-sm text-gray-500">{customer.contact}</p>
-                                                    {customer.email && (
-                                                      <p className="text-sm text-gray-500">{customer.email}</p>
-                                                    )}
-                                                  </div>
-                                                  <div className="text-right">
-                                                    <p className="text-sm font-medium text-blue-600">
-                                                      {(customer.points || 0).toLocaleString()} P
-                                                    </p>
+                                          
+                                          {/* 검색 결과 드롭다운 */}
+                                          {isCustomerSearchOpen && customerSearchResults.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                              {customerSearchResults.map(customer => (
+                                                <div 
+                                                  key={customer.id}
+                                                  className="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                                  onClick={() => {
+                                                    handleCustomerSelect(customer);
+                                                    setIsCustomerSearchOpen(false);
+                                                    setCustomerSearchQuery("");
+                                                  }}
+                                                >
+                                                  <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                      <p className="font-medium">{customer.name}</p>
+                                                      {customer.companyName && (
+                                                        <p className="text-sm text-gray-600">{customer.companyName}</p>
+                                                      )}
+                                                      <p className="text-sm text-gray-500">{customer.contact}</p>
+                                                      {customer.email && (
+                                                        <p className="text-sm text-gray-500">{customer.email}</p>
+                                                      )}
+                                                    </div>
+                                                    <div className="text-right">
+                                                      <p className="text-sm font-medium text-blue-600">
+                                                        {(customer.points || 0).toLocaleString()} P
+                                                      </p>
+                                                    </div>
                                                   </div>
                                                 </div>
-                                              </div>
-                                            ))}
-                                          </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                          
+                                          {/* 검색 결과가 없을 때 */}
+                                          {isCustomerSearchOpen && customerSearchQuery.trim() && customerSearchResults.length === 0 && !customerSearchLoading && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                                              <p className="text-sm text-gray-500">검색 결과가 없습니다.</p>
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
+                                      </div>
+                                      
+
                                     </div>
                                   ) : (
                                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
@@ -1006,6 +1003,7 @@ const handleCustomerSearch = async () => {
                                         <Label htmlFor="orderer-company">회사명</Label>
                                         <Input 
                                             id="orderer-company" 
+                                            name="orderer-company"
                                             placeholder="회사명 입력" 
                                             value={ordererCompany} 
                                             onChange={e => setOrdererCompany(e.target.value)} 
@@ -1016,6 +1014,7 @@ const handleCustomerSearch = async () => {
                                         <Label htmlFor="orderer-name">주문자명</Label>
                                         <Input 
                                             id="orderer-name" 
+                                            name="orderer-name"
                                             placeholder="주문자명 입력" 
                                             value={ordererName} 
                                             onChange={e => setOrdererName(e.target.value)}
@@ -1026,6 +1025,7 @@ const handleCustomerSearch = async () => {
                                         <Label htmlFor="orderer-contact">주문자 연락처</Label>
                                         <Input 
                                             id="orderer-contact" 
+                                            name="orderer-contact"
                                             placeholder="010-1234-5678" 
                                             value={ordererContact} 
                                             onChange={(e) => handleGenericContactChange(e, setOrdererContact)}
@@ -1035,6 +1035,7 @@ const handleCustomerSearch = async () => {
                                         <Label htmlFor="orderer-email">이메일</Label>
                                         <Input 
                                             id="orderer-email" 
+                                            name="orderer-email"
                                             type="email" 
                                             placeholder="email@example.com" 
                                             value={ordererEmail} 
@@ -1069,7 +1070,7 @@ const handleCustomerSearch = async () => {
 
                       {/* 수령 정보 */}
                       <div>
-                          <Label className="text-sm font-medium">수령 정보</Label>
+                          <span className="text-sm font-medium">수령 정보</span>
                           <RadioGroup value={receiptType} onValueChange={(v) => setReceiptType(v as ReceiptType)} className="flex items-center gap-4 mt-2">
                               <div className="flex items-center space-x-2"><RadioGroupItem value="pickup" id="receipt-pickup" /><Label htmlFor="receipt-pickup">매장픽업</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="delivery" id="receipt-delivery" /><Label htmlFor="receipt-delivery">배송</Label></div>
@@ -1079,11 +1080,12 @@ const handleCustomerSearch = async () => {
                               <Card className="mt-2">
                                   <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <div className="space-y-2">
-                                          <Label>픽업일시</Label>
+                                          <Label htmlFor="pickup-date-time">픽업일시</Label>
                                           <div className="flex gap-2">
                                               <Popover>
                                                   <PopoverTrigger asChild>
                                                   <Button
+                                                      id="pickup-date-time"
                                                       variant={"outline"}
                                                       className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}
                                                   >
@@ -1096,7 +1098,7 @@ const handleCustomerSearch = async () => {
                                                   </PopoverContent>
                                               </Popover>
                                               <Select value={scheduleTime} onValueChange={setScheduleTime}>
-                                                  <SelectTrigger className="w-[120px]">
+                                                  <SelectTrigger id="pickup-time" className="w-[120px]">
                                                       <SelectValue />
                                                   </SelectTrigger>
                                                   <SelectContent>
@@ -1108,11 +1110,11 @@ const handleCustomerSearch = async () => {
                                       <div/>
                                       <div className="space-y-2">
                                           <Label htmlFor="picker-name">픽업자 이름</Label>
-                                          <Input id="picker-name" value={pickerName} onChange={e => setPickerName(e.target.value)} />
+                                          <Input id="picker-name" name="picker-name" value={pickerName} onChange={e => setPickerName(e.target.value)} />
                                       </div>
                                       <div className="space-y-2">
                                           <Label htmlFor="picker-contact">픽업자 연락처</Label>
-                                          <Input id="picker-contact" value={pickerContact} onChange={(e) => handleGenericContactChange(e, setPickerContact)} />
+                                          <Input id="picker-contact" name="picker-contact" value={pickerContact} onChange={(e) => handleGenericContactChange(e, setPickerContact)} />
                                       </div>
                                   </CardContent>
                               </Card>
@@ -1122,11 +1124,12 @@ const handleCustomerSearch = async () => {
                               <Card className="mt-2">
                                   <CardContent className="p-4 space-y-4">
                                       <div className="space-y-2">
-                                          <Label>배송일시</Label>
+                                          <Label htmlFor="delivery-date-time">배송일시</Label>
                                           <div className="flex gap-2">
                                               <Popover>
                                                   <PopoverTrigger asChild>
                                                   <Button
+                                                      id="delivery-date-time"
                                                       variant={"outline"}
                                                       className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}
                                                   >
@@ -1139,7 +1142,7 @@ const handleCustomerSearch = async () => {
                                                   </PopoverContent>
                                               </Popover>
                                               <Select value={scheduleTime} onValueChange={setScheduleTime}>
-                                                  <SelectTrigger className="w-[120px]">
+                                                  <SelectTrigger id="delivery-time" className="w-[120px]">
                                                       <SelectValue />
                                                   </SelectTrigger>
                                                   <SelectContent>
@@ -1151,25 +1154,25 @@ const handleCustomerSearch = async () => {
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                           <div className="space-y-2">
                                               <Label htmlFor="recipient-name">받는 분 이름</Label>
-                                              <Input id="recipient-name" placeholder="이름 입력" value={recipientName} onChange={e => setRecipientName(e.target.value)} />
+                                              <Input id="recipient-name" name="recipient-name" placeholder="이름 입력" value={recipientName} onChange={e => setRecipientName(e.target.value)} />
                                           </div>
                                           <div className="space-y-2">
                                               <Label htmlFor="recipient-contact">받는 분 연락처</Label>
-                                              <Input id="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleGenericContactChange(e, setRecipientContact)} />
+                                              <Input id="recipient-contact" name="recipient-contact" placeholder="010-1234-5678" value={recipientContact} onChange={(e) => handleGenericContactChange(e, setRecipientContact)} />
                                           </div>
                                       </div>
                                       <div className="space-y-2">
-                                          <Label>배송지</Label>
+                                          <Label htmlFor="delivery-address">배송지</Label>
                                           <div className="flex gap-2">
-                                          <Input id="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
+                                          <Input id="delivery-address" name="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
                                           <Button type="button" variant="outline" onClick={handleAddressSearch}>
                                               <Search className="mr-2 h-4 w-4" /> 주소 검색
                                           </Button>
                                           </div>
-                                          <Input id="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
+                                          <Input id="delivery-address-detail" name="delivery-address-detail" placeholder="상세 주소 입력" value={deliveryAddressDetail} onChange={(e) => setDeliveryAddressDetail(e.target.value)} />
                                       </div>
                                       <div className="space-y-2">
-                                          <Label>배송비</Label>
+                                          <Label htmlFor="delivery-fee-type">배송비</Label>
                                           <RadioGroup value={deliveryFeeType} className="flex items-center gap-4" onValueChange={(value) => setDeliveryFeeType(value as "auto" | "manual")}>
                                               <div className="flex items-center space-x-2">
                                                   <RadioGroupItem value="auto" id="auto" />
@@ -1184,7 +1187,7 @@ const handleCustomerSearch = async () => {
                                               {deliveryFeeType === 'auto' ? (
                                                   <div className="space-y-2 w-full">
                                                       <Select onValueChange={setSelectedDistrict} value={selectedDistrict ?? ''} disabled={!selectedBranch}>
-                                                          <SelectTrigger>
+                                                          <SelectTrigger id="selected-district">
                                                               <SelectValue placeholder={!selectedBranch ? "지점을 먼저 선택하세요" : "지역 선택"} />
                                                           </SelectTrigger>
                                                           <SelectContent>
@@ -1216,7 +1219,9 @@ const handleCustomerSearch = async () => {
                                                   <div className="flex items-center gap-2">
                                                       <span className="text-sm">₩</span>
                                                       <Input
+                                                          id="manual-delivery-fee"
                                                           type="number"
+                                                          name="manual-delivery-fee"
                                                           placeholder="배송비 입력"
                                                           value={manualDeliveryFee}
                                                           onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
@@ -1233,7 +1238,7 @@ const handleCustomerSearch = async () => {
                       
                       {/* 메시지 */}
                       <div className="space-y-3">
-                          <Label>메시지</Label>
+                          <span className="text-sm font-medium">메시지</span>
                           <RadioGroup value={messageType} onValueChange={(v) => setMessageType(v as MessageType)} className="flex items-center gap-4 mt-2">
                               <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="msg-card" /><Label htmlFor="msg-card">카드 메시지</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="ribbon" id="msg-ribbon" /><Label htmlFor="msg-ribbon">리본 메시지</Label></div>
@@ -1242,6 +1247,7 @@ const handleCustomerSearch = async () => {
                               <Label htmlFor="message-content">메시지 내용</Label>
                               <Textarea 
                                   id="message-content" 
+                                  name="message-content"
                                   placeholder={messageType === 'card' ? "카드 메시지 내용을 입력하세요." : "리본 문구(좌/우)를 입력하세요."} 
                                   className="mt-2" 
                                   value={messageContent} 
@@ -1252,6 +1258,7 @@ const handleCustomerSearch = async () => {
                               <Label htmlFor="message-sender">보내는 사람</Label>
                               <Input 
                                   id="message-sender" 
+                                  name="message-sender"
                                   placeholder="보내는 사람 이름을 입력하세요" 
                                   className="mt-2" 
                                   value={messageSender} 
@@ -1263,7 +1270,7 @@ const handleCustomerSearch = async () => {
                       {/* 요청사항 */}
                         <div className="space-y-2">
                             <Label htmlFor="special-request">요청 사항</Label>
-                            <Textarea id="special-request" placeholder="특별 요청사항을 입력하세요." value={specialRequest} onChange={e => setSpecialRequest(e.target.value)} />
+                            <Textarea id="special-request" name="special-request" placeholder="특별 요청사항을 입력하세요." value={specialRequest} onChange={e => setSpecialRequest(e.target.value)} />
                         </div>
                   </CardContent>
               </Card>
@@ -1288,10 +1295,12 @@ const handleCustomerSearch = async () => {
                         <Separator />
                         
                         <div className="space-y-2">
-                            <Label>포인트 사용</Label>
+                            <Label htmlFor="used-points">포인트 사용</Label>
                             <div className="flex items-center gap-2">
                                 <Input 
+                                    id="used-points"
                                     type="number" 
+                                    name="used-points"
                                     value={usedPoints}
                                     onChange={(e) => {
                                       const value = Number(e.target.value);

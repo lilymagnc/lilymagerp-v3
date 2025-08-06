@@ -447,6 +447,7 @@ export function useSimpleExpenses() {
     // 월별 트렌드 (최근 6개월)
     const monthlyMap = new Map();
     expenseList.forEach(expense => {
+      if (!expense.date) return;
       const monthKey = expense.date.toDate().toISOString().slice(0, 7); // YYYY-MM
       const existing = monthlyMap.get(monthKey) || 0;
       monthlyMap.set(monthKey, existing + expense.amount);
