@@ -30,16 +30,23 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useMaterialRequests } from '@/hooks/use-material-requests';
+import { useToast } from '@/hooks/use-toast';
 import type { MaterialRequest, RequestStatus } from '@/types/material-request';
 import { REQUEST_STATUS_LABELS, URGENCY_LABELS } from '@/types/material-request';
 
-export function RequestStatusTracker() {
+interface RequestStatusTrackerProps {
+  selectedBranch?: string;
+}
+
+export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerProps) {
   const { user } = useAuth();
-  const { getRequestsByBranch, getRequestsByBranchId, getAllRequests, loading } = useMaterialRequests();
+  const { getRequestsByBranch, getRequestsByBranchId, getAllRequests, updateRequestStatus, loading } = useMaterialRequests();
+  const { toast } = useToast();
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [refreshKey, setRefreshKey] = useState(0); // 새로고침을 위한 키
+  const [displayCount, setDisplayCount] = useState(5); // 표시할 요청 수
 
   // 컴포넌트를 외부에서 제어할 수 있도록 ref로 노출
   React.useImperativeHandle(React.useRef(), () => ({
@@ -51,14 +58,43 @@ export function RequestStatusTracker() {
 
     console.log('요청 목록 로딩 시작:', {
       userRole: user.role,
-      userFranchise: user.franchise
+      userFranchise: user.franchise,
+      selectedBranch
     });
 
     try {
       let fetchedRequests: MaterialRequest[];
+      
       if (user.role === '본사 관리자') {
-        console.log('본사 관리자 - 전체 요청 조회');
-        fetchedRequests = await getAllRequests();
+        if (selectedBranch) {
+          console.log('본사 관리자 - 선택된 지점별 요청 조회:', selectedBranch);
+          // 선택된 지점의 요청만 조회
+          try {
+            const { getDocs, collection, query, where } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase');
+            
+            const branchesQuery = query(
+              collection(db, 'branches'),
+              where('name', '==', selectedBranch)
+            );
+            const branchesSnapshot = await getDocs(branchesQuery);
+            
+            if (!branchesSnapshot.empty) {
+              const branchId = branchesSnapshot.docs[0].id;
+              console.log('찾은 branchId:', branchId);
+              fetchedRequests = await getRequestsByBranchId(branchId);
+            } else {
+              console.log('지점을 찾을 수 없음, branchName으로 쿼리');
+              fetchedRequests = await getRequestsByBranch(selectedBranch);
+            }
+          } catch (error) {
+            console.error('branchId 조회 실패, branchName으로 대체:', error);
+            fetchedRequests = await getRequestsByBranch(selectedBranch);
+          }
+        } else {
+          console.log('본사 관리자 - 전체 요청 조회');
+          fetchedRequests = await getAllRequests();
+        }
       } else if (user.franchise) {
         console.log('지점 사용자 - 지점별 요청 조회:', user.franchise);
         // branchId로 직접 쿼리 (기존 인덱스 활용)
@@ -108,10 +144,25 @@ export function RequestStatusTracker() {
     } catch (error) {
       console.error('요청 목록 로딩 오류:', error);
     }
-  }, [user, getAllRequests, getRequestsByBranch]);
+  }, [user, getAllRequests, getRequestsByBranch, getRequestsByBranchId, selectedBranch]);
 
   useEffect(() => {
-    loadRequests();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (isMounted) {
+        await loadRequests();
+        if (isMounted) {
+          setDisplayCount(5); // 새로 로드할 때 표시 수 초기화
+        }
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [loadRequests, refreshKey]); // refreshKey가 변경되면 새로고침
 
 
@@ -366,7 +417,7 @@ export function RequestStatusTracker() {
             </div>
           ) : (
             <div className="space-y-3">
-              {requests.slice(0, 5).map((request) => {
+              {requests.slice(0, displayCount).map((request) => {
                 const comparison = compareRequestVsActual(request);
                 
                 return (
@@ -421,6 +472,89 @@ export function RequestStatusTracker() {
                             <Badge variant="destructive" className="text-xs">
                               긴급
                             </Badge>
+                          )}
+                          {/* 배송완료 버튼 - 배송중 상태일 때 표시 */}
+                          {request.status === 'shipping' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updateRequestStatus(request.id, 'delivered');
+                                  setRefreshKey(prev => prev + 1);
+                                  toast({
+                                    title: "배송 완료",
+                                    description: "배송이 완료 처리되었습니다."
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "오류",
+                                    description: "배송 완료 처리 중 오류가 발생했습니다."
+                                  });
+                                }
+                              }}
+                            >
+                              <Truck className="h-3 w-3 mr-1" />
+                              배송완료
+                            </Button>
+                          )}
+                          
+                          {/* 입고완료 버튼 - 배송완료 상태일 때 표시 */}
+                          {request.status === 'delivered' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updateRequestStatus(request.id, 'completed');
+                                  setRefreshKey(prev => prev + 1);
+                                  toast({
+                                    title: "입고 완료",
+                                    description: "자재 입고가 완료 처리되었습니다."
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "오류",
+                                    description: "입고 완료 처리 중 오류가 발생했습니다."
+                                  });
+                                }
+                              }}
+                            >
+                              <Package className="h-3 w-3 mr-1" />
+                              입고완료
+                            </Button>
+                          )}
+                          
+                          {/* 완료 버튼 - 요청됨 상태일 때 표시 (기존) */}
+                          {request.status === 'submitted' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await updateRequestStatus(request.id, 'completed');
+                                  setRefreshKey(prev => prev + 1);
+                                  toast({
+                                    title: "요청 완료",
+                                    description: "자재 요청이 완료 처리되었습니다."
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    variant: "destructive",
+                                    title: "오류",
+                                    description: "완료 처리 중 오류가 발생했습니다."
+                                  });
+                                }
+                              }}
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              완료
+                            </Button>
                           )}
                           {expandedRequest === request.id ? (
                             <ChevronUp className="h-4 w-4" />
@@ -595,10 +729,14 @@ export function RequestStatusTracker() {
                 );
               })}
 
-              {requests.length > 5 && (
+              {requests.length > displayCount && (
                 <div className="text-center pt-2">
-                  <Button variant="ghost" size="sm" onClick={loadRequests}>
-                    더 보기 ({requests.length - 5}개 더)
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setDisplayCount(prev => prev + 5)}
+                  >
+                    더 보기 ({requests.length - displayCount}개 더)
                   </Button>
                 </div>
               )}

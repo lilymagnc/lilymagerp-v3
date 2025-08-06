@@ -87,7 +87,7 @@ export default function RecipientsPage() {
       />
 
       {/* 통계 카드 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">총 수령자</CardTitle>
@@ -149,7 +149,7 @@ export default function RecipientsPage() {
           )}
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
             <div>
               <Label htmlFor="search">검색</Label>
               <div className="relative">
@@ -281,7 +281,7 @@ export default function RecipientsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 xl:grid-cols-2">
           {/* 지역별 통계 */}
           <Card>
             <CardHeader>

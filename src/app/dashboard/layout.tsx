@@ -222,7 +222,7 @@ export default function DashboardLayout({
         </Sidebar>
         <main className="flex-1 print:flex-grow-0 print:w-full print:max-w-full print:p-0 print:m-0">
              <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
-                <SidebarTrigger className="md:hidden" />
+                <SidebarTrigger className="xl:hidden" />
                 <div className="w-full flex-1">
                     {/* Header content can go here if needed */}
                 </div>

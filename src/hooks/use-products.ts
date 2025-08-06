@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc, getDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { ProductFormValues } from '@/app/dashboard/products/components/product-form';
@@ -297,8 +297,49 @@ export function useProducts() {
 
   // 기존 상품들에 ID 필드를 추가하는 마이그레이션 함수
   // migrateProductIds 함수 제거
-  // const migrateProductIds = async () => {
-  // } // 이 함수 전체 삭제
+  // 재고 업데이트 함수 (자재와 동일한 방식)
+  const updateStock = async (
+    items: { id: string; name: string; quantity: number, price?: number, supplier?: string }[],
+    type: 'in' | 'out',
+    branchName: string,
+    operator: string
+  ) => {
+    for (const item of items) {
+      try {
+        await runTransaction(db, async (transaction) => {
+          const productQuery = query(collection(db, "products"), where("id", "==", item.id), where("branch", "==", branchName));
+          const productSnapshot = await getDocs(productQuery);
+
+          if (productSnapshot.empty) {
+            throw new Error(`상품을 찾을 수 없습니다: ${item.name} (${branchName})`);
+          }
+          
+          const productDocRef = productSnapshot.docs[0].ref;
+          const productDoc = await transaction.get(productDocRef);
+
+          if(!productDoc.exists()) {
+            throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name} (${branchName})`);
+          }
+
+          const productData = productDoc.data();
+          const currentStock = productData?.stock || 0;
+          const change = type === 'in' ? item.quantity : -item.quantity;
+          const newStock = currentStock + change;
+
+          const updatePayload: {stock: number, price?: number, supplier?: string} = { stock: newStock };
+          if (type === 'in') {
+            if (item.price !== undefined) updatePayload.price = item.price;
+            if (item.supplier !== undefined) updatePayload.supplier = item.supplier;
+          }
+
+          transaction.update(productDocRef, updatePayload);
+        });
+      } catch (error) {
+        console.error(`상품 재고 업데이트 오류 (${item.name}):`, error);
+        throw error;
+      }
+    }
+  };
 
   return { 
     products, 
@@ -308,7 +349,7 @@ export function useProducts() {
     deleteProduct, 
     bulkAddProducts,
     manualUpdateStock,
+    updateStock,
     fetchProducts,
-    // migrateProductIds 제거
   };
 }

@@ -329,7 +329,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-8">
         <PageHeader title="대시보드" description="시스템의 현재 상태를 한 눈에 파악하세요." />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
@@ -354,7 +354,7 @@ export default function DashboardPage() {
       />
       
       {/* 상단 통계 카드 */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">총 매출</CardTitle>

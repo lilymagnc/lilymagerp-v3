@@ -88,7 +88,7 @@ export default function ReportsPage() {
       </Card>
 
       {/* 빠른 통계 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">

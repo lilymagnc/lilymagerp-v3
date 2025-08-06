@@ -8,6 +8,7 @@ import {
   doc, 
   getDoc, 
   updateDoc, 
+  deleteDoc,
   query, 
   where, 
   orderBy, 
@@ -21,7 +22,7 @@ import type {
   CreateMaterialRequestData,
   RequestStatus
 } from '@/types/material-request';
-import { useSimpleExpenses } from './use-simple-expenses';
+
 
 export function useMaterialRequests() {
   const [loading, setLoading] = useState(false);
@@ -34,7 +35,6 @@ export function useMaterialRequests() {
     averageProcessingTime: 0
   });
   const { toast } = useToast();
-  const { addMaterialRequestExpense } = useSimpleExpenses();
 
   // ID로 특정 요청 조회
   const getRequestById = useCallback(async (requestId: string): Promise<MaterialRequest | null> => {
@@ -627,11 +627,8 @@ export function useMaterialRequests() {
         updatedAt: serverTimestamp()
       });
 
-      // 간편지출에 자동 등록
-      await addMaterialRequestExpense({
-        ...requestData,
-        id: requestId
-      }, actualPurchaseInfo);
+      // 간편지출 자동 등록은 제거 (순환 참조 방지)
+      // 필요시 별도 프로세스에서 처리
 
     } catch (error) {
       console.error('구매 완료 처리 오류:', error);
@@ -639,7 +636,51 @@ export function useMaterialRequests() {
     } finally {
       setLoading(false);
     }
-  }, [addMaterialRequestExpense]);
+  }, []);
+
+  // 자재 요청 완료 처리 (간편지출에서 호출)
+  const completeRequestFromExpense = useCallback(async (
+    requestId: string,
+    actualItems: { id: string; name: string; quantity: number; unitPrice?: number }[]
+  ): Promise<void> => {
+    try {
+      await updateDoc(doc(db, 'materialRequests', requestId), {
+        status: 'completed',
+        actualDelivery: {
+          deliveredAt: serverTimestamp(),
+          items: actualItems,
+          completedBy: 'expense_system'
+        },
+        updatedAt: serverTimestamp()
+      });
+
+      toast({
+        title: "자재 요청 완료",
+        description: "간편지출 입력으로 자재 요청이 자동 완료되었습니다."
+      });
+    } catch (error) {
+      console.error('자재 요청 완료 처리 오류:', error);
+    }
+  }, [toast]);
+
+  // 요청 삭제
+  const deleteRequest = useCallback(async (requestId: string): Promise<void> => {
+    setLoading(true);
+    try {
+      const docRef = doc(db, 'materialRequests', requestId);
+      await deleteDoc(docRef);
+      
+      toast({
+        title: "요청 삭제 완료",
+        description: "자재 요청이 성공적으로 삭제되었습니다."
+      });
+    } catch (error) {
+      console.error('요청 삭제 오류:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
   return {
     loading,
@@ -654,6 +695,8 @@ export function useMaterialRequests() {
     saveActualPurchase,
     createPurchaseBatch,
     getRequestById,
-    completePurchase
+    completePurchase,
+    completeRequestFromExpense,
+    deleteRequest
   };
 }

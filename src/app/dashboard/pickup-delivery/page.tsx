@@ -242,7 +242,7 @@ export default function PickupDeliveryPage() {
       </Card>
 
       {/* 통계 카드 */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">픽업 대기</CardTitle>

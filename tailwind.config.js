@@ -7,6 +7,13 @@ module.exports = {
         './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     ],
     theme: {
+        screens: {
+            'sm': '640px',
+            'md': '768px',
+            'lg': '1024px',
+            'xl': '1200px',  // 태블릿도 모바일로 처리
+            '2xl': '1536px',
+        },
         extend: {
             fontFamily: {
                 body: ['Noto Sans KR', 'sans-serif'],

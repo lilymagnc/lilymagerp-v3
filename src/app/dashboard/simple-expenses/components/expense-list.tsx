@@ -470,7 +470,7 @@ export function ExpenseList({
         </CardHeader>
       <CardContent className="space-y-4">
         {/* 필터 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label>검색</Label>
             <div className="flex gap-2">

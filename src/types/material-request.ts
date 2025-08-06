@@ -1,14 +1,12 @@
 import { Timestamp } from 'firebase/firestore';
 
-// 요청 상태 enum
+// 요청 상태 enum (배송 단계 포함)
 export type RequestStatus = 
-  | 'submitted'    // 제출됨
-  | 'reviewing'    // 검토중
-  | 'purchasing'   // 구매중
+  | 'submitted'    // 요청됨
   | 'purchased'    // 구매완료
   | 'shipping'     // 배송중
   | 'delivered'    // 배송완료
-  | 'completed';   // 완료
+  | 'completed';   // 입고완료
 
 // 긴급도 타입
 export type UrgencyLevel = 'normal' | 'urgent';
@@ -204,13 +202,11 @@ export interface ActualPurchaseInputData {
 
 // 상태 라벨 매핑
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
-  submitted: '제출됨',
-  reviewing: '검토중',
-  purchasing: '구매중',
+  submitted: '요청됨',
   purchased: '구매완료',
   shipping: '배송중',
   delivered: '배송완료',
-  completed: '완료'
+  completed: '입고완료'
 };
 
 // 긴급도 라벨 매핑

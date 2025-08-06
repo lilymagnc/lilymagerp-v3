@@ -11,14 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { 
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -30,10 +30,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { 
-  Plus, 
-  Save, 
-  RotateCcw, 
+import {
+  Plus,
+  Save,
+  RotateCcw,
   Upload,
   Check,
   ChevronsUpDown,
@@ -44,9 +44,11 @@ import {
 import { useSimpleExpenses } from '@/hooks/use-simple-expenses';
 import { usePartners } from '@/hooks/use-partners';
 import { useAuth } from '@/hooks/use-auth';
+import { useMaterials } from '@/hooks/use-materials';
+import { useProducts } from '@/hooks/use-products';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { 
+import {
   SimpleExpenseCategory,
   MaterialSubCategory,
   FixedCostSubCategory,
@@ -80,6 +82,15 @@ const expenseItemSchema = z.object({
   amount: z.number().min(1, '금액을 입력해주세요')
 });
 
+// 재고 업데이트 아이템 스키마
+const inventoryUpdateSchema = z.object({
+  type: z.enum(['material', 'product']),
+  id: z.string().min(1, 'ID를 선택해주세요'),
+  name: z.string().min(1, '이름을 입력해주세요'),
+  quantity: z.number().min(1, '수량을 입력해주세요'),
+  unitPrice: z.number().min(0, '단가를 입력해주세요').optional()
+});
+
 // 전체 폼 스키마 수정 - 전체 분류 추가
 const expenseFormSchema = z.object({
   date: z.string().min(1, '날짜를 선택해주세요'),
@@ -87,7 +98,9 @@ const expenseFormSchema = z.object({
   category: z.nativeEnum(SimpleExpenseCategory),
   subCategory: z.string().optional(),
   items: z.array(expenseItemSchema).min(1, '최소 1개의 품목을 입력해주세요'),
-  receiptFile: z.any().optional()
+  receiptFile: z.any().optional(),
+  inventoryUpdates: z.array(inventoryUpdateSchema).optional(),
+  relatedRequestId: z.string().optional()
 });
 
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
@@ -100,15 +113,15 @@ interface ExpenseInputFormProps {
   selectedBranchName?: string;
 }
 
-export function ExpenseInputForm({ 
-  onSuccess, 
-  initialData, 
+export function ExpenseInputForm({
+  onSuccess,
+  initialData,
   continueMode = false,
   selectedBranchId,
   selectedBranchName
 }: ExpenseInputFormProps) {
   console.log('Component rendering, initialData:', initialData);
-  
+
   const isMountedRef = useRef(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [supplierOpen, setSupplierOpen] = useState(false);
@@ -119,7 +132,7 @@ export function ExpenseInputForm({
   const [isExcelUploading, setIsExcelUploading] = useState(false);
   const [uploadMode, setUploadMode] = useState<'manual' | 'excel'>('manual');
   const [duplicateData, setDuplicateData] = useState<any[]>([]);
-  
+
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
@@ -133,16 +146,20 @@ export function ExpenseInputForm({
         unitPrice: 0,
         amount: 0
       }],
-      receiptFile: undefined
+      receiptFile: undefined,
+      inventoryUpdates: initialData?.inventoryUpdates || [],
+      relatedRequestId: initialData?.relatedRequestId || ''
     }
   });
-  
+
   console.log('Form initialized:', form);
-  
+
   const { addExpense, fetchExpenses } = useSimpleExpenses();
   const { partners } = usePartners();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { materials } = useMaterials();
+  const { products } = useProducts();
 
   // 중복 데이터 체크 함수
   const checkDuplicateData = useCallback(async (processedData: any[]) => {
@@ -150,25 +167,25 @@ export function ExpenseInputForm({
       // 현재 지점의 기존 지출 데이터를 직접 Firestore에서 가져오기
       const { collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
-      
+
       const q = query(
         collection(db, 'simpleExpenses'),
         where('branchId', '==', selectedBranchId || ''),
         orderBy('date', 'desc')
       );
-      
+
       const snapshot = await getDocs(q);
       const existingExpenses = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      
+
       const duplicates: any[] = [];
       const uniqueData: any[] = [];
 
       for (const item of processedData) {
         const purchaseDateStr = item.purchaseDate.toISOString().split('T')[0];
-        
+
         // 중복 체크: 같은 날짜, 같은 구매처, 같은 품목명
         const isDuplicate = existingExpenses.some((existing: any) => {
           if (!existing.date) return false;
@@ -202,10 +219,19 @@ export function ExpenseInputForm({
     name: "items"
   });
 
+  const {
+    fields: inventoryFields,
+    append: appendInventory,
+    remove: removeInventory
+  } = useFieldArray({
+    control: form.control,
+    name: "inventoryUpdates"
+  });
+
   // 컴포넌트 언마운트 시 cleanup
   useEffect(() => {
     isMountedRef.current = true;
-    
+
     return () => {
       isMountedRef.current = false;
       // 모든 상태를 즉시 초기화
@@ -228,12 +254,12 @@ export function ExpenseInputForm({
   // 품목 추가
   const addItem = useCallback(() => {
     if (isMountedRef.current) {
-    append({
-      description: '',
+      append({
+        description: '',
         quantity: 1,
         unitPrice: 0,
-      amount: 0
-    });
+        amount: 0
+      });
     }
   }, [append]);
 
@@ -244,15 +270,15 @@ export function ExpenseInputForm({
 
   // 카테고리별 세부 분류 옵션
   const getSubCategoryOptions = useCallback((category: SimpleExpenseCategory) => {
-  switch (category) {
-  case SimpleExpenseCategory.MATERIAL:
-  return Object.entries(MATERIAL_SUB_CATEGORY_LABELS);
-  case SimpleExpenseCategory.FIXED_COST:
-  return Object.entries(FIXED_COST_SUB_CATEGORY_LABELS);
-  case SimpleExpenseCategory.UTILITY:
-  return Object.entries(UTILITY_SUB_CATEGORY_LABELS);
-  case SimpleExpenseCategory.MEAL:
-  return Object.entries(MEAL_SUB_CATEGORY_LABELS);
+    switch (category) {
+      case SimpleExpenseCategory.MATERIAL:
+        return Object.entries(MATERIAL_SUB_CATEGORY_LABELS);
+      case SimpleExpenseCategory.FIXED_COST:
+        return Object.entries(FIXED_COST_SUB_CATEGORY_LABELS);
+      case SimpleExpenseCategory.UTILITY:
+        return Object.entries(UTILITY_SUB_CATEGORY_LABELS);
+      case SimpleExpenseCategory.MEAL:
+        return Object.entries(MEAL_SUB_CATEGORY_LABELS);
       case SimpleExpenseCategory.TRANSPORT:
         return Object.entries(TRANSPORT_SUB_CATEGORY_LABELS);
       case SimpleExpenseCategory.OFFICE:
@@ -263,9 +289,9 @@ export function ExpenseInputForm({
         return Object.entries(MAINTENANCE_SUB_CATEGORY_LABELS);
       case SimpleExpenseCategory.INSURANCE:
         return Object.entries(INSURANCE_SUB_CATEGORY_LABELS);
-  default:
-  return [];
-  }
+      default:
+        return [];
+    }
   }, []);
 
   // 구매처 검색 - 거래처관리에서 가져온 데이터 사용
@@ -278,7 +304,7 @@ export function ExpenseInputForm({
   // Popover 상태 변경 핸들러 - 더 안전한 방식으로 개선
   const handlePopoverOpenChange = useCallback((open: boolean) => {
     if (!isMountedRef.current) return;
-    
+
     // 상태 변경을 즉시 수행하되, DOM 조작과 분리
     if (open) {
       safeSetState(setSupplierOpen, true);
@@ -297,11 +323,11 @@ export function ExpenseInputForm({
   // 구매처 선택 핸들러 개선
   const handleSupplierSelect = useCallback((supplierName: string) => {
     if (!isMountedRef.current) return;
-    
+
     console.log('Selecting supplier:', supplierName);
     // 즉시 폼 값 설정
     form.setValue('supplier', supplierName);
-    
+
     // 상태 변경을 지연시켜 DOM 조작 충돌 방지
     setTimeout(() => {
       if (isMountedRef.current) {
@@ -316,7 +342,7 @@ export function ExpenseInputForm({
   // 직접 입력 모드 활성화 개선
   const handleDirectInput = useCallback(() => {
     if (!isMountedRef.current) return;
-    
+
     setTimeout(() => {
       if (isMountedRef.current) {
         safeSetState(setIsDirectInput, true);
@@ -338,11 +364,11 @@ export function ExpenseInputForm({
   // 파일 선택
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     if (isMountedRef.current) {
-    const file = event.target.files?.[0];
-    if (file) {
+      const file = event.target.files?.[0];
+      if (file) {
         safeSetState(setSelectedFile, file);
-      form.setValue('receiptFile', file);
-    }
+        form.setValue('receiptFile', file);
+      }
     }
   }, [form, safeSetState]);
 
@@ -356,7 +382,7 @@ export function ExpenseInputForm({
   // 엑셀 파일 처리
   const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     if (!isMountedRef.current) return;
-    
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -382,7 +408,7 @@ export function ExpenseInputForm({
         const headers = jsonData[0] as string[];
         const requiredHeaders = ['날짜', '구매처', '분류', '세부분류', '품목명', '수량', '단가', '금액'];
         const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
-        
+
         if (missingHeaders.length > 0) {
           toast({
             title: "오류",
@@ -403,7 +429,7 @@ export function ExpenseInputForm({
             headers.forEach((header, colIndex) => {
               rowData[header] = row[colIndex] || '';
             });
-            
+
             // 데이터 검증
             if (!rowData['날짜'] || !rowData['구매처'] || !rowData['분류'] || !rowData['품목명']) {
               throw new Error(`행 ${index + 2}: 필수 데이터가 누락되었습니다.`);
@@ -423,7 +449,7 @@ export function ExpenseInputForm({
                 // 문자열로 저장된 경우
                 purchaseDate = new Date(rowData['날짜']);
               }
-              
+
               // 날짜 유효성 검사
               if (isNaN(purchaseDate.getTime())) {
                 throw new Error(`행 ${index + 2}: 유효하지 않은 날짜 형식입니다: ${rowData['날짜']}`);
@@ -436,7 +462,7 @@ export function ExpenseInputForm({
             const categoryKey = Object.keys(SIMPLE_EXPENSE_CATEGORY_LABELS).find(
               key => SIMPLE_EXPENSE_CATEGORY_LABELS[key as SimpleExpenseCategory] === rowData['분류']
             );
-            
+
             if (!categoryKey) {
               throw new Error(`행 ${index + 2}: 유효하지 않은 분류입니다: ${rowData['분류']}`);
             }
@@ -454,15 +480,15 @@ export function ExpenseInputForm({
 
         // 중복 데이터 체크
         const { duplicates, uniqueData } = await checkDuplicateData(processedData);
-        
+
         safeSetState(setExcelData, uniqueData);
         safeSetState(setDuplicateData, duplicates);
-        
+
         let message = `${uniqueData.length}개의 지출 데이터가 로드되었습니다.`;
         if (duplicates.length > 0) {
           message += ` (중복 데이터 ${duplicates.length}개 제외)`;
         }
-        
+
         toast({
           title: "성공",
           description: message,
@@ -482,7 +508,7 @@ export function ExpenseInputForm({
   // 엑셀 데이터 일괄 등록
   const handleBulkUpload = useCallback(async () => {
     if (!isMountedRef.current || excelData.length === 0) return;
-    
+
     try {
       safeSetState(setIsExcelUploading, true);
       let successCount = 0;
@@ -490,7 +516,7 @@ export function ExpenseInputForm({
 
       for (const item of excelData) {
         if (!isMountedRef.current) break;
-        
+
         try {
           const expenseData = {
             date: Timestamp.fromDate(item.purchaseDate), // 파싱된 날짜 객체 사용
@@ -503,7 +529,7 @@ export function ExpenseInputForm({
             amount: item.amount,
             receiptFile: undefined,
           };
-          
+
           await addExpense(expenseData, selectedBranchId || '', selectedBranchName || '');
           successCount++;
         } catch (error) {
@@ -511,13 +537,13 @@ export function ExpenseInputForm({
           errorCount++;
         }
       }
-      
+
       if (isMountedRef.current) {
         toast({
           title: "완료",
           description: `성공: ${successCount}개, 실패: ${errorCount}개`,
         });
-        
+
         if (successCount > 0) {
           safeSetState(setExcelData, []);
           safeSetState(setUploadMode, 'manual');
@@ -552,12 +578,12 @@ export function ExpenseInputForm({
     const worksheet = XLSX.utils.aoa_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, '간편지출템플릿');
-    
+
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     });
-    
+
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -571,14 +597,14 @@ export function ExpenseInputForm({
   // 폼 제출
   const onSubmit = useCallback(async (values: ExpenseFormValues) => {
     if (!isMountedRef.current) return;
-    
+
     try {
       safeSetState(setIsSubmitting, true);
 
       // 각 품목을 개별 지출로 생성
       for (const item of values.items) {
         if (!isMountedRef.current) break;
-        
+
         const expenseData = {
           date: Timestamp.fromDate(new Date(values.date)),
           supplier: values.supplier,
@@ -590,17 +616,17 @@ export function ExpenseInputForm({
           amount: item.amount,
           receiptFile: selectedFile,
         };
-        
+
         await addExpense(expenseData, selectedBranchId || '', selectedBranchName || '');
       }
-      
+
       if (isMountedRef.current) {
-      toast({
-        title: "성공",
-        description: `${values.items.length}개 품목이 등록되었습니다.`,
-      });
-      
-      if (!continueMode) {
+        toast({
+          title: "성공",
+          description: `${values.items.length}개 품목이 등록되었습니다.`,
+        });
+
+        if (!continueMode) {
           // 폼 초기화
           form.reset({
             date: new Date().toISOString().split('T')[0],
@@ -619,42 +645,42 @@ export function ExpenseInputForm({
           safeSetState(setSupplierSearchValue, '');
           safeSetState(setSupplierOpen, false);
           safeSetState(setIsDirectInput, false);
-      }
-      
-      onSuccess?.();
+        }
+
+        onSuccess?.();
       }
     } catch (error) {
       console.error('지출 등록 오류:', error);
       if (isMountedRef.current) {
-      toast({
-        title: "오류",
-        description: "지출 등록 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
+        toast({
+          title: "오류",
+          description: "지출 등록 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
       }
     } finally {
       if (isMountedRef.current) {
         safeSetState(setIsSubmitting, false);
-    }
+      }
     }
   }, [addExpense, selectedFile, selectedBranchId, selectedBranchName, continueMode, onSuccess, toast, form, safeSetState]);
 
   // 폼 초기화
   const handleReset = useCallback(() => {
     if (isMountedRef.current) {
-    form.reset({
-      date: new Date().toISOString().split('T')[0],
-      supplier: '',
+      form.reset({
+        date: new Date().toISOString().split('T')[0],
+        supplier: '',
         category: SimpleExpenseCategory.OTHER,
         subCategory: '',
         items: [{
-        description: '',
+          description: '',
           quantity: 1,
           unitPrice: 0,
-        amount: 0
-      }],
-      receiptFile: undefined
-    });
+          amount: 0
+        }],
+        receiptFile: undefined
+      });
       safeSetState(setSelectedFile, null);
       safeSetState(setSupplierSearchValue, '');
       safeSetState(setSupplierOpen, false);
@@ -664,7 +690,7 @@ export function ExpenseInputForm({
   }, [form, safeSetState]);
 
   // 검색된 거래처 필터링
-  const filteredPartners = partners.filter(partner => 
+  const filteredPartners = partners.filter(partner =>
     partner.name.toLowerCase().includes(supplierSearchValue.toLowerCase()) ||
     partner.type.toLowerCase().includes(supplierSearchValue.toLowerCase())
   );
@@ -679,7 +705,7 @@ export function ExpenseInputForm({
         <p className="text-sm text-muted-foreground">
           카테고리를 선택하고 해당 카테고리의 여러 품목을 한 번에 입력할 수 있습니다.
         </p>
-        
+
         {/* 모드 선택 */}
         <div className="flex items-center space-x-4 mt-4">
           <Button
@@ -702,31 +728,31 @@ export function ExpenseInputForm({
       <CardContent>
         {uploadMode === 'manual' ? (
           <FormProvider {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* 기존 수동 입력 폼 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 날짜 */}
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>날짜</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {/* 날짜 */}
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>날짜</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {/* 구매처 */}
-              <FormField
-                control={form.control}
-                name="supplier"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>구매처</FormLabel>
+                {/* 구매처 */}
+                <FormField
+                  control={form.control}
+                  name="supplier"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>구매처</FormLabel>
                       {isDirectInput ? (
                         <div className="space-y-2">
                           <div className="flex gap-2">
@@ -769,22 +795,22 @@ export function ExpenseInputForm({
                         </div>
                       ) : (
                         <div className="relative">
-                          <Popover 
+                          <Popover
                             key={`supplier-popover-${supplierOpen}`}
-                            open={supplierOpen} 
+                            open={supplierOpen}
                             onOpenChange={handlePopoverOpenChange}
                           >
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={supplierOpen}
-                            className={cn(
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={supplierOpen}
+                                  className={cn(
                                     "justify-between w-full",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
                                   <div className="flex items-center gap-2">
                                     <Building2 className="h-4 w-4" />
                                     {field.value ? (
@@ -798,44 +824,44 @@ export function ExpenseInputForm({
                                       "구매처를 선택하거나 입력하세요"
                                     )}
                                   </div>
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                            <PopoverContent 
-                              className="w-[400px] p-0" 
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              className="w-[400px] p-0"
                               onOpenAutoFocus={(e) => e.preventDefault()}
                               onCloseAutoFocus={(e) => e.preventDefault()}
                               sideOffset={4}
                             >
-                        <Command>
+                              <Command>
                                 <div className="flex items-center border-b px-3 py-2">
                                   <Building2 className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                          <CommandInput
+                                  <CommandInput
                                     placeholder="거래처명 또는 유형으로 검색..."
-                            value={supplierSearchValue}
-                            onValueChange={handleSupplierSearch}
+                                    value={supplierSearchValue}
+                                    onValueChange={handleSupplierSearch}
                                     className="border-0 focus:ring-0"
-                          />
+                                  />
                                 </div>
-                          <CommandEmpty>
+                                <CommandEmpty>
                                   <div className="p-4 text-center">
                                     <Building2 className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                              <p className="text-sm text-muted-foreground mb-2">
-                                "{supplierSearchValue}" 검색 결과가 없습니다.
-                              </p>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
+                                    <p className="text-sm text-muted-foreground mb-2">
+                                      "{supplierSearchValue}" 검색 결과가 없습니다.
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
                                       onClick={handleDirectInput}
-                                className="w-full"
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
+                                      className="w-full"
+                                    >
+                                      <Plus className="h-4 w-4 mr-2" />
                                       새 구매처로 직접 입력
-                              </Button>
-                            </div>
-                          </CommandEmpty>
+                                    </Button>
+                                  </div>
+                                </CommandEmpty>
                                 <CommandGroup className="max-h-[300px] overflow-auto">
                                   {filteredPartners.length > 0 && (
                                     <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
@@ -845,7 +871,7 @@ export function ExpenseInputForm({
                                   {filteredPartners.map((partner) => (
                                     <div
                                       key={partner.id}
-                                  className={cn(
+                                      className={cn(
                                         "flex items-center gap-3 p-3 cursor-pointer hover:bg-accent rounded-md transition-colors",
                                         field.value === partner.name && "bg-accent border border-primary/20"
                                       )}
@@ -856,7 +882,7 @@ export function ExpenseInputForm({
                                     >
                                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
                                         <Building2 className="h-4 w-4 text-primary" />
-                                </div>
+                                      </div>
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                           <span className="font-medium truncate">{partner.name}</span>
@@ -872,18 +898,18 @@ export function ExpenseInputForm({
                                         </div>
                                       </div>
                                     </div>
-                            ))}
-                          </CommandGroup>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                                  ))}
+                                </CommandGroup>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* 카테고리 선택 */}
               <div className="space-y-4">
@@ -893,7 +919,7 @@ export function ExpenseInputForm({
                     선택한 카테고리에 여러 품목을 추가할 수 있습니다.
                   </p>
                 </div>
-                
+
                 {/* 전체 분류 */}
                 <FormField
                   control={form.control}
@@ -901,7 +927,7 @@ export function ExpenseInputForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>분류</FormLabel>
-                      <Select 
+                      <Select
                         key={`category-select-${field.value}`}
                         onValueChange={(value) => {
                           if (isMountedRef.current) {
@@ -915,7 +941,7 @@ export function ExpenseInputForm({
                               }
                             }, 100);
                           }
-                        }} 
+                        }}
                         value={field.value}
                       >
                         <FormControl>
@@ -944,7 +970,7 @@ export function ExpenseInputForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>세부 분류</FormLabel>
-                        <Select 
+                        <Select
                           key={`subcategory-select-${field.value}`}
                           onValueChange={(value) => {
                             if (isMountedRef.current) {
@@ -958,7 +984,7 @@ export function ExpenseInputForm({
                                 }
                               }, 100);
                             }
-                          }} 
+                          }}
                           value={field.value}
                         >
                           <FormControl>
@@ -981,9 +1007,9 @@ export function ExpenseInputForm({
                 )}
               </div>
 
-            {/* 품목 목록 */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              {/* 품목 목록 */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-medium">
                       {SIMPLE_EXPENSE_CATEGORY_LABELS[form.watch('category')] || '카테고리'} 품목 ({fields.length}개)
@@ -992,43 +1018,43 @@ export function ExpenseInputForm({
                       같은 카테고리의 여러 품목을 추가할 수 있습니다.
                     </p>
                   </div>
-                <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  품목 추가
-                </Button>
-              </div>
+                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    품목 추가
+                  </Button>
+                </div>
 
-              {fields.map((field, index) => (
+                {fields.map((field, index) => (
                   <Card key={field.id} className="p-4 border-2 border-dashed border-gray-200">
-                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4">
                       <h4 className="font-medium text-blue-600">품목 {index + 1}</h4>
-                    {fields.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
+                      {fields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleRemoveItem(index)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    )}
-                  </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {/* 품목명 */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.description`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>품목명</FormLabel>
-                          <FormControl>
-                            <Input placeholder="구매한 품목명" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
                       )}
-                    />
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+                      {/* 품목명 */}
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.description`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>품목명</FormLabel>
+                            <FormControl>
+                              <Input placeholder="구매한 품목명" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       {/* 수량 */}
                       <FormField
@@ -1086,95 +1112,303 @@ export function ExpenseInputForm({
                       />
 
                       {/* 금액 (자동 계산) */}
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.amount`}
-                      render={({ field }) => (
-                        <FormItem>
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.amount`}
+                        render={({ field }) => (
+                          <FormItem>
                             <FormLabel>금액 (자동 계산)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="0"
-                              {...field}
+                            <FormControl>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                {...field}
                                 readOnly
                                 className="bg-gray-50"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* 총 금액 표시 */}
+              <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-blue-800">총 금액:</span>
+                  <span className="text-lg font-bold text-blue-600">
+                    {totalAmount.toLocaleString()}원
+                  </span>
+                </div>
+                <p className="text-sm text-blue-600 mt-1">
+                  {fields.length}개 품목이 {SIMPLE_EXPENSE_CATEGORY_LABELS[form.watch('category')] || '선택된 카테고리'}에 등록됩니다.
+                </p>
+              </div>
+
+              {/* 영수증 첨부 */}
+              <div className="space-y-2">
+                <Label htmlFor="receipt-upload">영수증 첨부 (선택사항)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="receipt-upload"
+                  />
+                  <Label
+                    htmlFor="receipt-upload"
+                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {selectedFile ? selectedFile.name : '영수증 선택'}
+                  </Label>
+                  {selectedFile && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        safeSetState(setSelectedFile, null);
+                        form.setValue('receiptFile', undefined);
+                      }}
+                    >
+                      제거
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* 자재요청 연동 섹션 */}
+              {selectedCategory === SimpleExpenseCategory.MATERIAL && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">자재요청 연동</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      이 구매가 특정 자재요청과 관련이 있다면 요청 ID를 입력하세요. 자동으로 완료 처리됩니다.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField
+                      control={form.control}
+                      name="relatedRequestId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>관련 자재요청 ID (선택사항)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="예: REQ-20241206-123456"
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
+                  </CardContent>
                 </Card>
-              ))}
-            </div>
+              )}
 
-            {/* 총 금액 표시 */}
-              <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-              <div className="flex justify-between items-center">
-                  <span className="font-medium text-blue-800">총 금액:</span>
-                <span className="text-lg font-bold text-blue-600">
-                  {totalAmount.toLocaleString()}원
-                </span>
-              </div>
-                <p className="text-sm text-blue-600 mt-1">
-                  {fields.length}개 품목이 {SIMPLE_EXPENSE_CATEGORY_LABELS[form.watch('category')] || '선택된 카테고리'}에 등록됩니다.
-                </p>
-            </div>
+              {/* 재고 업데이트 섹션 */}
+              {selectedCategory === SimpleExpenseCategory.MATERIAL && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">재고 업데이트</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      구매한 자재의 재고를 자동으로 업데이트할 수 있습니다.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="mb-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          // 품목명 기반 자동 매칭
+                          const items = form.getValues('items');
+                          const suggestions: any[] = [];
 
-            {/* 영수증 첨부 */}
-            <div className="space-y-2">
-                <Label htmlFor="receipt-upload">영수증 첨부 (선택사항)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                  id="receipt-upload"
-                />
-                <Label
-                  htmlFor="receipt-upload"
-                  className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
-                >
-                  <Upload className="h-4 w-4" />
-                  {selectedFile ? selectedFile.name : '영수증 선택'}
-                </Label>
-                {selectedFile && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        safeSetState(setSelectedFile, null);
-                      form.setValue('receiptFile', undefined);
-                    }}
-                  >
-                    제거
+                          items.forEach(item => {
+                            // 자재에서 매칭 찾기
+                            const matchedMaterial = materials.find(m =>
+                              m.branch === selectedBranchName &&
+                              m.name.toLowerCase().includes(item.description.toLowerCase())
+                            );
+
+                            if (matchedMaterial) {
+                              suggestions.push({
+                                type: 'material',
+                                id: matchedMaterial.id,
+                                name: matchedMaterial.name,
+                                quantity: item.quantity,
+                                unitPrice: item.unitPrice
+                              });
+                            } else {
+                              // 상품에서 매칭 찾기
+                              const matchedProduct = products.find(p =>
+                                p.branch === selectedBranchName &&
+                                p.name.toLowerCase().includes(item.description.toLowerCase())
+                              );
+
+                              if (matchedProduct) {
+                                suggestions.push({
+                                  type: 'product',
+                                  id: matchedProduct.id,
+                                  name: matchedProduct.name,
+                                  quantity: item.quantity,
+                                  unitPrice: item.unitPrice
+                                });
+                              }
+                            }
+                          });
+
+                          // 기존 재고 업데이트 항목 제거하고 새로 추가
+                          form.setValue('inventoryUpdates', suggestions);
+
+                          toast({
+                            title: "자동 매칭 완료",
+                            description: `${suggestions.length}개 품목이 매칭되었습니다.`
+                          });
+                        }}
+                      >
+                        품목명으로 자동 매칭
+                      </Button>
+                    </div>
+
+                    {inventoryFields.map((field, index) => (
+                      <div key={field.id} className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-2">
+                          <Label>유형</Label>
+                          <FormField
+                            control={form.control}
+                            name={`inventoryUpdates.${index}.type`}
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="선택" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="material">자재</SelectItem>
+                                  <SelectItem value="product">상품</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <Label>품목</Label>
+                          <FormField
+                            control={form.control}
+                            name={`inventoryUpdates.${index}.id`}
+                            render={({ field }) => (
+                              <Select onValueChange={(value) => {
+                                field.onChange(value);
+                                const selectedItem = [...materials, ...products].find(item => item.id === value);
+                                if (selectedItem) {
+                                  form.setValue(`inventoryUpdates.${index}.name`, selectedItem.name);
+                                }
+                              }}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="품목 선택" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {materials.filter(m => m.branch === selectedBranchName).map(material => (
+                                    <SelectItem key={material.id} value={material.id}>
+                                      {material.name}
+                                    </SelectItem>
+                                  ))}
+                                  {products.filter(p => p.branch === selectedBranchName).map(product => (
+                                    <SelectItem key={product.id} value={product.id}>
+                                      {product.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>수량</Label>
+                          <FormField
+                            control={form.control}
+                            name={`inventoryUpdates.${index}.quantity`}
+                            render={({ field }) => (
+                              <Input
+                                type="number"
+                                min="1"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>단가</Label>
+                          <FormField
+                            control={form.control}
+                            name={`inventoryUpdates.${index}.unitPrice`}
+                            render={({ field }) => (
+                              <Input
+                                type="number"
+                                min="0"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeInventory(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => appendInventory({
+                        type: 'material',
+                        id: '',
+                        name: '',
+                        quantity: 1,
+                        unitPrice: 0
+                      })}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      재고 업데이트 항목 추가
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* 버튼 그룹 */}
+              <div className="flex gap-2 pt-4">
+                <Button type="submit" disabled={isSubmitting} className="flex-1">
+                  {isSubmitting ? (
+                    <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  {fields.length}개 품목 저장
+                </Button>
+                {continueMode && (
+                  <Button type="button" variant="outline" onClick={handleReset}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    초기화
                   </Button>
                 )}
               </div>
-            </div>
-
-            {/* 버튼 그룹 */}
-            <div className="flex gap-2 pt-4">
-              <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? (
-                  <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                  {fields.length}개 품목 저장
-              </Button>
-              {continueMode && (
-                <Button type="button" variant="outline" onClick={handleReset}>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  초기화
-                </Button>
-              )}
-            </div>
-          </form>
+            </form>
           </FormProvider>
         ) : (
           /* 엑셀 업로드 모드 */
@@ -1206,7 +1440,7 @@ export function ExpenseInputForm({
                     id="excel-upload"
                     disabled={isExcelUploading}
                   />
-                  <Button 
+                  <Button
                     onClick={() => document.getElementById('excel-upload')?.click()}
                     disabled={isExcelUploading}
                   >
@@ -1216,61 +1450,61 @@ export function ExpenseInputForm({
                 </div>
               </div>
 
-                             {excelData.length > 0 && (
-                 <div className="space-y-4">
-                   <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                     <h4 className="font-medium text-green-800 mb-2">업로드된 데이터</h4>
-                     <p className="text-sm text-green-600 mb-3">
-                       {excelData.length}개의 지출 데이터가 로드되었습니다.
-                     </p>
-                     <div className="max-h-48 overflow-y-auto space-y-2">
-                       {excelData.map((item, index) => (
-                         <div key={index} className="text-xs bg-white p-2 rounded border">
-                           <div className="flex justify-between items-center">
-                             <span className="font-medium">{item['날짜']}</span>
-                             <span className="text-green-600 font-bold">
-                               {item.amount.toLocaleString()}원
-                             </span>
-                           </div>
-                           <div className="text-gray-600">
-                             {item['구매처']} - {item['품목명']}
-                           </div>
-                         </div>
-                       ))}
-                     </div>
-                   </div>
+              {excelData.length > 0 && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-800 mb-2">업로드된 데이터</h4>
+                    <p className="text-sm text-green-600 mb-3">
+                      {excelData.length}개의 지출 데이터가 로드되었습니다.
+                    </p>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {excelData.map((item, index) => (
+                        <div key={index} className="text-xs bg-white p-2 rounded border">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{item['날짜']}</span>
+                            <span className="text-green-600 font-bold">
+                              {item.amount.toLocaleString()}원
+                            </span>
+                          </div>
+                          <div className="text-gray-600">
+                            {item['구매처']} - {item['품목명']}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-                   {/* 중복 데이터 표시 */}
-                   {duplicateData.length > 0 && (
-                     <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                       <h4 className="font-medium text-yellow-800 mb-2">중복 데이터 (제외됨)</h4>
-                       <p className="text-sm text-yellow-600 mb-3">
-                         다음 {duplicateData.length}개의 데이터는 기존 데이터와 중복되어 제외되었습니다.
-                       </p>
-                       <div className="max-h-48 overflow-y-auto space-y-2">
-                         {duplicateData.map((item, index) => (
-                           <div key={index} className="text-xs bg-white p-2 rounded border border-yellow-300">
-                             <div className="flex justify-between items-center">
-                               <span className="font-medium">{item['날짜']}</span>
-                               <span className="text-yellow-600 font-bold">
-                                 {item.amount.toLocaleString()}원
-                               </span>
-                             </div>
-                             <div className="text-gray-600">
-                               {item['구매처']} - {item['품목명']}
-                             </div>
-                             <div className="text-xs text-yellow-600 mt-1">
-                               ⚠️ {item.reason}
-                             </div>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   )}
+                  {/* 중복 데이터 표시 */}
+                  {duplicateData.length > 0 && (
+                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                      <h4 className="font-medium text-yellow-800 mb-2">중복 데이터 (제외됨)</h4>
+                      <p className="text-sm text-yellow-600 mb-3">
+                        다음 {duplicateData.length}개의 데이터는 기존 데이터와 중복되어 제외되었습니다.
+                      </p>
+                      <div className="max-h-48 overflow-y-auto space-y-2">
+                        {duplicateData.map((item, index) => (
+                          <div key={index} className="text-xs bg-white p-2 rounded border border-yellow-300">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{item['날짜']}</span>
+                              <span className="text-yellow-600 font-bold">
+                                {item.amount.toLocaleString()}원
+                              </span>
+                            </div>
+                            <div className="text-gray-600">
+                              {item['구매처']} - {item['품목명']}
+                            </div>
+                            <div className="text-xs text-yellow-600 mt-1">
+                              ⚠️ {item.reason}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex justify-center space-x-4">
-                    <Button 
-                      onClick={handleBulkUpload} 
+                    <Button
+                      onClick={handleBulkUpload}
                       disabled={isExcelUploading}
                       className="flex-1 max-w-xs"
                     >
@@ -1281,8 +1515,8 @@ export function ExpenseInputForm({
                       )}
                       {excelData.length}개 데이터 등록
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         safeSetState(setExcelData, []);
                         safeSetState(setUploadMode, 'manual');

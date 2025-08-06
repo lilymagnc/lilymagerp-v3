@@ -44,7 +44,10 @@ export function MaterialPivotTable({ requests }: MaterialPivotTableProps) {
       return `${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
     };
 
-    requests.forEach(req => {
+    // 구매 전 확인용이므로 배송 시작 이후 상태 제외 (shipping, delivered, completed 상태)
+    const activeRequests = requests.filter(req => !['shipping', 'delivered', 'completed'].includes(req.status));
+
+    activeRequests.forEach(req => {
       if (!req.createdAt) return;
       const requestDate = formatDate(req.createdAt);
       const columnKey = `${req.branchName} (${requestDate})`;

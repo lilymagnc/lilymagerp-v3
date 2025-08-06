@@ -19,6 +19,9 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useMaterials } from '@/hooks/use-materials';
+import { useProducts } from '@/hooks/use-products';
+
 import type { 
   SimpleExpense,
   CreateSimpleExpenseData,
@@ -38,6 +41,8 @@ export function useSimpleExpenses() {
   
   const { user } = useAuth();
   const { toast } = useToast();
+  const { updateStock: updateMaterialStock } = useMaterials();
+  const { updateStock: updateProductStock } = useProducts();
 
   // 지출 목록 조회
   const fetchExpenses = useCallback(async (filters?: {
@@ -134,15 +139,69 @@ export function useSimpleExpenses() {
         unitPrice: data.unitPrice || 0, // 단가 필드 추가
         branchId,
         branchName,
-        inputBy: user.uid,
-        inputByName: user.displayName || user.email || '',
-        receiptUrl,
-        receiptFileName,
+        inventoryUpdates: data.inventoryUpdates, // 재고 업데이트 정보 추가
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       };
 
       await addDoc(collection(db, 'simpleExpenses'), expenseData);
+
+      // 재고 업데이트 처리
+      if (data.inventoryUpdates && data.inventoryUpdates.length > 0) {
+        for (const item of data.inventoryUpdates) {
+          try {
+            if (item.type === 'material') {
+              await updateMaterialStock([{
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.unitPrice
+              }], 'in');
+            } else if (item.type === 'product') {
+              await updateProductStock([{
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.unitPrice
+              }], 'in');
+            }
+          } catch (stockError) {
+            console.error(`재고 업데이트 오류 (${item.name}):`, stockError);
+            // 재고 업데이트 실패해도 지출 등록은 성공으로 처리
+          }
+        }
+      }
+
+      // 관련 자재 요청 완료 처리
+      if (data.relatedRequestId) {
+        try {
+          const actualItems = data.inventoryUpdates?.map(item => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice
+          })) || [];
+          
+          // 직접 Firestore 업데이트로 순환 참조 방지
+          await updateDoc(doc(db, 'materialRequests', data.relatedRequestId), {
+            status: 'completed',
+            actualDelivery: {
+              deliveredAt: serverTimestamp(),
+              items: actualItems,
+              completedBy: 'expense_system'
+            },
+            updatedAt: serverTimestamp()
+          });
+
+          toast({
+            title: "자재 요청 완료",
+            description: "간편지출 입력으로 자재 요청이 자동 완료되었습니다."
+          });
+        } catch (requestError) {
+          console.error('자재 요청 완료 처리 오류:', requestError);
+          // 자재 요청 완료 실패해도 지출 등록은 성공으로 처리
+        }
+      }
 
       // 구매처 자동완성 데이터 업데이트
       await updateSupplierSuggestion(data.supplier, data.category);

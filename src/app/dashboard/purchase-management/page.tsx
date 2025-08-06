@@ -10,12 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PurchaseRequestDashboard } from './components/purchase-request-dashboard';
 import { PurchaseBatchList } from './components/purchase-batch-list';
 import { MaterialPivotTable } from './components/material-pivot-table';
+import { RequestDetailDialog } from './components/request-detail-dialog';
 import { useMaterialRequests } from '@/hooks/use-material-requests';
 import { useMaterials } from '@/hooks/use-materials';
 import type { MaterialRequest, RequestStatus, UrgencyLevel } from '@/types/material-request';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { Timestamp } from 'firebase/firestore';
+import { Trash2, Eye } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function PurchaseManagementPage() {
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
@@ -26,8 +29,10 @@ export default function PurchaseManagementPage() {
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyLevel | 'all'>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
   const [deliveryTabKey, setDeliveryTabKey] = useState(0); // 새로운 key state
+  const [selectedRequest, setSelectedRequest] = useState<MaterialRequest | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
 
-  const { getAllRequests, updateRequestStatus } = useMaterialRequests();
+  const { getAllRequests, updateRequestStatus, deleteRequest } = useMaterialRequests();
   const { updateStock } = useMaterials();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -54,6 +59,9 @@ export default function PurchaseManagementPage() {
   // 필터링 로직
   useEffect(() => {
     let filtered = requests;
+
+    // 입고완료된 요청은 구매관리에서 제외 (취합뷰에서 보이지 않음)
+    filtered = filtered.filter(request => request.status !== 'completed');
 
     // 검색어 필터
     if (searchTerm) {
@@ -183,18 +191,44 @@ export default function PurchaseManagementPage() {
     }
   };
 
+  // 요청 삭제 처리
+  const handleDeleteRequest = async (requestId: string) => {
+    try {
+      await deleteRequest(requestId);
+      toast({
+        title: "요청 삭제 완료",
+        description: "요청이 성공적으로 삭제되었습니다.",
+      });
+      await loadRequests(); // 목록 새로고침
+    } catch (error) {
+      console.error('요청 삭제 오류:', error);
+      toast({
+        variant: 'destructive',
+        title: "오류",
+        description: "요청 삭제 중 오류가 발생했습니다.",
+      });
+    }
+  };
+
+  // 요청 상세 보기
+  const handleViewRequestDetail = (request: MaterialRequest) => {
+    setSelectedRequest(request);
+    setDetailDialogOpen(true);
+  };
+
   // 고유 지점 목록 추출
   const uniqueBranches = Array.from(
     new Map(requests.map(request => [request.branchId, { id: request.branchId, name: request.branchName }])).values()
   );
 
-  // 통계 계산
+  // 통계 계산 (입고완료 제외)
+  const activeRequests = requests.filter(r => r.status !== 'completed');
   const stats = {
-    total: requests.length,
-    pending: requests.filter(r => ['submitted', 'reviewing'].includes(r.status)).length,
-    processing: requests.filter(r => ['purchasing', 'purchased', 'shipping'].includes(r.status)).length,
-    completed: requests.filter(r => r.status === 'completed').length,
-    urgent: requests.filter(r => r.requestedItems.some(item => item.urgency === 'urgent')).length
+    total: activeRequests.length,
+    pending: activeRequests.filter(r => r.status === 'submitted').length,
+    processing: activeRequests.filter(r => ['purchased', 'shipping'].includes(r.status)).length,
+    delivered: activeRequests.filter(r => r.status === 'delivered').length,
+    urgent: activeRequests.filter(r => r.requestedItems.some(item => item.urgency === 'urgent')).length
   };
 
   if (loading) {
@@ -220,7 +254,7 @@ export default function PurchaseManagementPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">전체 요청</CardTitle>
@@ -232,7 +266,7 @@ export default function PurchaseManagementPage() {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">대기 중</CardTitle>
+            <CardTitle className="text-sm font-medium">요청됨</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
@@ -250,10 +284,10 @@ export default function PurchaseManagementPage() {
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">완료</CardTitle>
+            <CardTitle className="text-sm font-medium">배송완료</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.delivered}</div>
           </CardContent>
         </Card>
         
@@ -273,7 +307,7 @@ export default function PurchaseManagementPage() {
           <CardTitle>필터 및 검색</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
             <Input
               placeholder="요청번호, 지점명, 요청자 검색..."
               value={searchTerm}
@@ -286,13 +320,10 @@ export default function PurchaseManagementPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">모든 상태</SelectItem>
-                <SelectItem value="submitted">제출됨</SelectItem>
-                <SelectItem value="reviewing">검토중</SelectItem>
-                <SelectItem value="purchasing">구매중</SelectItem>
+                <SelectItem value="submitted">요청됨</SelectItem>
                 <SelectItem value="purchased">구매완료</SelectItem>
                 <SelectItem value="shipping">배송중</SelectItem>
                 <SelectItem value="delivered">배송완료</SelectItem>
-                <SelectItem value="completed">완료</SelectItem>
               </SelectContent>
             </Select>
             
@@ -479,10 +510,13 @@ export default function PurchaseManagementPage() {
             <CardContent>
               <div className="space-y-4">
                 {filteredRequests.map(request => (
-                  <div key={request.id} className="border rounded-lg p-4">
+                  <div key={request.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                     <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-semibold">{request.requestNumber}</h3>
+                      <div 
+                        className="flex-1 cursor-pointer"
+                        onClick={() => handleViewRequestDetail(request)}
+                      >
+                        <h3 className="font-semibold hover:text-primary">{request.requestNumber}</h3>
                         <p className="text-sm text-muted-foreground">
                           {request.branchName} • {request.requesterName}
                         </p>
@@ -515,6 +549,42 @@ export default function PurchaseManagementPage() {
                         ? request.createdAt.toLocaleDateString() 
                         : new Date(request.createdAt.seconds * 1000).toLocaleDateString()}
                     </div>
+                    
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Eye className="h-4 w-4" />
+                        클릭하여 상세보기
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            삭제
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>요청 삭제</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              정말로 이 요청을 삭제하시겠습니까? 
+                              <br />
+                              <strong>{request.requestNumber}</strong> - {request.branchName}
+                              <br />
+                              이 작업은 되돌릴 수 없습니다.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>취소</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteRequest(request.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              삭제
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))}
                 
@@ -528,6 +598,13 @@ export default function PurchaseManagementPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* 요청 상세 팝업 */}
+      <RequestDetailDialog
+        request={selectedRequest}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </div>
   );
 }

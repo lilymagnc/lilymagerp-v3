@@ -754,8 +754,8 @@ const debouncedCustomerSearch = useCallback(
         </Card>
 
         <fieldset disabled={!selectedBranch || isLoading} className="disabled:opacity-50">
-          <div className="grid gap-8 md:grid-cols-3">
-            <div className="md:col-span-2">
+          <div className="grid gap-8 xl:grid-cols-3">
+            <div className="xl:col-span-2">
               <Card>
                   <CardHeader>
                       <CardTitle>주문 정보</CardTitle>
