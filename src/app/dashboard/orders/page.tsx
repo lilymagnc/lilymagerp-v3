@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useOrders, Order } from "@/hooks/use-orders";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -21,12 +22,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { MessagePrintDialog } from "./components/message-print-dialog";
 import { OrderDetailDialog } from "./components/order-detail-dialog";
 import { ExcelUploadDialog } from "./components/excel-upload-dialog";
+import { Trash2, XCircle } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { exportOrdersToExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
 
 export default function OrdersPage() {
-  const { orders, loading, updateOrderStatus, updatePaymentStatus } = useOrders();
+  const { orders, loading, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -39,6 +41,9 @@ export default function OrdersPage() {
   const [isOrderDetailDialogOpen, setIsOrderDetailDialogOpen] = useState(false);
   const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<Order | null>(null);
   const [isExcelUploadDialogOpen, setIsExcelUploadDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
 
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -72,6 +77,40 @@ export default function OrdersPage() {
   const handleOrderRowClick = (order: Order) => {
     setSelectedOrderForDetail(order);
     setIsOrderDetailDialogOpen(true);
+  };
+
+  // 주문 취소 처리
+  const handleCancelOrder = async (orderId: string, reason?: string) => {
+    try {
+      await cancelOrder(orderId, reason);
+      setIsCancelDialogOpen(false);
+      setSelectedOrderForAction(null);
+    } catch (error) {
+      console.error('주문 취소 오류:', error);
+    }
+  };
+
+  // 주문 삭제 처리
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      await deleteOrder(orderId);
+      setIsDeleteDialogOpen(false);
+      setSelectedOrderForAction(null);
+    } catch (error) {
+      console.error('주문 삭제 오류:', error);
+    }
+  };
+
+  // 취소 다이얼로그 열기
+  const openCancelDialog = (order: Order) => {
+    setSelectedOrderForAction(order);
+    setIsCancelDialogOpen(true);
+  };
+
+  // 삭제 다이얼로그 열기
+  const openDeleteDialog = (order: Order) => {
+    setSelectedOrderForAction(order);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleMessagePrintSubmit = ({ 
@@ -365,6 +404,29 @@ export default function OrdersPage() {
                              </DropdownMenuItem>
                            </DropdownMenuSubContent>
                          </DropdownMenuSub>
+                         <DropdownMenuSeparator />
+                                                                             <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openCancelDialog(order);
+                            }}
+                            className="text-orange-600 focus:text-orange-600"
+                          >
+                            <XCircle className="mr-2 h-4 w-4" />
+                            주문 취소 (금액 0원)
+                          </DropdownMenuItem>
+                                                                             <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openDeleteDialog(order);
+                            }}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            주문 삭제
+                          </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -390,10 +452,69 @@ export default function OrdersPage() {
             order={selectedOrderForDetail}
         />
       )}
-      <ExcelUploadDialog
-        isOpen={isExcelUploadDialogOpen}
-        onOpenChange={setIsExcelUploadDialogOpen}
-      />
-    </>
-  );
-}
+             <ExcelUploadDialog
+         isOpen={isExcelUploadDialogOpen}
+         onOpenChange={setIsExcelUploadDialogOpen}
+       />
+
+               {/* 주문 취소 다이얼로그 */}
+        <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>주문 취소</AlertDialogTitle>
+              <AlertDialogDescription>
+                정말로 이 주문을 취소하시겠습니까?
+                <br />
+                <strong>주문 ID:</strong> {selectedOrderForAction?.id}
+                <br />
+                <strong>주문자:</strong> {selectedOrderForAction?.orderer.name}
+                <br />
+                <strong>현재 금액:</strong> ₩{selectedOrderForAction?.summary.total.toLocaleString()}
+                <br />
+                <strong>환급 포인트:</strong> {selectedOrderForAction?.summary.pointsUsed ? `${selectedOrderForAction.summary.pointsUsed}포인트` : '0포인트'}
+                <br />
+                <br />
+                취소 시 금액이 0원으로 설정되고 주문 상태가 '취소'로 변경되며 고객의 포인트는 환급됩니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => selectedOrderForAction && handleCancelOrder(selectedOrderForAction.id)}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                주문 취소
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+       {/* 주문 삭제 다이얼로그 */}
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle>주문 삭제</AlertDialogTitle>
+             <AlertDialogDescription>
+               정말로 이 주문을 완전히 삭제하시겠습니까?
+               <br />
+               <strong>주문 ID:</strong> {selectedOrderForAction?.id}
+               <br />
+               <strong>주문자:</strong> {selectedOrderForAction?.orderer.name}
+               <br />
+               이 작업은 되돌릴 수 없습니다.
+             </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter>
+             <AlertDialogCancel>취소</AlertDialogCancel>
+             <AlertDialogAction 
+               onClick={() => selectedOrderForAction && handleDeleteOrder(selectedOrderForAction.id)}
+               className="bg-red-600 hover:bg-red-700"
+             >
+               삭제
+             </AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+       </AlertDialog>
+     </>
+   );
+ }

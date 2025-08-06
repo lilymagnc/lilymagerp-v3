@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -268,7 +268,91 @@ export function useOrders() {
     }
   };
 
-  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, updateOrder };
+  // 주문 취소 (금액을 0으로 설정하고 포인트 환불)
+  const cancelOrder = async (orderId: string, reason?: string) => {
+    setLoading(true);
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+      
+      if (!orderDoc.exists()) {
+        throw new Error('주문을 찾을 수 없습니다.');
+      }
+      
+      const orderData = orderDoc.data() as Order;
+      const pointsUsed = orderData.summary.pointsUsed || 0;
+      
+      // 고객이 포인트를 사용했고, 고객 ID가 있는 경우 포인트 환불
+      if (pointsUsed > 0 && orderData.orderer.id) {
+        await refundCustomerPoints(orderData.orderer.id, pointsUsed);
+        console.log(`주문 취소 시 포인트 환불: ${pointsUsed}포인트`);
+      }
+      
+      // 주문 상태를 취소로 변경하고 금액을 0으로 설정
+      await updateDoc(orderRef, {
+        status: 'canceled',
+        summary: {
+          ...orderData.summary,
+          subtotal: 0,
+          discount: 0,
+          deliveryFee: 0,
+          pointsUsed: 0,
+          pointsEarned: 0,
+          total: 0
+        },
+        cancelReason: reason || '고객 요청으로 취소',
+        canceledAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      
+      const successMessage = pointsUsed > 0 
+        ? `주문이 취소되고 금액이 0원으로 설정되었습니다. 사용한 ${pointsUsed}포인트가 환불되었습니다.`
+        : "주문이 취소되고 금액이 0원으로 설정되었습니다.";
+      
+      toast({
+        title: "주문 취소 완료",
+        description: successMessage
+      });
+      
+      await fetchOrders(); // 목록 새로고침
+    } catch (error) {
+      console.error("Error canceling order: ", error);
+      toast({
+        variant: "destructive",
+        title: "주문 취소 실패",
+        description: "주문 취소 중 오류가 발생했습니다."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 주문 삭제 (완전 삭제)
+  const deleteOrder = async (orderId: string) => {
+    setLoading(true);
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      await deleteDoc(orderRef);
+      
+      toast({
+        title: "주문 삭제 완료",
+        description: "주문이 성공적으로 삭제되었습니다."
+      });
+      
+      await fetchOrders(); // 목록 새로고침
+    } catch (error) {
+      console.error("Error deleting order: ", error);
+      toast({
+        variant: "destructive",
+        title: "주문 삭제 실패",
+        description: "주문 삭제 중 오류가 발생했습니다."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, updateOrder, cancelOrder, deleteOrder };
 }
 
 
@@ -355,6 +439,29 @@ const deductCustomerPoints = async (customerId: string, pointsToDeduct: number) 
   } catch (error) {
     console.error('포인트 차감 중 오류:', error);
     // 포인트 차감 실패해도 주문은 계속 진행
+  }
+};
+
+// 고객 포인트 환불 함수
+const refundCustomerPoints = async (customerId: string, pointsToRefund: number) => {
+  try {
+    const customerRef = doc(db, 'customers', customerId);
+    const customerDoc = await getDoc(customerRef);
+    
+    if (customerDoc.exists()) {
+      const currentPoints = customerDoc.data().points || 0;
+      const newPoints = currentPoints + pointsToRefund;
+      
+      await setDoc(customerRef, {
+        points: newPoints,
+        lastUpdated: serverTimestamp(),
+      }, { merge: true });
+      
+      console.log(`고객 포인트 환불: ${currentPoints} → ${newPoints} (환불: ${pointsToRefund})`);
+    }
+  } catch (error) {
+    console.error('포인트 환불 중 오류:', error);
+    // 포인트 환불 실패해도 주문 취소는 계속 진행
   }
 };
 
