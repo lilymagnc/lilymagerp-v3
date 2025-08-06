@@ -17,7 +17,7 @@ import { ko } from "date-fns/locale"
 import { Customer } from "@/hooks/use-customers"
 import { useOrders } from "@/hooks/use-orders"
 import { useState, useEffect } from "react"
-import { Eye, Package, Calendar, DollarSign } from "lucide-react"
+import { Eye, Package, Calendar, DollarSign, Download } from "lucide-react"
 
 // 안전한 날짜 포맷팅 함수
 const formatSafeDate = (dateValue: any): string => {
@@ -58,27 +58,177 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
 
+  // 엑셀 다운로드 함수
+  const handleExportOrders = () => {
+    if (customerOrders.length === 0) {
+      alert('다운로드할 구매 내역이 없습니다.');
+      return;
+    }
+
+    // 엑셀 데이터 준비 (상세 정보 포함)
+    const excelData = customerOrders.map(order => {
+      // 상품 목록을 문자열로 변환
+      const itemsList = order.items?.map((item: any) => 
+        `${item.name} (${item.quantity}개 x ${item.price?.toLocaleString()}원)`
+      ).join('; ') || '';
+      
+      // 배송 정보
+      const deliveryInfo = order.deliveryInfo ? 
+        `${order.deliveryInfo.recipientName} / ${order.deliveryInfo.recipientContact} / ${order.deliveryInfo.address}` : 
+        '픽업';
+      
+      // 픽업 정보
+      const pickupInfo = order.pickupInfo ? 
+        `${order.pickupInfo.pickerName} / ${order.pickupInfo.pickerContact} / ${order.pickupInfo.date} ${order.pickupInfo.time}` : 
+        '';
+      
+      return {
+        '주문일': formatSafeDate(order.orderDate),
+        '주문번호': order.id || '',
+        '주문자명': order.orderer?.name || '',
+        '주문자연락처': order.orderer?.contact || '',
+        '주문자회사': order.orderer?.company || '',
+        '주문자이메일': order.orderer?.email || '',
+        '지점': order.branchName || '',
+        '주문타입': order.orderType || '',
+        '수령방법': order.receiptType === 'delivery' ? '배송' : '픽업',
+        '배송정보': deliveryInfo,
+        '픽업정보': pickupInfo,
+        '상품목록': itemsList,
+        '상품수': order.items?.length || 0,
+        '상품금액': order.summary?.subtotal || 0,
+        '할인금액': order.summary?.discount || 0,
+        '배송비': order.summary?.deliveryFee || 0,
+        '사용포인트': order.summary?.pointsUsed || 0,
+        '적립포인트': order.summary?.pointsEarned || 0,
+        '총금액': order.summary?.total || 0,
+        '결제방법': order.payment?.method || '',
+        '결제상태': order.payment?.status === 'completed' ? '완결' : '미결',
+        '주문상태': order.status === 'completed' ? '완료' : order.status === 'canceled' ? '취소' : '진행중',
+        '메시지타입': order.message?.type || '',
+        '메시지내용': order.message?.content || '',
+        '요청사항': order.request || ''
+      };
+    });
+
+    // 파일명 생성
+    const fileName = `${customer.name}_상세구매내역_${new Date().toISOString().split('T')[0]}`;
+
+    // 엑셀 다운로드
+    import('xlsx').then((XLSX) => {
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      
+      // 컬럼 너비 자동 조정
+      const colWidths = [
+        { wch: 15 }, // 주문일
+        { wch: 12 }, // 주문번호
+        { wch: 10 }, // 주문자명
+        { wch: 15 }, // 주문자연락처
+        { wch: 15 }, // 주문자회사
+        { wch: 20 }, // 주문자이메일
+        { wch: 10 }, // 지점
+        { wch: 10 }, // 주문타입
+        { wch: 8 },  // 수령방법
+        { wch: 30 }, // 배송정보
+        { wch: 25 }, // 픽업정보
+        { wch: 50 }, // 상품목록
+        { wch: 8 },  // 상품수
+        { wch: 12 }, // 상품금액
+        { wch: 12 }, // 할인금액
+        { wch: 10 }, // 배송비
+        { wch: 12 }, // 사용포인트
+        { wch: 12 }, // 적립포인트
+        { wch: 12 }, // 총금액
+        { wch: 10 }, // 결제방법
+        { wch: 8 },  // 결제상태
+        { wch: 8 },  // 주문상태
+        { wch: 10 }, // 메시지타입
+        { wch: 30 }, // 메시지내용
+        { wch: 30 }  // 요청사항
+      ];
+      ws['!cols'] = colWidths;
+      
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '상세구매내역');
+      XLSX.writeFile(wb, `${fileName}.xlsx`);
+    });
+  };
+
   useEffect(() => {
     if (customer && orders.length > 0) {
-      // 고객의 연락처로 주문을 필터링
-      const filteredOrders = orders.filter(order => 
-        order.customerContact === customer.contact || 
-        order.customerName === customer.name
-      );
+      console.log('고객 정보:', {
+        name: customer.name,
+        contact: customer.contact,
+        id: customer.id
+      });
+      
+      console.log('전체 주문 수:', orders.length);
+      console.log('주문 샘플:', orders.slice(0, 2).map(order => ({
+        id: order.id,
+        orderer: order.orderer,
+        status: order.status
+      })));
+      
+      // 이름과 연락처가 모두 일치하는 주문만 필터링 (가장 정확한 매칭)
+      const filteredOrders = orders.filter(order => {
+        const nameMatch = order.orderer?.name === customer.name;
+        const contactMatch = order.orderer?.contact === customer.contact;
+        
+        // 연락처 형식 정규화 (하이픈 제거)
+        const normalizedOrderContact = order.orderer?.contact?.replace(/[-]/g, '');
+        const normalizedCustomerContact = customer.contact?.replace(/[-]/g, '');
+        const normalizedContactMatch = normalizedOrderContact === normalizedCustomerContact;
+        
+        // 이름과 연락처가 모두 일치하는 경우만 매칭
+        const exactNameContactMatch = nameMatch && (contactMatch || normalizedContactMatch);
+        
+        // 고객 ID가 있는 경우 ID 매칭도 허용
+        const idMatch = order.orderer?.id === customer.id;
+        
+        console.log(`주문 ${order.id}:`, {
+          orderContact: order.orderer?.contact,
+          orderName: order.orderer?.name,
+          customerName: customer.name,
+          customerContact: customer.contact,
+          nameMatch,
+          contactMatch,
+          normalizedContactMatch,
+          exactNameContactMatch,
+          idMatch
+        });
+        
+        return exactNameContactMatch || idMatch;
+      });
+      
+      console.log('필터링된 주문 수:', filteredOrders.length);
       setCustomerOrders(filteredOrders);
+    } else {
+      setCustomerOrders([]);
     }
   }, [customer, orders]);
 
-  if (!customer) return null
-  
+    if (!customer) return null
+   
   // 디버깅을 위한 로그
   console.log('CustomerDetailDialog - customer data:', {
     id: customer.id,
     name: customer.name,
+    contact: customer.contact,
     createdAt: customer.createdAt,
     createdAtType: typeof customer.createdAt,
     lastOrderDate: customer.lastOrderDate,
     lastOrderDateType: typeof customer.lastOrderDate
+  });
+  
+  console.log('CustomerDetailDialog - orders data:', {
+    totalOrders: orders.length,
+    customerOrders: customerOrders.length,
+    ordersSample: orders.slice(0, 3).map(order => ({
+      id: order.id,
+      orderer: order.orderer,
+      status: order.status,
+      orderDate: order.orderDate
+    }))
   });
 
   return (
@@ -182,9 +332,22 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
             <TabsContent value="orders" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">구매 내역</h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Package className="h-4 w-4" />
-                  <span>총 {customerOrders.length}건의 주문</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Package className="h-4 w-4" />
+                    <span>총 {customerOrders.length}건의 주문</span>
+                  </div>
+                  {customerOrders.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportOrders}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      엑셀 다운로드
+                    </Button>
+                  )}
                 </div>
               </div>
               
@@ -215,17 +378,21 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                               {formatSafeDate(order.orderDate)}
                             </div>
                           </TableCell>
-                          <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                          <TableCell className="font-medium">{order.id?.slice(0, 8) || order.orderNumber || '-'}</TableCell>
                           <TableCell>{order.items?.length || 0}개</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <DollarSign className="h-4 w-4 text-muted-foreground" />
-                              {order.totalAmount?.toLocaleString() || 0}원
+                              {(order.summary?.total || order.totalAmount || 0).toLocaleString()}원
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                              {order.status === 'completed' ? '완료' : '진행중'}
+                            <Badge variant={
+                              order.status === 'completed' ? 'default' : 
+                              order.status === 'canceled' ? 'destructive' : 'secondary'
+                            }>
+                              {order.status === 'completed' ? '완료' : 
+                               order.status === 'canceled' ? '취소' : '진행중'}
                             </Badge>
                           </TableCell>
                           <TableCell>
