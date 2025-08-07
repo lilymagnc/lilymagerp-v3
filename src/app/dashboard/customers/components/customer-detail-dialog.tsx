@@ -91,7 +91,9 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
         '주문자이메일': order.orderer?.email || '',
         '지점': order.branchName || '',
         '주문타입': order.orderType || '',
-        '수령방법': order.receiptType === 'delivery' ? '배송' : '픽업',
+        '수령방법': order.receiptType === 'store_pickup' ? '매장픽업 (즉시)' : 
+                   order.receiptType === 'pickup_reservation' ? '픽업예약' : 
+                   order.receiptType === 'delivery_reservation' ? '배송예약' : '기타',
         '배송정보': deliveryInfo,
         '픽업정보': pickupInfo,
         '상품목록': itemsList,

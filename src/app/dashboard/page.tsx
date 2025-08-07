@@ -250,9 +250,13 @@ export default function DashboardPage() {
         const totalRevenue = orders.reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
         const pendingOrders = orders.filter((order: any) => order.status === 'pending' || order.status === 'processing').length;
         
-        // 상품 수
+        // 상품 수 (바코드 기준 - 고유 상품 ID 수)
         const productsSnapshot = await getDocs(collection(db, "products"));
-        const totalProducts = productsSnapshot.size;
+        const products = productsSnapshot.docs.map(doc => doc.data());
+        
+        // 고유한 상품 ID를 기준으로 바코드 수 계산
+        const uniqueProductIds = new Set(products.map(product => product.id).filter(Boolean));
+        const totalProducts = uniqueProductIds.size;
         
         // 고객 수
         const customersSnapshot = await getDocs(collection(db, "customers"));
@@ -390,7 +394,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalProducts.toLocaleString()}</div>
-            <p className="text-xs opacity-90">전체 카탈로그</p>
+            <p className="text-xs opacity-90">고유 바코드 기준</p>
           </CardContent>
         </Card>
 

@@ -41,7 +41,7 @@ export interface OrderData {
   isAnonymous: boolean;
   registerCustomer: boolean; // 고객 등록 여부 필드 추가
   orderType: "store" | "phone" | "naver" | "kakao" | "etc";
-  receiptType: "pickup" | "delivery";
+  receiptType: "store_pickup" | "pickup_reservation" | "delivery_reservation";
 
   payment: {
     method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
@@ -62,7 +62,18 @@ export interface OrderData {
     recipientContact: string;
     address: string;
     district: string;
+    driverAffiliation?: string;
+    driverName?: string;
+    driverContact?: string;
   } | null;
+
+  // 배송비 관리 관련 필드
+  actualDeliveryCost?: number;
+  deliveryCostStatus?: 'pending' | 'completed';
+  deliveryCostUpdatedAt?: Date | Timestamp;
+  deliveryCostUpdatedBy?: string;
+  deliveryCostReason?: string;
+  deliveryProfit?: number;
 
   message: {
     type: "card" | "ribbon";
@@ -93,7 +104,22 @@ export function useOrders() {
       const q = query(ordersCollection, orderBy("orderDate", "desc"));
       const querySnapshot = await getDocs(q);
       
-      const ordersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      const ordersData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Legacy data migration: convert old receiptType values to new ones
+        let receiptType = data.receiptType;
+        if (receiptType === 'pickup') {
+          receiptType = 'pickup_reservation';
+        } else if (receiptType === 'delivery') {
+          receiptType = 'delivery_reservation';
+        }
+        
+        return { 
+          id: doc.id, 
+          ...data, 
+          receiptType 
+        } as Order;
+      });
       setOrders(ordersData);
 
     } catch (error) {
@@ -137,8 +163,8 @@ export function useOrders() {
         await deductCustomerPoints(orderData.orderer.id, orderData.summary.pointsUsed);
       }
       
-      // 수령자 정보 별도 저장 (배송인 경우)
-      if (orderData.receiptType === 'delivery' && orderData.deliveryInfo) {
+      // 수령자 정보 별도 저장 (배송 예약인 경우)
+      if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
         await saveRecipientInfo(orderData.deliveryInfo, orderData.branchName, orderDocRef.id);
       }
       

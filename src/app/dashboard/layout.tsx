@@ -7,7 +7,7 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images, DollarSign, Target, BarChart3, Package, Receipt } from 'lucide-react';
+import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images, DollarSign, Target, BarChart3, Package, Receipt, Settings, Database } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import React from 'react';
@@ -116,9 +116,9 @@ export default function DashboardLayout({
                         <SidebarMenuButton onClick={() => router.push('/dashboard/orders')}><ClipboardList />주문 현황</SidebarMenuButton>
                     </SidebarMenuItem>
                     
-                    {/* 5. 픽업/배송 관리 (모든 사용자) */}
+                    {/* 5. 픽업/배송예약관리 (모든 사용자) */}
                     <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/pickup-delivery')}><Truck />픽업/배송 관리</SidebarMenuButton>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/pickup-delivery')}><Truck />픽업/배송예약관리</SidebarMenuButton>
                     </SidebarMenuItem>
                     
                     {/* 6. 수령자 관리 (모든 사용자) */}
@@ -126,80 +126,110 @@ export default function DashboardLayout({
                         <SidebarMenuButton onClick={() => router.push('/dashboard/recipients')}><MapPin />수령자 관리</SidebarMenuButton>
                     </SidebarMenuItem>
                     
-                    {/* 7. 자재 요청 (모든 사용자) */}
+                    {/* 7. 고객 관리 (모든 사용자) */}
                     <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/material-request')}><Package />자재 요청</SidebarMenuButton>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/customers')}><BookUser />고객 관리</SidebarMenuButton>
+                    </SidebarMenuItem>
+                    
+                    {/* 8. 거래처 관리 (모든 사용자) */}
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/partners')}><Briefcase />거래처 관리</SidebarMenuButton>
                     </SidebarMenuItem>
                     
                     {/* 본사 관리자만 접근 가능한 메뉴들 */}
                     {isHQManager() && (
                         <>
-                            {/* 8. 구매 관리 (본사 관리자만) */}
-                            <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => router.push('/dashboard/purchase-management')}><ShoppingCart />구매 관리</SidebarMenuButton>
-                            </SidebarMenuItem>
-                            
                             {/* 9. 상품 관리 (본사 관리자만) */}
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/products')}><Boxes />상품 관리</SidebarMenuButton>
                             </SidebarMenuItem>
                             
-                            {/* 10. 재고 변동 기록 (본사 관리자만) */}
+                            {/* 10. 자재 관리 (본사 관리자만) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/materials')}><Hammer />자재 관리</SidebarMenuButton>
+                            </SidebarMenuItem>
+                            
+                            {/* 11. 재고 변동 기록 (본사 관리자만) */}
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/stock-history')}><History />재고 변동 기록</SidebarMenuButton>
                             </SidebarMenuItem>
                             
-                            {/* 11. 인사 관리 (본사 관리자만) */}
+                            {/* 12. 자재 요청 (본사 관리자만) */}
                             <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => router.push('/dashboard/hr')}><Users />인사 관리</SidebarMenuButton>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/material-request')}><Package />자재 요청</SidebarMenuButton>
                             </SidebarMenuItem>
                             
-                            {/* 12. 지점 관리 (본사 관리자만) */}
+                            {/* 13. 구매 관리 (본사 관리자만) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/purchase-management')}><ShoppingCart />구매 관리</SidebarMenuButton>
+                            </SidebarMenuItem>
+                            
+                            {/* 14. 간편 지출관리 (본사 관리자만) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/simple-expenses')}><Receipt />간편 지출관리</SidebarMenuButton>
+                            </SidebarMenuItem>
+                            
+                            {/* 15. 지점 관리 (본사 관리자만) */}
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/branches')}><Store />지점 관리</SidebarMenuButton>
                             </SidebarMenuItem>
                             
-                            {/* 13. 사용자 관리 (본사 관리자만) */}
-                            <SidebarMenuItem>
-                                <SidebarMenuButton onClick={() => router.push('/dashboard/users')}><UserCog />사용자 관리</SidebarMenuButton>
-                            </SidebarMenuItem>
-                            
-                            {/* 14. 비용 관리 (본사 관리자만) */}
+                            {/* 16. 비용 관리 (본사 관리자만) */}
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/expenses')}><DollarSign />비용 관리</SidebarMenuButton>
                             </SidebarMenuItem>
                             
-                            {/* 15. 예산 관리 (본사 관리자만) */}
+                            {/* 17. 예산 관리 (본사 관리자만) */}
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/budgets')}><Target />예산 관리</SidebarMenuButton>
                             </SidebarMenuItem>
                             
-                            {/* 16. 리포트 분석 (본사 관리자만) */}
+                            {/* 18. 리포트 분석 (본사 관리자만) */}
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/reports')}><BarChart3 />리포트 분석</SidebarMenuButton>
                             </SidebarMenuItem>
+                            
+                            {/* 19. 인사 관리 (본사 관리자만) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/hr')}><Users />인사 관리</SidebarMenuButton>
+                            </SidebarMenuItem>
+                            
+                                                         {/* 20. 사용자 관리 (본사 관리자만) */}
+                             <SidebarMenuItem>
+                                 <SidebarMenuButton onClick={() => router.push('/dashboard/users')}><UserCog />사용자 관리</SidebarMenuButton>
+                             </SidebarMenuItem>
+                             
+                             {/* 20. 백업 관리 (본사 관리자만) */}
+                             <SidebarMenuItem>
+                                 <SidebarMenuButton onClick={() => router.push('/dashboard/backup')}><Database />백업 관리</SidebarMenuButton>
+                             </SidebarMenuItem>
+                             
+                             {/* 21. 시스템 설정 (본사 관리자만) */}
+                             <SidebarMenuItem>
+                                 <SidebarMenuButton onClick={() => router.push('/dashboard/settings')}><Settings />시스템 설정</SidebarMenuButton>
+                             </SidebarMenuItem>
+                         </>
+                     )}
+                    
+                    {/* 지점 사용자용 메뉴들 */}
+                    {!isHQManager() && (
+                        <>
+                            {/* 자재 요청 (지점 사용자) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/material-request')}><Package />자재 요청</SidebarMenuButton>
+                            </SidebarMenuItem>
+                            
+                            {/* 자재 관리 (지점 사용자) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/materials')}><Hammer />자재 관리</SidebarMenuButton>
+                            </SidebarMenuItem>
+                            
+                            {/* 간편 지출관리 (지점 사용자) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/simple-expenses')}><Receipt />간편 지출관리</SidebarMenuButton>
+                            </SidebarMenuItem>
                         </>
                     )}
-                    
-                    {/* 17. 자재 관리 (모든 사용자) */}
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/materials')}><Hammer />자재 관리</SidebarMenuButton>
-                    </SidebarMenuItem>
-                    
-                    {/* 18. 간편 지출관리 (모든 사용자) */}
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/simple-expenses')}><Receipt />간편 지출관리</SidebarMenuButton>
-                    </SidebarMenuItem>
-                    
-                    {/* 19. 고객 관리 (모든 사용자) */}
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/customers')}><BookUser />고객 관리</SidebarMenuButton>
-                    </SidebarMenuItem>
-                    
-                    {/* 20. 거래처 관리 (모든 사용자) */}
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={() => router.push('/dashboard/partners')}><Briefcase />거래처 관리</SidebarMenuButton>
-                    </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
             <SidebarFooter className="p-4">

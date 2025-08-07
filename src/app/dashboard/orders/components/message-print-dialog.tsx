@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Order } from "@/hooks/use-orders";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useSettings } from "@/hooks/use-settings";
 
 
 interface MessagePrintDialogProps {
@@ -36,13 +37,21 @@ const labelTypes = [
     { value: 'formtec-3109', label: '폼텍 3109 (12칸)', cells: 12, gridCols: 'grid-cols-2', height: '67.7mm', className: 'gap-x-[2.5mm]' },
 ];
 
-const fontOptions = [
-    { value: 'Noto Sans KR', label: '기본 고딕체' },
-    { value: 'Noto Serif KR', label: '기본 명조체' },
-    { value: 'Gaegu', label: '개구체 (손글씨)' },
-];
-
 export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: MessagePrintDialogProps) {
+  const { settings } = useSettings();
+  
+  // 시스템 설정에서 폰트 목록 가져오기
+  const fontOptions = (settings.availableFonts || [
+    'Noto Sans KR',
+    'Malgun Gothic',
+    'Nanum Gothic',
+    'Arial',
+    'Helvetica',
+    'Times New Roman'
+  ]).map(font => ({
+    value: font,
+    label: font
+  }));
   const [labelType, setLabelType] = useState(labelTypes[0].value);
   const [startPosition, setStartPosition] = useState(1);
   const [messageFont, setMessageFont] = useState(fontOptions[0].value);

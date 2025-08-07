@@ -181,3 +181,153 @@ const getReceiptTypeText = (type: string) => {
     default: return type || '';
   }
 }; 
+
+// 픽업/배송 예약 현황 엑셀 출력 함수
+export const exportPickupDeliveryToExcel = (
+  orders: any[], 
+  type: 'pickup' | 'delivery', 
+  startDate: string, 
+  endDate: string
+) => {
+  // 날짜 필터링
+  const filteredOrders = orders.filter(order => {
+    const orderDate = order.orderDate?.toDate?.() || new Date(order.orderDate);
+    const orderDateStr = orderDate.toISOString().split('T')[0];
+    return orderDateStr >= startDate && orderDateStr <= endDate;
+  });
+
+  // 헤더 정의
+  const headers = type === 'pickup' 
+    ? [
+        '주문번호', '주문일시', '주문자명', '주문자연락처', '픽업자명', '픽업자연락처', 
+        '픽업예정일', '픽업예정시간', '지점명', '주문상태', '총금액', '결제방법', '결제상태'
+      ]
+    : [
+        '주문번호', '주문일시', '주문자명', '주문자연락처', '수령자명', '수령자연락처',
+        '배송예정일', '배송예정시간', '배송지주소', '배송지역', '배송기사소속', '배송기사명', 
+        '배송기사연락처', '지점명', '주문상태', '총금액', '결제방법', '결제상태'
+      ];
+
+  // 데이터 변환
+  const data = filteredOrders.map(order => {
+    const orderDate = order.orderDate?.toDate?.() || new Date(order.orderDate);
+    const formattedOrderDate = orderDate.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const baseData = [
+      order.id,
+      formattedOrderDate,
+      order.orderer?.name || '-',
+      order.orderer?.contact || '-',
+    ];
+
+    if (type === 'pickup') {
+      return [
+        ...baseData,
+        order.pickupInfo?.pickerName || '-',
+        order.pickupInfo?.pickerContact || '-',
+        order.pickupInfo?.date || '-',
+        order.pickupInfo?.time || '-',
+        order.branchName || '-',
+        order.status || '-',
+        (order.summary?.total || 0).toLocaleString(),
+        order.payment?.method || '-',
+        order.payment?.status || '-'
+      ];
+    } else {
+      return [
+        ...baseData,
+        order.deliveryInfo?.recipientName || '-',
+        order.deliveryInfo?.recipientContact || '-',
+        order.deliveryInfo?.date || '-',
+        order.deliveryInfo?.time || '-',
+        order.deliveryInfo?.address || '-',
+        order.deliveryInfo?.district || '-',
+        order.deliveryInfo?.driverAffiliation || '-',
+        order.deliveryInfo?.driverName || '-',
+        order.deliveryInfo?.driverContact || '-',
+        order.branchName || '-',
+        order.status || '-',
+        (order.summary?.total || 0).toLocaleString(),
+        order.payment?.method || '-',
+        order.payment?.status || '-'
+      ];
+    }
+  });
+
+  // 워크북 생성
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+  // 열 너비 설정
+  const colWidths = type === 'pickup' 
+    ? [
+        { width: 15 }, // 주문번호
+        { width: 20 }, // 주문일시
+        { width: 12 }, // 주문자명
+        { width: 15 }, // 주문자연락처
+        { width: 12 }, // 픽업자명
+        { width: 15 }, // 픽업자연락처
+        { width: 12 }, // 픽업예정일
+        { width: 10 }, // 픽업예정시간
+        { width: 12 }, // 지점명
+        { width: 10 }, // 주문상태
+        { width: 12 }, // 총금액
+        { width: 10 }, // 결제방법
+        { width: 10 }, // 결제상태
+      ]
+    : [
+        { width: 15 }, // 주문번호
+        { width: 20 }, // 주문일시
+        { width: 12 }, // 주문자명
+        { width: 15 }, // 주문자연락처
+        { width: 12 }, // 수령자명
+        { width: 15 }, // 수령자연락처
+        { width: 12 }, // 배송예정일
+        { width: 10 }, // 배송예정시간
+        { width: 30 }, // 배송지주소
+        { width: 12 }, // 배송지역
+        { width: 15 }, // 배송기사소속
+        { width: 12 }, // 배송기사명
+        { width: 15 }, // 배송기사연락처
+        { width: 12 }, // 지점명
+        { width: 10 }, // 주문상태
+        { width: 12 }, // 총금액
+        { width: 10 }, // 결제방법
+        { width: 10 }, // 결제상태
+      ];
+
+  worksheet['!cols'] = colWidths;
+
+  // 시트 이름 설정
+  const sheetName = type === 'pickup' ? '픽업예약현황' : '배송예약현황';
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+  // 파일명 생성
+  const typeText = type === 'pickup' ? '픽업예약' : '배송예약';
+  const fileName = `${typeText}_현황_${startDate}_${endDate}.xlsx`;
+
+  // 파일 다운로드
+  const excelBuffer = XLSX.write(workbook, { 
+    bookType: 'xlsx', 
+    type: 'array' 
+  });
+  
+  const blob = new Blob([excelBuffer], { 
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  });
+  
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}; 

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch, initialBranches } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -31,14 +31,14 @@ import { useCustomers, Customer } from "@/hooks/use-customers";
 import { useAuth } from "@/hooks/use-auth";
 import { Timestamp } from "firebase/firestore";
 import { debounce } from "lodash";
-import { updateBranchesWithDeliveryFees } from "@/scripts/update-branches-delivery-fees";
+
 
 interface OrderItem extends Product {
   quantity: number;
 }
 
 type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
-type ReceiptType = "pickup" | "delivery";
+type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
 type MessageType = "card" | "ribbon";
 type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
 type PaymentStatus = "pending" | "paid";
@@ -52,7 +52,7 @@ declare global {
 export default function NewOrderPage() {
   const { user } = useAuth();
   const { branches, loading: branchesLoading, fetchBranches } = useBranches();
-  const [isUpdatingDeliveryFees, setIsUpdatingDeliveryFees] = useState(false);
+
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
   const { findCustomersByContact, customers } = useCustomers();
@@ -103,7 +103,7 @@ export default function NewOrderPage() {
 
   
   const [orderType, setOrderType] = useState<OrderType>("store");
-  const [receiptType, setReceiptType] = useState<ReceiptType>("pickup");
+  const [receiptType, setReceiptType] = useState<ReceiptType>("store_pickup");
   
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -174,36 +174,7 @@ export default function NewOrderPage() {
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [selectedMidCategory, setSelectedMidCategory] = useState<string | null>(null);
 
-  // 배송비 정보 업데이트 함수
-  const handleUpdateDeliveryFees = async () => {
-    setIsUpdatingDeliveryFees(true);
-    try {
-      const result = await updateBranchesWithDeliveryFees();
-      if (result.success) {
-        toast({
-          title: '성공',
-          description: `${result.updatedCount}개 지점의 배송비 정보가 업데이트되었습니다.`,
-        });
-        // 지점 데이터 새로고침
-        await fetchBranches();
-      } else {
-        toast({
-          variant: 'destructive',
-          title: '오류',
-          description: '배송비 정보 업데이트 중 오류가 발생했습니다.',
-        });
-      }
-    } catch (error) {
-      console.error('배송비 업데이트 오류:', error);
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: '배송비 정보 업데이트 중 오류가 발생했습니다.',
-      });
-    } finally {
-      setIsUpdatingDeliveryFees(false);
-    }
-  };
+
 
   const timeOptions = useMemo(() => {
     const options = [];
@@ -290,7 +261,15 @@ export default function NewOrderPage() {
             setIsAnonymous(foundOrder.isAnonymous);
 
             setOrderType(foundOrder.orderType);
-            setReceiptType(foundOrder.receiptType);
+            // 기존 데이터와의 호환성을 위한 타입 변환
+            const legacyReceiptType = foundOrder.receiptType as any;
+            if (legacyReceiptType === 'pickup') {
+              setReceiptType('store_pickup');
+            } else if (legacyReceiptType === 'delivery') {
+              setReceiptType('delivery_reservation');
+            } else {
+              setReceiptType(foundOrder.receiptType as ReceiptType);
+            }
             
             const schedule = foundOrder.pickupInfo || foundOrder.deliveryInfo;
             if(schedule) {
@@ -331,13 +310,19 @@ export default function NewOrderPage() {
 
 
   useEffect(() => {
-    if (receiptType === 'pickup') {
+    if (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') {
       setPickerName(ordererName);
       setPickerContact(ordererContact);
       setDeliveryFeeType("manual");
       setManualDeliveryFee(0);
       setSelectedDistrict(null);
-    } else if (receiptType === 'delivery') {
+      
+      // 매장픽업(즉시)일 때는 현재 날짜와 시간으로 설정
+      if (receiptType === 'store_pickup') {
+        setScheduleDate(new Date());
+        setScheduleTime(getInitialTime());
+      }
+    } else if (receiptType === 'delivery_reservation') {
       // 배송일 경우 기본값을 자동계산으로 설정
       setDeliveryFeeType("auto");
     }
@@ -345,7 +330,7 @@ export default function NewOrderPage() {
   
   // 자동계산이 불가능할 경우 직접입력으로 변경하는 로직 추가
   useEffect(() => {
-    if (receiptType === 'delivery' && deliveryFeeType === 'auto') {
+    if (receiptType === 'delivery_reservation' && deliveryFeeType === 'auto') {
       // 지점이 선택되지 않았거나 배송비 정보가 없는 경우
       if (!selectedBranch || !selectedBranch.deliveryFees || selectedBranch.deliveryFees.length === 0) {
         setDeliveryFeeType("manual");
@@ -355,7 +340,7 @@ export default function NewOrderPage() {
   }, [selectedBranch, deliveryFeeType, receiptType]);
   
   const deliveryFee = useMemo(() => {
-    if (receiptType === 'pickup') return 0;
+    if (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') return 0;
     if (deliveryFeeType === 'manual') {
       return manualDeliveryFee;
     }
@@ -487,14 +472,14 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             status: paymentStatus === "paid" ? "completed" : paymentStatus,
         },
 
-        pickupInfo: receiptType === 'pickup' ? { 
+        pickupInfo: (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
             time: scheduleTime, 
             pickerName, 
             pickerContact 
         } : null,
         
-        deliveryInfo: receiptType === 'delivery' ? { 
+        deliveryInfo: receiptType === 'delivery_reservation' ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
             time: scheduleTime,
             recipientName, 
@@ -691,20 +676,7 @@ const debouncedCustomerSearch = useCallback(
         <PageHeader
           title={pageTitle}
           description={pageDescription}
-        >
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleUpdateDeliveryFees} disabled={isUpdatingDeliveryFees}>
-              {isUpdatingDeliveryFees ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  업데이트 중...
-                </>
-              ) : (
-                '배송비 정보 업데이트'
-              )}
-            </Button>
-          </div>
-        </PageHeader>
+        />
         <Card className="mb-6">
             <CardHeader>
                 <CardTitle>지점 선택</CardTitle>
@@ -1071,12 +1043,13 @@ const debouncedCustomerSearch = useCallback(
                       {/* 수령 정보 */}
                       <div>
                           <span className="text-sm font-medium">수령 정보</span>
-                          <RadioGroup value={receiptType} onValueChange={(v) => setReceiptType(v as ReceiptType)} className="flex items-center gap-4 mt-2">
-                              <div className="flex items-center space-x-2"><RadioGroupItem value="pickup" id="receipt-pickup" /><Label htmlFor="receipt-pickup">매장픽업</Label></div>
-                              <div className="flex items-center space-x-2"><RadioGroupItem value="delivery" id="receipt-delivery" /><Label htmlFor="receipt-delivery">배송</Label></div>
+                          <RadioGroup value={receiptType} onValueChange={(v) => setReceiptType(v as ReceiptType)} className="flex flex-row gap-4 mt-2">
+                              <div className="flex items-center space-x-2"><RadioGroupItem value="store_pickup" id="receipt-store-pickup" /><Label htmlFor="receipt-store-pickup">매장픽업 (즉시)</Label></div>
+                              <div className="flex items-center space-x-2"><RadioGroupItem value="pickup_reservation" id="receipt-pickup-reservation" /><Label htmlFor="receipt-pickup-reservation">픽업예약</Label></div>
+                              <div className="flex items-center space-x-2"><RadioGroupItem value="delivery_reservation" id="receipt-delivery-reservation" /><Label htmlFor="receipt-delivery-reservation">배송예약</Label></div>
                           </RadioGroup>
                           
-                          {receiptType === 'pickup' && (
+                          {(receiptType === 'pickup_reservation') && (
                               <Card className="mt-2">
                                   <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                                       <div className="space-y-2">
@@ -1120,7 +1093,22 @@ const debouncedCustomerSearch = useCallback(
                               </Card>
                           )}
 
-                          {receiptType === 'delivery' && (
+                          {(receiptType === 'store_pickup') && (
+                              <Card className="mt-2">
+                                  <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                          <Label htmlFor="picker-name">픽업자 이름</Label>
+                                          <Input id="picker-name" name="picker-name" value={pickerName} onChange={e => setPickerName(e.target.value)} />
+                                      </div>
+                                      <div className="space-y-2">
+                                          <Label htmlFor="picker-contact">픽업자 연락처</Label>
+                                          <Input id="picker-contact" name="picker-contact" value={pickerContact} onChange={(e) => handleGenericContactChange(e, setPickerContact)} />
+                                      </div>
+                                  </CardContent>
+                              </Card>
+                          )}
+
+                          {(receiptType === 'delivery_reservation') && (
                               <Card className="mt-2">
                                   <CardContent className="p-4 space-y-4">
                                       <div className="space-y-2">

@@ -99,7 +99,7 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               <div>
                 <p className="text-sm text-muted-foreground">주문일시</p>
                 <p className="font-medium">
-                  {formatOrderDate(order.orderDate)}
+                  {order.orderDate ? formatOrderDate(order.orderDate) : '-'}
                 </p>
               </div>
               <div>
@@ -109,12 +109,15 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               <div>
                 <p className="text-sm text-muted-foreground">수령 방법</p>
                 <p className="font-medium">
-                  {order.receiptType === 'pickup' ? '매장픽업' : '배송'}
+                  {order.receiptType === 'store_pickup' ? '매장픽업 (즉시)' : 
+                   order.receiptType === 'pickup_reservation' ? '픽업예약' : 
+                   order.receiptType === 'delivery_reservation' ? '배송예약' : 
+                   order.receiptType || '기타'}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">지점</p>
-                <p className="font-medium">{order.branchName}</p>
+                <p className="font-medium">{order.branchName || '-'}</p>
               </div>
             </CardContent>
           </Card>
@@ -130,16 +133,16 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">이름</p>
-                <p className="font-medium">{order.orderer.name}</p>
+                <p className="font-medium">{order.orderer?.name || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">연락처</p>
                 <div className="flex items-center gap-1">
                   <Phone className="w-3 h-3" />
-                  <p className="font-medium">{order.orderer.contact}</p>
+                  <p className="font-medium">{order.orderer?.contact || '-'}</p>
                 </div>
               </div>
-              {order.orderer.company && (
+              {order.orderer?.company && (
                 <div>
                   <p className="text-sm text-muted-foreground">회사명</p>
                   <div className="flex items-center gap-1">
@@ -148,7 +151,7 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
                   </div>
                 </div>
               )}
-              {order.orderer.email && (
+              {order.orderer?.email && (
                 <div>
                   <p className="text-sm text-muted-foreground">이메일</p>
                   <p className="font-medium">{order.orderer.email}</p>
@@ -158,7 +161,7 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
           </Card>
 
           {/* 픽업/배송 정보 */}
-          {order.receiptType === 'pickup' && order.pickupInfo && (
+          {(order.receiptType === 'store_pickup' || order.receiptType === 'pickup_reservation') && order.pickupInfo && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -172,26 +175,26 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     <p className="font-medium">
-                      {formatDateTime(order.pickupInfo.date, order.pickupInfo.time)}
+                      {formatDateTime(order.pickupInfo?.date || '', order.pickupInfo?.time || '')}
                     </p>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">픽업자</p>
-                  <p className="font-medium">{order.pickupInfo.pickerName || '-'}</p>
+                  <p className="font-medium">{order.pickupInfo?.pickerName || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">픽업자 연락처</p>
                   <div className="flex items-center gap-1">
                     <Phone className="w-3 h-3" />
-                    <p className="font-medium">{order.pickupInfo.pickerContact || '-'}</p>
+                    <p className="font-medium">{order.pickupInfo?.pickerContact || '-'}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {order.receiptType === 'delivery' && order.deliveryInfo && (
+          {order.receiptType === 'delivery_reservation' && order.deliveryInfo && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -205,29 +208,29 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     <p className="font-medium">
-                      {formatDateTime(order.deliveryInfo.date, order.deliveryInfo.time)}
+                      {formatDateTime(order.deliveryInfo?.date || '', order.deliveryInfo?.time || '')}
                     </p>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">수령자</p>
-                  <p className="font-medium">{order.deliveryInfo.recipientName || '-'}</p>
+                  <p className="font-medium">{order.deliveryInfo?.recipientName || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">수령자 연락처</p>
                   <div className="flex items-center gap-1">
                     <Phone className="w-3 h-3" />
-                    <p className="font-medium">{order.deliveryInfo.recipientContact || '-'}</p>
+                    <p className="font-medium">{order.deliveryInfo?.recipientContact || '-'}</p>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">배송지</p>
                   <div className="flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
-                    <p className="font-medium">{order.deliveryInfo.address || '-'}</p>
+                    <p className="font-medium">{order.deliveryInfo?.address || '-'}</p>
                   </div>
                 </div>
-                {order.deliveryInfo.district && (
+                {order.deliveryInfo?.district && (
                   <div>
                     <p className="text-sm text-muted-foreground">배송 지역</p>
                     <p className="font-medium">{order.deliveryInfo.district}</p>
@@ -253,12 +256,12 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {order.items.map((item, index) => (
+                  {(order.items || []).map((item, index) => (
                     <TableRow key={index}>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
-                      <TableCell className="text-right">₩{(item.quantity * item.price).toLocaleString()}</TableCell>
+                      <TableCell>{item.name || '-'}</TableCell>
+                      <TableCell className="text-right">{item.quantity || 0}</TableCell>
+                      <TableCell className="text-right">₩{(item.price || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-right">₩{((item.quantity || 0) * (item.price || 0)).toLocaleString()}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -269,44 +272,46 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>상품 합계:</span>
-                  <span>₩{order.summary.subtotal.toLocaleString()}</span>
+                  <span>₩{(order.summary?.subtotal || 0).toLocaleString()}</span>
                 </div>
-                {order.summary.deliveryFee > 0 && (
+                {(order.summary?.deliveryFee || 0) > 0 && (
                   <div className="flex justify-between">
                     <span>배송비:</span>
-                    <span>₩{order.summary.deliveryFee.toLocaleString()}</span>
+                    <span>₩{(order.summary?.deliveryFee || 0).toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-lg">
                   <span>총 합계:</span>
-                  <span>₩{order.summary.total.toLocaleString()}</span>
+                  <span>₩{(order.summary?.total || 0).toLocaleString()}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* 결제 정보 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4" />
-                결제 정보
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">결제 방법</p>
-                <p className="font-medium">{order.payment.method}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">결제 상태</p>
-                <div>{getPaymentStatusBadge(order.payment.status)}</div>
-              </div>
-            </CardContent>
-          </Card>
+          {order.payment && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  결제 정보
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">결제 방법</p>
+                  <p className="font-medium">{order.payment.method || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">결제 상태</p>
+                  <div>{getPaymentStatusBadge(order.payment.status || 'pending')}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* 메시지 및 요청사항 */}
-          {(order.message.content || order.request) && (
+          {((order.message && order.message.content) || order.request) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -315,9 +320,9 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {order.message.content && (
+                {order.message && order.message.content && (
                   <div>
-                    <p className="text-sm text-muted-foreground">메시지 ({order.message.type})</p>
+                    <p className="text-sm text-muted-foreground">메시지 ({order.message.type || 'card'})</p>
                     <p className="font-medium bg-gray-50 p-3 rounded">{order.message.content}</p>
                   </div>
                 )}

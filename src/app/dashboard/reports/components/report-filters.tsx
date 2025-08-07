@@ -21,21 +21,17 @@ import {
 } from 'lucide-react';
 import type { 
   ReportFilter,
-  ExpenseCategory,
-  EXPENSE_CATEGORY_LABELS 
+  ExpenseCategory
 } from '@/hooks/use-reports';
+import { EXPENSE_CATEGORY_LABELS } from '@/types/expense';
+import { useBranches } from '@/hooks/use-branches';
 
 interface ReportFiltersProps {
   filters: ReportFilter;
   onChange: (filters: ReportFilter) => void;
 }
 
-// 지점 목록 (실제로는 API에서 가져와야 함)
-const branches = [
-  { id: 'branch-001', name: '릴리맥광화문점' },
-  { id: 'branch-002', name: '릴리맥여의도점' },
-  { id: 'branch-003', name: '릴리맥NC이스트폴점' },
-];
+// 지점 목록은 useBranches 훅에서 가져옴
 
 // 부서 목록
 const departments = [
@@ -46,6 +42,7 @@ const departments = [
 ];
 
 export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
+  const { branches } = useBranches();
   const [tempFilters, setTempFilters] = useState<ReportFilter>(filters);
 
   // 날짜 범위 프리셋
