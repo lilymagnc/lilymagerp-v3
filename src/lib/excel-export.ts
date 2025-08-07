@@ -176,8 +176,11 @@ const getOrderTypeText = (type: string) => {
 
 const getReceiptTypeText = (type: string) => {
   switch (type) {
-    case 'pickup': return '픽업';
-    case 'delivery': return '배송';
+    case 'store_pickup': return '매장픽업';
+    case 'pickup_reservation': return '픽업예약';
+    case 'delivery_reservation': return '배송예약';
+    case 'pickup': return '픽업'; // 레거시 지원
+    case 'delivery': return '배송'; // 레거시 지원
     default: return type || '';
   }
 }; 
@@ -200,12 +203,12 @@ export const exportPickupDeliveryToExcel = (
   const headers = type === 'pickup' 
     ? [
         '주문번호', '주문일시', '주문자명', '주문자연락처', '픽업자명', '픽업자연락처', 
-        '픽업예정일', '픽업예정시간', '지점명', '주문상태', '총금액', '결제방법', '결제상태'
+        '픽업예정일', '픽업예정시간', '지점명', '주문상태', '상품금액', '배송비', '총금액', '결제방법', '결제상태'
       ]
     : [
         '주문번호', '주문일시', '주문자명', '주문자연락처', '수령자명', '수령자연락처',
         '배송예정일', '배송예정시간', '배송지주소', '배송지역', '배송기사소속', '배송기사명', 
-        '배송기사연락처', '지점명', '주문상태', '총금액', '결제방법', '결제상태'
+        '배송기사연락처', '지점명', '주문상태', '상품금액', '배송비', '실제배송비', '배송비차익', '총금액', '결제방법', '결제상태'
       ];
 
   // 데이터 변환
@@ -235,6 +238,8 @@ export const exportPickupDeliveryToExcel = (
         order.pickupInfo?.time || '-',
         order.branchName || '-',
         order.status || '-',
+        (order.summary?.subtotal || 0).toLocaleString(),
+        (order.summary?.deliveryFee || 0).toLocaleString(),
         (order.summary?.total || 0).toLocaleString(),
         order.payment?.method || '-',
         order.payment?.status || '-'
@@ -253,6 +258,10 @@ export const exportPickupDeliveryToExcel = (
         order.deliveryInfo?.driverContact || '-',
         order.branchName || '-',
         order.status || '-',
+        (order.summary?.subtotal || 0).toLocaleString(),
+        (order.summary?.deliveryFee || 0).toLocaleString(),
+        order.actualDeliveryCost ? order.actualDeliveryCost.toLocaleString() : '-',
+        order.deliveryProfit !== undefined ? order.deliveryProfit.toLocaleString() : '-',
         (order.summary?.total || 0).toLocaleString(),
         order.payment?.method || '-',
         order.payment?.status || '-'
@@ -277,6 +286,8 @@ export const exportPickupDeliveryToExcel = (
         { width: 10 }, // 픽업예정시간
         { width: 12 }, // 지점명
         { width: 10 }, // 주문상태
+        { width: 12 }, // 상품금액
+        { width: 10 }, // 배송비
         { width: 12 }, // 총금액
         { width: 10 }, // 결제방법
         { width: 10 }, // 결제상태
@@ -297,6 +308,10 @@ export const exportPickupDeliveryToExcel = (
         { width: 15 }, // 배송기사연락처
         { width: 12 }, // 지점명
         { width: 10 }, // 주문상태
+        { width: 12 }, // 상품금액
+        { width: 10 }, // 배송비
+        { width: 12 }, // 실제배송비
+        { width: 12 }, // 배송비차익
         { width: 12 }, // 총금액
         { width: 10 }, // 결제방법
         { width: 10 }, // 결제상태
