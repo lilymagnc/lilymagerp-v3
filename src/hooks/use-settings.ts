@@ -51,6 +51,11 @@ export interface SystemSettings {
   emailTemplateOrderConfirm: string;
   emailTemplateStatusChange: string;
   emailTemplateBirthday: string;
+  
+  // 할인 설정
+  defaultDiscountRate: number;
+  maxDiscountRate: number;
+  discountReason: string;
 }
 
 export const defaultSettings: SystemSettings = {
@@ -108,7 +113,11 @@ export const defaultSettings: SystemSettings = {
   emailTemplateDeliveryComplete: "안녕하세요 {고객명}님!\n\n주문하신 상품이 성공적으로 배송 완료되었습니다.\n\n주문번호: {주문번호}\n배송일: {배송일}\n\n감사합니다.\n{회사명}",
   emailTemplateOrderConfirm: "안녕하세요 {고객명}님!\n\n주문이 성공적으로 접수되었습니다.\n\n주문번호: {주문번호}\n주문일: {주문일}\n총 금액: {총금액}원\n\n감사합니다.\n{회사명}",
   emailTemplateStatusChange: "안녕하세요 {고객명}님!\n\n주문 상태가 변경되었습니다.\n\n주문번호: {주문번호}\n이전 상태: {이전상태}\n현재 상태: {현재상태}\n\n감사합니다.\n{회사명}",
-  emailTemplateBirthday: "안녕하세요 {고객명}님!\n\n생일을 진심으로 축하드립니다! 🎉\n\n특별한 할인 혜택을 드립니다.\n\n감사합니다.\n{회사명}"
+  emailTemplateBirthday: "안녕하세요 {고객명}님!\n\n생일을 진심으로 축하드립니다! 🎉\n\n특별한 할인 혜택을 드립니다.\n\n감사합니다.\n{회사명}",
+  // 할인 설정
+  defaultDiscountRate: 0,
+  maxDiscountRate: 10,
+  discountReason: "회원 할인"
 };
 
 export function useSettings() {

@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { useProducts, Product } from "@/hooks/use-products";
 import { useCustomers, Customer } from "@/hooks/use-customers";
 import { useAuth } from "@/hooks/use-auth";
+import { useDiscountSettings } from "@/hooks/use-discount-settings";
 import { Timestamp } from "firebase/firestore";
 import { debounce } from "lodash";
 
@@ -56,6 +57,7 @@ export default function NewOrderPage() {
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
   const { findCustomersByContact, customers } = useCustomers();
+  const { discountSettings, canApplyDiscount, getActiveDiscountRates } = useDiscountSettings();
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id');
@@ -94,6 +96,10 @@ export default function NewOrderPage() {
   const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [usedPoints, setUsedPoints] = useState(0);
+  
+  // 할인율 관련 상태
+  const [selectedDiscountRate, setSelectedDiscountRate] = useState<number>(0);
+  const [customDiscountRate, setCustomDiscountRate] = useState<number>(0);
   
   // 고객 검색 관련 상태
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
@@ -462,7 +468,15 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         receiptType: receiptType,
         
         items: orderItems.map(({id, name, quantity, price}) => ({id, name, quantity, price})),
-        summary: orderSummary,
+        summary: {
+          subtotal: orderSummary.subtotal,
+          discountAmount: orderSummary.discountAmount,
+          discountRate: orderSummary.discountRate,
+          deliveryFee: orderSummary.deliveryFee,
+          pointsUsed: orderSummary.pointsUsed,
+          pointsEarned: orderSummary.pointsEarned,
+          total: orderSummary.total,
+        },
 
         orderer: { id: selectedCustomer?.id || "", name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
         isAnonymous: isAnonymous,
@@ -524,12 +538,18 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   }, [selectedBranch]);
 
   const handleBranchChange = (branchId: string) => {
+    // 먼저 관련 상태들을 초기화
+    setOrderItems([]);
+    setSelectedDistrict(null);
+    setSelectedMainCategory(null);
+    setSelectedMidCategory(null);
+    setSelectedCustomer(null);
+    setUsedPoints(0);
+    setSelectedDiscountRate(0);
+    setCustomDiscountRate(0);
+    
     if (!branchId) {
       setSelectedBranch(null);
-      setOrderItems([]);
-      setSelectedDistrict(null);
-      setSelectedMainCategory(null);
-      setSelectedMidCategory(null);
       return;
     }
     
@@ -537,10 +557,6 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (branch) {
       setSelectedBranch(branch);
     }
-    setOrderItems([]);
-    setSelectedDistrict(null);
-    setSelectedMainCategory(null);
-    setSelectedMidCategory(null);
   };
 
 const handleCustomerSelect = (customer: Customer) => {
@@ -596,22 +612,38 @@ const debouncedCustomerSearch = useCallback(
 
   const orderSummary = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const maxUsablePoints = selectedCustomer && subtotal >= 5000 ? Math.min(selectedCustomer.points || 0, subtotal) : 0;
-    const pointsToUse = Math.min(subtotal, usedPoints, maxUsablePoints);
-    const total = subtotal - pointsToUse + deliveryFee;
-    const pointsEarned = Math.floor(subtotal * 0.02);
+    
+    // 할인율 적용
+    const discountRate = selectedDiscountRate > 0 ? selectedDiscountRate : customDiscountRate;
+    const discountAmount = Math.floor(subtotal * (discountRate / 100));
+    const discountedSubtotal = subtotal - discountAmount;
+    
+    // 포인트 사용 가능 여부 확인
+    const canUsePoints = selectedCustomer && discountedSubtotal >= 5000;
+    const maxUsablePoints = canUsePoints ? Math.min(selectedCustomer.points || 0, discountedSubtotal) : 0;
+    const pointsToUse = Math.min(discountedSubtotal, usedPoints, maxUsablePoints);
+    
+    // 최종 금액 계산
+    const finalSubtotal = discountedSubtotal - pointsToUse;
+    const total = finalSubtotal + deliveryFee;
+    
+    // 포인트 적립 계산 (할인 설정에 따라)
+    const shouldAccumulatePoints = discountSettings?.globalSettings?.allowPointAccumulation ?? true;
+    const pointsEarned = shouldAccumulatePoints ? Math.floor(finalSubtotal * 0.02) : 0;
 
     return { 
       subtotal, 
+      discountedSubtotal,
+      discountAmount,
+      discountRate,
       deliveryFee, 
       pointsUsed: pointsToUse, 
       pointsEarned, 
       total, 
-      discount: 0,
       availablePoints: selectedCustomer?.points || 0,
       maxUsablePoints
     };
-  }, [orderItems, deliveryFee, usedPoints, selectedCustomer]);
+  }, [orderItems, deliveryFee, usedPoints, selectedCustomer, selectedDiscountRate, customDiscountRate, discountSettings]);
 
   const handleUseAllPoints = () => {
     if (!selectedCustomer) return;
@@ -1275,6 +1307,55 @@ const debouncedCustomerSearch = useCallback(
                             <span>상품 합계</span>
                             <span>₩{orderSummary.subtotal.toLocaleString()}</span>
                         </div>
+                        
+                        {/* 할인율 선택 */}
+                        {selectedBranch && canApplyDiscount(selectedBranch.id, orderSummary.subtotal) && (
+                          <>
+                            <div className="space-y-2">
+                              <Label>할인율 선택</Label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {getActiveDiscountRates(selectedBranch.id).map((rate) => (
+                                  <Button
+                                    key={rate.rate}
+                                    variant={selectedDiscountRate === rate.rate ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedDiscountRate(rate.rate);
+                                      setCustomDiscountRate(0);
+                                    }}
+                                    className="text-xs"
+                                  >
+                                    {rate.label}
+                                  </Button>
+                                ))}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  placeholder="수동 할인율"
+                                  value={customDiscountRate}
+                                  onChange={(e) => {
+                                    const value = Number(e.target.value);
+                                    setCustomDiscountRate(Math.min(Math.max(0, value), 50));
+                                    if (value > 0) setSelectedDiscountRate(0);
+                                  }}
+                                  min="0"
+                                  max="50"
+                                  className="w-20"
+                                />
+                                <span className="text-sm text-muted-foreground">% (최대 50%)</span>
+                              </div>
+                            </div>
+                            
+                            {(selectedDiscountRate > 0 || customDiscountRate > 0) && (
+                              <div className="flex justify-between text-green-600">
+                                <span>할인 금액</span>
+                                <span>-₩{orderSummary.discountAmount.toLocaleString()}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
                         <div className="flex justify-between">
                             <span>배송비</span>
                             <span>₩{deliveryFee.toLocaleString()}</span>
@@ -1296,9 +1377,9 @@ const debouncedCustomerSearch = useCallback(
                                       setUsedPoints(Math.min(Math.max(0, value), maxPoints));
                                     }}
                                     max={orderSummary.maxUsablePoints}
-                                    disabled={!selectedCustomer || orderSummary.availablePoints === 0 || orderSummary.subtotal < 5000}
+                                    disabled={!selectedCustomer || orderSummary.availablePoints === 0 || orderSummary.discountedSubtotal < 5000}
                                     placeholder={selectedCustomer ? 
-                                      (orderSummary.subtotal >= 5000 ? "사용할 포인트 입력" : "5천원 이상 주문 시 사용 가능") : 
+                                      (orderSummary.discountedSubtotal >= 5000 ? "사용할 포인트 입력" : "5천원 이상 주문 시 사용 가능") : 
                                       "고객을 먼저 선택하세요"
                                     }
                                 />
@@ -1306,7 +1387,7 @@ const debouncedCustomerSearch = useCallback(
                                   variant="outline" 
                                   size="sm" 
                                   onClick={handleUseAllPoints} 
-                                  disabled={!selectedCustomer || orderSummary.availablePoints === 0 || orderSummary.subtotal < 5000}
+                                  disabled={!selectedCustomer || orderSummary.availablePoints === 0 || orderSummary.discountedSubtotal < 5000}
                                 >
                                   전액 사용
                                 </Button>
@@ -1316,7 +1397,7 @@ const debouncedCustomerSearch = useCallback(
                                 <p className="text-muted-foreground">
                                   보유 포인트: <span className="font-medium text-blue-600">{orderSummary.availablePoints.toLocaleString()} P</span>
                                 </p>
-                                {orderSummary.subtotal >= 5000 ? (
+                                {orderSummary.discountedSubtotal >= 5000 ? (
                                   <p className="text-muted-foreground">
                                     사용 가능: <span className="font-medium text-green-600">{orderSummary.maxUsablePoints.toLocaleString()} P</span>
                                   </p>

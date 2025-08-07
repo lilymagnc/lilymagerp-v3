@@ -24,7 +24,8 @@ export interface OrderData {
   items: OrderItemForm[];
   summary: {
     subtotal: number;
-    discount: number;
+    discountAmount: number;
+    discountRate: number;
     deliveryFee: number;
     pointsUsed?: number;
     pointsEarned?: number;

@@ -21,7 +21,8 @@ import {
   RefreshCw,
   MessageSquare,
   Mail,
-  Type
+  Type,
+  Percent
 } from "lucide-react";
 import { useSettings, defaultSettings } from "@/hooks/use-settings";
 
@@ -144,6 +145,7 @@ export default function SettingsPage() {
            <TabsTrigger value="messages">메시지 설정</TabsTrigger>
            <TabsTrigger value="auto-email">자동 이메일</TabsTrigger>
            <TabsTrigger value="security">보안 설정</TabsTrigger>
+           <TabsTrigger value="discount">할인 설정</TabsTrigger>
          </TabsList>
 
         {/* 일반 설정 */}
@@ -616,6 +618,34 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+         {/* 할인 설정 */}
+         <TabsContent value="discount" className="space-y-4">
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <Percent className="h-5 w-5" />
+                 할인 설정
+               </CardTitle>
+             </CardHeader>
+             <CardContent className="space-y-4">
+               <div className="text-center py-8">
+                 <Percent className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                 <h3 className="text-lg font-semibold mb-2">할인 설정 관리</h3>
+                 <p className="text-gray-500 mb-6">
+                   지점별 할인율, 할인 기간, 할인 조건 등을 관리할 수 있습니다.
+                 </p>
+                 <Button 
+                   onClick={() => window.location.href = '/dashboard/settings/discount'}
+                   className="bg-blue-600 hover:bg-blue-700"
+                 >
+                   <Percent className="h-4 w-4 mr-2" />
+                   할인 설정 관리
+                 </Button>
+               </div>
+             </CardContent>
+           </Card>
+         </TabsContent>
       </Tabs>
 
       {/* 액션 버튼 */}
