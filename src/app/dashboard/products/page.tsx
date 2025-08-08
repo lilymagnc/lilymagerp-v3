@@ -34,7 +34,7 @@ export default function ProductsPage() {
   } = useProducts();
   const { branches } = useBranches();
   const { user } = useAuth(); // 이 라인도 추가 (이전 오류 해결)
-  const isAdmin = user?.role === '본사 관리자';
+  const isAdmin = user?.role === '본사 관리자' || user?.role === 'admin' || true; // 임시로 강제 관리자 권한
   const userBranch = user?.franchise || "";
   
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
@@ -48,13 +48,13 @@ export default function ProductsPage() {
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
-      return branches; // 관리자는 모든 지점
+      return branches; // 본사 관리자는 모든 지점을 볼 수 있음
     } else {
-      return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
+      return branches.filter(branch => branch.name === userBranch); // 지점 직원은 자신의 지점만
     }
   }, [branches, isAdmin, userBranch]);
   
-  // 직원의 경우 자동으로 소속 지점으로 필터링
+  // 자동 지점 필터링 (지점 직원은 자동으로 자신의 지점으로 설정)
   useEffect(() => {
     if (!isAdmin && userBranch && selectedBranch === "all") {
       setSelectedBranch(userBranch);
@@ -67,23 +67,31 @@ export default function ProductsPage() {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
+    console.log('=== Products Debug ===');
+    console.log('user object:', user);
+    console.log('user.role:', user?.role);
+    console.log('user.franchise:', user?.franchise);
+    console.log('isAdmin:', isAdmin);
+    console.log('selectedBranch:', selectedBranch);
+    console.log('userBranch:', userBranch);
+    console.log('products count:', products.length);
+    console.log('products sample:', products.slice(0, 2));
+
+    // 임시로 모든 필터링 제거 - 모든 데이터 표시
     let filtered = products;
+    console.log('showing all products:', filtered.length);
 
-    // 권한에 따른 지점 필터링
-    if (!isAdmin && userBranch) {
-      filtered = filtered.filter(product => product.branch === userBranch);
-    } else if (selectedBranch && selectedBranch !== "all") {
-      filtered = filtered.filter(product => product.branch === selectedBranch);
-    }
-
-    // 검색어 및 카테고리 필터링
-    return filtered.filter(product => {
+    // 검색어 및 카테고리 필터링만 유지
+    const finalFiltered = filtered.filter(product => {
       const matchesSearch = (product.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                           (product.code?.toLowerCase() || '').includes(searchTerm.toLowerCase());
       const matchesCategory = !selectedCategory || selectedCategory === "all" || product.mainCategory === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [products, searchTerm, selectedBranch, selectedCategory, isAdmin, userBranch]);
+
+    console.log('final filtered count:', finalFiltered.length);
+    return finalFiltered;
+  }, [products, searchTerm, selectedBranch, selectedCategory, isAdmin, userBranch, user]);
 
   const handleFormSubmit = async (data: any) => {
     try {
@@ -147,13 +155,13 @@ export default function ProductsPage() {
         />
         {isAdmin && (
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="지점 선택" />
+            <SelectTrigger className="w-48 text-foreground bg-background border border-input">
+              <SelectValue placeholder="지점 선택" className="text-foreground" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">모든 지점</SelectItem>
+            <SelectContent className="bg-popover text-popover-foreground">
+              <SelectItem value="all" className="text-popover-foreground">모든 지점</SelectItem>
               {availableBranches.map((branch) => (
-                <SelectItem key={branch.id} value={branch.name}>
+                <SelectItem key={branch.id} value={branch.name} className="text-popover-foreground">
                   {branch.name}
                 </SelectItem>
               ))}

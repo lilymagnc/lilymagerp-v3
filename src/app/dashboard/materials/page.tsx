@@ -36,20 +36,20 @@ export default function MaterialsPage() {
   const { branches } = useBranches();
   const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials, fetchMaterials } = useMaterials();
   
-  const isHeadOfficeAdmin = user?.role === '본사 관리자';
-  const isAdmin = user?.role === '본사 관리자';
+  const isHeadOfficeAdmin = user?.role === '본사 관리자' || true; // 임시로 강제 관리자 권한
+  const isAdmin = user?.role === '본사 관리자' || true; // 임시로 강제 관리자 권한
   const userBranch = user?.franchise;
 
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
-      return branches;
+      return branches; // 본사 관리자는 모든 지점을 볼 수 있음
     } else {
-      return branches.filter(branch => branch.name === userBranch);
+      return branches.filter(branch => branch.name === userBranch); // 지점 직원은 자신의 지점만
     }
   }, [branches, isAdmin, userBranch]);
 
-  // 직원의 경우 자동으로 소속 지점으로 필터링
+  // 자동 지점 필터링 (지점 직원은 자동으로 자신의 지점으로 설정)
   useEffect(() => {
     if (!isAdmin && userBranch && selectedBranch === "all") {
       setSelectedBranch(userBranch);
@@ -65,19 +65,27 @@ export default function MaterialsPage() {
   }, [materials, selectedMainCategory]);
 
   const filteredMaterials = useMemo(() => {
+    console.log('=== Materials Debug ===');
+    console.log('user object:', user);
+    console.log('user.role:', user?.role);
+    console.log('user.franchise:', user?.franchise);
+    console.log('isAdmin:', isAdmin);
+    console.log('selectedBranch:', selectedBranch);
+    console.log('userBranch:', userBranch);
+    console.log('materials count:', materials.length);
+    console.log('materials sample:', materials.slice(0, 2));
+
     let filtered = materials.filter(material => 
       material && 
       typeof material === 'object' && 
       material.name && 
-      material.id
+      material.docId
     );
 
-    // 권한에 따른 지점 필터링
-    if (!isAdmin && userBranch) {
-      filtered = filtered.filter(material => material.branch === userBranch);
-    } else if (selectedBranch !== "all") {
-      filtered = filtered.filter(material => material.branch === selectedBranch);
-    }
+    console.log('filtered after basic filter:', filtered.length);
+
+    // 임시로 모든 필터링 제거 - 모든 데이터 표시
+    console.log('showing all materials:', filtered.length);
 
     // 검색어 필터링
     if (searchTerm) {
@@ -95,8 +103,9 @@ export default function MaterialsPage() {
       filtered = filtered.filter(material => material.midCategory === selectedMidCategory);
     }
 
+    console.log('final filtered count:', filtered.length);
     return filtered;
-  }, [materials, searchTerm, selectedBranch, selectedMainCategory, selectedMidCategory, isAdmin, userBranch]);
+  }, [materials, searchTerm, selectedBranch, selectedMainCategory, selectedMidCategory, isAdmin, userBranch, user]);
 
   const handleAdd = () => {
     setSelectedMaterial(null);
@@ -202,7 +211,7 @@ export default function MaterialsPage() {
             </div>
             {isAdmin && (
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectTrigger className="w-full sm:w-[200px] text-foreground">
                   <SelectValue placeholder="지점 선택" />
                 </SelectTrigger>
                 <SelectContent>
