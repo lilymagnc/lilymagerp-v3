@@ -1,5 +1,4 @@
 'use client';
-
 import { AlbumCategory, ALBUM_CATEGORIES } from '@/types/album';
 import {
   Select,
@@ -8,12 +7,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
 interface CategoryFilterProps {
   selectedCategory: AlbumCategory | 'all';
   onCategoryChange: (category: AlbumCategory | 'all') => void;
 }
-
 export function CategoryFilter({ selectedCategory, onCategoryChange }: CategoryFilterProps) {
   return (
     <Select value={selectedCategory} onValueChange={onCategoryChange}>

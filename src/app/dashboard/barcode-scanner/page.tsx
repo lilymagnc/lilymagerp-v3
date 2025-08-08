@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, Minus, Save, X, ScanLine, Camera, Keyboard, Package, Truck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
 interface ScannedItem {
   id: string;
   name: string;
@@ -26,13 +24,11 @@ interface ScannedItem {
   docId?: string;
   quantity: number; // 입고/출고 수량 추가
 }
-
 export default function BarcodeScannerPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { products, manualUpdateStock: updateProductStock } = useProducts();
   const { materials, manualUpdateStock: updateMaterialStock } = useMaterials();
-  
   const [barcodeInput, setBarcodeInput] = useState("");
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,37 +36,29 @@ export default function BarcodeScannerPage() {
   const [scanMode, setScanMode] = useState<'manual' | 'camera'>('manual');
   const [operationMode, setOperationMode] = useState<'in' | 'out'>('in'); // 입고/출고 모드
   const [isScanning, setIsScanning] = useState(false);
-  
   // 현재 사용자의 지점 정보
   const currentUserBranch = user?.franchise;
   const isHQManager = user?.role === '본사 관리자';
-  
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
   // 페이지 로드 시 바코드 입력 필드에 포커스
   useEffect(() => {
     if (barcodeInputRef.current && scanMode === 'manual') {
       barcodeInputRef.current.focus();
     }
   }, [scanMode]);
-
   // 키보드 이벤트 리스너 (전역 바코드 스캔 감지)
   useEffect(() => {
     let barcodeBuffer = '';
     let lastKeyTime = Date.now();
-
     const handleKeyPress = (e: KeyboardEvent) => {
       const currentTime = Date.now();
-      
       // 키 입력 간격이 50ms 이하면 바코드 스캐너로 간주
       if (currentTime - lastKeyTime > 50) {
         barcodeBuffer = '';
       }
-      
       lastKeyTime = currentTime;
-      
       if (e.key === 'Enter' && barcodeBuffer.length > 0) {
         // 바코드 스캔 완료
         e.preventDefault();
@@ -81,16 +69,13 @@ export default function BarcodeScannerPage() {
         barcodeBuffer += e.key;
       }
     };
-
     if (scanMode === 'manual') {
       document.addEventListener('keypress', handleKeyPress);
     }
-
     return () => {
       document.removeEventListener('keypress', handleKeyPress);
     };
   }, [scanMode, operationMode]);
-
   // 카메라 시작
   const startCamera = async () => {
     try {
@@ -102,7 +87,6 @@ export default function BarcodeScannerPage() {
           height: { ideal: 720 }
         } 
       });
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
@@ -117,7 +101,6 @@ export default function BarcodeScannerPage() {
       setIsScanning(false);
     }
   };
-
   // 카메라 중지
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -127,21 +110,17 @@ export default function BarcodeScannerPage() {
     }
     setIsScanning(false);
   };
-
   // 바코드로 상품/자재 검색
   const searchByBarcode = (barcode: string) => {
     const trimmedBarcode = barcode.trim();
     if (!trimmedBarcode) return;
-
     // 상품에서 검색 (지점별 필터링)
     const filteredProducts = isHQManager 
       ? products 
       : products.filter(p => p.branch === currentUserBranch);
-    
     const product = filteredProducts.find(p => p.id === trimmedBarcode);
     if (product) {
       const existingItem = scannedItems.find(item => item.id === product.id && item.type === 'product');
-      
       if (existingItem) {
         // 이미 리스트에 있으면 수량만 증가 (입고/출고 모두 동일하게)
         setScannedItems(prev => 
@@ -154,7 +133,6 @@ export default function BarcodeScannerPage() {
               : item
           )
         );
-        
         toast({
           title: operationMode === 'in' ? "입고 수량 증가" : "출고 수량 증가",
           description: `${product.name} ${operationMode === 'in' ? '입고' : '출고'} 수량이 증가했습니다.`,
@@ -173,30 +151,25 @@ export default function BarcodeScannerPage() {
           docId: product.docId,
           quantity: 1, // 기본 수량 1
         };
-
         setScannedItems(prev => [...prev, newItem]);
         toast({
           title: "상품 스캔 완료",
           description: `${product.name}이(가) ${operationMode === 'in' ? '입고' : '출고'} 목록에 추가되었습니다.`,
         });
       }
-      
       setBarcodeInput("");
       if (barcodeInputRef.current) {
         barcodeInputRef.current.focus();
       }
       return;
     }
-
     // 자재에서 검색 (지점별 필터링)
     const filteredMaterials = isHQManager 
       ? materials 
       : materials.filter(m => m.branch === currentUserBranch);
-    
     const material = filteredMaterials.find(m => m.id === trimmedBarcode);
     if (material) {
       const existingItem = scannedItems.find(item => item.id === material.id && item.type === 'material');
-      
       if (existingItem) {
         // 이미 리스트에 있으면 수량만 증가 (입고/출고 모두 동일하게)
         setScannedItems(prev => 
@@ -209,7 +182,6 @@ export default function BarcodeScannerPage() {
               : item
           )
         );
-        
         toast({
           title: operationMode === 'in' ? "입고 수량 증가" : "출고 수량 증가",
           description: `${material.name} ${operationMode === 'in' ? '입고' : '출고'} 수량이 증가했습니다.`,
@@ -228,32 +200,27 @@ export default function BarcodeScannerPage() {
           docId: material.docId,
           quantity: 1, // 기본 수량 1
         };
-
         setScannedItems(prev => [...prev, newItem]);
         toast({
           title: "자재 스캔 완료",
           description: `${material.name}이(가) ${operationMode === 'in' ? '입고' : '출고'} 목록에 추가되었습니다.`,
         });
       }
-      
       setBarcodeInput("");
       if (barcodeInputRef.current) {
         barcodeInputRef.current.focus();
       }
       return;
     }
-
     toast({
       variant: "destructive",
       title: "찾을 수 없음",
       description: `바코드 ${trimmedBarcode}에 해당하는 상품/자재를 찾을 수 없습니다.`,
     });
-    
     if (barcodeInputRef.current) {
       barcodeInputRef.current.focus();
     }
   };
-
   // 수량 변경
   const updateQuantity = (itemId: string, itemType: 'product' | 'material', newQuantity: number) => {
     setScannedItems(prev => 
@@ -264,12 +231,10 @@ export default function BarcodeScannerPage() {
       )
     );
   };
-
   // 입고 (+1)
   const handleInStock = (item: ScannedItem) => {
     updateQuantity(item.id, item.type, item.quantity + 1);
   };
-
   // 출고 (-1)
   const handleOutStock = (item: ScannedItem) => {
     if (item.quantity > 0) {
@@ -282,21 +247,17 @@ export default function BarcodeScannerPage() {
       });
     }
   };
-
   // 변경사항 저장
   const handleSaveChanges = async () => {
     try {
       let successCount = 0;
       let errorCount = 0;
-
       const itemsToProcess = scannedItems.filter(item => item.quantity > 0);
-
       for (const item of itemsToProcess) {
         try {
           const newStock = operationMode === 'in' 
             ? item.originalStock + item.quantity 
             : Math.max(0, item.originalStock - item.quantity);
-
           if (item.type === 'product') {
             await updateProductStock(item.id, item.name, newStock, item.branch, user?.email || "Unknown User");
             successCount++;
@@ -309,7 +270,6 @@ export default function BarcodeScannerPage() {
           errorCount++;
         }
       }
-
       if (successCount > 0) {
         toast({
           title: `${operationMode === 'in' ? '입고' : '출고'} 완료`,
@@ -336,30 +296,25 @@ export default function BarcodeScannerPage() {
       });
     }
   };
-
   // 아이템 제거
   const removeItem = (itemId: string, itemType: 'product' | 'material') => {
     setScannedItems(prev => 
       prev.filter(item => !(item.id === itemId && item.type === itemType))
     );
   };
-
   // 필터링된 아이템
   const filteredItems = scannedItems.filter(item => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
   // 처리할 아이템 수
   const itemsToProcessCount = scannedItems.filter(item => item.quantity > 0).length;
-
   return (
     <div className="space-y-6">
       <PageHeader 
         title="바코드 스캐너" 
         description={`바코드를 스캔하여 ${operationMode === 'in' ? '입고' : '출고'}를 관리합니다. ${!isHQManager ? `(현재 지점: ${currentUserBranch})` : '(전체 지점)'}`}
       />
-
       {/* 지점 정보 및 입고/출고 모드 선택 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 지점 정보 */}
@@ -385,7 +340,6 @@ export default function BarcodeScannerPage() {
             </div>
           </CardContent>
         </Card>
-
         {/* 입고/출고 모드 선택 */}
         <Card>
           <CardHeader>
@@ -410,7 +364,6 @@ export default function BarcodeScannerPage() {
           </CardContent>
         </Card>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 바코드 입력 */}
         <Card>
@@ -440,7 +393,6 @@ export default function BarcodeScannerPage() {
                   카메라 스캔
                 </TabsTrigger>
               </TabsList>
-              
               <TabsContent value="manual" className="space-y-4">
                 <div className="flex gap-2">
                   <Input
@@ -460,7 +412,6 @@ export default function BarcodeScannerPage() {
                     <Search className="h-4 w-4" />
                   </Button>
                 </div>
-                
                                  <Alert>
                    <ScanLine className="h-4 w-4" />
                    <AlertDescription>
@@ -474,7 +425,6 @@ export default function BarcodeScannerPage() {
                    </AlertDescription>
                  </Alert>
               </TabsContent>
-              
               <TabsContent value="camera" className="space-y-4">
                 <div className="relative">
                   <video
@@ -496,7 +446,6 @@ export default function BarcodeScannerPage() {
                     </div>
                   )}
                 </div>
-                
                 <div className="flex gap-2">
                   <Button 
                     onClick={startCamera} 
@@ -515,7 +464,6 @@ export default function BarcodeScannerPage() {
                     카메라 중지
                   </Button>
                 </div>
-                
                 <Alert>
                   <Camera className="h-4 w-4" />
                   <AlertDescription>
@@ -526,7 +474,6 @@ export default function BarcodeScannerPage() {
             </Tabs>
           </CardContent>
         </Card>
-
         {/* 스캔 결과 */}
         <Card>
           <CardHeader>
@@ -547,7 +494,6 @@ export default function BarcodeScannerPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="mb-4"
                 />
-                
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {filteredItems.map((item) => {
                     const hasQuantity = item.quantity > 0;
@@ -586,7 +532,6 @@ export default function BarcodeScannerPage() {
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        
                         <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
@@ -597,7 +542,6 @@ export default function BarcodeScannerPage() {
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
-                          
                           <Input
                             type="number"
                             value={item.quantity}
@@ -611,7 +555,6 @@ export default function BarcodeScannerPage() {
                             min="0"
                             placeholder="0"
                           />
-                          
                           <Button
                             variant="outline"
                             size="sm"
@@ -625,7 +568,6 @@ export default function BarcodeScannerPage() {
                     );
                   })}
                 </div>
-                
                 <div className="flex gap-2 pt-4">
                   <Button 
                     onClick={handleSaveChanges}

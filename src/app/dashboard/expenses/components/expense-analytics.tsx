@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -42,18 +41,14 @@ import {
 import type { 
   ExpenseRequest
 } from '@/types/expense';
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'];
-
 export function ExpenseAnalytics() {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'quarter' | 'year'>('month');
   const { expenses, loading } = useExpenses();
-
   // 시간 범위별 데이터 필터링
   const filteredExpenses = useMemo(() => {
     const now = new Date();
     const startDate = new Date();
-    
     switch (timeRange) {
       case 'week':
         startDate.setDate(now.getDate() - 7);
@@ -68,28 +63,23 @@ export function ExpenseAnalytics() {
         startDate.setFullYear(now.getFullYear() - 1);
         break;
     }
-
     return expenses.filter(expense => {
       const expenseDate = expense.createdAt.toDate ? expense.createdAt.toDate() : new Date(expense.createdAt);
       return expenseDate >= startDate;
     });
   }, [expenses, timeRange]);
-
   // 기본 통계 계산
   const basicStats = useMemo(() => {
     const totalExpenses = filteredExpenses.length;
     const approvedExpenses = filteredExpenses.filter(e => e.status === 'approved' || e.status === 'paid').length;
     const pendingExpenses = filteredExpenses.filter(e => e.status === 'pending').length;
     const rejectedExpenses = filteredExpenses.filter(e => e.status === 'rejected').length;
-    
     const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.totalAmount, 0);
     const approvedAmount = filteredExpenses
       .filter(e => e.status === 'approved' || e.status === 'paid')
       .reduce((sum, expense) => sum + expense.totalAmount, 0);
-    
     const averageAmount = totalExpenses > 0 ? totalAmount / totalExpenses : 0;
     const approvalRate = totalExpenses > 0 ? (approvedExpenses / totalExpenses) * 100 : 0;
-
     return {
       totalExpenses,
       approvedExpenses,
@@ -101,7 +91,6 @@ export function ExpenseAnalytics() {
       approvalRate
     };
   }, [filteredExpenses]);
-
   // 카테고리별 분석
   const categoryAnalysis = useMemo(() => {
     const categoryData = filteredExpenses.reduce((acc, expense) => {
@@ -118,9 +107,7 @@ export function ExpenseAnalytics() {
       });
       return acc;
     }, {} as Record<ExpenseCategory, any>);
-
     const totalAmount = Object.values(categoryData).reduce((sum: number, data: any) => sum + data.amount, 0);
-
     return Object.values(categoryData)
       .map((data: any) => ({
         ...data,
@@ -129,7 +116,6 @@ export function ExpenseAnalytics() {
       }))
       .sort((a: any, b: any) => b.amount - a.amount);
   }, [filteredExpenses]);
-
   // 지점별 분석
   const branchAnalysis = useMemo(() => {
     const branchData = filteredExpenses.reduce((acc, expense) => {
@@ -143,28 +129,22 @@ export function ExpenseAnalytics() {
           pending: 0
         };
       }
-      
       acc[branch].amount += expense.totalAmount;
       acc[branch].count += 1;
-      
       if (expense.status === 'approved' || expense.status === 'paid') {
         acc[branch].approved += 1;
       } else if (expense.status === 'pending') {
         acc[branch].pending += 1;
       }
-      
       return acc;
     }, {} as Record<string, any>);
-
     return Object.values(branchData).sort((a: any, b: any) => b.amount - a.amount);
   }, [filteredExpenses]);
-
   // 월별 트렌드
   const monthlyTrend = useMemo(() => {
     const monthlyData = filteredExpenses.reduce((acc, expense) => {
       const date = expense.createdAt.toDate ? expense.createdAt.toDate() : new Date(expense.createdAt);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
       if (!acc[monthKey]) {
         acc[monthKey] = {
           month: monthKey,
@@ -175,10 +155,8 @@ export function ExpenseAnalytics() {
           rejected: 0
         };
       }
-      
       acc[monthKey].amount += expense.totalAmount;
       acc[monthKey].count += 1;
-      
       if (expense.status === 'approved' || expense.status === 'paid') {
         acc[monthKey].approved += 1;
       } else if (expense.status === 'pending') {
@@ -186,20 +164,16 @@ export function ExpenseAnalytics() {
       } else if (expense.status === 'rejected') {
         acc[monthKey].rejected += 1;
       }
-      
       return acc;
     }, {} as Record<string, any>);
-
     return Object.values(monthlyData).sort((a: any, b: any) => a.month.localeCompare(b.month));
   }, [filteredExpenses]);
-
   // 상위 지출 항목
   const topExpenses = useMemo(() => {
     return filteredExpenses
       .sort((a, b) => b.totalAmount - a.totalAmount)
       .slice(0, 10);
   }, [filteredExpenses]);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -207,7 +181,6 @@ export function ExpenseAnalytics() {
       notation: 'compact'
     }).format(amount);
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -216,7 +189,6 @@ export function ExpenseAnalytics() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -237,7 +209,6 @@ export function ExpenseAnalytics() {
           </SelectContent>
         </Select>
       </div>
-
       {/* 주요 지표 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -256,7 +227,6 @@ export function ExpenseAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -273,7 +243,6 @@ export function ExpenseAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -290,7 +259,6 @@ export function ExpenseAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -308,7 +276,6 @@ export function ExpenseAnalytics() {
           </CardContent>
         </Card>
       </div>
-
       {/* 차트 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 카테고리별 분포 */}
@@ -344,7 +311,6 @@ export function ExpenseAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         {/* 지점별 현황 */}
         <Card>
           <CardHeader>
@@ -375,7 +341,6 @@ export function ExpenseAnalytics() {
           </CardContent>
         </Card>
       </div>
-
       {/* 월별 트렌드 */}
       <Card>
         <CardHeader>
@@ -420,7 +385,6 @@ export function ExpenseAnalytics() {
           </div>
         </CardContent>
       </Card>
-
       {/* 상위 지출 항목 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 카테고리별 상세 */}
@@ -456,7 +420,6 @@ export function ExpenseAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         {/* 상위 지출 항목 */}
         <Card>
           <CardHeader>

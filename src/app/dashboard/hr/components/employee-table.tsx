@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,30 +12,24 @@ import { Employee } from "@/hooks/use-employees";
 import { EmployeeDetails } from "./employee-details";
 import { format } from "date-fns";
 import { POSITIONS } from "@/lib/constants";
-
 interface EmployeeTableProps {
   employees: Employee[];
   onEdit: (employee: Employee) => void;
   onDelete: (id: string) => void;
 }
-
 export function EmployeeTable({ employees, onEdit, onDelete }: EmployeeTableProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-
   const handleRowClick = (employee: Employee) => {
     setSelectedEmployee(employee);
     setIsDetailOpen(true);
   };
-  
   const handleEditClick = (e: React.MouseEvent, employee: Employee) => {
     e.stopPropagation();
     onEdit(employee);
   }
-
   const getPositionBadge = (position: string) => {
     let variant: "default" | "secondary" | "outline" | "destructive" = "outline";
-    
     switch (position) {
       case POSITIONS.CEO:
         variant = "default";
@@ -56,10 +49,8 @@ export function EmployeeTable({ employees, onEdit, onDelete }: EmployeeTableProp
       default:
         variant = "outline";
     }
-    
     return <Badge variant={variant}>{position}</Badge>;
   };
-
   return (
     <>
       <Card>
@@ -142,4 +133,3 @@ export function EmployeeTable({ employees, onEdit, onDelete }: EmployeeTableProp
     </>
   );
 }
-

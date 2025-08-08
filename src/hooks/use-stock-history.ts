@@ -1,10 +1,8 @@
 "use client";
-
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
-
 export interface StockHistory {
   id: string;
   date: string;
@@ -21,12 +19,10 @@ export interface StockHistory {
   price?: number;
   totalAmount?: number;
 }
-
 export function useStockHistory() {
   const [history, setHistory] = useState<StockHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
   useEffect(() => {
     setLoading(true);
     const q = query(collection(db, "stockHistory"), orderBy("date", "desc"));
@@ -51,10 +47,8 @@ export function useStockHistory() {
       });
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [toast]);
-
   const deleteHistoryRecord = async (id: string) => {
     try {
       await deleteDoc(doc(db, 'stockHistory', id));
@@ -71,7 +65,6 @@ export function useStockHistory() {
       });
     }
   };
-
   return {
     history,
     loading,

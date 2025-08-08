@@ -1,12 +1,10 @@
 
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
-
 // Simplified version for the form
 interface OrderItemForm {
   id: string;
@@ -14,13 +12,11 @@ interface OrderItemForm {
   quantity: number;
   price: number;
 }
-
 export interface OrderData {
   branchId: string;
   branchName: string;
   orderDate: Date | Timestamp;
   status: 'processing' | 'completed' | 'canceled';
-  
   items: OrderItemForm[];
   summary: {
     subtotal: number;
@@ -31,7 +27,6 @@ export interface OrderData {
     pointsEarned?: number;
     total: number;
   };
-
   orderer: {
     id?: string; // 기존 고객 ID (선택사항)
     name: string;
@@ -43,19 +38,16 @@ export interface OrderData {
   registerCustomer: boolean; // 고객 등록 여부 필드 추가
   orderType: "store" | "phone" | "naver" | "kakao" | "etc";
   receiptType: "store_pickup" | "pickup_reservation" | "delivery_reservation";
-
   payment: {
     method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
     status: PaymentStatus;
   };
-
   pickupInfo: {
     date: string;
     time: string;
     pickerName: string;
     pickerContact: string;
   } | null;
-
   deliveryInfo: {
     date: string;
     time: string;
@@ -67,7 +59,6 @@ export interface OrderData {
     driverName?: string;
     driverContact?: string;
   } | null;
-
   // 배송비 관리 관련 필드
   actualDeliveryCost?: number;
   deliveryCostStatus?: 'pending' | 'completed';
@@ -75,36 +66,28 @@ export interface OrderData {
   deliveryCostUpdatedBy?: string;
   deliveryCostReason?: string;
   deliveryProfit?: number;
-
   message: {
     type: "card" | "ribbon";
     content: string;
   };
-
   request: string;
 }
-
-
 export interface Order extends Omit<OrderData, 'orderDate'> {
   id: string;
   orderDate: Timestamp;
 }
-
 export type PaymentStatus = "paid" | "pending" | "completed";
-
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
-
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       const ordersCollection = collection(db, 'orders');
       const q = query(ordersCollection, orderBy("orderDate", "desc"));
       const querySnapshot = await getDocs(q);
-      
       const ordersData = querySnapshot.docs.map(doc => {
         const data = doc.data();
         // Legacy data migration: convert old receiptType values to new ones
@@ -114,7 +97,6 @@ export function useOrders() {
         } else if (receiptType === 'delivery') {
           receiptType = 'delivery_reservation';
         }
-        
         return { 
           id: doc.id, 
           ...data, 
@@ -122,7 +104,6 @@ export function useOrders() {
         } as Order;
       });
       setOrders(ordersData);
-
     } catch (error) {
       console.error("Error fetching orders: ", error);
       toast({
@@ -134,28 +115,22 @@ export function useOrders() {
       setLoading(false);
     }
   }, [toast]);
-
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
-
   const addOrder = async (orderData: OrderData) => {
     setLoading(true);
-    
     try {
       // Ensure orderDate is a JS Date object before proceeding
       const orderDate = (orderData.orderDate instanceof Timestamp) 
         ? orderData.orderDate.toDate() 
         : new Date(orderData.orderDate);
-
       const orderPayload = {
         ...orderData,
         orderDate: Timestamp.fromDate(orderDate),
       };
-
       // 주문 추가
       const orderDocRef = await addDoc(collection(db, 'orders'), orderPayload);
-      
       // 고객 등록/업데이트 로직 (포인트 차감 포함)
       if (orderData.registerCustomer && !orderData.isAnonymous) {
         await registerCustomerFromOrder(orderData);
@@ -163,17 +138,13 @@ export function useOrders() {
         // 고객 등록을 하지 않지만 기존 고객이 포인트를 사용한 경우에만 별도 차감
         await deductCustomerPoints(orderData.orderer.id, orderData.summary.pointsUsed);
       }
-      
       // 수령자 정보 별도 저장 (배송 예약인 경우)
       if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
         await saveRecipientInfo(orderData.deliveryInfo, orderData.branchName, orderDocRef.id);
       }
-      
       const historyBatch = writeBatch(db);
-
       for (const item of orderData.items) {
         if (!item.id || item.quantity <= 0) continue;
-
         await runTransaction(db, async (transaction) => {
           const productQuery = query(
             collection(db, "products"),
@@ -181,27 +152,20 @@ export function useOrders() {
             where("branch", "==", orderData.branchName)
           );
           const productSnapshot = await getDocs(productQuery);
-
           if (productSnapshot.empty) {
             throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${orderData.branchName}' 지점에서 찾을 수 없습니다.`);
           }
-
           const productDocRef = productSnapshot.docs[0].ref;
           const productDoc = await transaction.get(productDocRef);
-
           if (!productDoc.exists()) {
             throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
           }
-
           const currentStock = productDoc.data().stock || 0;
           const newStock = currentStock - item.quantity;
-
           if (newStock < 0) {
             throw new Error(`재고 부족: '${item.name}'의 재고가 부족하여 주문을 완료할 수 없습니다. (현재 재고: ${currentStock})`);
           }
-
           transaction.update(productDocRef, { stock: newStock });
-
           const historyDocRef = doc(collection(db, "stockHistory"));
           historyBatch.set(historyDocRef, {
             date: Timestamp.fromDate(orderDate),
@@ -220,15 +184,12 @@ export function useOrders() {
           });
         });
       }
-
       await historyBatch.commit();
-      
       toast({
         title: '성공',
         description: '새 주문이 추가되고 재고가 업데이트되었습니다.',
       });
       await fetchOrders();
-      
     } catch (error) {
       console.error("Error adding order and updating stock: ", error);
       toast({
@@ -241,7 +202,6 @@ export function useOrders() {
       setLoading(false);
     }
   };
-  
   const updateOrderStatus = async (orderId: string, newStatus: 'processing' | 'completed' | 'canceled') => {
     try {
         const orderRef = doc(db, 'orders', orderId);
@@ -260,7 +220,6 @@ export function useOrders() {
         });
     }
   };
-
   const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'completed') => {
     try {
         const orderRef = doc(db, 'orders', orderId);
@@ -279,7 +238,6 @@ export function useOrders() {
         });
     }
   };
-
   const updateOrder = async (orderId: string, data: Partial<OrderData>) => {
     setLoading(true);
     try {
@@ -294,27 +252,21 @@ export function useOrders() {
       setLoading(false);
     }
   };
-
   // 주문 취소 (금액을 0으로 설정하고 포인트 환불)
   const cancelOrder = async (orderId: string, reason?: string) => {
     setLoading(true);
     try {
       const orderRef = doc(db, 'orders', orderId);
       const orderDoc = await getDoc(orderRef);
-      
       if (!orderDoc.exists()) {
         throw new Error('주문을 찾을 수 없습니다.');
       }
-      
       const orderData = orderDoc.data() as Order;
       const pointsUsed = orderData.summary.pointsUsed || 0;
-      
       // 고객이 포인트를 사용했고, 고객 ID가 있는 경우 포인트 환불
       if (pointsUsed > 0 && orderData.orderer.id) {
         await refundCustomerPoints(orderData.orderer.id, pointsUsed);
-        console.log(`주문 취소 시 포인트 환불: ${pointsUsed}포인트`);
-      }
-      
+        }
       // 주문 상태를 취소로 변경하고 금액을 0으로 설정
       await updateDoc(orderRef, {
         status: 'canceled',
@@ -331,16 +283,13 @@ export function useOrders() {
         canceledAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      
       const successMessage = pointsUsed > 0 
         ? `주문이 취소되고 금액이 0원으로 설정되었습니다. 사용한 ${pointsUsed}포인트가 환불되었습니다.`
         : "주문이 취소되고 금액이 0원으로 설정되었습니다.";
-      
       toast({
         title: "주문 취소 완료",
         description: successMessage
       });
-      
       await fetchOrders(); // 목록 새로고침
     } catch (error) {
       console.error("Error canceling order: ", error);
@@ -353,19 +302,16 @@ export function useOrders() {
       setLoading(false);
     }
   };
-
   // 주문 삭제 (완전 삭제)
   const deleteOrder = async (orderId: string) => {
     setLoading(true);
     try {
       const orderRef = doc(db, 'orders', orderId);
       await deleteDoc(orderRef);
-      
       toast({
         title: "주문 삭제 완료",
         description: "주문이 성공적으로 삭제되었습니다."
       });
-      
       await fetchOrders(); // 목록 새로고침
     } catch (error) {
       console.error("Error deleting order: ", error);
@@ -378,33 +324,22 @@ export function useOrders() {
       setLoading(false);
     }
   };
-
   return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, updateOrder, cancelOrder, deleteOrder };
 }
-
-
 // 주문자 정보로 고객 등록/업데이트 함수
 const registerCustomerFromOrder = async (orderData: OrderData) => {
   try {
-    console.log('고객 등록 시작:', orderData.orderer);
-    console.log('registerCustomer:', orderData.registerCustomer);
-    console.log('isAnonymous:', orderData.isAnonymous);
-    
     // 기존 고객 검색 (연락처 기준) - 전 지점 공유
     const customersQuery = query(
       collection(db, 'customers'),
       where('contact', '==', orderData.orderer.contact)
     );
     const existingCustomers = await getDocs(customersQuery);
-    
     // 삭제된 고객 필터링 (클라이언트 사이드에서 처리)
     const validCustomers = existingCustomers.docs.filter(doc => {
       const data = doc.data();
       return !data.isDeleted;
     });
-    
-    console.log('기존 고객 검색 결과:', validCustomers.length);
-    
     const customerData = {
       name: orderData.orderer.name,
       contact: orderData.orderer.contact,
@@ -419,20 +354,17 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
       lastOrderDate: serverTimestamp(),
       isDeleted: false,
     };
-    
     if (validCustomers.length > 0) {
       // 기존 고객 업데이트 (전 지점 공유)
       const customerDoc = validCustomers[0];
       const existingData = customerDoc.data();
       const currentBranch = orderData.branchName;
-      
       // 지점별 정보 업데이트
       const branchInfo = {
         registeredAt: serverTimestamp(),
         grade: customerData.grade,
         notes: `주문으로 자동 등록 - ${new Date().toLocaleDateString()}`
       };
-      
       await setDoc(customerDoc.ref, {
         ...customerData,
         totalSpent: (existingData.totalSpent || 0) + orderData.summary.total,
@@ -444,8 +376,7 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
         // 주 거래 지점 업데이트 (가장 최근 주문 지점)
         primaryBranch: currentBranch
       }, { merge: true });
-      
-      console.log(`기존 고객 업데이트: ${existingData.name} (${currentBranch} 지점 등록)`);
+      `);
     } else {
       // 신규 고객 등록 (통합 관리)
       const currentBranch = orderData.branchName;
@@ -461,62 +392,52 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
         },
         primaryBranch: currentBranch
       };
-      
       await addDoc(collection(db, 'customers'), newCustomerData);
-      console.log(`신규 고객 등록: ${customerData.name} (${currentBranch} 지점)`);
+      `);
     }
   } catch (error) {
     console.error('고객 등록 중 오류:', error);
     // 고객 등록 실패해도 주문은 계속 진행
   }
 };
-
 // 고객 포인트 차감 함수
 const deductCustomerPoints = async (customerId: string, pointsToDeduct: number) => {
   try {
     const customerRef = doc(db, 'customers', customerId);
     const customerDoc = await getDoc(customerRef);
-    
     if (customerDoc.exists()) {
       const currentPoints = customerDoc.data().points || 0;
       const newPoints = Math.max(0, currentPoints - pointsToDeduct);
-      
       await setDoc(customerRef, {
         points: newPoints,
         lastUpdated: serverTimestamp(),
       }, { merge: true });
-      
-      console.log(`고객 포인트 차감: ${currentPoints} → ${newPoints} (차감: ${pointsToDeduct})`);
+      `);
     }
   } catch (error) {
     console.error('포인트 차감 중 오류:', error);
     // 포인트 차감 실패해도 주문은 계속 진행
   }
 };
-
 // 고객 포인트 환불 함수
 const refundCustomerPoints = async (customerId: string, pointsToRefund: number) => {
   try {
     const customerRef = doc(db, 'customers', customerId);
     const customerDoc = await getDoc(customerRef);
-    
     if (customerDoc.exists()) {
       const currentPoints = customerDoc.data().points || 0;
       const newPoints = currentPoints + pointsToRefund;
-      
       await setDoc(customerRef, {
         points: newPoints,
         lastUpdated: serverTimestamp(),
       }, { merge: true });
-      
-      console.log(`고객 포인트 환불: ${currentPoints} → ${newPoints} (환불: ${pointsToRefund})`);
+      `);
     }
   } catch (error) {
     console.error('포인트 환불 중 오류:', error);
     // 포인트 환불 실패해도 주문 취소는 계속 진행
   }
 };
-
 // 수령자 정보 별도 저장 함수
 const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId: string) => {
   try {
@@ -527,12 +448,10 @@ const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId:
       where('branchName', '==', branchName)
     );
     const existingRecipients = await getDocs(recipientsQuery);
-    
     if (!existingRecipients.empty) {
       // 기존 수령자 업데이트
       const recipientDoc = existingRecipients.docs[0];
       const existingData = recipientDoc.data();
-      
       await setDoc(recipientDoc.ref, {
         name: deliveryInfo.recipientName, // 이름은 최신으로 업데이트
         address: deliveryInfo.address, // 주소도 최신으로 업데이트
@@ -556,7 +475,6 @@ const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId:
         marketingConsent: true, // 기본값 (나중에 UI에서 선택 가능하도록 수정)
         source: 'order', // 데이터 출처
       };
-      
       await addDoc(collection(db, 'recipients'), recipientData);
     }
   } catch (error) {

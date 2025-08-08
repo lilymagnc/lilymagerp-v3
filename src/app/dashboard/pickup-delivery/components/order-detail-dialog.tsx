@@ -1,5 +1,4 @@
 "use client";
-
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -10,13 +9,11 @@ import { Order } from "@/hooks/use-orders";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Calendar, Phone, MapPin, Package, User, Building, CreditCard, MessageSquare } from "lucide-react";
-
 interface OrderDetailDialogProps {
   order: Order | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'processing':
@@ -29,7 +26,6 @@ const getStatusBadge = (status: string) => {
       return <Badge variant="outline">{status}</Badge>;
   }
 };
-
 const getPaymentStatusBadge = (status: string) => {
   switch (status) {
     case 'paid':
@@ -42,7 +38,6 @@ const getPaymentStatusBadge = (status: string) => {
       return <Badge variant="outline">{status}</Badge>;
   }
 };
-
 const formatDateTime = (date: string, time: string) => {
   if (!date) return '-';
   try {
@@ -53,7 +48,6 @@ const formatDateTime = (date: string, time: string) => {
     return date + (time ? ` ${time}` : '');
   }
 };
-
 const formatOrderDate = (date: any) => {
   if (!date) return '-';
   try {
@@ -66,10 +60,8 @@ const formatOrderDate = (date: any) => {
     return '-';
   }
 };
-
 export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDialogProps) {
   if (!order) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -85,7 +77,6 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
             주문의 상세 정보를 확인합니다.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6">
           {/* 주문 기본 정보 */}
           <Card>
@@ -121,7 +112,6 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               </div>
             </CardContent>
           </Card>
-
           {/* 주문자 정보 */}
           <Card>
             <CardHeader>
@@ -159,7 +149,6 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               )}
             </CardContent>
           </Card>
-
           {/* 픽업/배송 정보 */}
           {(order.receiptType === 'store_pickup' || order.receiptType === 'pickup_reservation') && order.pickupInfo && (
             <Card>
@@ -193,7 +182,6 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               </CardContent>
             </Card>
           )}
-
           {order.receiptType === 'delivery_reservation' && order.deliveryInfo && (
             <Card>
               <CardHeader>
@@ -239,7 +227,6 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               </CardContent>
             </Card>
           )}
-
           {/* 주문 상품 */}
           <Card>
             <CardHeader>
@@ -266,9 +253,7 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
                   ))}
                 </TableBody>
               </Table>
-              
               <Separator className="my-4" />
-              
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>상품 합계:</span>
@@ -287,7 +272,6 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               </div>
             </CardContent>
           </Card>
-
           {/* 결제 정보 */}
           {order.payment && (
             <Card>
@@ -309,7 +293,6 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               </CardContent>
             </Card>
           )}
-
           {/* 메시지 및 요청사항 */}
           {((order.message && order.message.content) || order.request) && (
             <Card>

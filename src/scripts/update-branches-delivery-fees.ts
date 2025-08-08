@@ -1,6 +1,5 @@
 import { collection, getDocs, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-
 // 각 지점별 배송비 데이터
 const branchDeliveryFees = {
   "릴리맥광화문점": [
@@ -60,27 +59,19 @@ const branchDeliveryFees = {
     { district: "기타", fee: 30000 }
   ]
 };
-
 export async function updateBranchesWithDeliveryFees() {
   try {
-    console.log('지점 데이터에 배송비 정보 추가 시작...');
-    
     const branchesCollection = collection(db, 'branches');
     const querySnapshot = await getDocs(branchesCollection);
-    
     const batch = writeBatch(db);
     let updateCount = 0;
-    
     querySnapshot.docs.forEach((docSnapshot) => {
       if (docSnapshot.id === '_initialized') return;
-      
       const branchData = docSnapshot.data();
       const branchName = branchData.name;
-      
       // 해당 지점의 배송비 데이터가 있는지 확인
       if (branchDeliveryFees[branchName as keyof typeof branchDeliveryFees]) {
         const deliveryFees = branchDeliveryFees[branchName as keyof typeof branchDeliveryFees];
-        
         // 배송비 정보가 없거나 비어있으면 업데이트
         if (!branchData.deliveryFees || branchData.deliveryFees.length === 0) {
           const docRef = doc(db, 'branches', docSnapshot.id);
@@ -89,29 +80,21 @@ export async function updateBranchesWithDeliveryFees() {
             surcharges: { mediumItem: 2000, largeItem: 5000, express: 10000 }
           });
           updateCount++;
-          console.log(`${branchName}에 배송비 정보 추가됨`);
-        } else {
-          console.log(`${branchName}은 이미 배송비 정보가 있음`);
-        }
+          } else {
+          }
       } else {
-        console.log(`${branchName}에 대한 배송비 데이터가 정의되지 않음`);
-      }
+        }
     });
-    
     if (updateCount > 0) {
       await batch.commit();
-      console.log(`총 ${updateCount}개 지점의 배송비 정보가 업데이트되었습니다.`);
-    } else {
-      console.log('업데이트할 지점이 없습니다.');
-    }
-    
+      } else {
+      }
     return { success: true, updatedCount: updateCount };
   } catch (error) {
     console.error('배송비 정보 업데이트 중 오류:', error);
     return { success: false, error };
   }
 }
-
 // 브라우저 콘솔에서 실행할 수 있도록 전역으로 노출
 if (typeof window !== 'undefined') {
   (window as any).updateBranchesWithDeliveryFees = updateBranchesWithDeliveryFees;

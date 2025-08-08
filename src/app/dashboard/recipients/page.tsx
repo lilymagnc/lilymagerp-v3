@@ -1,10 +1,8 @@
 "use client";
-
 import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,21 +13,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { Search, MapPin, Phone, Calendar, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-
 export default function RecipientsPage() {
   const { recipients, loading, fetchRecipients, getRecipientsByDistrict, getFrequentRecipients } = useRecipients();
   const { branches } = useBranches();
   const { user } = useAuth();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
   const [viewMode] = useState<"list" | "stats">("list");
-
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
-
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
@@ -38,14 +32,12 @@ export default function RecipientsPage() {
       return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
     }
   }, [branches, isAdmin, userBranch]);
-
   // 직원의 경우 자동으로 소속 지점으로 필터링
   useEffect(() => {
     if (!isAdmin && userBranch && selectedBranch === "all") {
       setSelectedBranch(userBranch);
     }
   }, [isAdmin, userBranch, selectedBranch]);
-
   useEffect(() => {
     if (selectedBranch === "all") {
       fetchRecipients();
@@ -53,7 +45,6 @@ export default function RecipientsPage() {
       fetchRecipients(selectedBranch);
     }
   }, [selectedBranch, fetchRecipients]);
-
   // 필터링된 수령자 목록
   const filteredRecipients = useMemo(() => {
     let filtered = recipients.filter(recipient => {
@@ -63,29 +54,23 @@ export default function RecipientsPage() {
       const matchesDistrict = selectedDistrict === "all" || recipient.district === selectedDistrict;
       return matchesSearch && matchesDistrict;
     });
-
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
       filtered = filtered.filter(recipient => recipient.branchName === userBranch);
     }
-
     return filtered;
   }, [recipients, searchTerm, selectedDistrict, isAdmin, userBranch]);
-
   // 지역별 통계
   const districtStats = getRecipientsByDistrict();
   const frequentRecipients = getFrequentRecipients();
-
   // 고유 지역 목록
   const uniqueDistricts = [...new Set(recipients.map(r => r.district))].filter(Boolean);
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="수령자 관리"
         description={`배송 수령자 정보를 관리하고 마케팅에 활용하세요${!isAdmin ? ` (${userBranch})` : ''}`}
       />
-
       {/* 통계 카드 */}
       <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-4">
         <Card>
@@ -97,7 +82,6 @@ export default function RecipientsPage() {
             <div className="text-2xl font-bold">{recipients.length}</div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">단골 수령자</CardTitle>
@@ -108,7 +92,6 @@ export default function RecipientsPage() {
             <p className="text-xs text-muted-foreground">3회 이상 주문</p>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">지역 수</CardTitle>
@@ -118,7 +101,6 @@ export default function RecipientsPage() {
             <div className="text-2xl font-bold">{Object.keys(districtStats).length}</div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">이번 달 신규</CardTitle>
@@ -137,7 +119,6 @@ export default function RecipientsPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 필터 섹션 */}
       <Card>
         <CardHeader>
@@ -163,7 +144,6 @@ export default function RecipientsPage() {
                 />
               </div>
             </div>
-
             {isAdmin && (
               <div>
                 <Label htmlFor="branch-select">지점</Label>
@@ -182,7 +162,6 @@ export default function RecipientsPage() {
                 </Select>
               </div>
             )}
-
             <div>
               <Label htmlFor="district-select">지역</Label>
               <Select value={selectedDistrict} onValueChange={setSelectedDistrict}>
@@ -202,7 +181,6 @@ export default function RecipientsPage() {
           </div>
         </CardContent>
       </Card>
-
       {/* 메인 콘텐츠 */}
       {viewMode === "list" ? (
         <Card>
@@ -308,7 +286,6 @@ export default function RecipientsPage() {
               </div>
             </CardContent>
           </Card>
-
           {/* 단골 수령자 */}
           <Card>
             <CardHeader>

@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useCallback, useRef } from 'react';
 import { Upload, X, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,24 +6,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { UploadProgress } from '@/types/album';
 import { FirebaseStorageService } from '@/lib/firebase-storage';
-
 interface PhotoUploadProps {
   albumId: string;
   onUploadComplete: (files: File[]) => Promise<void>;
   onCancel: () => void;
 }
-
 export function PhotoUpload({ albumId, onUploadComplete, onCancel }: PhotoUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragActive, setIsDragActive] = useState(false);
-
   const handleFileSelect = (selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
-
     const fileArray = Array.from(selectedFiles);
     // 파일 검증
     const validFiles = fileArray.filter(file => {
@@ -35,37 +29,29 @@ export function PhotoUpload({ albumId, onUploadComplete, onCancel }: PhotoUpload
       }
       return true;
     });
-
     setFiles(prev => [...prev, ...validFiles]);
   };
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragActive(true);
   };
-
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragActive(false);
   };
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragActive(false);
     handleFileSelect(e.dataTransfer.files);
   };
-
   const handleClick = () => {
     fileInputRef.current?.click();
   };
-
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
-
   const handleUpload = async () => {
     if (files.length === 0) return;
-
     setUploading(true);
     try {
       await onUploadComplete(files);
@@ -78,7 +64,6 @@ export function PhotoUpload({ albumId, onUploadComplete, onCancel }: PhotoUpload
       setUploading(false);
     }
   };
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -86,7 +71,6 @@ export function PhotoUpload({ albumId, onUploadComplete, onCancel }: PhotoUpload
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
   return (
     <Card>
       <CardContent className="p-6">
@@ -125,7 +109,6 @@ export function PhotoUpload({ albumId, onUploadComplete, onCancel }: PhotoUpload
               </div>
             )}
           </div>
-
           {/* 선택된 파일 목록 */}
           {files.length > 0 && (
             <div className="space-y-2">
@@ -157,7 +140,6 @@ export function PhotoUpload({ albumId, onUploadComplete, onCancel }: PhotoUpload
               </div>
             </div>
           )}
-
           {/* 업로드 진행률 */}
           {uploadProgress.length > 0 && (
             <div className="space-y-2">
@@ -188,7 +170,6 @@ export function PhotoUpload({ albumId, onUploadComplete, onCancel }: PhotoUpload
               </div>
             </div>
           )}
-
           {/* 액션 버튼 */}
           <div className="flex justify-end space-x-2">
             <Button

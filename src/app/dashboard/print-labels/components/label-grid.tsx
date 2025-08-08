@@ -1,12 +1,9 @@
 
 "use client"
-
 import { LabelItem, LabelItemData } from "./label-item";
-
 interface LabelGridProps {
   items: (LabelItemData | null)[];
 }
-
 export function LabelGrid({ items }: LabelGridProps) {
   return (
     <div id="label-grid-container" className="grid grid-cols-3 gap-x-[2.5mm] gap-y-0 h-full">

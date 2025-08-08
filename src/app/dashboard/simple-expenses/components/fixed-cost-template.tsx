@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,16 +35,13 @@ import {
   UTILITY_SUB_CATEGORY_LABELS,
   formatCurrency
 } from '@/types/simple-expense';
-
 interface FixedCostTemplateProps {
   onSuccess?: () => void;
 }
-
 export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
   const [items, setItems] = useState<FixedCostItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
   const { 
     fetchFixedCostTemplate, 
     saveFixedCostTemplate, 
@@ -53,16 +49,13 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
   } = useSimpleExpenses();
   const { user } = useAuth();
   const { toast } = useToast();
-
   // 템플릿 로드
   useEffect(() => {
     const loadTemplate = async () => {
       if (!user?.branchId) return;
-      
       setLoading(true);
       try {
         const template = await fetchFixedCostTemplate(user.branchId);
-        
         if (template) {
           setItems(template.items);
         } else {
@@ -79,17 +72,14 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
         setLoading(false);
       }
     };
-
     loadTemplate();
   }, [user?.branchId, fetchFixedCostTemplate]);
-
   // 항목 수정
   const updateItem = (id: string, field: keyof FixedCostItem, value: any) => {
     setItems(prev => prev.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
   };
-
   // 항목 추가
   const addItem = () => {
     const newItem: FixedCostItem = {
@@ -104,16 +94,13 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
     };
     setItems(prev => [...prev, newItem]);
   };
-
   // 항목 삭제
   const removeItem = (id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
   };
-
   // 템플릿 저장
   const handleSaveTemplate = async () => {
     if (!user?.branchId || !user?.branchName) return;
-
     setLoading(true);
     try {
       const success = await saveFixedCostTemplate(
@@ -121,7 +108,6 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
         user.branchName,
         items
       );
-      
       if (success) {
         toast({
           title: "템플릿 저장 완료",
@@ -134,13 +120,10 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
       setLoading(false);
     }
   };
-
   // 고정비 일괄 입력
   const handleBulkInput = async () => {
     if (!user?.branchId || !user?.branchName) return;
-
     const activeItems = items.filter(item => item.isActive && item.amount > 0);
-    
     if (activeItems.length === 0) {
       toast({
         variant: "destructive",
@@ -149,7 +132,6 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
       });
       return;
     }
-
     setLoading(true);
     try {
       const success = await addFixedCosts(
@@ -158,7 +140,6 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
         activeItems,
         new Date(selectedDate)
       );
-      
       if (success) {
         onSuccess?.();
       }
@@ -168,7 +149,6 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
       setLoading(false);
     }
   };
-
   // 기본 템플릿으로 초기화
   const resetToDefault = () => {
     const defaultItems: FixedCostItem[] = DEFAULT_FIXED_COST_ITEMS.map((item, index) => ({
@@ -177,12 +157,10 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
     }));
     setItems(defaultItems);
   };
-
   // 총 금액 계산
   const totalAmount = items
     .filter(item => item.isActive)
     .reduce((sum, item) => sum + item.amount, 0);
-
   if (loading) {
     return (
       <Card>
@@ -192,7 +170,6 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
       </Card>
     );
   }
-
   return (
     <Card>
       <CardHeader>
@@ -213,7 +190,6 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
             className="w-auto"
           />
         </div>
-
         {/* 고정비 목록 */}
         <div className="border rounded-lg">
           <Table>
@@ -295,7 +271,6 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
             </TableBody>
           </Table>
         </div>
-
         {/* 요약 정보 */}
         <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
           <div className="space-y-1">
@@ -307,24 +282,20 @@ export function FixedCostTemplate({ onSuccess }: FixedCostTemplateProps) {
             </div>
           </div>
         </div>
-
         {/* 버튼 그룹 */}
         <div className="flex gap-2">
           <Button onClick={addItem} variant="outline">
             <Plus className="mr-2 h-4 w-4" />
             항목 추가
           </Button>
-          
           <Button onClick={handleSaveTemplate} variant="outline" disabled={loading}>
             <Save className="mr-2 h-4 w-4" />
             템플릿 저장
           </Button>
-          
           <Button onClick={resetToDefault} variant="outline">
             <RotateCcw className="mr-2 h-4 w-4" />
             기본값으로 초기화
           </Button>
-          
           <Button 
             onClick={handleBulkInput} 
             disabled={loading || totalAmount === 0}

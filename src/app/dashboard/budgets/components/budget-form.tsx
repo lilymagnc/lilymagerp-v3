@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,7 +37,6 @@ import type {
   EXPENSE_CATEGORY_LABELS,
   ApprovalLevel 
 } from '@/types/expense';
-
 // 폼 스키마 정의
 const budgetFormSchema = z.object({
   name: z.string().min(1, '예산명을 입력해주세요'),
@@ -55,21 +53,17 @@ const budgetFormSchema = z.object({
   directorLimit: z.number().min(0).optional(),
   executiveLimit: z.number().min(0).optional(),
 });
-
 type BudgetFormData = z.infer<typeof budgetFormSchema>;
-
 interface BudgetFormProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-
 // 지점 목록 (실제로는 API에서 가져와야 함)
 const branches = [
   { id: 'branch-001', name: '릴리맥광화문점' },
   { id: 'branch-002', name: '릴리맥여의도점' },
   { id: 'branch-003', name: '릴리맥NC이스트폴점' },
 ];
-
 // 부서 목록
 const departments = [
   { id: 'dept-001', name: '영업팀' },
@@ -77,13 +71,10 @@ const departments = [
   { id: 'dept-003', name: '관리팀' },
   { id: 'dept-004', name: '운영팀' },
 ];
-
 export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const { createBudget } = useBudgets();
   const { toast } = useToast();
-
   const form = useForm<BudgetFormData>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
@@ -102,10 +93,8 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
       executiveLimit: 2000000,
     },
   });
-
   const isMonthlyBudget = form.watch('isMonthlyBudget');
   const allocatedAmount = form.watch('allocatedAmount');
-
   // 지점 선택 처리
   const handleBranchChange = (branchId: string) => {
     const branch = branches.find(b => b.id === branchId);
@@ -117,7 +106,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
       form.setValue('branchName', '');
     }
   };
-
   // 부서 선택 처리
   const handleDepartmentChange = (departmentId: string) => {
     const department = departments.find(d => d.id === departmentId);
@@ -129,11 +117,9 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
       form.setValue('departmentName', '');
     }
   };
-
   // 폼 제출
   const onSubmit = async (data: BudgetFormData) => {
     setIsSubmitting(true);
-    
     try {
       const budgetData = {
         name: data.name,
@@ -151,24 +137,20 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
           executive: data.executiveLimit,
         }
       };
-
       await createBudget(budgetData);
       onSuccess();
-      
     } catch (error) {
       console.error('Budget creation error:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW'
     }).format(amount);
   };
-
   return (
     <div className="space-y-6">
       <Form {...form}>
@@ -196,7 +178,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="category"
@@ -222,7 +203,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                   )}
                 />
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
@@ -243,7 +223,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="isMonthlyBudget"
@@ -264,7 +243,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                     </FormItem>
                   )}
                 />
-
                 {isMonthlyBudget && (
                   <FormField
                     control={form.control}
@@ -292,7 +270,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                   />
                 )}
               </div>
-
               <FormField
                 control={form.control}
                 name="allocatedAmount"
@@ -317,7 +294,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
               />
             </CardContent>
           </Card>
-
           {/* 조직 정보 */}
           <Card>
             <CardHeader>
@@ -353,7 +329,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="departmentId"
@@ -380,7 +355,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                   )}
                 />
               </div>
-
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
@@ -389,7 +363,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
               </Alert>
             </CardContent>
           </Card>
-
           {/* 승인 한도 설정 */}
           <Card>
             <CardHeader>
@@ -421,7 +394,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="directorLimit"
@@ -443,7 +415,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="executiveLimit"
@@ -466,7 +437,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
                   )}
                 />
               </div>
-
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
@@ -476,7 +446,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
               </Alert>
             </CardContent>
           </Card>
-
           {/* 예산 요약 */}
           <Card>
             <CardContent className="p-6">
@@ -498,7 +467,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
               </div>
             </CardContent>
           </Card>
-
           {/* 액션 버튼 */}
           <div className="flex items-center justify-between">
             <Button
@@ -510,7 +478,6 @@ export function BudgetForm({ onSuccess, onCancel }: BudgetFormProps) {
               <X className="h-4 w-4 mr-2" />
               취소
             </Button>
-
             <Button
               type="submit"
               disabled={isSubmitting || allocatedAmount <= 0}

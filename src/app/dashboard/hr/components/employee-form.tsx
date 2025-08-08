@@ -1,6 +1,5 @@
 
 "use client";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -35,7 +34,6 @@ import { Employee } from "@/hooks/use-employees";
 import { useBranches } from "@/hooks/use-branches";
 import { useEffect } from "react";
 import { POSITION_OPTIONS } from "@/lib/constants";
-
 const employeeSchema = z.object({
   name: z.string().min(1, "이름을 입력해주세요."),
   position: z.string().min(1, "직위를 입력해주세요."),
@@ -46,16 +44,13 @@ const employeeSchema = z.object({
   birthDate: z.date({ required_error: "생년월일을 선택해주세요."}),
   address: z.string().optional(),
 })
-
 export type EmployeeFormValues = z.infer<typeof employeeSchema>
-
 interface EmployeeFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onSubmit: (data: EmployeeFormValues) => void;
   employee?: Employee | null;
 }
-
 const defaultValues: EmployeeFormValues = {
   name: "",
   position: "",
@@ -66,15 +61,12 @@ const defaultValues: EmployeeFormValues = {
   birthDate: new Date(),
   address: "",
 }
-
 export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: EmployeeFormProps) {
   const { branches } = useBranches();
-  
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
     defaultValues,
   })
-
   useEffect(() => {
     if (isOpen) {
       if (employee) {
@@ -88,8 +80,6 @@ export function EmployeeForm({ isOpen, onOpenChange, onSubmit, employee }: Emplo
       }
     }
   }, [isOpen, employee, form])
-  
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">

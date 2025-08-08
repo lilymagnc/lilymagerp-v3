@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,17 +23,14 @@ import { ActualPurchaseForm } from './actual-purchase-form';
 import type { PurchaseBatch } from '@/types/material-request';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
-
 interface PurchaseBatchListProps {
   onRefresh?: () => void;
 }
-
 export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
   const [selectedBatch, setSelectedBatch] = useState<PurchaseBatch | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
   const [activeTab, setActiveTab] = useState<'planning' | 'purchasing' | 'completed'>('planning');
-  
   const { 
     batches, 
     loading, 
@@ -43,14 +39,11 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
     deleteBatch,
     calculateBatchStats 
   } = usePurchaseBatches();
-
   useEffect(() => {
     fetchBatches();
   }, []);
-
   // 상태별 배치 필터링
   const filteredBatches = batches.filter(batch => batch.status === activeTab);
-
   // 배송 시작 처리
   const handleStartDelivery = async (batchId: string) => {
     const success = await startDelivery(batchId);
@@ -61,7 +54,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
       }
     }
   };
-
   // 배치 삭제 처리
   const handleDeleteBatch = async (batchId: string) => {
     if (confirm('정말로 이 구매 배치를 삭제하시겠습니까?')) {
@@ -71,7 +63,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
       }
     }
   };
-
   // 상태별 색상 반환
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -81,7 +72,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
       default: return 'gray';
     }
   };
-
   // 상태별 라벨 반환
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -91,7 +81,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
       default: return status;
     }
   };
-
   if (loading) {
     return (
       <Card>
@@ -101,7 +90,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
       </Card>
     );
   }
-
   return (
     <div className="space-y-4">
       <Card>
@@ -127,7 +115,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                 완료 ({batches.filter(b => b.status === 'completed').length})
               </TabsTrigger>
             </TabsList>
-
             <TabsContent value={activeTab} className="mt-4">
               {filteredBatches.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
@@ -139,7 +126,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                 <div className="space-y-4">
                   {filteredBatches.map((batch) => {
                     const stats = calculateBatchStats(batch);
-                    
                     return (
                       <Card key={batch.id} className="border-l-4" style={{
                         borderLeftColor: getStatusColor(batch.status) === 'blue' ? '#3b82f6' :
@@ -159,11 +145,9 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                                   {getStatusLabel(batch.status)}
                                 </Badge>
                               </div>
-                              
                               <div className="text-sm text-muted-foreground">
                                 생성일: {batch.createdAt?.toDate ? format(batch.createdAt.toDate(), 'yyyy-MM-dd HH:mm', { locale: ko }) : '-'}
                               </div>
-                              
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                 <div className="flex items-center gap-1">
                                   <ShoppingCart className="h-4 w-4" />
@@ -182,14 +166,12 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                                   <span>₩{stats.totalCost.toLocaleString()}</span>
                                 </div>
                               </div>
-
                               {batch.notes && (
                                 <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
                                   메모: {batch.notes}
                                 </div>
                               )}
                             </div>
-
                             <div className="flex gap-2">
                               <Button
                                 variant="outline"
@@ -201,7 +183,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-
                               {batch.status === 'planning' && (
                                 <>
                                   <Button
@@ -223,7 +204,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                                   </Button>
                                 </>
                               )}
-
                               {batch.status === 'completed' && (
                                 <Button
                                   variant="outline"
@@ -246,7 +226,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
           </Tabs>
         </CardContent>
       </Card>
-
       {/* 배치 상세 정보 다이얼로그 */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -256,7 +235,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
               선택한 구매 배치의 상세 정보를 확인합니다.
             </DialogDescription>
           </DialogHeader>
-          
           {selectedBatch && (
             <div className="space-y-6">
               {/* 기본 정보 */}
@@ -279,7 +257,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                   </div>
                 </div>
               </div>
-
               {/* 배송 계획 */}
               <div>
                 <h4 className="font-medium mb-2">배송 계획</h4>
@@ -298,7 +275,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                   ))}
                 </div>
               </div>
-
               {/* 구매 품목 (완료된 경우) */}
               {selectedBatch.status === 'completed' && selectedBatch.purchasedItems.length > 0 && (
                 <div>
@@ -338,7 +314,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                   </div>
                 </div>
               )}
-
               {selectedBatch.notes && (
                 <div>
                   <h4 className="font-medium mb-2">메모</h4>
@@ -351,7 +326,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
           )}
         </DialogContent>
       </Dialog>
-
       {/* 실제 구매 입력 폼 */}
       {selectedBatch && (
         <Dialog open={showPurchaseForm} onOpenChange={setShowPurchaseForm}>
@@ -362,7 +336,6 @@ export function PurchaseBatchList({ onRefresh }: PurchaseBatchListProps) {
                 선택한 구매 배치의 실제 구매 내역을 입력합니다.
               </DialogDescription>
             </DialogHeader>
-            
             <ActualPurchaseForm
               batch={selectedBatch}
               onComplete={() => {

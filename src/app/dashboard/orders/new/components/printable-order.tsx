@@ -1,9 +1,7 @@
 
 "use client";
-
 import React from 'react';
 import Image from 'next/image';
-
 export interface OrderPrintData {
     orderDate: string;
     ordererName: string;
@@ -26,11 +24,9 @@ export interface OrderPrintData {
         account: string;
     };
 }
-
 interface PrintableOrderProps {
     data: OrderPrintData | null;
 }
-
 const paymentMethodMap = {
     card: "카드",
     cash: "현금",
@@ -39,22 +35,17 @@ const paymentMethodMap = {
     shopping_mall: "쇼핑몰",
     epay: "이페이"
 };
-
-
 // Use a class component to ensure compatibility with react-to-print's ref handling.
 export class PrintableOrder extends React.Component<PrintableOrderProps> {
     render() {
         const { data } = this.props;
         if (!data) return null;
-
         const Checkbox = ({ checked }: { checked: boolean }) => (
             <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '1px solid black', marginRight: '4px', position: 'relative', verticalAlign: 'middle' }}>
                 {checked && <span style={{ position: 'absolute', top: '-3px', left: '2px', fontSize: '14px' }}>✔</span>}
             </span>
         );
-        
         const paymentMethodText = paymentMethodMap[data.paymentMethod as keyof typeof paymentMethodMap] || data.paymentMethod;
-
         const renderSection = (title: string, isReceipt: boolean) => (
             <div className="mb-4">
                 <div className="text-center mb-4">
@@ -133,15 +124,11 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                 </table>
             </div>
         );
-
         return (
             <div className="p-4 bg-white text-black font-sans">
                 {renderSection('주문서', false)}
-                
                 <div className="border-t-2 border-dashed border-gray-400 my-8"></div>
-
                 {renderSection('인수증', true)}
-
                 <div className="mt-8">
                     <table className="w-full border-collapse border-black text-xs">
                          <tbody>

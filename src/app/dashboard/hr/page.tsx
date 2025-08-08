@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -15,18 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { POSITION_OPTIONS } from "@/lib/constants";
-
 export default function HrPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  
   const { employees, loading, addEmployee, updateEmployee, deleteEmployee, bulkAddEmployees } = useEmployees();
   const { branches } = useBranches();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedPosition, setSelectedPosition] = useState("all");
-
   // 기존 직원들의 직위를 가져와서 필터 옵션에 추가
   const existingPositions = useMemo(() => [...new Set(employees.map(e => e.position))], [employees]);
   const allPositionOptions = useMemo(() => {
@@ -34,24 +29,20 @@ export default function HrPage() {
     const additionalPositions = existingPositions.filter(pos => !standardPositions.includes(pos));
     return [...POSITION_OPTIONS, ...additionalPositions.map(pos => ({ value: pos, label: pos }))];
   }, [existingPositions]);
-
   const filteredEmployees = useMemo(() => {
     return employees
       .filter(emp => (selectedBranch === "all" || emp.department === selectedBranch))
       .filter(emp => (selectedPosition === "all" || emp.position === selectedPosition))
       .filter(emp => emp.name.toLowerCase().includes(searchTerm.toLowerCase()) || emp.email.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [employees, searchTerm, selectedBranch, selectedPosition]);
-
   const handleAdd = () => {
     setSelectedEmployee(null);
     setIsFormOpen(true);
   };
-  
   const handleEdit = (employee: Employee) => {
     setSelectedEmployee(employee);
     setIsFormOpen(true);
   };
-
   const handleFormSubmit = async (data: EmployeeFormValues) => {
     if (selectedEmployee?.id) {
       await updateEmployee(selectedEmployee.id, data);
@@ -61,15 +52,12 @@ export default function HrPage() {
     setIsFormOpen(false);
     setSelectedEmployee(null);
   };
-
   const handleDelete = async (id: string) => {
     await deleteEmployee(id);
   };
-
   const handleImport = async (data: any[]) => {
     await bulkAddEmployees(data);
   };
-
   return (
     <div>
       <PageHeader
@@ -87,7 +75,6 @@ export default function HrPage() {
           </Button>
         </div>
       </PageHeader>
-      
       <Card className="mb-4">
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row items-center gap-2">
@@ -125,7 +112,6 @@ export default function HrPage() {
           </div>
         </CardContent>
       </Card>
-      
       {loading ? (
         <Card>
           <CardContent className="pt-6">
@@ -141,7 +127,6 @@ export default function HrPage() {
           onDelete={handleDelete}
         />
       )}
-
       <EmployeeForm 
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
@@ -151,4 +136,3 @@ export default function HrPage() {
     </div>
   );
 }
-

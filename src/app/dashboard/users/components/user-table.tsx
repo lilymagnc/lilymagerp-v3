@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { SystemUser } from "../page";
 import { format } from "date-fns";
 import { POSITIONS } from "@/lib/constants";
-
 interface UserTableProps {
   users: SystemUser[];
   onDeleteUser: (userId: string, userEmail: string) => Promise<void>;
@@ -21,50 +19,36 @@ interface UserTableProps {
   onToggleStatus: (userId: string, userEmail: string, currentStatus: boolean) => Promise<void>;
   onUserUpdated?: () => void; // 사용자 업데이트 콜백 추가
 }
-
 export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus, onUserUpdated }: UserTableProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<SystemUser | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-
   const handleEdit = (user: SystemUser) => {
-    console.log("사용자 편집 시작:", user);
     setSelectedUser(user);
     setIsFormOpen(true);
   };
-
   const handleDeleteClick = (user: SystemUser) => {
-    console.log("사용자 삭제 클릭:", user);
     setUserToDelete(user);
     setIsDeleteDialogOpen(true);
   };
-
   const handleDeleteConfirm = async () => {
     if (userToDelete) {
-      console.log("사용자 삭제 확인:", userToDelete);
       await onDeleteUser(userToDelete.id, userToDelete.email);
       setIsDeleteDialogOpen(false);
       setUserToDelete(null);
     }
   };
-
   const handlePasswordResetClick = async (user: SystemUser) => {
-    console.log("비밀번호 초기화:", user);
     await onPasswordReset(user.id, user.email);
   };
-
   const handleToggleStatusClick = async (user: SystemUser) => {
-    console.log("사용자 상태 변경:", user);
     await onToggleStatus(user.id, user.email, user.isActive !== false);
   };
-  
   const handleCloseForm = () => {
-    console.log("사용자 폼 닫기");
     setIsFormOpen(false);
     setSelectedUser(null);
   };
-
   const getStatusBadge = (user: SystemUser) => {
     if (user.isActive === false) {
       return <Badge variant="destructive" className="flex items-center gap-1">
@@ -77,10 +61,8 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
       활성
     </Badge>;
   };
-
   const getPositionBadge = (position: string) => {
     let variant: "default" | "secondary" | "outline" | "destructive" = "outline";
-    
     switch (position) {
       case POSITIONS.CEO:
         variant = "default";
@@ -100,10 +82,8 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
       default:
         variant = "outline";
     }
-    
     return <Badge variant={variant}>{position}</Badge>;
   };
-
   const formatLastLogin = (lastLogin: any) => {
     if (!lastLogin) return '-';
     try {
@@ -128,7 +108,6 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
       return '-';
     }
   };
-
   return (
     <>
       <Card>
@@ -216,7 +195,6 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
           </Table>
         </CardContent>
       </Card>
-
       {/* 삭제 확인 다이얼로그 */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -241,7 +219,6 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {isFormOpen && <UserForm isOpen={isFormOpen} onOpenChange={handleCloseForm} user={selectedUser} onUserUpdated={onUserUpdated} />}
     </>
   );

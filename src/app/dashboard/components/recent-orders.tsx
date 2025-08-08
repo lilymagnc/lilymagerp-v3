@@ -1,9 +1,7 @@
 
 "use client";
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
 const mockOrders = [
     { id: "ORD-001", customer: "김민준", date: "2023-10-26", amount: 123000, status: "completed" },
     { id: "ORD-002", customer: "이서연", date: "2023-10-26", amount: 78000, status: "processing" },
@@ -11,7 +9,6 @@ const mockOrders = [
     { id: "ORD-004", customer: "최수아", date: "2023-10-25", amount: 45000, status: "canceled" },
     { id: "ORD-005", customer: "정다은", date: "2023-10-24", amount: 92000, status: "completed" },
 ];
-
 export function RecentOrders() {
   return (
     <Table>

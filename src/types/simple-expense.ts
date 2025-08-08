@@ -1,5 +1,4 @@
 import { Timestamp } from 'firebase/firestore';
-
 // 간단한 지출 카테고리 - 꽃집 사업에 최적화
 export enum SimpleExpenseCategory {
   MATERIAL = 'material',        // 자재비 (꽃, 화분, 포장재 등)
@@ -13,7 +12,6 @@ export enum SimpleExpenseCategory {
   INSURANCE = 'insurance',     // 보험료 (사업자보험, 배송보험)
   OTHER = 'other'             // 기타
 }
-
 // 자재비 세부 분류 - 꽃집 특화
 export enum MaterialSubCategory {
   FRESH_FLOWER = 'fresh_flower',      // 생화
@@ -24,7 +22,6 @@ export enum MaterialSubCategory {
   PRESERVATIVE = 'preservative',      // 보존제 (꽃보존제, 영양제)
   MATERIAL_REQUEST = 'material_request' // 자재요청
 }
-
 // 고정비 세부 분류
 export enum FixedCostSubCategory {
   RENT = 'rent',           // 임대료
@@ -34,7 +31,6 @@ export enum FixedCostSubCategory {
   LABOR = 'labor',         // 인건비
   LICENSE = 'license'      // 사업자등록세, 각종 허가료
 }
-
 // 공과금 세부 분류
 export enum UtilitySubCategory {
   ELECTRICITY = 'electricity', // 전기료
@@ -44,7 +40,6 @@ export enum UtilitySubCategory {
   PHONE = 'phone',            // 전화료
   WASTE = 'waste'             // 폐기물 처리비
 }
-
 // 운송비 세부 분류
 export enum TransportSubCategory {
   DELIVERY = 'delivery',       // 배송료
@@ -53,7 +48,6 @@ export enum TransportSubCategory {
   PARKING_FEE = 'parking_fee', // 주차비
   TOLL = 'toll'               // 통행료
 }
-
 // 사무용품 세부 분류
 export enum OfficeSubCategory {
   STATIONERY = 'stationery',   // 문구류
@@ -61,7 +55,6 @@ export enum OfficeSubCategory {
   EQUIPMENT = 'equipment',     // 사무기기
   SUPPLY = 'supply'           // 소모품
 }
-
 // 마케팅비 세부 분류
 export enum MarketingSubCategory {
   ADVERTISING = 'advertising', // 광고비
@@ -70,7 +63,6 @@ export enum MarketingSubCategory {
   SNS = 'sns',                // SNS 마케팅
   PRINTING = 'printing'       // 인쇄비
 }
-
 // 유지보수비 세부 분류
 export enum MaintenanceSubCategory {
   EQUIPMENT = 'equipment',     // 설비정비
@@ -79,7 +71,6 @@ export enum MaintenanceSubCategory {
   PLUMBING = 'plumbing',      // 배관정비
   ELECTRICAL = 'electrical'   // 전기정비
 }
-
 // 보험료 세부 분류
 export enum InsuranceSubCategory {
   BUSINESS = 'business',       // 사업자보험
@@ -87,7 +78,6 @@ export enum InsuranceSubCategory {
   LIABILITY = 'liability',     // 책임보험
   PROPERTY = 'property'       // 재산보험
 }
-
 // 식비 세부 분류
 export enum MealSubCategory {
   GENERAL = 'general',         // 일반식비
@@ -95,7 +85,6 @@ export enum MealSubCategory {
   SPECIAL = 'special',         // 특별식비
   COFFEE = 'coffee'           // 커피, 음료
 }
-
 // 재고 업데이트 아이템 인터페이스
 export interface InventoryUpdateItem {
   type: 'material' | 'product';
@@ -104,7 +93,6 @@ export interface InventoryUpdateItem {
   quantity: number;
   unitPrice?: number;
 }
-
 // 간단한 지출 기록 인터페이스
 export interface SimpleExpense {
   id: string;
@@ -127,21 +115,17 @@ export interface SimpleExpense {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
-
 // 고정비 템플릿 인터페이스
 export interface FixedCostTemplate {
   id: string;
   branchId: string;
   branchName: string;
-  
   // 템플릿 항목들
   items: FixedCostItem[];
-  
   // 메타데이터
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
-
 export interface FixedCostItem {
   id: string;
   name: string;
@@ -152,7 +136,6 @@ export interface FixedCostItem {
   isActive: boolean;
   dueDay?: number; // 매월 결제일 (1-31)
 }
-
 // 지출 입력 데이터
 export interface CreateSimpleExpenseData {
   date: Timestamp;
@@ -165,8 +148,8 @@ export interface CreateSimpleExpenseData {
   unitPrice?: number; // 단가 필드 추가
   receiptFile?: File;
   inventoryUpdates?: InventoryUpdateItem[];  // 재고 업데이트 아이템들
+  relatedRequestId?: string;  // 관련 자재요청 ID
 }
-
 // 구매처 자동완성 데이터
 export interface SupplierSuggestion {
   name: string;
@@ -174,7 +157,6 @@ export interface SupplierSuggestion {
   frequency: number; // 사용 빈도
   lastUsed: Timestamp;
 }
-
 // 지출 통계 데이터
 export interface ExpenseStats {
   totalAmount: number;
@@ -194,7 +176,6 @@ export interface ExpenseStats {
     count: number;
   }[];
 }
-
 // 지점별 지출 요약
 export interface BranchExpenseSummary {
   branchId: string;
@@ -206,7 +187,6 @@ export interface BranchExpenseSummary {
   }[];
   lastUpdated: Timestamp;
 }
-
 // 라벨 매핑
 export const SIMPLE_EXPENSE_CATEGORY_LABELS: Record<SimpleExpenseCategory, string> = {
   [SimpleExpenseCategory.MATERIAL]: '자재비',
@@ -220,14 +200,12 @@ export const SIMPLE_EXPENSE_CATEGORY_LABELS: Record<SimpleExpenseCategory, strin
   [SimpleExpenseCategory.INSURANCE]: '보험료',
   [SimpleExpenseCategory.OTHER]: '기타'
 };
-
 export const MEAL_SUB_CATEGORY_LABELS: Record<MealSubCategory, string> = {
   [MealSubCategory.GENERAL]: '일반식비',
   [MealSubCategory.COMPANY_DINNER]: '회식비',
   [MealSubCategory.SPECIAL]: '특별식비',
   [MealSubCategory.COFFEE]: '커피/음료'
 };
-
 export const FIXED_COST_SUB_CATEGORY_LABELS: Record<FixedCostSubCategory, string> = {
   [FixedCostSubCategory.RENT]: '임대료',
   [FixedCostSubCategory.MANAGEMENT]: '관리비',
@@ -236,7 +214,6 @@ export const FIXED_COST_SUB_CATEGORY_LABELS: Record<FixedCostSubCategory, string
   [FixedCostSubCategory.LABOR]: '인건비',
   [FixedCostSubCategory.LICENSE]: '사업자등록세/허가료'
 };
-
 export const MATERIAL_SUB_CATEGORY_LABELS: Record<MaterialSubCategory, string> = {
   [MaterialSubCategory.FRESH_FLOWER]: '생화',
   [MaterialSubCategory.POTTED_PLANT]: '화분',
@@ -246,7 +223,6 @@ export const MATERIAL_SUB_CATEGORY_LABELS: Record<MaterialSubCategory, string> =
   [MaterialSubCategory.PRESERVATIVE]: '보존제',
   [MaterialSubCategory.MATERIAL_REQUEST]: '자재요청'
 };
-
 export const UTILITY_SUB_CATEGORY_LABELS: Record<UtilitySubCategory, string> = {
   [UtilitySubCategory.ELECTRICITY]: '전기료',
   [UtilitySubCategory.GAS]: '가스료',
@@ -255,7 +231,6 @@ export const UTILITY_SUB_CATEGORY_LABELS: Record<UtilitySubCategory, string> = {
   [UtilitySubCategory.PHONE]: '전화료',
   [UtilitySubCategory.WASTE]: '폐기물처리비'
 };
-
 export const TRANSPORT_SUB_CATEGORY_LABELS: Record<TransportSubCategory, string> = {
   [TransportSubCategory.DELIVERY]: '배송료',
   [TransportSubCategory.TAXI]: '택시비',
@@ -263,14 +238,12 @@ export const TRANSPORT_SUB_CATEGORY_LABELS: Record<TransportSubCategory, string>
   [TransportSubCategory.PARKING_FEE]: '주차비',
   [TransportSubCategory.TOLL]: '통행료'
 };
-
 export const OFFICE_SUB_CATEGORY_LABELS: Record<OfficeSubCategory, string> = {
   [OfficeSubCategory.STATIONERY]: '문구류',
   [OfficeSubCategory.CLEANING]: '청소용품',
   [OfficeSubCategory.EQUIPMENT]: '사무기기',
   [OfficeSubCategory.SUPPLY]: '소모품'
 };
-
 export const MARKETING_SUB_CATEGORY_LABELS: Record<MarketingSubCategory, string> = {
   [MarketingSubCategory.ADVERTISING]: '광고비',
   [MarketingSubCategory.PROMOTION]: '홍보물',
@@ -278,7 +251,6 @@ export const MARKETING_SUB_CATEGORY_LABELS: Record<MarketingSubCategory, string>
   [MarketingSubCategory.SNS]: 'SNS마케팅',
   [MarketingSubCategory.PRINTING]: '인쇄비'
 };
-
 export const MAINTENANCE_SUB_CATEGORY_LABELS: Record<MaintenanceSubCategory, string> = {
   [MaintenanceSubCategory.EQUIPMENT]: '설비정비',
   [MaintenanceSubCategory.AIR_CONDITIONING]: '에어컨정비',
@@ -286,31 +258,26 @@ export const MAINTENANCE_SUB_CATEGORY_LABELS: Record<MaintenanceSubCategory, str
   [MaintenanceSubCategory.PLUMBING]: '배관정비',
   [MaintenanceSubCategory.ELECTRICAL]: '전기정비'
 };
-
 export const INSURANCE_SUB_CATEGORY_LABELS: Record<InsuranceSubCategory, string> = {
   [InsuranceSubCategory.BUSINESS]: '사업자보험',
   [InsuranceSubCategory.DELIVERY]: '배송보험',
   [InsuranceSubCategory.LIABILITY]: '책임보험',
   [InsuranceSubCategory.PROPERTY]: '재산보험'
 };
-
 export const generateExpenseId = (): string => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const time = String(now.getTime()).slice(-6);
-  
   return `EXP-${year}${month}${day}-${time}`;
 };
-
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('ko-KR', {
     style: 'currency',
     currency: 'KRW'
   }).format(amount);
 };
-
 export const getCategoryColor = (category: SimpleExpenseCategory): string => {
   const colors: Record<SimpleExpenseCategory, string> = {
     [SimpleExpenseCategory.MATERIAL]: 'blue',
@@ -326,7 +293,6 @@ export const getCategoryColor = (category: SimpleExpenseCategory): string => {
   };
   return colors[category];
 };
-
 // 기본 고정비 템플릿
 export const DEFAULT_FIXED_COST_ITEMS: Omit<FixedCostItem, 'id'>[] = [
   {

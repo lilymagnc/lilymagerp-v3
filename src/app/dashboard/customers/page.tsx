@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -21,8 +20,6 @@ import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
 import { downloadXLSX } from "@/lib/utils";
 import { format } from "date-fns";
-
-
 export default function CustomersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -33,19 +30,14 @@ export default function CustomersPage() {
     const [selectedBranch, setSelectedBranch] = useState("all");
     const [selectedType, setSelectedType] = useState("all");
     const [selectedGrade, setSelectedGrade] = useState("all");
-    
     const { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers } = useCustomers();
     const { branches } = useBranches();
     const { user } = useAuth();
-    
     const isHeadOfficeAdmin = user?.role === '본사 관리자';
     const userBranch = user?.franchise;
-    
     const customerGrades = useMemo(() => [...new Set(customers.map(c => c.grade || "신규"))], [customers]);
-
     const filteredCustomers = useMemo(() => {
         let filtered = customers;
-
         // 권한에 따른 지점 필터링 (통합 관리 시스템)
         if (!isHeadOfficeAdmin && userBranch) {
             // 일반 사용자는 자신의 지점에 등록된 고객만 보기
@@ -60,14 +52,12 @@ export default function CustomersPage() {
                 (customer.branches && customer.branches[selectedBranch])
             );
         }
-
         // 검색어 필터링 (전 지점 검색)
         filtered = filtered.filter(customer => 
             customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             customer.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-
         // 타입 및 등급 필터링
         if (selectedType !== "all") {
             filtered = filtered.filter(customer => customer.type === selectedType);
@@ -75,36 +65,29 @@ export default function CustomersPage() {
         if (selectedGrade !== "all") {
             filtered = filtered.filter(customer => (customer.grade || "신규") === selectedGrade);
         }
-
         return filtered;
     }, [customers, searchTerm, selectedBranch, selectedType, selectedGrade, isHeadOfficeAdmin, userBranch]);
-
     const handleAdd = () => {
         setSelectedCustomer(null);
         setIsFormOpen(true);
     };
-
     const handleEdit = (customer: Customer) => {
         setSelectedCustomer(customer);
         setIsDetailOpen(false); // Close detail view if open
         setIsFormOpen(true);
     };
-
     const handleDetails = (customer: Customer) => {
         setSelectedCustomer(customer);
         setIsDetailOpen(true);
     }
-
     const handleRowClick = (customer: Customer) => {
         setSelectedCustomer(customer);
         setIsCustomerDetailOpen(true);
     };
-
     const handleStatementPrint = (customer: Customer) => {
         setSelectedCustomer(customer);
         setIsStatementOpen(true);
     };
-
     const handleFormSubmit = async (data: CustomerFormValues) => {
         if (selectedCustomer?.id) {
             await updateCustomer(selectedCustomer.id, data);
@@ -114,15 +97,12 @@ export default function CustomersPage() {
         setIsFormOpen(false);
         setSelectedCustomer(null);
     };
-
     const handleDelete = async (id: string) => {
         await deleteCustomer(id);
     };
-
     const handleImport = async (data: any[]) => {
       await bulkAddCustomers(data, selectedBranch);
     };
-
     const handleExport = () => {
         if (filteredCustomers.length === 0) {
             toast({
@@ -132,7 +112,6 @@ export default function CustomersPage() {
             });
             return;
         }
-
         const dataToExport = filteredCustomers.map(customer => ({
             '고객명': customer.name,
             '회사명': customer.companyName || '',
@@ -145,14 +124,12 @@ export default function CustomersPage() {
             '메모': customer.memo || '',
             '등록일': customer.createdAt ? format(new Date(customer.createdAt), 'yyyy-MM-dd HH:mm') : '',
         }));
-
         downloadXLSX(dataToExport, "customers");
         toast({
             title: "내보내기 성공",
             description: `${dataToExport.length}개의 고객 정보가 XLSX 파일로 다운로드되었습니다.`,
         });
     };
-
     return (
         <div>
             <PageHeader title="고객 관리" description="고객 정보를 등록하고 관리합니다.">
@@ -218,7 +195,6 @@ export default function CustomersPage() {
                     </div>
                 </CardContent>
             </Card>
-
             {loading ? (
                  <Card>
                     <CardContent className="pt-6">
@@ -236,27 +212,23 @@ export default function CustomersPage() {
                     onStatementPrint={handleStatementPrint}
                 />
             )}
-            
             <CustomerForm
                 isOpen={isFormOpen}
                 onOpenChange={setIsFormOpen}
                 onSubmit={handleFormSubmit}
                 customer={selectedCustomer}
             />
-
             <CustomerDetails
                 isOpen={isDetailOpen}
                 onOpenChange={setIsDetailOpen}
                 onEdit={() => selectedCustomer && handleEdit(selectedCustomer)}
                 customer={selectedCustomer}
             />
-
             <CustomerDetailDialog
                 isOpen={isCustomerDetailOpen}
                 onOpenChange={setIsCustomerDetailOpen}
                 customer={selectedCustomer}
             />
-
             <StatementDialog
                 isOpen={isStatementOpen}
                 onOpenChange={setIsStatementOpen}

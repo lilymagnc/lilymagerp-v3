@@ -3,7 +3,6 @@ export interface DiscountRate {
   label: string;
   isActive: boolean;
 }
-
 export interface BranchDiscountSettings {
   isActive: boolean;
   startDate: Date;
@@ -16,7 +15,6 @@ export interface BranchDiscountSettings {
   createdAt: Date;
   updatedAt: Date;
 }
-
 export interface GlobalDiscountSettings {
   startDate: Date;
   endDate: Date;
@@ -24,7 +22,6 @@ export interface GlobalDiscountSettings {
   allowPointAccumulation: boolean;
   minOrderAmount: number;
 }
-
 export interface DiscountSettings {
   globalSettings: GlobalDiscountSettings;
   branchSettings: Record<string, BranchDiscountSettings>;

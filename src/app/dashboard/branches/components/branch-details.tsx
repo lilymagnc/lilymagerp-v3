@@ -1,6 +1,5 @@
 
 "use client"
-
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,17 +12,14 @@ import {
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Branch } from "@/hooks/use-branches"
-
 interface BranchDetailsProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onEdit: () => void
   branch: Branch | null
 }
-
 export function BranchDetails({ isOpen, onOpenChange, onEdit, branch }: BranchDetailsProps) {
   if (!branch) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">

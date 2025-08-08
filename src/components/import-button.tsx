@@ -1,11 +1,9 @@
 
 "use client";
-
 import React, { useState } from "react";
 import { Upload } from "lucide-react";
 import { Button, ButtonProps } from "./ui/button";
 import { ImportDialog } from "./import-dialog";
-
 interface ImportButtonProps extends Omit<ButtonProps, 'children'> {
     resourceName?: string;
     onImport: (data: any[]) => Promise<void>;
@@ -13,10 +11,8 @@ interface ImportButtonProps extends Omit<ButtonProps, 'children'> {
     templateData?: any[];
     fileName?: string;
 }
-
 export function ImportButton({ resourceName = "데이터", onImport, children, templateData, fileName, ...props }: ImportButtonProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-
     return (
         <>
             <Button {...props} onClick={() => setIsDialogOpen(true)} size="sm">

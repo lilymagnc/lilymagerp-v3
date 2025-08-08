@@ -1,5 +1,4 @@
 import { Timestamp } from 'firebase/firestore';
-
 // 사용자 역할 타입
 export enum UserRoleType {
   BRANCH_USER = 'branch_user',
@@ -7,7 +6,6 @@ export enum UserRoleType {
   HQ_MANAGER = 'hq_manager',
   ADMIN = 'admin'
 }
-
 // 권한 타입
 export enum Permission {
   CREATE_REQUEST = 'create_request',
@@ -18,7 +16,6 @@ export enum Permission {
   CONSOLIDATE_REQUESTS = 'consolidate_requests',
   EXPORT_DATA = 'export_data'
 }
-
 // 사용자 역할 데이터
 export interface UserRole {
   id: string;
@@ -31,7 +28,6 @@ export interface UserRole {
   updatedAt: Timestamp;
   isActive: boolean;
 }
-
 // 역할별 기본 권한 매핑
 export const ROLE_PERMISSIONS: Record<UserRoleType, Permission[]> = {
   [UserRoleType.BRANCH_USER]: [
@@ -60,7 +56,6 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, Permission[]> = {
     Permission.EXPORT_DATA
   ]
 };
-
 // 사용자 역할 생성 데이터
 export interface CreateUserRoleData {
   userId: string;
@@ -69,30 +64,24 @@ export interface CreateUserRoleData {
   branchId?: string;
   branchName?: string;
 }
-
 // 역할 확인 유틸리티 함수
 export const hasPermission = (userRole: UserRole | null, permission: Permission): boolean => {
   if (!userRole || !userRole.isActive) return false;
   return userRole.permissions.includes(permission);
 };
-
 export const hasAnyPermission = (userRole: UserRole | null, permissions: Permission[]): boolean => {
   if (!userRole || !userRole.isActive) return false;
   return permissions.some(permission => userRole.permissions.includes(permission));
 };
-
 export const isHQManager = (userRole: UserRole | null): boolean => {
   return userRole?.role === UserRoleType.HQ_MANAGER && userRole.isActive;
 };
-
 export const isBranchUser = (userRole: UserRole | null): boolean => {
   return userRole?.role === UserRoleType.BRANCH_USER && userRole.isActive;
 };
-
 export const isAdmin = (userRole: UserRole | null): boolean => {
   return userRole?.role === UserRoleType.ADMIN && userRole.isActive;
 };
-
 // 역할 표시명
 export const ROLE_LABELS: Record<UserRoleType, string> = {
   [UserRoleType.BRANCH_USER]: '지점 사용자',
@@ -100,7 +89,6 @@ export const ROLE_LABELS: Record<UserRoleType, string> = {
   [UserRoleType.HQ_MANAGER]: '본사 관리자',
   [UserRoleType.ADMIN]: '시스템 관리자'
 };
-
 // 권한 표시명
 export const PERMISSION_LABELS: Record<Permission, string> = {
   [Permission.CREATE_REQUEST]: '구매 요청 생성',

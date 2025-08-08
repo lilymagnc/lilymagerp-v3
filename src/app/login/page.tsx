@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -13,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -21,13 +19,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      
       // 로그인 성공 시 lastLogin 업데이트
       try {
         const userRef = doc(db, "users", email);
@@ -38,7 +34,6 @@ export default function LoginPage() {
         console.warn("lastLogin 업데이트 실패:", updateError);
         // lastLogin 업데이트 실패해도 로그인은 계속 진행
       }
-      
       router.push('/dashboard');
     } catch (error: any) {
       toast({
@@ -50,7 +45,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto w-full max-w-sm">

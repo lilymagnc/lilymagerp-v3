@@ -62,7 +62,7 @@ export function ExpenseList({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   const { fetchExpenses, deleteExpense } = useSimpleExpenses();
   const { branches } = useBranches();
   const { user } = useAuth();
@@ -75,6 +75,14 @@ export function ExpenseList({
   useEffect(() => {
     loadExpenses();
   }, [refreshTrigger, selectedBranchId]);
+
+  // 초기 로딩 시 전체 데이터 미리 로드 (관리자만)
+  useEffect(() => {
+    if (isHeadquartersAdmin && branches.length > 0 && expenses.length === 0) {
+      // 본사 관리자이고 아직 데이터가 없으면 전체 데이터 미리 로드
+      loadExpenses();
+    }
+  }, [isHeadquartersAdmin, branches.length, expenses.length]);
 
   const loadExpenses = async () => {
     setIsLoading(true);
@@ -93,8 +101,9 @@ export function ExpenseList({
         }
         setExpenses(allExpenses);
       } else {
-        // 일반 사용자: 선택된 지점만
-        if (selectedBranchId) {
+        // 일반 사용자: 선택된 지점 또는 전체 데이터
+        if (selectedBranchId && selectedBranchId !== 'all') {
+          // 특정 지점 선택
           const branchExpenses = await fetchBranchExpenses(selectedBranchId);
           setExpenses(branchExpenses.map(expense => ({
             ...expense,
@@ -102,7 +111,17 @@ export function ExpenseList({
             branchId: selectedBranchId
           })));
         } else {
-          setExpenses([]);
+          // 전체 선택 또는 selectedBranchId가 undefined: 모든 지점 데이터 로드
+          const allExpenses = [];
+          for (const branch of branches.filter(b => b.type !== '본사')) {
+            const branchExpenses = await fetchBranchExpenses(branch.id);
+            allExpenses.push(...branchExpenses.map(expense => ({
+              ...expense,
+              branchName: branch.name,
+              branchId: branch.id
+            })));
+          }
+          setExpenses(allExpenses);
         }
       }
     } catch (error) {
@@ -292,7 +311,7 @@ export function ExpenseList({
         // 일반 사용자: 지점별 엑셀 내보내기
         await exportBranchExcel();
       }
-      
+
       toast({
         title: "성공",
         description: "엑셀 파일이 다운로드되었습니다.",
@@ -310,7 +329,7 @@ export function ExpenseList({
   // 본사용 통합 엑셀 내보내기
   const exportHeadquartersExcel = async () => {
     const sheets = [];
-    
+
     // 시트1: 통합 시트
     const consolidatedData = filteredExpenses.length > 0 ? filteredExpenses.map(expense => ({
       '지점': expense.branchName,
@@ -335,7 +354,7 @@ export function ExpenseList({
       '금액': '',
       '등록일': ''
     }];
-    
+
     sheets.push({
       name: '통합시트',
       data: consolidatedData
@@ -364,7 +383,7 @@ export function ExpenseList({
       '금액': '',
       '등록일': ''
     }];
-    
+
     sheets.push({
       name: '본사',
       data: headquartersData
@@ -494,7 +513,7 @@ export function ExpenseList({
               </Button>
             </div>
             </div>
-            
+
           <div className="space-y-2">
             <Label>분류</Label>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
@@ -511,7 +530,7 @@ export function ExpenseList({
               </SelectContent>
             </Select>
           </div>
-            
+
           <div className="space-y-2">
             <Label>시작일</Label>
             <Input
@@ -520,7 +539,7 @@ export function ExpenseList({
               onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
             />
           </div>
-            
+
           <div className="space-y-2">
             <Label>종료일</Label>
             <Input

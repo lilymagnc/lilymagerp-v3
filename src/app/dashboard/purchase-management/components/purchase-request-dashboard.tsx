@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,44 +16,36 @@ import { usePurchaseBatches } from '@/hooks/use-purchase-batches';
 import { useAuth } from '@/hooks/use-auth';
 import type { MaterialRequest, ConsolidatedItem, PurchaseBatch, ActualPurchaseInputData } from '@/types/material-request';
 import { Timestamp } from 'firebase/firestore';
-
 interface PurchaseRequestDashboardProps {
   requests: MaterialRequest[];
   onRefresh: () => void;
 }
-
 export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseRequestDashboardProps) {
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'quantity' | 'urgency' | 'cost'>('quantity');
   const [groupBy, setGroupBy] = useState<'material' | 'branch'>('material');
   const [showActualPurchaseForm, setShowActualPurchaseForm] = useState(false);
   const [currentBatch, setCurrentBatch] = useState<PurchaseBatch | null>(null);
-  
   const { toast } = useToast();
   const { updateRequestStatus } = useMaterialRequests();
   const { createPurchaseBatch, loading: batchLoading } = usePurchaseBatches();
   const { user } = useAuth(); // useAuth 훅을 사용하여 user 객체 가져오기 // usePurchaseBatches 훅에서 createPurchaseBatch 가져오기
-
   // 처리 가능한 요청들 (제출됨, 검토중 상태)
   const processableRequests = useMemo(() => {
     return requests.filter(request => 
       ['submitted', 'reviewing'].includes(request.status)
     );
   }, [requests]);
-
   // 구매 중인 요청들 (실제 구매 내역 입력 가능)
   const purchasingRequests = useMemo(() => {
     return requests.filter(request => request.status === 'purchasing');
   }, [requests]);
-
   // 자재별 취합 데이터 생성
   const consolidatedItems = useMemo(() => {
     const itemsMap = new Map<string, ConsolidatedItem>();
-
     processableRequests.forEach(request => {
       request.requestedItems.forEach(item => {
         const key = item.materialId;
-        
         if (itemsMap.has(key)) {
           const existing = itemsMap.get(key)!;
           existing.totalQuantity += item.requestedQuantity;
@@ -81,14 +72,11 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
         }
       });
     });
-
     return Array.from(itemsMap.values());
   }, [processableRequests]);
-
   // 정렬된 취합 데이터
   const sortedConsolidatedItems = useMemo(() => {
     const items = [...consolidatedItems];
-    
     switch (sortBy) {
       case 'quantity':
         return items.sort((a, b) => b.totalQuantity - a.totalQuantity);
@@ -106,18 +94,15 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
         return items;
     }
   }, [consolidatedItems, sortBy]);
-
   // 지점별 요청 통계
   const branchStats = useMemo(() => {
     const statsMap = new Map();
-
     processableRequests.forEach(request => {
       const key = request.branchId;
       const totalCost = request.requestedItems.reduce((sum, item) => 
         sum + (item.requestedQuantity * item.estimatedPrice), 0
       );
       const hasUrgent = request.requestedItems.some(item => item.urgency === 'urgent');
-
       if (statsMap.has(key)) {
         const existing = statsMap.get(key);
         existing.requestCount += 1;
@@ -135,10 +120,8 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
         });
       }
     });
-
     return Array.from(statsMap.values());
   }, [processableRequests]);
-
   // 요청 선택 토글
   const toggleRequestSelection = (requestId: string) => {
     setSelectedRequests(prev => 
@@ -147,7 +130,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
         : [...prev, requestId]
     );
   };
-
   // 전체 선택/해제
   const toggleAllRequests = () => {
     if (selectedRequests.length === processableRequests.length) {
@@ -156,7 +138,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
       setSelectedRequests(processableRequests.map(r => r.id));
     }
   };
-
   // 긴급 요청만 선택
   const selectUrgentRequests = () => {
     const urgentRequestIds = processableRequests
@@ -164,11 +145,9 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
       .map(request => request.id);
     setSelectedRequests(urgentRequestIds);
   };
-
   // 실제 구매 내역 입력 시작
   const startActualPurchase = async (purchasingRequestIds: string[]) => {
     const batchRequests = requests.filter(r => purchasingRequestIds.includes(r.id));
-    
     // 실제 구매 배치 생성
     try {
       const newBatch = await createPurchaseBatch(
@@ -179,7 +158,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
         },
         batchRequests
       );
-
       if (newBatch) {
         setCurrentBatch(newBatch);
         setShowActualPurchaseForm(true);
@@ -199,20 +177,17 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
       });
     }
   };
-
   // 실제 구매 내역 저장 (이 함수는 실제로는 사용되지 않음 - ActualPurchaseForm에서 직접 처리)
   const handleActualPurchaseSubmit = async (purchaseData: ActualPurchaseInputData) => {
     // 이 함수는 실제로는 호출되지 않습니다.
     // ActualPurchaseForm에서 직접 updateActualPurchase를 호출하고 onComplete를 실행합니다.
-    console.log('handleActualPurchaseSubmit 호출됨 (사용되지 않아야 함)');
+    console.log('실제 구매 데이터:', purchaseData);
   };
-
   // 실제 구매 폼 취소
   const handleActualPurchaseCancel = () => {
     setShowActualPurchaseForm(false);
     setCurrentBatch(null);
   };
-
   // 실제 구매 폼이 열려있으면 폼만 표시
   if (showActualPurchaseForm && currentBatch) {
     return (
@@ -220,7 +195,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
         batch={currentBatch}
         loading={batchLoading}
         onComplete={() => {
-          console.log('실제 구매 완료 - 새로고침 시작');
           setShowActualPurchaseForm(false);
           setCurrentBatch(null);
           onRefresh();
@@ -229,7 +203,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
       />
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 구매 중인 요청들 */}
@@ -264,7 +237,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
                   </Button>
                 </div>
               ))}
-              
               {purchasingRequests.length > 1 && (
                 <div className="pt-2 border-t">
                   <Button
@@ -280,7 +252,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
           </CardContent>
         </Card>
       )}
-
       {/* 컨트롤 패널 */}
       <Card>
         <CardHeader>
@@ -297,7 +268,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
                   <SelectItem value="cost">비용순</SelectItem>
                 </SelectContent>
               </Select>
-              
               <Select value={groupBy} onValueChange={(value) => setGroupBy(value as any)}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
@@ -320,7 +290,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
               {selectedRequests.length === processableRequests.length ? '전체 해제' : '전체 선택'}
               ({selectedRequests.length}/{processableRequests.length})
             </Button>
-            
             <Button 
               variant="outline" 
               size="sm"
@@ -328,7 +297,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
             >
               긴급 요청만 선택
             </Button>
-            
             <Button 
               variant="outline" 
               size="sm"
@@ -336,33 +304,28 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
             >
               선택 초기화
             </Button>
-            
             {selectedRequests.length > 0 && (
               <Badge variant="secondary">
                 {selectedRequests.length}개 요청 선택됨
               </Badge>
             )}
           </div>
-
           {/* 요약 통계 */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <div className="text-sm text-blue-600 font-medium">처리 대기 요청</div>
               <div className="text-2xl font-bold text-blue-700">{processableRequests.length}건</div>
             </div>
-            
             <div className="bg-green-50 p-4 rounded-lg">
               <div className="text-sm text-green-600 font-medium">총 자재 종류</div>
               <div className="text-2xl font-bold text-green-700">{consolidatedItems.length}개</div>
             </div>
-            
             <div className="bg-yellow-50 p-4 rounded-lg">
               <div className="text-sm text-yellow-600 font-medium">예상 총 비용</div>
               <div className="text-2xl font-bold text-yellow-700">
                 ₩{consolidatedItems.reduce((sum, item) => sum + item.estimatedTotalCost, 0).toLocaleString()}
               </div>
             </div>
-            
             <div className="bg-red-50 p-4 rounded-lg">
               <div className="text-sm text-red-600 font-medium">긴급 요청</div>
               <div className="text-2xl font-bold text-red-700">
@@ -374,14 +337,12 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
           </div>
         </CardContent>
       </Card>
-
       {/* 메인 뷰 */}
       <Tabs value={groupBy} onValueChange={(value) => setGroupBy(value as any)}>
         <TabsList>
           <TabsTrigger value="material">자재별 취합 뷰</TabsTrigger>
           <TabsTrigger value="branch">지점별 요청 뷰</TabsTrigger>
         </TabsList>
-        
         <TabsContent value="material">
           <ConsolidatedItemsView 
             items={sortedConsolidatedItems}
@@ -389,7 +350,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
             onToggleRequest={toggleRequestSelection}
           />
         </TabsContent>
-        
         <TabsContent value="branch">
           <BranchRequestsView 
             requests={processableRequests}
@@ -399,7 +359,6 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
           />
         </TabsContent>
       </Tabs>
-
       {/* 구매 배치 관리 */}
       {selectedRequests.length > 0 && (
         <PurchaseBatchManager 

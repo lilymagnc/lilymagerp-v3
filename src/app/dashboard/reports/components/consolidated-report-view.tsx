@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,18 +37,14 @@ import {
 } from 'lucide-react';
 import { useReports } from '@/hooks/use-reports';
 import type { ReportFilter, ConsolidatedReport } from '@/hooks/use-reports';
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
-
 interface ConsolidatedReportViewProps {
   filters: ReportFilter;
 }
-
 export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps) {
   const [report, setReport] = useState<ConsolidatedReport | null>(null);
   const [loading, setLoading] = useState(false);
   const { generateConsolidatedReport, exportToCSV } = useReports();
-
   // 리포트 생성
   const generateReport = async () => {
     try {
@@ -62,12 +57,10 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
       setLoading(false);
     }
   };
-
   // 필터 변경 시 자동 리포트 생성
   useEffect(() => {
     generateReport();
   }, [filters]);
-
   // 통화 포맷팅
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -76,7 +69,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
       notation: 'compact'
     }).format(amount);
   };
-
   // 권장사항 우선순위별 색상
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -86,7 +78,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
       default: return 'outline';
     }
   };
-
   // 권장사항 아이콘
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
@@ -96,7 +87,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
       default: return <Lightbulb className="h-4 w-4" />;
     }
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -105,7 +95,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
       </div>
     );
   }
-
   if (!report) {
     return (
       <Card>
@@ -122,7 +111,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -144,7 +132,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
           </Button>
         </div>
       </div>
-
       {/* 전체 개요 */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
@@ -160,7 +147,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -174,7 +160,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -188,7 +173,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -202,7 +186,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -217,7 +200,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
           </CardContent>
         </Card>
       </div>
-
       {/* 예산 vs 실제 비용 비교 */}
       <Card>
         <CardHeader>
@@ -250,7 +232,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
           </div>
         </CardContent>
       </Card>
-
       {/* 비용 트렌드 분석 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -281,7 +262,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -311,7 +291,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
           </CardContent>
         </Card>
       </div>
-
       {/* 권장사항 */}
       <Card>
         <CardHeader>
@@ -363,7 +342,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
           )}
         </CardContent>
       </Card>
-
       {/* 주요 지표 요약 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
@@ -387,7 +365,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">예산 현황</CardTitle>
@@ -409,7 +386,6 @@ export function ConsolidatedReportView({ filters }: ConsolidatedReportViewProps)
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">구매 활동</CardTitle>

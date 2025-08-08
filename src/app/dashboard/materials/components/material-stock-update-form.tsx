@@ -1,5 +1,4 @@
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -27,33 +26,27 @@ import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
-
 const stockUpdateSchema = z.object({
   stock: z.coerce.number().int().min(0, "재고는 0 이상이어야 합니다."),
 })
-
 type StockUpdateFormValues = z.infer<typeof stockUpdateSchema>
-
 interface MaterialStockUpdateFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   material: { id: string; name: string; stock: number; branch: string; } | null
   onStockUpdated?: () => void // 새로 추가
 }
-
 export function MaterialStockUpdateForm({ isOpen, onOpenChange, material, onStockUpdated }: MaterialStockUpdateFormProps) {
   const { manualUpdateStock } = useMaterials();
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const form = useForm<StockUpdateFormValues>({
     resolver: zodResolver(stockUpdateSchema),
     defaultValues: {
       stock: material?.stock || 0,
     },
   })
-
   const onSubmit = async (data: StockUpdateFormValues) => {
     if (!material || !user) {
         toast({
@@ -74,7 +67,6 @@ export function MaterialStockUpdateForm({ isOpen, onOpenChange, material, onStoc
       setIsSubmitting(false);
     }
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">

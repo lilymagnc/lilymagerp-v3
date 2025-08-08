@@ -1,6 +1,5 @@
 
 "use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +8,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { MoreHorizontal, FileText } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Customer } from "@/hooks/use-customers";
-
 interface CustomerTableProps {
   customers: Customer[];
   onEdit: (customer: Customer) => void;
@@ -17,9 +15,7 @@ interface CustomerTableProps {
   onRowClick: (customer: Customer) => void;
   onStatementPrint: (customer: Customer) => void;
 }
-
 export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onStatementPrint }: CustomerTableProps) {
-    
     const getGradeBadge = (grade?: string) => {
         switch (grade) {
             case 'VIP':
@@ -32,7 +28,6 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onState
                 return <Badge variant="outline">{grade || '신규'}</Badge>;
         }
     }
-
   return (
     <Card>
       <CardContent className="p-0">

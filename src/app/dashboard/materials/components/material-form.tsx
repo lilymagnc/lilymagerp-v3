@@ -1,6 +1,5 @@
 
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -25,8 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useBranches } from "@/hooks/use-branches"
-import { useEffect } from "react"
-
+import { useCategories } from "@/hooks/use-categories"
+import { useEffect, useMemo } from "react"
 const materialSchema = z.object({
   name: z.string().min(1, "자재명을 입력해주세요."),
   mainCategory: z.string().min(1, "대분류를 선택해주세요."),
@@ -38,9 +37,7 @@ const materialSchema = z.object({
   branch: z.string().min(1, "지점을 선택해주세요."),
   stock: z.coerce.number().min(0, "재고는 0 이상이어야 합니다.").default(0),
 })
-
 export type MaterialFormValues = z.infer<typeof materialSchema>
-
 interface MaterialFormProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,7 +47,6 @@ interface MaterialFormProps {
   branches?: any[];
   selectedBranch?: string;
 }
-
 const defaultValues: MaterialFormValues = {
   name: "",
   mainCategory: "",
@@ -62,26 +58,31 @@ const defaultValues: MaterialFormValues = {
   branch: "",
   stock: 0,
 }
-
 export function MaterialForm({ isOpen, onOpenChange, onSubmit, material, initialData, branches: propBranches, selectedBranch }: MaterialFormProps) {
   const { branches } = useBranches();
+  const { categories } = useCategories();
   const availableBranches = propBranches || branches;
-
+  // 카테고리 목록 생성
+  const mainCategories = useMemo(() => {
+    const mainCats = categories.filter(cat => cat.type === 'main').map(cat => cat.name);
+    return mainCats.length > 0 ? mainCats : ['생화', '조화', '화분', '기타자재'];
+  }, [categories]);
+  const midCategories = useMemo(() => {
+    const midCats = categories.filter(cat => cat.type === 'mid').map(cat => cat.name);
+    return midCats.length > 0 ? midCats : ['장미', '카네이션', '관엽식물', '난', '기타'];
+  }, [categories]);
   const form = useForm<MaterialFormValues>({
     resolver: zodResolver(materialSchema),
     defaultValues,
   })
-
   useEffect(() => {
     if(isOpen) {
       form.reset(material || defaultValues);
     }
   }, [isOpen, material, form]);
-  
   const handleFormSubmit = (data: MaterialFormValues) => {
     onSubmit(data);
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
@@ -116,10 +117,11 @@ export function MaterialForm({ isOpen, onOpenChange, onSubmit, material, initial
                         <SelectTrigger><SelectValue placeholder="대분류 선택" /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="생화">생화</SelectItem>
-                        <SelectItem value="조화">조화</SelectItem>
-                        <SelectItem value="화분">화분</SelectItem>
-                        <SelectItem value="기타자재">기타자재</SelectItem>
+                        {mainCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -137,11 +139,11 @@ export function MaterialForm({ isOpen, onOpenChange, onSubmit, material, initial
                         <SelectTrigger><SelectValue placeholder="중분류 선택" /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="장미">장미</SelectItem>
-                        <SelectItem value="카네이션">카네이션</SelectItem>
-                        <SelectItem value="관엽식물">관엽식물</SelectItem>
-                        <SelectItem value="난">난</SelectItem>
-                         <SelectItem value="기타">기타</SelectItem>
+                        {midCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

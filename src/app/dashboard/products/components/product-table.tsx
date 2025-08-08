@@ -61,7 +61,7 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
     setSelectedRows(newSelection);
     onSelectionChange(Object.keys(newSelection));
   };
-  
+
   const handleSelectAll = (checked: boolean) => {
     const newSelection: Record<string, boolean> = {};
     if (checked) {
@@ -74,13 +74,11 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
   const isAllSelected = useMemo(() => {
     return products.length > 0 && Object.keys(selectedRows).length === products.length;
   }, [selectedRows, products]);
-
-
   const handleEdit = (product: Product) => {
     setIsDetailOpen(false);
     onEdit(product);
   };
-  
+
   const handleStockUpdate = (product: any) => {
     setSelectedProduct(product);
     setIsStockFormOpen(true);
@@ -90,7 +88,7 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
     setSelectedProduct(product);
     setIsDetailOpen(true);
   }
-  
+
   const handlePrint = (product: any) => {
     setSelectedProduct(product);
     setIsPrintDialogOpen(true);

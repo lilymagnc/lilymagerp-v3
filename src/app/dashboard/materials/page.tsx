@@ -24,7 +24,7 @@ export default function MaterialsPage() {
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [isMultiPrintDialogOpen, setIsMultiPrintDialogOpen] = useState(false);
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedMainCategory, setSelectedMainCategory] = useState("all");
@@ -34,10 +34,10 @@ export default function MaterialsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials, fetchMaterials } = useMaterials();
-  
-  const isHeadOfficeAdmin = user?.role === '본사 관리자' || true; // 임시로 강제 관리자 권한
-  const isAdmin = user?.role === '본사 관리자' || true; // 임시로 강제 관리자 권한
+  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials, fetchMaterials, updateMaterialIds } = useMaterials();
+
+  const isHeadOfficeAdmin = user?.role === '본사 관리자';
+  const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
 
   // 사용자가 볼 수 있는 지점 목록
@@ -65,27 +65,12 @@ export default function MaterialsPage() {
   }, [materials, selectedMainCategory]);
 
   const filteredMaterials = useMemo(() => {
-    console.log('=== Materials Debug ===');
-    console.log('user object:', user);
-    console.log('user.role:', user?.role);
-    console.log('user.franchise:', user?.franchise);
-    console.log('isAdmin:', isAdmin);
-    console.log('selectedBranch:', selectedBranch);
-    console.log('userBranch:', userBranch);
-    console.log('materials count:', materials.length);
-    console.log('materials sample:', materials.slice(0, 2));
-
     let filtered = materials.filter(material => 
       material && 
       typeof material === 'object' && 
       material.name && 
       material.docId
     );
-
-    console.log('filtered after basic filter:', filtered.length);
-
-    // 임시로 모든 필터링 제거 - 모든 데이터 표시
-    console.log('showing all materials:', filtered.length);
 
     // 검색어 필터링
     if (searchTerm) {
@@ -103,7 +88,6 @@ export default function MaterialsPage() {
       filtered = filtered.filter(material => material.midCategory === selectedMidCategory);
     }
 
-    console.log('final filtered count:', filtered.length);
     return filtered;
   }, [materials, searchTerm, selectedBranch, selectedMainCategory, selectedMidCategory, isAdmin, userBranch, user]);
 
@@ -153,7 +137,7 @@ export default function MaterialsPage() {
   const handleImport = async (data: any[]) => {
     await bulkAddMaterials(data, selectedBranch);
   };
-  
+
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
     const itemsQuery = items.map(item => `${item.id}:${item.quantity}`).join(',');
     const params = new URLSearchParams({
@@ -164,11 +148,11 @@ export default function MaterialsPage() {
     router.push(`/dashboard/print-labels?${params.toString()}`);
     setIsMultiPrintDialogOpen(false);
   };
-  
+
   const handleRefresh = async () => {
     await fetchMaterials();
   };
-  
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -184,10 +168,19 @@ export default function MaterialsPage() {
             바코드 스캔
           </Button>
           {isHeadOfficeAdmin && (
-            <Button onClick={handleAdd}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              자재 추가
-            </Button>
+            <>
+              <Button onClick={handleAdd}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                자재 추가
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={updateMaterialIds}
+                disabled={materialsLoading}
+              >
+                ID 업데이트
+              </Button>
+            </>
           )}
         </div>
       </PageHeader>

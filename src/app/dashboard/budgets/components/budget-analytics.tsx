@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -38,19 +37,15 @@ import type {
   ExpenseCategory,
   EXPENSE_CATEGORY_LABELS 
 } from '@/types/expense';
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'];
-
 export function BudgetAnalytics() {
   const [timeRange, setTimeRange] = useState<'current' | 'quarter' | 'year'>('current');
   const [viewType, setViewType] = useState<'category' | 'branch' | 'department'>('category');
   const { budgets, loading } = useBudgets();
-
   // 시간 범위별 데이터 필터링
   const filteredBudgets = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
-    
     return budgets.filter(budget => {
       switch (timeRange) {
         case 'current':
@@ -66,7 +61,6 @@ export function BudgetAnalytics() {
       }
     });
   }, [budgets, timeRange]);
-
   // 기본 통계 계산
   const basicStats = useMemo(() => {
     const totalBudgets = filteredBudgets.length;
@@ -74,14 +68,12 @@ export function BudgetAnalytics() {
     const totalAllocated = filteredBudgets.reduce((sum, b) => sum + b.allocatedAmount, 0);
     const totalUsed = filteredBudgets.reduce((sum, b) => sum + b.usedAmount, 0);
     const totalRemaining = filteredBudgets.reduce((sum, b) => sum + b.remainingAmount, 0);
-    
     const averageUsage = totalAllocated > 0 ? (totalUsed / totalAllocated) * 100 : 0;
     const overBudgetCount = filteredBudgets.filter(b => b.usedAmount > b.allocatedAmount).length;
     const underUtilizedCount = filteredBudgets.filter(b => {
       const usage = b.allocatedAmount > 0 ? (b.usedAmount / b.allocatedAmount) * 100 : 0;
       return usage < 50;
     }).length;
-
     return {
       totalBudgets,
       activeBudgets,
@@ -93,7 +85,6 @@ export function BudgetAnalytics() {
       underUtilizedCount
     };
   }, [filteredBudgets]);
-
   // 카테고리별 분석
   const categoryAnalysis = useMemo(() => {
     const categoryData = filteredBudgets.reduce((acc, budget) => {
@@ -106,15 +97,12 @@ export function BudgetAnalytics() {
           count: 0
         };
       }
-      
       acc[budget.category].allocated += budget.allocatedAmount;
       acc[budget.category].used += budget.usedAmount;
       acc[budget.category].remaining += budget.remainingAmount;
       acc[budget.category].count += 1;
-      
       return acc;
     }, {} as Record<ExpenseCategory, any>);
-
     return Object.values(categoryData)
       .map((data: any) => ({
         ...data,
@@ -124,7 +112,6 @@ export function BudgetAnalytics() {
       }))
       .sort((a: any, b: any) => b.allocated - a.allocated);
   }, [filteredBudgets]);
-
   // 지점별 분석
   const branchAnalysis = useMemo(() => {
     const branchData = filteredBudgets.reduce((acc, budget) => {
@@ -138,15 +125,12 @@ export function BudgetAnalytics() {
           count: 0
         };
       }
-      
       acc[branch].allocated += budget.allocatedAmount;
       acc[branch].used += budget.usedAmount;
       acc[branch].remaining += budget.remainingAmount;
       acc[branch].count += 1;
-      
       return acc;
     }, {} as Record<string, any>);
-
     return Object.values(branchData)
       .map((data: any) => ({
         ...data,
@@ -154,7 +138,6 @@ export function BudgetAnalytics() {
       }))
       .sort((a: any, b: any) => b.allocated - a.allocated);
   }, [filteredBudgets]);
-
   // 월별 트렌드 (월간 예산만)
   const monthlyTrend = useMemo(() => {
     const monthlyBudgets = filteredBudgets.filter(b => b.fiscalMonth);
@@ -169,14 +152,11 @@ export function BudgetAnalytics() {
           usage: 0
         };
       }
-      
       acc[month].allocated += budget.allocatedAmount;
       acc[month].used += budget.usedAmount;
       acc[month].count += 1;
-      
       return acc;
     }, {} as Record<number, any>);
-
     return Object.values(monthlyData)
       .map((data: any) => ({
         ...data,
@@ -184,18 +164,15 @@ export function BudgetAnalytics() {
       }))
       .sort((a: any, b: any) => parseInt(a.month) - parseInt(b.month));
   }, [filteredBudgets]);
-
   // 예산 효율성 분석
   const efficiencyAnalysis = useMemo(() => {
     return filteredBudgets.map(budget => {
       const usage = budget.allocatedAmount > 0 ? (budget.usedAmount / budget.allocatedAmount) * 100 : 0;
       let efficiency: 'excellent' | 'good' | 'fair' | 'poor';
-      
       if (usage >= 80 && usage <= 100) efficiency = 'excellent';
       else if (usage >= 60 && usage < 120) efficiency = 'good';
       else if (usage >= 40 && usage < 140) efficiency = 'fair';
       else efficiency = 'poor';
-
       return {
         ...budget,
         usage,
@@ -205,7 +182,6 @@ export function BudgetAnalytics() {
       };
     }).sort((a, b) => b.usage - a.usage);
   }, [filteredBudgets]);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -213,7 +189,6 @@ export function BudgetAnalytics() {
       notation: 'compact'
     }).format(amount);
   };
-
   const getEfficiencyColor = (efficiency: string) => {
     switch (efficiency) {
       case 'excellent': return 'text-green-600';
@@ -223,7 +198,6 @@ export function BudgetAnalytics() {
       default: return 'text-gray-600';
     }
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -232,7 +206,6 @@ export function BudgetAnalytics() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -264,7 +237,6 @@ export function BudgetAnalytics() {
           </Select>
         </div>
       </div>
-
       {/* 주요 지표 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -283,7 +255,6 @@ export function BudgetAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -300,7 +271,6 @@ export function BudgetAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -317,7 +287,6 @@ export function BudgetAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -335,7 +304,6 @@ export function BudgetAnalytics() {
           </CardContent>
         </Card>
       </div>
-
       {/* 차트 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 카테고리별 예산 분포 */}
@@ -367,7 +335,6 @@ export function BudgetAnalytics() {
             </div>
           </CardContent>
         </Card>
-
         {/* 예산 사용률 분포 */}
         <Card>
           <CardHeader>
@@ -402,7 +369,6 @@ export function BudgetAnalytics() {
           </CardContent>
         </Card>
       </div>
-
       {/* 월별 트렌드 */}
       {monthlyTrend.length > 0 && (
         <Card>
@@ -436,7 +402,6 @@ export function BudgetAnalytics() {
           </CardContent>
         </Card>
       )}
-
       {/* 예산 효율성 분석 */}
       <Card>
         <CardHeader>
@@ -461,7 +426,6 @@ export function BudgetAnalytics() {
                     </p>
                   </div>
                 </div>
-                
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="font-medium">{formatCurrency(budget.allocatedAmount)}</p>
@@ -469,7 +433,6 @@ export function BudgetAnalytics() {
                       사용: {formatCurrency(budget.usedAmount)}
                     </p>
                   </div>
-                  
                   <div className="text-right">
                     <p className={`font-medium ${getEfficiencyColor(budget.efficiency)}`}>
                       {budget.usage.toFixed(1)}%

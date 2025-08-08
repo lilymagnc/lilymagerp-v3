@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight, AlertTriangle, Building2, Clock } from 'lucide-react';
 import type { MaterialRequest } from '@/types/material-request';
-
 interface BranchRequestsViewProps {
   requests: MaterialRequest[];
   branchStats: Array<{
@@ -22,7 +20,6 @@ interface BranchRequestsViewProps {
   selectedRequests: string[];
   onToggleRequest: (requestId: string) => void;
 }
-
 export function BranchRequestsView({ 
   requests, 
   branchStats, 
@@ -30,7 +27,6 @@ export function BranchRequestsView({
   onToggleRequest 
 }: BranchRequestsViewProps) {
   const [expandedBranches, setExpandedBranches] = useState<Set<string>>(new Set());
-
   const toggleExpanded = (branchId: string) => {
     const newExpanded = new Set(expandedBranches);
     if (newExpanded.has(branchId)) {
@@ -40,15 +36,12 @@ export function BranchRequestsView({
     }
     setExpandedBranches(newExpanded);
   };
-
   const expandAll = () => {
     setExpandedBranches(new Set(branchStats.map(stat => stat.branchId)));
   };
-
   const collapseAll = () => {
     setExpandedBranches(new Set());
   };
-
   // 지점별로 요청 그룹화
   const requestsByBranch = requests.reduce((acc, request) => {
     if (!acc[request.branchId]) {
@@ -57,7 +50,6 @@ export function BranchRequestsView({
     acc[request.branchId].push(request);
     return acc;
   }, {} as Record<string, MaterialRequest[]>);
-
   const formatDate = (timestamp: any) => {
     if (timestamp?.seconds) {
       return new Date(timestamp.seconds * 1000).toLocaleDateString('ko-KR');
@@ -67,7 +59,6 @@ export function BranchRequestsView({
     }
     return '-';
   };
-
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       submitted: '제출됨',
@@ -80,7 +71,6 @@ export function BranchRequestsView({
     };
     return labels[status] || status;
   };
-
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       submitted: 'bg-blue-100 text-blue-800',
@@ -93,7 +83,6 @@ export function BranchRequestsView({
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
-
   if (branchStats.length === 0) {
     return (
       <Card>
@@ -107,7 +96,6 @@ export function BranchRequestsView({
       </Card>
     );
   }
-
   return (
     <div className="space-y-4">
       {/* 컨트롤 버튼 */}
@@ -119,7 +107,6 @@ export function BranchRequestsView({
           모두 접기
         </Button>
       </div>
-
       {/* 지점별 요청 목록 */}
       <div className="space-y-3">
         {branchStats
@@ -130,7 +117,6 @@ export function BranchRequestsView({
             const selectedCount = branchRequests.filter(req => 
               selectedRequests.includes(req.id)
             ).length;
-
             return (
               <Card key={stat.branchId} className={stat.urgentCount > 0 ? 'border-red-200' : ''}>
                 <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(stat.branchId)}>
@@ -143,9 +129,7 @@ export function BranchRequestsView({
                           ) : (
                             <ChevronRight className="h-4 w-4" />
                           )}
-                          
                           <Building2 className="h-5 w-5 text-muted-foreground" />
-                          
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <CardTitle className="text-lg">{stat.branchName}</CardTitle>
@@ -161,7 +145,6 @@ export function BranchRequestsView({
                                 </Badge>
                               )}
                             </div>
-                            
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span>요청: <strong>{stat.requestCount}건</strong></span>
                               <span>품목: <strong>{stat.itemCount}개</strong></span>
@@ -172,14 +155,12 @@ export function BranchRequestsView({
                       </div>
                     </CardHeader>
                   </CollapsibleTrigger>
-                  
                   <CollapsibleContent>
                     <CardContent className="pt-0">
                       <div className="space-y-3">
                         <div className="text-sm font-medium text-muted-foreground mb-2">
                           요청 상세 내역
                         </div>
-                        
                         {branchRequests
                           .sort((a, b) => {
                             // 긴급 요청 우선 정렬
@@ -187,7 +168,6 @@ export function BranchRequestsView({
                             const bUrgent = b.requestedItems.some(item => item.urgency === 'urgent');
                             if (aUrgent && !bUrgent) return -1;
                             if (!aUrgent && bUrgent) return 1;
-                            
                             // 그 다음 생성일 기준 정렬
                             const aTime = a.createdAt?.seconds || 0;
                             const bTime = b.createdAt?.seconds || 0;
@@ -199,7 +179,6 @@ export function BranchRequestsView({
                             const totalCost = request.requestedItems.reduce((sum, item) => 
                               sum + (item.requestedQuantity * item.estimatedPrice), 0
                             );
-
                             return (
                               <div 
                                 key={request.id}
@@ -214,7 +193,6 @@ export function BranchRequestsView({
                                       onCheckedChange={() => onToggleRequest(request.id)}
                                       className="mt-1"
                                     />
-                                    
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="font-semibold">{request.requestNumber}</span>
@@ -225,12 +203,10 @@ export function BranchRequestsView({
                                           <Badge variant="destructive">긴급</Badge>
                                         )}
                                       </div>
-                                      
                                       <div className="text-sm text-muted-foreground mb-2">
                                         요청자: {request.requesterName} • 
                                         요청일: {formatDate(request.createdAt)}
                                       </div>
-                                      
                                       <div className="text-sm">
                                         <span className="text-muted-foreground">품목: </span>
                                         <span className="font-medium">{request.requestedItems.length}개</span>
@@ -240,7 +216,6 @@ export function BranchRequestsView({
                                     </div>
                                   </div>
                                 </div>
-                                
                                 {/* 요청 품목 목록 */}
                                 <div className="ml-8 space-y-2">
                                   {request.requestedItems.map((item, index) => (
@@ -263,7 +238,6 @@ export function BranchRequestsView({
                                     </div>
                                   ))}
                                 </div>
-                                
                                 {/* 메모가 있는 경우 */}
                                 {request.requestedItems.some(item => item.memo) && (
                                   <div className="ml-8 mt-2 text-xs text-muted-foreground">
@@ -287,7 +261,6 @@ export function BranchRequestsView({
             );
           })}
       </div>
-
       {/* 하단 요약 */}
       <Card className="bg-muted/30">
         <CardContent className="pt-6">

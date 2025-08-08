@@ -1,6 +1,5 @@
 
 "use client";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,17 +13,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Employee } from "@/hooks/use-employees";
 import { format } from "date-fns";
-
 interface EmployeeDetailsProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onEdit: () => void;
   employee: Employee | null;
 }
-
 export function EmployeeDetails({ isOpen, onOpenChange, onEdit, employee }: EmployeeDetailsProps) {
   if (!employee) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">

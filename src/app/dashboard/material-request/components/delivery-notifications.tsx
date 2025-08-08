@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +24,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useMaterialRequests } from '@/hooks/use-material-requests';
 import { useToast } from '@/hooks/use-toast';
 import type { MaterialRequest } from '@/types/material-request';
-
 interface DeliveryNotification {
   id: string;
   type: 'shipping_started' | 'delivery_requested' | 'delivery_completed' | 'delivery_delayed';
@@ -42,25 +40,20 @@ interface DeliveryNotification {
   estimatedDelivery?: Date;
   trackingNumber?: string;
 }
-
 interface DeliveryNotificationsProps {
   selectedBranch?: string;
 }
-
 export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsProps) {
   const { user } = useAuth();
   const { getAllRequests, updateRequestStatus, loading } = useMaterialRequests();
   const { toast } = useToast();
-
   const [notifications, setNotifications] = useState<DeliveryNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showAll, setShowAll] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<string | null>(null);
-
   // 요청 상태를 기반으로 배송 알림 생성
   const generateDeliveryNotifications = (requests: MaterialRequest[]): DeliveryNotification[] => {
     const notifications: DeliveryNotification[] = [];
-
     requests.forEach(request => {
       // 배송 시작 알림
       if (request.status === 'shipping' && request.delivery?.shippingDate) {
@@ -79,7 +72,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
           trackingNumber: request.delivery.trackingNumber
         });
       }
-
       // 입고 요청 알림 (배송 완료 후 24시간 경과)
       if (request.status === 'delivered' && !request.delivery?.deliveryDate) {
         const shippingDate = request.delivery?.shippingDate?.toDate ? request.delivery.shippingDate.toDate() : null;
@@ -101,16 +93,13 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
         }
       }
     });
-
     return notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   };
-
   const loadNotifications = useCallback(async () => {
     try {
       // 실제로는 notifications 컬렉션에서 조회
       // 여기서는 materialRequests에서 배송 관련 상태를 기반으로 알림 생성
       const requests = await getAllRequests();
-
       // 본부 관리자이고 특정 지점이 선택된 경우 필터링
       let filteredRequests = requests;
       if (user?.role === '본사 관리자' && selectedBranch) {
@@ -118,16 +107,11 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
       } else if (user?.franchise) {
         filteredRequests = requests.filter(req => req.branchName === user.franchise);
       }
-
       const deliveryNotifications = generateDeliveryNotifications(filteredRequests);
-
       setNotifications(deliveryNotifications);
       setUnreadCount(deliveryNotifications.filter(n => !n.isRead).length);
-
     } catch (error) {
       console.error('알림 로딩 오류:', error);
-
-      // 테스트 데이터
       const testNotifications: DeliveryNotification[] = [
         {
           id: 'notif-1',
@@ -158,36 +142,29 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
           actionRequired: true
         }
       ];
-
       setNotifications(testNotifications);
       setUnreadCount(testNotifications.filter(n => !n.isRead).length);
     }
   }, [user, selectedBranch, getAllRequests]);
-
   useEffect(() => {
     let isMounted = true;
-    
     const loadData = async () => {
       if (isMounted) {
         await loadNotifications();
       }
     };
-    
     loadData();
-    
     // 실시간 알림 업데이트 (30초마다)
     const interval = setInterval(() => {
       if (isMounted) {
         loadNotifications();
       }
     }, 30000);
-    
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
   }, [selectedBranch, loadNotifications]); // selectedBranch 변경 시에도 다시 로드
-
   // 알림 읽음 처리
   const markAsRead = async (notificationId: string) => {
     try {
@@ -197,15 +174,11 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
         )
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-
       // 실제로는 Firestore 업데이트
-      console.log('알림 읽음 처리:', notificationId);
-
-    } catch (error) {
+      } catch (error) {
       console.error('알림 읽음 처리 오류:', error);
     }
   };
-
   // 모든 알림 읽음 처리
   const markAllAsRead = async () => {
     try {
@@ -213,32 +186,26 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
         prev.map(n => ({ ...n, isRead: true }))
       );
       setUnreadCount(0);
-
       toast({
         title: "알림 확인",
         description: "모든 알림을 읽음으로 처리했습니다.",
       });
-
     } catch (error) {
       console.error('전체 알림 읽음 처리 오류:', error);
     }
   };
-
   // 알림 삭제
   const deleteNotification = async (notificationId: string) => {
     try {
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
-
       toast({
         title: "알림 삭제",
         description: "알림이 삭제되었습니다.",
       });
-
     } catch (error) {
       console.error('알림 삭제 오류:', error);
     }
   };
-
   // 배송 알림 전송 (본사 관리자용)
   const sendDeliveryNotification = async (
     requestId: string,
@@ -247,18 +214,14 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
   ) => {
     try {
       // 실제로는 푸시 알림, 이메일, SMS 등 전송
-      console.log('배송 알림 전송:', { requestId, type, customMessage });
-
       toast({
         title: "알림 전송",
         description: "배송 알림이 전송되었습니다.",
       });
-
     } catch (error) {
       console.error('알림 전송 오류:', error);
     }
   };
-
   const getNotificationIcon = (type: DeliveryNotification['type']) => {
     switch (type) {
       case 'shipping_started':
@@ -273,7 +236,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
         return <Bell className="h-4 w-4" />;
     }
   };
-
   const getPriorityColor = (priority: DeliveryNotification['priority']) => {
     switch (priority) {
       case 'urgent':
@@ -284,13 +246,11 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
         return 'border-gray-200 bg-white';
     }
   };
-
   const formatRelativeTime = (date: Date) => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-
     if (diffDays > 0) {
       return `${diffDays}일 전`;
     } else if (diffHours > 0) {
@@ -299,9 +259,7 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
       return '방금 전';
     }
   };
-
   const visibleNotifications = showAll ? notifications : notifications.slice(0, 5);
-
   return (
     <Card>
       <CardHeader>
@@ -377,7 +335,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
                         </span>
                         <span>{notification.requestNumber}</span>
                       </div>
-
                       {/* 송장번호 표시 */}
                       {notification.trackingNumber && (
                         <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
@@ -388,7 +345,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
                       )}
                     </div>
                   </div>
-
                   <div className="flex items-center gap-1">
                     {!notification.isRead && (
                       <Button
@@ -399,7 +355,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
                         <Eye className="h-4 w-4" />
                       </Button>
                     )}
-
                     {/* 본사 관리자용 추가 액션 */}
                     {user?.role === '본사 관리자' && notification.type === 'delivery_requested' && (
                       <Button
@@ -410,7 +365,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
                         <Send className="h-4 w-4" />
                       </Button>
                     )}
-
                     <Button
                       variant="ghost"
                       size="sm"
@@ -420,7 +374,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
                     </Button>
                   </div>
                 </div>
-
                 {/* 조치 필요 알림 */}
                 {notification.actionRequired && (
                   <Alert className="mt-3 border-orange-200 bg-orange-50">
@@ -437,7 +390,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
                 )}
               </div>
             ))}
-
             {/* 더보기 버튼 */}
             {notifications.length > 5 && (
               <div className="text-center pt-2">
@@ -452,7 +404,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
             )}
           </div>
         )}
-
         {/* 긴급 알림 요약 */}
         {notifications.some(n => n.priority === 'urgent' && !n.isRead) && (
           <Alert className="mt-4 border-red-200 bg-red-50">
@@ -463,7 +414,6 @@ export function DeliveryNotifications({ selectedBranch }: DeliveryNotificationsP
             </AlertDescription>
           </Alert>
         )}
-
         {/* 연락처 정보 (긴급 시) */}
         {notifications.some(n => n.priority === 'urgent') && (
           <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm">

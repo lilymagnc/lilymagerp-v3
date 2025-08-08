@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,13 +14,11 @@ import { useOrders } from "@/hooks/use-orders";
 import { useBranches } from "@/hooks/use-branches";
 import { Order } from "@/hooks/use-orders";
 import { Branch } from "@/hooks/use-branches";
-
 interface StatementDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   customer: Customer | null;
 }
-
 interface StatementData {
   customer: Customer;
   branch: Branch | null;
@@ -38,7 +35,6 @@ interface StatementData {
     grandTotal: number;
   };
 }
-
 export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDialogProps) {
   const { orders } = useOrders();
   const { branches } = useBranches();
@@ -46,16 +42,13 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [statementData, setStatementData] = useState<StatementData | null>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
-
   useEffect(() => {
     if (!customer || !startDate || !endDate) {
       setStatementData(null);
       return;
     }
-
     // 고객의 담당지점 정보 찾기
     const branch = branches.find(b => b.name === customer.branch);
-
     // 고객의 주문 내역 필터링 - 연락처로 매칭
     const customerOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate.seconds * 1000);
@@ -63,7 +56,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
              orderDate >= startDate && 
              orderDate <= endDate;
     });
-
     // 요약 정보 계산
     const summary = {
       totalOrders: customerOrders.length,
@@ -73,7 +65,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
       grandTotal: customerOrders.reduce((sum, order) => sum + (order.summary.total || 0), 0) + 
                    customerOrders.reduce((sum, order) => sum + (order.summary.deliveryFee || 0), 0)
     };
-
     setStatementData({
       customer,
       branch,
@@ -82,31 +73,16 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
       summary
     });
   }, [customer, startDate, endDate, orders, branches]);
-
   const generateStatement = () => {
     if (!statementData) {
-      console.log('statementData is null');
       return;
     }
-    console.log('Generating statement with data:', statementData);
     setShowPrintPreview(true);
   };
-
   const handlePrint = () => {
     window.print();
   };
-
   // 디버깅을 위한 로그
-  console.log('StatementDialog render:', {
-    customer,
-    startDate,
-    endDate,
-    statementData,
-    showPrintPreview,
-    ordersCount: orders.length,
-    branchesCount: branches.length
-  });
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-6xl max-h-[95vh] overflow-y-auto">
@@ -116,7 +92,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
             고객의 거래 내역을 조회하여 거래명세서를 생성합니다.
           </DialogDescription>
         </DialogHeader>
-
         {!showPrintPreview ? (
           <>
             {/* 고객 정보 */}
@@ -139,7 +114,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                 </div>
               </div>
             )}
-
             {/* 기간 선택 */}
             <div className="mb-6">
               <h3 className="font-semibold mb-4">거래 기간 선택</h3>
@@ -196,7 +170,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                 </div>
               </div>
             </div>
-
             {/* 거래 내역 요약 */}
             {statementData && (
               <div className="mb-6">
@@ -223,7 +196,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                     <div className="text-sm text-muted-foreground">총 합계 (배송비 포함)</div>
                   </div>
                 </div>
-
                 {/* 주문 미리보기 */}
                 <div className="space-y-2">
                   <h4 className="font-medium">주문 내역 미리보기</h4>
@@ -243,7 +215,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                 </div>
               </div>
             )}
-
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>
                 취소
@@ -264,7 +235,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                   size: A4;
                   margin: 10mm 15mm;
                 }
-                
                 /* 인쇄 시 불필요한 요소들 숨기기 */
                 .no-print,
                 button,
@@ -279,7 +249,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                 [class*="menu"] {
                   display: none !important;
                 }
-                
                 /* 인쇄 영역만 표시 */
                 #printable-area {
                   background: white !important;
@@ -290,13 +259,11 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                   padding: 10mm !important;
                   font-size: 12px !important;
                 }
-                
                 /* 테이블 최적화 */
                 #printable-area table {
                   width: 100% !important;
                   border-collapse: collapse !important;
                 }
-                
                 #printable-area td, #printable-area th {
                   padding: 4px 6px !important;
                   font-size: 11px !important;
@@ -304,28 +271,23 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                   overflow: hidden !important;
                   text-overflow: ellipsis !important;
                 }
-                
                 /* 페이지 나누기 */
                 #printable-area table {
                   page-break-inside: auto;
                 }
-                
                 #printable-area tr {
                   page-break-inside: avoid;
                 }
-                
                 /* 헤더 반복 */
                 #printable-area thead {
                   display: table-header-group;
                 }
-                
                 /* 푸터 반복 */
                 #printable-area tfoot {
                   display: table-footer-group;
                 }
               }
             `}</style>
-
             <div className="flex justify-between items-center mb-4 no-print">
               <Button variant="outline" onClick={() => setShowPrintPreview(false)}>
                 뒤로가기
@@ -335,7 +297,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                 인쇄하기
               </Button>
             </div>
-
             <div id="printable-area" className="bg-white text-black p-8">
               {/* 제목 */}
               <div className="text-center mb-8">
@@ -348,7 +309,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                   거 래 명 세 서
                 </h1>
               </div>
-
               {!statementData ? (
                 <div className="text-center py-8">
                   <p className="text-lg text-gray-600">데이터를 불러오는 중...</p>
@@ -389,7 +349,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                         </tbody>
                       </table>
                     </div>
-
                     {/* 오른쪽: 공급자 (지점정보) */}
                     <div className="flex-1">
                       <table className="w-full" style={{ borderCollapse: 'collapse', border: '2px solid black' }}>
@@ -421,7 +380,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                       </table>
                     </div>
                   </div>
-
                   {/* 거래 기간 */}
                   <div className="mb-6">
                     <table className="w-full" style={{ borderCollapse: 'collapse', border: '2px solid black' }}>
@@ -438,7 +396,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                       </tbody>
                     </table>
                   </div>
-
                   {/* 거래 내역 테이블 */}
                   <div className="mb-6">
                     <table className="w-full" style={{ borderCollapse: 'collapse', border: '2px solid black' }}>
@@ -477,7 +434,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                                 Math.round(order.summary.deliveryFee / order.items.length) : 0;
                               const priceWithDelivery = item.price + deliveryFeePerItem;
                               const totalWithDelivery = priceWithDelivery * item.quantity;
-                              
                               return (
                                 <tr key={`${order.id}-${itemIndex}`}>
                                   <td style={{ border: '1px solid black', padding: '6px', fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -520,7 +476,6 @@ export function StatementDialog({ isOpen, onOpenChange, customer }: StatementDia
                       </tfoot>
                     </table>
                   </div>
-
                   {/* 하단 정보 */}
                   <div className="flex justify-between items-end">
                     <div style={{ fontSize: '12px' }}>

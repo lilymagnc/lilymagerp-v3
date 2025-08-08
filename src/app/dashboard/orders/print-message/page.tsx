@@ -6,31 +6,24 @@ import { notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessagePrintLayout } from './components/message-print-layout';
 import type { Order as OrderType } from '@/hooks/use-orders';
-
 interface PageProps {
   searchParams: { [key: string]: string | string[] | undefined };
 }
-
 export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
   id: string;
   orderDate: string; // ISO string format
 }
-
 async function getOrder(orderId: string): Promise<SerializableOrder | null> {
     try {
         const docRef = doc(db, 'orders', orderId);
         const docSnap = await getDoc(docRef);
-
         if (docSnap.exists()) {
             const data = docSnap.data();
-            
             let orderDateIso = new Date().toISOString();
             if (data.orderDate && typeof (data.orderDate as Timestamp).toDate === 'function') {
                 orderDateIso = (data.orderDate as Timestamp).toDate().toISOString();
             }
-
             const orderBase = data as Omit<OrderType, 'id' | 'orderDate'>;
-
             return {
                 ...orderBase,
                 id: docSnap.id,
@@ -45,8 +38,6 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
         return null;
     }
 }
-
-
 export default async function PrintMessagePage({ searchParams }: PageProps) {
     const params = await searchParams;
     const orderId = params.orderId as string;
@@ -58,17 +49,13 @@ export default async function PrintMessagePage({ searchParams }: PageProps) {
     const senderFontSize = parseInt(params.senderFontSize as string) || 12;
     const messageContent = params.messageContent as string || '';
     const senderName = params.senderName as string || '';
-
     if (!orderId) {
         notFound();
     }
-    
     const orderData = await getOrder(orderId);
-    
     if (!orderData) {
         notFound();
     }
-
     return (
         <Suspense fallback={<div className="max-w-4xl mx-auto p-6"><Skeleton className="h-96 w-full"/></div>}>
             <MessagePrintLayout

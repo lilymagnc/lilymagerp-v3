@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,23 +36,18 @@ import {
 import type { 
   ExpenseRequest
 } from '@/types/expense';
-
 export function ExpenseApproval() {
   const [selectedExpense, setSelectedExpense] = useState<ExpenseRequest | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  
   const { expenses, loading, processApproval } = useExpenses();
   const { toast } = useToast();
-
   // 승인 대기 중인 비용 신청만 필터링
   const pendingExpenses = expenses.filter(expense => expense.status === 'pending');
-
   // 승인 처리
   const handleApproval = async (expense: ExpenseRequest, action: 'approve' | 'reject') => {
     setIsProcessing(true);
-    
     try {
       await processApproval({
         requestId: expense.id,
@@ -63,15 +57,12 @@ export function ExpenseApproval() {
         action,
         comment: approvalComment
       });
-
       setApprovalComment('');
       setSelectedExpense(null);
-      
       toast({
         title: `${action === 'approve' ? '승인' : '반려'} 완료`,
         description: `비용 신청이 ${action === 'approve' ? '승인' : '반려'}되었습니다.`
       });
-
     } catch (error) {
       console.error('Approval processing error:', error);
       toast({
@@ -83,13 +74,11 @@ export function ExpenseApproval() {
       setIsProcessing(false);
     }
   };
-
   // 상세 정보 보기
   const showExpenseDetail = (expense: ExpenseRequest) => {
     setSelectedExpense(expense);
     setShowDetailDialog(true);
   };
-
   // 통화 포맷팅
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -97,7 +86,6 @@ export function ExpenseApproval() {
       currency: 'KRW'
     }).format(amount);
   };
-
   // 날짜 포맷팅
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
@@ -110,7 +98,6 @@ export function ExpenseApproval() {
       minute: '2-digit'
     });
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -119,7 +106,6 @@ export function ExpenseApproval() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -136,7 +122,6 @@ export function ExpenseApproval() {
           )}
         </Badge>
       </div>
-
       {/* 승인 대기 목록 */}
       {pendingExpenses.length === 0 ? (
         <Card>
@@ -178,7 +163,6 @@ export function ExpenseApproval() {
                   </div>
                 </div>
               </CardHeader>
-              
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div className="flex items-center gap-2">
@@ -188,7 +172,6 @@ export function ExpenseApproval() {
                       <p className="text-sm text-muted-foreground">{expense.requesterRole}</p>
                     </div>
                   </div>
-                  
                   <div className="flex items-center gap-2">
                     <Building className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -198,7 +181,6 @@ export function ExpenseApproval() {
                       )}
                     </div>
                   </div>
-                  
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -209,7 +191,6 @@ export function ExpenseApproval() {
                     </div>
                   </div>
                 </div>
-
                 {/* 비용 항목 요약 */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <h4 className="font-medium mb-2 flex items-center gap-2">
@@ -237,7 +218,6 @@ export function ExpenseApproval() {
                     )}
                   </div>
                 </div>
-
                 {/* 승인 필요 금액 알림 */}
                 {expense.totalAmount >= 500000 && (
                   <Alert className="mb-4">
@@ -247,7 +227,6 @@ export function ExpenseApproval() {
                     </AlertDescription>
                   </Alert>
                 )}
-
                 {/* 액션 버튼 */}
                 <div className="flex items-center justify-between">
                   <Button
@@ -257,7 +236,6 @@ export function ExpenseApproval() {
                     <Eye className="h-4 w-4 mr-2" />
                     상세 보기
                   </Button>
-                  
                   <div className="flex items-center gap-2">
                     <Dialog>
                       <DialogTrigger asChild>
@@ -308,7 +286,6 @@ export function ExpenseApproval() {
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
-
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
@@ -372,7 +349,6 @@ export function ExpenseApproval() {
           ))}
         </div>
       )}
-
       {/* 상세 정보 다이얼로그 */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -382,7 +358,6 @@ export function ExpenseApproval() {
               {selectedExpense?.requestNumber} - {selectedExpense?.title}
             </DialogDescription>
           </DialogHeader>
-          
           {selectedExpense && (
             <div className="space-y-6">
               {/* 기본 정보 */}
@@ -398,7 +373,6 @@ export function ExpenseApproval() {
                     )}
                   </div>
                 </div>
-                
                 <div>
                   <h4 className="font-medium mb-2">신청 정보</h4>
                   <div className="space-y-1 text-sm">
@@ -416,7 +390,6 @@ export function ExpenseApproval() {
                   </div>
                 </div>
               </div>
-
               {/* 사용 목적 */}
               <div>
                 <h4 className="font-medium mb-2">사용 목적</h4>
@@ -424,7 +397,6 @@ export function ExpenseApproval() {
                   {selectedExpense.purpose}
                 </p>
               </div>
-
               {/* 비용 항목 상세 */}
               <div>
                 <h4 className="font-medium mb-2">비용 항목 상세</h4>
@@ -449,7 +421,6 @@ export function ExpenseApproval() {
                           )}
                         </div>
                       </div>
-                      
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">수량:</span> {item.quantity}
@@ -461,13 +432,11 @@ export function ExpenseApproval() {
                           <span className="text-muted-foreground">구매일:</span> {formatDate(item.purchaseDate)}
                         </div>
                       </div>
-                      
                       {item.supplier && (
                         <p className="text-sm mt-2">
                           <span className="text-muted-foreground">공급업체:</span> {item.supplier}
                         </p>
                       )}
-                      
                       {item.memo && (
                         <p className="text-sm mt-2 bg-gray-50 p-2 rounded">
                           <span className="text-muted-foreground">메모:</span> {item.memo}
@@ -477,7 +446,6 @@ export function ExpenseApproval() {
                   ))}
                 </div>
               </div>
-
               {/* 총액 요약 */}
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="flex items-center justify-between">

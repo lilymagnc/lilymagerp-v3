@@ -1,29 +1,24 @@
 
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import type { BranchFormValues } from '@/app/dashboard/branches/components/branch-form';
-
 export interface DeliveryFee {
     district: string;
     fee: number;
 }
-
 export interface Surcharges {
     mediumItem?: number;
     largeItem?: number;
     express?: number;
 }
-
 export interface Branch extends BranchFormValues {
   id: string;
   deliveryFees?: DeliveryFee[];
   surcharges?: Surcharges;
 }
-
 export const initialBranches: Omit<Branch, 'id'>[] = [
     { 
         name: "릴리맥광화문점", 
@@ -136,18 +131,15 @@ export const initialBranches: Omit<Branch, 'id'>[] = [
         surcharges: { mediumItem: 2000, largeItem: 5000 }
     },
 ];
-
 export function useBranches() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
   const fetchBranches = useCallback(async () => {
     try {
       setLoading(true);
       const branchesCollection = collection(db, 'branches');
       const querySnapshot = await getDocs(branchesCollection);
-      
       if (querySnapshot.size <= 1) {
           const initDocRef = doc(branchesCollection, '_initialized');
           const initDoc = await getDoc(initDocRef);
@@ -159,12 +151,10 @@ export function useBranches() {
             });
             batch.set(initDocRef, { seeded: true });
             await batch.commit();
-            
             const seededSnapshot = await getDocs(branchesCollection);
             const branchesData = seededSnapshot.docs
               .filter(doc => doc.id !== '_initialized')
               .map(doc => ({ id: doc.id, ...doc.data() } as Branch));
-            
             branchesData.sort((a, b) => {
                 if (a.type === '본사') return -1;
                 if (b.type === '본사') return 1;
@@ -174,18 +164,15 @@ export function useBranches() {
             return;
           }
       } 
-      
       const branchesData = querySnapshot.docs
         .filter(doc => doc.id !== '_initialized')
         .map(doc => ({ id: doc.id, ...doc.data() } as Branch));
-
       branchesData.sort((a, b) => {
         if (a.type === '본사') return -1;
         if (b.type === '본사') return 1;
         return a.name.localeCompare(b.name);
       });
       setBranches(branchesData);
-
     } catch (error) {
       console.error("Error fetching branches: ", error);
       toast({
@@ -197,11 +184,9 @@ export function useBranches() {
       setLoading(false);
     }
   }, [toast]);
-
   useEffect(() => {
     fetchBranches();
   }, [fetchBranches]);
-
   const addBranch = async (branch: BranchFormValues) => {
     try {
       setLoading(true);
@@ -223,7 +208,6 @@ export function useBranches() {
       setLoading(false);
     }
   };
-
   const updateBranch = async (branchId: string, branch: BranchFormValues) => {
     try {
       setLoading(true);
@@ -245,7 +229,6 @@ export function useBranches() {
       setLoading(false);
     }
   };
-
   const deleteBranch = async (branchId: string) => {
     try {
       setLoading(true);
@@ -267,7 +250,5 @@ export function useBranches() {
       setLoading(false);
     }
   };
-
   return { branches, loading, addBranch, updateBranch, deleteBranch, fetchBranches };
 }
-

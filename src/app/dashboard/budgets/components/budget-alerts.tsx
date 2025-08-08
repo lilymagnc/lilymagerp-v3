@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,6 @@ import type {
   calculateBudgetUsage,
   getBudgetStatus 
 } from '@/types/expense';
-
 interface BudgetAlert {
   id: string;
   budget: Budget;
@@ -37,21 +35,17 @@ interface BudgetAlert {
   usage: number;
   recommendedAction: string;
 }
-
 export function BudgetAlerts() {
   const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const { budgets, checkBudgetAlerts } = useBudgets();
-
   // 알림 생성
   const generateAlerts = () => {
     const budgetAlerts: BudgetAlert[] = [];
-
     budgets
       .filter(budget => budget.isActive)
       .forEach(budget => {
         const usage = budget.allocatedAmount > 0 ? (budget.usedAmount / budget.allocatedAmount) * 100 : 0;
-        
         // 예산 초과 알림
         if (usage >= 100) {
           budgetAlerts.push({
@@ -76,13 +70,11 @@ export function BudgetAlerts() {
             recommendedAction: '지출 계획을 검토하고 필요시 예산 조정을 고려하세요.'
           });
         }
-
         // 월간 예산의 경우 월말 근접 시 추가 알림
         if (budget.fiscalMonth) {
           const now = new Date();
           const currentMonth = now.getMonth() + 1;
           const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-          
           if (budget.fiscalMonth === currentMonth && daysLeft <= 7 && usage < 80) {
             budgetAlerts.push({
               id: `${budget.id}_monthly_limit`,
@@ -96,21 +88,17 @@ export function BudgetAlerts() {
           }
         }
       });
-
     // 심각도별 정렬
     budgetAlerts.sort((a, b) => {
       const severityOrder = { high: 3, medium: 2, low: 1 };
       return severityOrder[b.severity] - severityOrder[a.severity];
     });
-
     setAlerts(budgetAlerts);
     setLoading(false);
   };
-
   useEffect(() => {
     generateAlerts();
   }, [budgets]);
-
   // 알림 타입별 아이콘
   const getAlertIcon = (type: BudgetAlert['type']) => {
     switch (type) {
@@ -124,7 +112,6 @@ export function BudgetAlerts() {
         return <Bell className="h-5 w-5 text-gray-500" />;
     }
   };
-
   // 심각도별 색상
   const getSeverityColor = (severity: BudgetAlert['severity']) => {
     switch (severity) {
@@ -138,7 +125,6 @@ export function BudgetAlerts() {
         return 'border-gray-200 bg-gray-50';
     }
   };
-
   // 통화 포맷팅
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -146,7 +132,6 @@ export function BudgetAlerts() {
       currency: 'KRW'
     }).format(amount);
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -155,7 +140,6 @@ export function BudgetAlerts() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -177,7 +161,6 @@ export function BudgetAlerts() {
           </Button>
         </div>
       </div>
-
       {/* 알림 요약 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -195,7 +178,6 @@ export function BudgetAlerts() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -211,7 +193,6 @@ export function BudgetAlerts() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -228,7 +209,6 @@ export function BudgetAlerts() {
           </CardContent>
         </Card>
       </div>
-
       {/* 알림 목록 */}
       {alerts.length === 0 ? (
         <Card>
@@ -277,7 +257,6 @@ export function BudgetAlerts() {
                   </Badge>
                 </div>
               </CardHeader>
-              
               <CardContent>
                 <div className="space-y-4">
                   {/* 알림 메시지 */}
@@ -287,7 +266,6 @@ export function BudgetAlerts() {
                       <strong>{alert.message}</strong>
                     </AlertDescription>
                   </Alert>
-
                   {/* 예산 사용 현황 */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -318,7 +296,6 @@ export function BudgetAlerts() {
                         </div>
                       </div>
                     </div>
-
                     <div>
                       <h4 className="font-medium mb-2 flex items-center gap-2">
                         <TrendingUp className="h-4 w-4" />
@@ -346,7 +323,6 @@ export function BudgetAlerts() {
                       </div>
                     </div>
                   </div>
-
                   {/* 조직 정보 */}
                   {(alert.budget.branchName || alert.budget.departmentName) && (
                     <div>
@@ -364,13 +340,11 @@ export function BudgetAlerts() {
                       </div>
                     </div>
                   )}
-
                   {/* 권장 조치 */}
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h4 className="font-medium mb-2 text-blue-800">권장 조치</h4>
                     <p className="text-sm text-blue-700">{alert.recommendedAction}</p>
                   </div>
-
                   {/* 액션 버튼 */}
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm">

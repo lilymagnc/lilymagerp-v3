@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useMaterials } from '@/hooks/use-materials';
@@ -16,14 +15,10 @@ import { ReceivingComparison } from './components/receiving-comparison';
 import { useMaterialRequests } from '@/hooks/use-material-requests';
 import type { RequestItem, UrgencyLevel } from '@/types/material-request';
 import type { Material } from '@/hooks/use-materials';
-
 import { useBranches } from '@/hooks/use-branches';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-
 export default function MaterialRequestPage() {
   const { user } = useAuth();
   const { materials, loading: materialsLoading } = useMaterials();
@@ -31,18 +26,15 @@ export default function MaterialRequestPage() {
   const { createRequest, loading: requestLoading } = useMaterialRequests();
   const { toast } = useToast();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
   // 기존 상태 변수들
   const [cartItems, setCartItems] = useState<RequestItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
-
   // 누락된 상태 변수들 추가
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [urgency, setUrgency] = useState<UrgencyLevel>('normal');
   const [memo, setMemo] = useState('');
-
   useEffect(() => {
     // 사용자가 있고, 지점 목록이 로드되었을 때 기본 선택 설정
     if (user && branches.length > 0) {
@@ -53,12 +45,10 @@ export default function MaterialRequestPage() {
       }
     }
   }, [user, branches]); // user와 branches가 변경될 때마다 실행
-
   // 현재 사용자의 지점 또는 선택된 지점에 해당하는 자재만 필터링
   const availableMaterials = materials.filter(material =>
     material.branch === selectedBranch
   ).filter(material => material.stock > 0); // 재고가 있는 자재만 표시
-
   // 자재를 카테고리별로 그룹화
   const groupedMaterials = availableMaterials.reduce((acc, material) => {
     const category = material.mainCategory || '기타';
@@ -68,7 +58,6 @@ export default function MaterialRequestPage() {
     acc[category].push(material);
     return acc;
   }, {} as Record<string, Material[]>);
-
   // 장바구니에 자재 추가
   const handleAddToCart = () => {
     if (!selectedMaterial) {
@@ -79,7 +68,6 @@ export default function MaterialRequestPage() {
       });
       return;
     }
-
     if (quantity <= 0) {
       toast({
         variant: 'destructive',
@@ -88,13 +76,11 @@ export default function MaterialRequestPage() {
       });
       return;
     }
-
     // 이미 장바구니에 있는 자재인지 확인 (ID와 지점으로 구분)
     const materialKey = `${selectedMaterial.id}-${selectedMaterial.branch}`;
     const existingItemIndex = cartItems.findIndex(
       item => item.materialId === materialKey
     );
-
     if (existingItemIndex >= 0) {
       // 기존 아이템 수량 업데이트
       const updatedItems = [...cartItems];
@@ -117,39 +103,33 @@ export default function MaterialRequestPage() {
       };
       setCartItems([...cartItems, newItem]);
     }
-
     // 폼 초기화
     setSelectedMaterial(null);
     setQuantity(1);
     setUrgency('normal');
     setMemo('');
     setShowCart(true);
-
     toast({
       title: '장바구니 추가',
       description: `${selectedMaterial.name}이(가) 장바구니에 추가되었습니다.`,
     });
   };
-
   // 장바구니에서 아이템 제거
   const handleRemoveFromCart = (materialId: string) => {
     setCartItems(cartItems.filter(item => item.materialId !== materialId));
   };
-
   // 장바구니 아이템 수량 업데이트
   const handleUpdateQuantity = (materialId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       handleRemoveFromCart(materialId);
       return;
     }
-
     setCartItems(cartItems.map(item =>
       item.materialId === materialId
         ? { ...item, requestedQuantity: newQuantity }
         : item
     ));
   };
-
   // 장바구니 아이템 정보 업데이트 (긴급도, 메모 등)
   const handleUpdateItem = (materialId: string, updates: Partial<RequestItem>) => {
     setCartItems(cartItems.map(item =>
@@ -158,7 +138,6 @@ export default function MaterialRequestPage() {
         : item
     ));
   };
-
   // 장바구니 저장
   const handleSaveCart = () => {
     if (cartItems.length === 0) {
@@ -169,25 +148,21 @@ export default function MaterialRequestPage() {
       });
       return;
     }
-
     localStorage.setItem('material-request-cart', JSON.stringify(cartItems));
     toast({
       title: '장바구니 저장됨',
       description: `${cartItems.length}개 아이템이 저장되었습니다.`,
     });
   };
-
   // 장바구니 불러오기
   const handleLoadCart = () => {
     const saved = localStorage.getItem('material-request-cart');
     if (saved) {
       try {
         const savedItems = JSON.parse(saved) as RequestItem[];
-
         // 저장된 아이템들을 현재 장바구니에 추가 (중복 제거)
         const newItems = [...cartItems];
         let addedCount = 0;
-
         savedItems.forEach(savedItem => {
           const exists = newItems.find(item => item.materialId === savedItem.materialId);
           if (!exists) {
@@ -195,10 +170,8 @@ export default function MaterialRequestPage() {
             addedCount++;
           }
         });
-
         setCartItems(newItems);
         setShowCart(true);
-
         toast({
           title: '장바구니 불러옴',
           description: `${addedCount}개의 새로운 아이템을 추가했습니다.`,
@@ -218,7 +191,6 @@ export default function MaterialRequestPage() {
       });
     }
   };
-
   // 자재 행 클릭 시 바로 장바구니에 추가하는 함수
   const handleMaterialClick = (material: Material) => {
     // 이미 장바구니에 있는 자재인지 확인 (ID와 지점으로 구분)
@@ -226,7 +198,6 @@ export default function MaterialRequestPage() {
     const existingItemIndex = cartItems.findIndex(
       item => item.materialId === materialKey
     );
-
     if (existingItemIndex >= 0) {
       // 기존 아이템 수량 1 증가
       const updatedItems = [...cartItems];
@@ -247,17 +218,14 @@ export default function MaterialRequestPage() {
       };
       setCartItems([...cartItems, newItem]);
     }
-
     // selectedMaterial 상태 초기화로 조건부 렌더링 블록 제거
     setSelectedMaterial(null);
     setShowCart(true);
-
     toast({
       title: '장바구니 추가',
       description: `${material.name}이(가) 장바구니에 추가되었습니다.`,
     });
   };
-
   // 요청 제출
   const handleSubmitRequest = async () => {
     if (cartItems.length === 0) {
@@ -268,7 +236,6 @@ export default function MaterialRequestPage() {
       });
       return;
     }
-
     if (!user?.email) {
       toast({
         variant: 'destructive',
@@ -277,20 +244,10 @@ export default function MaterialRequestPage() {
       });
       return;
     }
-
     // Firebase 인증 상태 확인
-    console.log('현재 사용자 정보:', {
-      uid: user.uid,
-      email: user.email,
-      role: user.role,
-      franchise: user.franchise
-    });
-
     // Firebase Auth 상태 확인
     const { auth } = await import('@/lib/firebase');
     const currentUser = auth.currentUser;
-    console.log('Firebase Auth 현재 사용자:', currentUser);
-
     if (!currentUser) {
       toast({
         variant: 'destructive',
@@ -299,7 +256,6 @@ export default function MaterialRequestPage() {
       });
       return;
     }
-
     const targetBranch = branches.find(b => b.name === selectedBranch);
     if (!targetBranch) {
       toast({
@@ -309,7 +265,6 @@ export default function MaterialRequestPage() {
       });
       return;
     }
-
     try {
       const requestData = {
         branchId: targetBranch.id,
@@ -318,23 +273,16 @@ export default function MaterialRequestPage() {
         requesterName: user.email, // 본사 관리자가 요청하더라도 요청자는 본인으로 기록
         requestedItems: cartItems
       };
-
-      console.log('요청 데이터:', requestData);
-
       const requestNumber = await createRequest(requestData);
-
       toast({
         title: '요청 제출 완료',
         description: `요청번호: ${requestNumber}`,
       });
-
       // 장바구니 초기화
       setCartItems([]);
       setShowCart(false);
-
       // 요청현황 자동 새로고침
       setRefreshTrigger(prev => prev + 1);
-
     } catch (error) {
       console.error('요청 제출 오류:', error);
       toast({
@@ -344,15 +292,12 @@ export default function MaterialRequestPage() {
       });
     }
   };
-
   // 총 예상 비용 계산
   const totalEstimatedCost = cartItems.reduce(
     (total, item) => total + (item.requestedQuantity * item.estimatedPrice),
     0
   );
-
   const isLoading = materialsLoading || branchesLoading;
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -363,7 +308,6 @@ export default function MaterialRequestPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 페이지 헤더 */}
@@ -402,13 +346,10 @@ export default function MaterialRequestPage() {
               장바구니 ({cartItems.length})
             </Button>
           )}
-
         </div>
       </div>
-
       {/* 배송 알림 섹션 */}
       <DeliveryNotifications key={`delivery-${selectedBranch}`} selectedBranch={selectedBranch} />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 자재 선택 영역 */}
         <div className="lg:col-span-2 space-y-6">
@@ -458,7 +399,6 @@ export default function MaterialRequestPage() {
                   </AccordionItem>
                 ))}
               </Accordion>
-
               {availableMaterials.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2" />
@@ -467,7 +407,6 @@ export default function MaterialRequestPage() {
               )}
             </CardContent>
           </Card>
-
           {selectedMaterial && (
             <Card>
               <CardHeader>
@@ -505,7 +444,6 @@ export default function MaterialRequestPage() {
                       </Button>
                     </div>
                   </div>
-
                   {/* 긴급도 선택 */}
                   <div>
                     <label className="text-sm font-medium mb-2 block">긴급도</label>
@@ -519,7 +457,6 @@ export default function MaterialRequestPage() {
                     </select>
                   </div>
                 </div>
-
                 {/* 메모 입력 */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">메모 (선택사항)</label>
@@ -530,7 +467,6 @@ export default function MaterialRequestPage() {
                     className="w-full border rounded px-3 py-2 h-20 resize-none"
                   />
                 </div>
-
                 {/* 예상 비용 */}
                 <div className="bg-muted p-3 rounded">
                   <p className="text-sm">
@@ -539,7 +475,6 @@ export default function MaterialRequestPage() {
                     </span>
                   </p>
                 </div>
-
                 <Button onClick={handleAddToCart} className="w-full">
                   <Plus className="h-4 w-4 mr-2" />
                   장바구니에 추가
@@ -548,7 +483,6 @@ export default function MaterialRequestPage() {
             </Card>
           )}
         </div>
-
         {/* 장바구니 및 요청 상태 */}
         <div className="space-y-6">
           {/* 장바구니 */}
@@ -565,7 +499,6 @@ export default function MaterialRequestPage() {
               loading={requestLoading}
             />
           )}
-
           {/* 요청 상태 추적 */}
           <RequestStatusTracker key={`tracker-${selectedBranch}-${refreshTrigger}`} selectedBranch={selectedBranch} />
         </div>

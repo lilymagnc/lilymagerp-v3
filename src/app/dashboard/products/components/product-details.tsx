@@ -1,6 +1,5 @@
 
 "use client"
-
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +13,6 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Barcode } from "@/components/barcode"
 import { useAuth } from "@/hooks/use-auth"
-
 type Product = {
   id: string;
   name: string;
@@ -26,20 +24,16 @@ type Product = {
   size: string;
   color: string;
 } | null;
-
 interface ProductDetailsProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onEdit: () => void
   product: Product
 }
-
 export function ProductDetails({ isOpen, onOpenChange, onEdit, product }: ProductDetailsProps) {
   const { user } = useAuth();
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
-
   if (!product) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">

@@ -1,6 +1,5 @@
 
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -25,8 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useBranches } from "@/hooks/use-branches"
-import { useEffect } from "react"
-
+import { useCategories } from "@/hooks/use-categories"
+import { useEffect, useMemo } from "react"
 const productSchema = z.object({
   name: z.string().min(1, "상품명을 입력해주세요."),
   mainCategory: z.string().min(1, "대분류를 선택해주세요."),
@@ -38,9 +37,7 @@ const productSchema = z.object({
   branch: z.string().min(1, "지점을 선택해주세요."),
   stock: z.coerce.number().min(0, "재고는 0 이상이어야 합니다.").default(0),
 })
-
 export type ProductFormValues = z.infer<typeof productSchema>
-
 interface ProductFormProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -50,7 +47,6 @@ interface ProductFormProps {
   branches?: any[];
   selectedBranch?: string;
 }
-
 const defaultValues: ProductFormValues = {
   name: "",
   mainCategory: "",
@@ -62,26 +58,31 @@ const defaultValues: ProductFormValues = {
   branch: "",
   stock: 0,
 }
-
 export function ProductForm({ isOpen, onOpenChange, onSubmit, product, initialData, branches: propBranches, selectedBranch }: ProductFormProps) {
   const { branches } = useBranches();
+  const { categories } = useCategories();
   const availableBranches = propBranches || branches;
-  
+  // 카테고리 목록 생성
+  const mainCategories = useMemo(() => {
+    const mainCats = categories.filter(cat => cat.type === 'main').map(cat => cat.name);
+    return mainCats.length > 0 ? mainCats : ['완제품', '부자재'];
+  }, [categories]);
+  const midCategories = useMemo(() => {
+    const midCats = categories.filter(cat => cat.type === 'mid').map(cat => cat.name);
+    return midCats.length > 0 ? midCats : ['꽃다발', '꽃바구니', '포장지', '리본'];
+  }, [categories]);
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues,
   })
-
   useEffect(() => {
     if(isOpen) {
       form.reset(product || defaultValues);
     }
   }, [isOpen, product, form]);
-
   const handleFormSubmit = (data: ProductFormValues) => {
     onSubmit(data);
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
@@ -116,8 +117,11 @@ export function ProductForm({ isOpen, onOpenChange, onSubmit, product, initialDa
                         <SelectTrigger><SelectValue placeholder="대분류 선택" /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="완제품">완제품</SelectItem>
-                        <SelectItem value="부자재">부자재</SelectItem>
+                        {mainCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -135,10 +139,11 @@ export function ProductForm({ isOpen, onOpenChange, onSubmit, product, initialDa
                         <SelectTrigger><SelectValue placeholder="중분류 선택" /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="꽃다발">꽃다발</SelectItem>
-                        <SelectItem value="꽃바구니">꽃바구니</SelectItem>
-                        <SelectItem value="포장지">포장지</SelectItem>
-                        <SelectItem value="리본">리본</SelectItem>
+                        {midCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

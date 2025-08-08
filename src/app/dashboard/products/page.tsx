@@ -18,10 +18,10 @@ import { ProductForm } from "./components/product-form";
 import { ProductTable } from "./components/product-table";
 import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
 import { ScanLine, Plus } from "lucide-react";
-import { useRouter } from "next/navigation"; // 추가
+import { useRouter } from "next/navigation"; 
 
 export default function ProductsPage() {
-  const router = useRouter(); // 추가
+  const router = useRouter(); 
   const { 
     products, 
     loading, 
@@ -33,10 +33,10 @@ export default function ProductsPage() {
     // migrateProductIds 제거
   } = useProducts();
   const { branches } = useBranches();
-  const { user } = useAuth(); // 이 라인도 추가 (이전 오류 해결)
-  const isAdmin = user?.role === '본사 관리자' || user?.role === 'admin' || true; // 임시로 강제 관리자 권한
+  const { user } = useAuth();
+  const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise || "";
-  
+
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -53,7 +53,7 @@ export default function ProductsPage() {
       return branches.filter(branch => branch.name === userBranch); // 지점 직원은 자신의 지점만
     }
   }, [branches, isAdmin, userBranch]);
-  
+
   // 자동 지점 필터링 (지점 직원은 자동으로 자신의 지점으로 설정)
   useEffect(() => {
     if (!isAdmin && userBranch && selectedBranch === "all") {
@@ -67,19 +67,7 @@ export default function ProductsPage() {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    console.log('=== Products Debug ===');
-    console.log('user object:', user);
-    console.log('user.role:', user?.role);
-    console.log('user.franchise:', user?.franchise);
-    console.log('isAdmin:', isAdmin);
-    console.log('selectedBranch:', selectedBranch);
-    console.log('userBranch:', userBranch);
-    console.log('products count:', products.length);
-    console.log('products sample:', products.slice(0, 2));
-
-    // 임시로 모든 필터링 제거 - 모든 데이터 표시
     let filtered = products;
-    console.log('showing all products:', filtered.length);
 
     // 검색어 및 카테고리 필터링만 유지
     const finalFiltered = filtered.filter(product => {
@@ -89,7 +77,6 @@ export default function ProductsPage() {
       return matchesSearch && matchesCategory;
     });
 
-    console.log('final filtered count:', finalFiltered.length);
     return finalFiltered;
   }, [products, searchTerm, selectedBranch, selectedCategory, isAdmin, userBranch, user]);
 
@@ -130,7 +117,7 @@ export default function ProductsPage() {
   const handleRefresh = async () => {
     await fetchProducts();
   };
-  
+
   return (
     <div className="space-y-6">
       <PageHeader 
@@ -145,7 +132,7 @@ export default function ProductsPage() {
           바코드 스캔
         </Button>
       </PageHeader>
-      
+
       <div className="flex flex-col sm:flex-row gap-4">
         <Input
           placeholder="상품명 또는 코드로 검색..."

@@ -34,7 +34,7 @@ export function usePurchaseBatches() {
   const [batches, setBatches] = useState<PurchaseBatch[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -44,30 +44,30 @@ export function usePurchaseBatches() {
     limit?: number;
   }) => {
     if (!user) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       let q = query(
         collection(db, 'purchaseBatches'),
         orderBy('createdAt', 'desc')
       );
-      
+
       if (filters?.status) {
         q = query(q, where('status', '==', filters.status));
       }
-      
+
       if (filters?.limit) {
         q = query(q, limit(filters.limit));
       }
-      
+
       const snapshot = await getDocs(q);
       const batchList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as PurchaseBatch[];
-      
+
       setBatches(batchList);
     } catch (err) {
       console.error('구매 배치 조회 오류:', err);
@@ -136,7 +136,7 @@ export function usePurchaseBatches() {
 
       // 목록 새로고침
       await fetchBatches();
-      
+
       // 생성된 배치 객체 반환
       return { id: batchRef.id, ...newBatch } as PurchaseBatch;
     } catch (error) {
@@ -235,7 +235,6 @@ export function usePurchaseBatches() {
       return false;
     }
 
-    console.log('구매배치 배송 시작:', batchId);
     try {
       const batch = writeBatch(db);
       const now = Timestamp.now();
@@ -243,14 +242,10 @@ export function usePurchaseBatches() {
       // 구매 배치의 포함된 요청들을 'shipping' 상태로 변경
       const batchRef = doc(db, 'purchaseBatches', batchId);
       const batchDoc = await getDoc(batchRef);
-      
+
       if (batchDoc.exists()) {
         const batchData = batchDoc.data() as PurchaseBatch;
-        console.log('배치 데이터:', batchData);
-        console.log('포함된 요청들:', batchData.includedRequests);
-        
         for (const requestId of batchData.includedRequests) {
-          console.log('요청 상태 업데이트:', requestId);
           const requestRef = doc(db, 'materialRequests', requestId);
           batch.update(requestRef, {
             status: 'shipping',
@@ -268,8 +263,6 @@ export function usePurchaseBatches() {
       }
 
       await batch.commit();
-      console.log('배치 배송 시작 완료');
-
       toast({
         title: "배송 시작",
         description: "배송이 시작되었습니다.",
@@ -277,7 +270,7 @@ export function usePurchaseBatches() {
 
       // 목록 새로고침
       await fetchBatches();
-      
+
       return true;
     } catch (error) {
       console.error('배송 시작 오류:', error);
@@ -304,7 +297,7 @@ export function usePurchaseBatches() {
     try {
       const now = Timestamp.now();
       const requestRef = doc(db, 'materialRequests', requestId);
-      
+
       await updateDoc(requestRef, {
         status: 'shipping',
         delivery: {
@@ -319,7 +312,7 @@ export function usePurchaseBatches() {
         title: "배송 시작",
         description: "요청의 배송이 시작되었습니다.",
       });
-      
+
       return true;
     } catch (error) {
       console.error('개별 요청 배송 시작 오류:', error);
@@ -349,10 +342,10 @@ export function usePurchaseBatches() {
       // 구매 배치의 포함된 요청들을 'reviewing' 상태로 되돌리기
       const batchRef = doc(db, 'purchaseBatches', batchId);
       const batchDoc = await getDoc(batchRef);
-      
+
       if (batchDoc.exists()) {
         const batchData = batchDoc.data() as PurchaseBatch;
-        
+
         for (const requestId of batchData.includedRequests) {
           const requestRef = doc(db, 'materialRequests', requestId);
           batch.update(requestRef, {
@@ -374,7 +367,7 @@ export function usePurchaseBatches() {
 
       // 목록 새로고침
       await fetchBatches();
-      
+
       return true;
     } catch (error) {
       console.error('구매 배치 삭제 오류:', error);
@@ -405,12 +398,12 @@ export function usePurchaseBatches() {
       }
 
       const branchPlan = branchMap.get(branchId)!;
-      
+
       // 요청 품목들을 배송 계획에 추가
       request.requestedItems.forEach(item => {
         const estimatedCost = item.requestedQuantity * item.estimatedPrice;
         branchPlan.estimatedCost += estimatedCost;
-        
+
         // 배송 계획용 임시 ActualPurchaseItem 생성
         const planItem: ActualPurchaseItem = {
           originalMaterialId: item.materialId,
@@ -424,7 +417,7 @@ export function usePurchaseBatches() {
           memo: item.memo || '',
           purchaseDate: Timestamp.now(),
         };
-        
+
         branchPlan.items.push(planItem);
       });
     });

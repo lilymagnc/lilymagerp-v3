@@ -1,5 +1,4 @@
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -26,12 +25,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { useEffect } from "react"
 import { Separator } from "@/components/ui/separator"
 import type { Partner } from "@/hooks/use-partners"
-
 const partnerSchema = z.object({
   name: z.string().min(1, "거래처명을 입력해주세요."),
-  type: z.string().min(1, "거래 유형을 입력해주세요. (예: 자재, 생화, 운송)"),
+  type: z.string().optional(),
   contactPerson: z.string().optional(),
-  phone: z.string().min(1, "연락처를 입력해주세요."),
+  phone: z.string().optional(),
   email: z.string().email("유효한 이메일을 입력해주세요.").optional().or(z.literal('')),
   address: z.string().optional(),
   businessNumber: z.string().optional(),
@@ -40,16 +38,13 @@ const partnerSchema = z.object({
   items: z.string().optional(),
   memo: z.string().optional(),
 });
-
 export type PartnerFormValues = z.infer<typeof partnerSchema>
-
 interface PartnerFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onSubmit: (data: PartnerFormValues) => void
   partner?: Partner | null
 }
-
 const defaultValues: PartnerFormValues = {
   name: "",
   type: "",
@@ -63,44 +58,38 @@ const defaultValues: PartnerFormValues = {
   items: "",
   memo: "",
 }
-
 export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: PartnerFormProps) {
   const form = useForm<PartnerFormValues>({
     resolver: zodResolver(partnerSchema),
     defaultValues,
   })
-
   useEffect(() => {
     if (isOpen) {
       form.reset(partner || defaultValues);
     }
   }, [partner, form, isOpen]);
-  
   const handleFormSubmit = (data: PartnerFormValues) => {
     onSubmit(data);
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{partner ? "거래처 정보 수정" : "새 거래처 추가"}</DialogTitle>
-          <DialogDescription>매입처(공급업체)의 상세 정보를 입력하고 관리합니다.</DialogDescription>
+          <DialogDescription>매입처(공급업체)의 상세 정보를 입력하고 관리합니다. 거래처명만 입력해도 저장 가능합니다.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
-            
             <Separator />
             <p className="text-sm font-semibold">기본 정보</p>
             <Separator />
-
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>거래처명</FormLabel>
+                    <FormLabel>거래처명 *</FormLabel>
                     <FormControl>
                       <Input placeholder="플라워팜" {...field} />
                     </FormControl>
@@ -135,7 +124,6 @@ export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: Partner
                   </FormItem>
                 )}
               />
-
             <Separator className="my-6" />
             <p className="text-sm font-semibold">담당자 정보</p>
             <Separator />
@@ -180,7 +168,6 @@ export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: Partner
                   </FormItem>
                 )}
               />
-
               <>
                 <Separator className="my-6" />
                 <p className="text-sm font-semibold">사업자 정보 (세금계산서 발행용)</p>
@@ -199,7 +186,6 @@ export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: Partner
                         <FormMessage />
                       </FormItem>
                   )}/>
-                
                 <FormField control={form.control} name="address" render={({ field }) => (
                     <FormItem>
                         <FormLabel>사업장 주소</FormLabel>
@@ -215,7 +201,6 @@ export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: Partner
                       </FormItem>
                   )}/>
               </>
-
             <Separator className="my-6" />
             <FormField
               control={form.control}
@@ -230,7 +215,6 @@ export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: Partner
                 </FormItem>
               )}
             />
-
             <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="secondary">취소</Button>

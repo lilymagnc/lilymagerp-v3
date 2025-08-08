@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -15,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuth } from "firebase/auth";
-
 export interface SystemUser {
   id: string; // email is the id
   email: string;
@@ -26,7 +24,6 @@ export interface SystemUser {
   isActive?: boolean;
   createdAt?: any;
 }
-
 export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [users, setUsers] = useState<SystemUser[]>([]);
@@ -37,26 +34,18 @@ export default function UsersPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0); // 데이터 새로고침 트리거
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-
   // 데이터 새로고침 함수
   const handleUserUpdated = () => {
-    console.log("사용자 업데이트 트리거 실행");
     setRefreshTrigger(prev => prev + 1);
   };
-  
   useEffect(() => {
-    console.log("사용자 데이터 로드 시작, refreshTrigger:", refreshTrigger);
     const unsubscribe = onSnapshot(collection(db, "users"), async (snapshot) => {
-        console.log("Firestore users 컬렉션 변경 감지, 문서 수:", snapshot.docs.length);
         const usersData = await Promise.all(
           snapshot.docs.map(async (doc) => {
             const userData = {
               id: doc.id,
               ...doc.data()
             } as SystemUser;
-            
-            console.log("사용자 데이터:", userData);
-            
             // 직원 정보에서 직위 가져오기
             try {
               const employeesQuery = query(
@@ -64,32 +53,24 @@ export default function UsersPage() {
                 where("email", "==", userData.email)
               );
               const employeeSnapshot = await getDocs(employeesQuery);
-              
               if (!employeeSnapshot.empty) {
                 const employeeData = employeeSnapshot.docs[0].data();
                 userData.position = employeeData.position || '직원';
-                console.log("직원 정보 찾음:", employeeData);
-              } else {
+                } else {
                 userData.position = '직원'; // 기본값
-                console.log("직원 정보 없음, 기본값 설정");
-              }
+                }
             } catch (error) {
               console.error("직원 정보 조회 오류:", error);
               userData.position = '직원'; // 오류 시 기본값
             }
-            
             return userData;
           })
         );
-        
-        console.log("최종 사용자 데이터:", usersData);
-        
         // 중복 이메일 체크 및 경고
         const emailCounts = usersData.reduce((acc, user) => {
           acc[user.email] = (acc[user.email] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);
-        
         const duplicates = Object.entries(emailCounts).filter(([email, count]) => count > 1);
         if (duplicates.length > 0) {
           console.warn("중복 이메일 발견:", duplicates);
@@ -99,28 +80,23 @@ export default function UsersPage() {
             description: `중복 이메일이 발견되었습니다: ${duplicates.map(([email]) => email).join(', ')}`
           });
         }
-        
         setUsers(usersData);
     });
     return () => unsubscribe();
   }, [toast, refreshTrigger]); // refreshTrigger 의존성 추가
-
   // 검색 및 필터링 적용
   useEffect(() => {
     let filtered = users;
-
     // 검색어 필터링
     if (searchTerm) {
       filtered = filtered.filter(user =>
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
     // 권한 필터링
     if (roleFilter !== "all") {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
-
     // 상태 필터링
     if (statusFilter !== "all") {
       const isActive = statusFilter === "active";
@@ -128,10 +104,8 @@ export default function UsersPage() {
         statusFilter === "all" || user.isActive === isActive
       );
     }
-
     setFilteredUsers(filtered);
   }, [users, searchTerm, roleFilter, statusFilter]);
-
   const handleDeleteUser = async (userId: string, userEmail: string) => {
     try {
       // 본사 관리자는 삭제할 수 없도록 체크
@@ -144,7 +118,6 @@ export default function UsersPage() {
         });
         return;
       }
-
       // 현재 로그인한 사용자 자신을 삭제하려고 하는지 체크
       if (userId === currentUser?.uid) {
         toast({
@@ -154,9 +127,7 @@ export default function UsersPage() {
         });
         return;
       }
-
       await deleteDoc(doc(db, "users", userId));
-      
       toast({
         title: "사용자 삭제 완료",
         description: `${userEmail} 사용자가 삭제되었습니다.`
@@ -170,15 +141,11 @@ export default function UsersPage() {
       });
     }
   };
-
   const handlePasswordReset = async (userId: string, userEmail: string) => {
     try {
-      // 임시 비밀번호 생성 (실제로는 더 안전한 방법 사용)
       const tempPassword = Math.random().toString(36).slice(-8);
-      
       // Firebase Auth에서 비밀번호 재설정 (실제 구현에서는 Firebase Auth API 사용)
       // 여기서는 토스트 메시지만 표시
-      
       toast({
         title: "비밀번호 초기화",
         description: `${userEmail}의 임시 비밀번호가 생성되었습니다: ${tempPassword}`,
@@ -192,14 +159,12 @@ export default function UsersPage() {
       });
     }
   };
-
   const handleToggleUserStatus = async (userId: string, userEmail: string, currentStatus: boolean) => {
     try {
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         isActive: !currentStatus
       });
-      
       toast({
         title: "상태 변경 완료",
         description: `${userEmail} 사용자가 ${!currentStatus ? '활성화' : '비활성화'}되었습니다.`
@@ -213,7 +178,6 @@ export default function UsersPage() {
       });
     }
   };
-
   if (currentUser?.role !== '본사 관리자') {
     return (
       <div className="flex items-center justify-center h-96 border rounded-md">
@@ -221,10 +185,8 @@ export default function UsersPage() {
       </div>
     );
   }
-
   const activeUsers = users.filter(user => user.isActive !== false).length;
   const inactiveUsers = users.filter(user => user.isActive === false).length;
-
   return (
     <div>
       <PageHeader
@@ -236,7 +198,6 @@ export default function UsersPage() {
           사용자 추가
         </Button>
       </PageHeader>
-
       {/* 통계 카드 */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
@@ -278,7 +239,6 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 검색 및 필터 */}
       <Card className="mb-6">
         <CardHeader>
@@ -324,7 +284,6 @@ export default function UsersPage() {
           </div>
         </CardContent>
       </Card>
-
       <UserTable 
         users={filteredUsers} 
         onDeleteUser={handleDeleteUser}

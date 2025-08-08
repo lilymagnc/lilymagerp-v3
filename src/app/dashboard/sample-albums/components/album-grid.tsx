@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
@@ -14,27 +13,22 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-
 interface AlbumGridProps {
   albums: Album[];
   loading: boolean;
   onAlbumDelete: (albumId: string) => void;
 }
-
 export function AlbumGrid({ albums, loading, onAlbumDelete }: AlbumGridProps) {
   const router = useRouter();
-
   const getCategoryLabel = (category: string) => {
     const categoryInfo = ALBUM_CATEGORIES.find(c => c.value === category);
     return categoryInfo?.label || category;
   };
-
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleDateString('ko-KR');
   };
-
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -53,7 +47,6 @@ export function AlbumGrid({ albums, loading, onAlbumDelete }: AlbumGridProps) {
       </div>
     );
   }
-
   if (albums.length === 0) {
     return (
       <div className="text-center py-12">
@@ -65,7 +58,6 @@ export function AlbumGrid({ albums, loading, onAlbumDelete }: AlbumGridProps) {
       </div>
     );
   }
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {albums.map((album) => (
@@ -87,12 +79,10 @@ export function AlbumGrid({ albums, loading, onAlbumDelete }: AlbumGridProps) {
                 <Eye className="w-12 h-12 text-gray-400" />
               </div>
             )}
-            
             {/* 사진 개수 배지 */}
             <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
               {album.photoCount}장
             </div>
-
             {/* 액션 메뉴 */}
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <DropdownMenu>
@@ -119,7 +109,6 @@ export function AlbumGrid({ albums, loading, onAlbumDelete }: AlbumGridProps) {
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.stopPropagation();
-                      // TODO: 편집 다이얼로그 열기
                     }}
                   >
                     <Edit className="mr-2 h-4 w-4" />
@@ -139,7 +128,6 @@ export function AlbumGrid({ albums, loading, onAlbumDelete }: AlbumGridProps) {
               </DropdownMenu>
             </div>
           </div>
-
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-2">
               <h3 className="font-medium text-lg truncate flex-1 mr-2">
@@ -149,13 +137,11 @@ export function AlbumGrid({ albums, loading, onAlbumDelete }: AlbumGridProps) {
                 {getCategoryLabel(album.category)}
               </span>
             </div>
-            
             {album.description && (
               <p className="text-sm text-gray-600 mb-2 line-clamp-2">
                 {album.description}
               </p>
             )}
-            
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>{formatDate(album.createdAt)}</span>
               <span className={`px-2 py-1 rounded-full ${

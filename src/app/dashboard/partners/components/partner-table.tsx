@@ -1,5 +1,4 @@
 "use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,15 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { MoreHorizontal } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Partner } from "@/hooks/use-partners";
-
 interface PartnerTableProps {
   partners: Partner[];
   onEdit: (partner: Partner) => void;
   onDelete: (id: string) => void;
 }
-
 export function PartnerTable({ partners, onEdit, onDelete }: PartnerTableProps) {
-    
   return (
     <Card>
       <CardContent className="p-0">

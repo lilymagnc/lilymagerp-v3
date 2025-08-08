@@ -1,6 +1,5 @@
 
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -35,7 +34,6 @@ import { ko } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { Separator } from "@/components/ui/separator"
 import type { Customer } from "@/hooks/use-customers"
-
 const customerSchema = z.object({
   name: z.string().min(1, "고객명을 입력해주세요."),
   type: z.enum(["personal", "company"]).default("personal"),
@@ -55,16 +53,13 @@ const customerSchema = z.object({
   businessItem: z.string().optional(),
   businessAddress: z.string().optional(),
 });
-
 export type CustomerFormValues = z.infer<typeof customerSchema>
-
 interface CustomerFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onSubmit: (data: CustomerFormValues) => void
   customer?: Customer | null
 }
-
 const defaultValues: CustomerFormValues = {
   name: "",
   type: "personal",
@@ -83,15 +78,12 @@ const defaultValues: CustomerFormValues = {
   businessItem: "",
   businessAddress: "",
 }
-
 export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: CustomerFormProps) {
   const { branches } = useBranches()
-  
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
     defaultValues,
   })
-
   useEffect(() => {
     if (isOpen) {
       if (customer) {
@@ -105,13 +97,10 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
       }
     }
   }, [customer, form, isOpen]);
-  
   const handleFormSubmit = (data: CustomerFormValues) => {
     onSubmit(data);
   }
-
   const customerType = form.watch("type");
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -140,11 +129,9 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                   </FormItem>
                 )}
               />
-            
             <Separator />
             <p className="text-sm font-semibold">담당자 정보</p>
             <Separator />
-
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -173,7 +160,6 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 )}
               />
             </div>
-
             <FormField
               control={form.control}
               name="email"
@@ -187,7 +173,6 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 </FormItem>
               )}
             />
-            
             <div className="grid grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
@@ -231,12 +216,9 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                     )}
                 />
             </div>
-            
             <Separator className="my-6" />
             <p className="text-sm font-semibold">추가 정보</p>
             <Separator />
-
-
             <FormField
               control={form.control}
               name="tags"
@@ -250,7 +232,6 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 </FormItem>
               )}
             />
-
             <div className="grid grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
@@ -331,7 +312,6 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                     )}
                 />
             </div>
-
             {customerType === 'company' && (
               <>
                 <Separator className="my-6" />
@@ -385,8 +365,6 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 )}/>
               </>
             )}
-
-
             <FormField
               control={form.control}
               name="memo"
@@ -400,7 +378,6 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 </FormItem>
               )}
             />
-
             <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="secondary">취소</Button>

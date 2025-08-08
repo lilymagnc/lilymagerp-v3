@@ -1,6 +1,5 @@
 
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -25,21 +24,17 @@ import {
 } from "@/components/ui/dialog"
 import { Printer } from "lucide-react"
 import { cn } from "@/lib/utils"
-
 const printOptionsSchema = z.object({
   quantity: z.coerce.number().int().min(1, "1 이상의 값을 입력해주세요.").max(24, "최대 24개까지 가능합니다."),
   startPosition: z.coerce.number().int().min(1, "1~24 사이의 값을 입력해주세요.").max(24, "1~24 사이의 값을 입력해주세요."),
 })
-
 type PrintOptionsFormValues = z.infer<typeof printOptionsSchema>
-
 interface PrintOptionsDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onSubmit: (data: PrintOptionsFormValues) => void
   itemName: string
 }
-
 export function PrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemName }: PrintOptionsDialogProps) {
   const form = useForm<PrintOptionsFormValues>({
     resolver: zodResolver(printOptionsSchema),
@@ -48,13 +43,10 @@ export function PrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemName }:
       startPosition: 1,
     },
   })
-  
   const handleFormSubmit = (data: PrintOptionsFormValues) => {
     onSubmit(data);
   }
-
   const startPositionValue = form.watch("startPosition");
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">

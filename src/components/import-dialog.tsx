@@ -1,6 +1,5 @@
 
 "use client"
-
 import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,26 +15,22 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { FileUp, Loader2 } from "lucide-react"
 import * as XLSX from "xlsx";
-
 interface ImportDialogProps {
     isOpen: boolean
     onOpenChange: (isOpen: boolean) => void
     resourceName: string
     onImport: (data: any[]) => Promise<void>
 }
-
 export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: ImportDialogProps) {
     const { toast } = useToast();
     const [file, setFile] = useState<File | null>(null);
     const [isImporting, setIsImporting] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
-
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             setFile(e.target.files[0]);
         }
     }
-
     const reset = () => {
         setFile(null);
         setIsImporting(false);
@@ -43,7 +38,6 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
             fileInputRef.current.value = "";
         }
     }
-
     const handleImportClick = async () => {
         if (!file) {
             toast({
@@ -53,7 +47,6 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
             });
             return;
         }
-
         setIsImporting(true);
         try {
             const reader = new FileReader();
@@ -64,9 +57,7 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
                     const sheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[sheetName];
                     const json = XLSX.utils.sheet_to_json(worksheet);
-
                     await onImport(json);
-
                 } catch (readError) {
                     console.error("File parsing error:", readError);
                     toast({
@@ -90,15 +81,12 @@ export function ImportDialog({ isOpen, onOpenChange, resourceName, onImport }: I
              setIsImporting(false);
         }
     }
-    
     const handleClose = (open: boolean) => {
         if(!open) {
             reset();
         }
         onOpenChange(open);
     }
-
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">

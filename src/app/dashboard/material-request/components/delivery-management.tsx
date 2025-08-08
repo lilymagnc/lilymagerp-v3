@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,24 +25,20 @@ import { useAuth } from '@/hooks/use-auth';
 import { useMaterialRequests } from '@/hooks/use-material-requests';
 import { useToast } from '@/hooks/use-toast';
 import type { MaterialRequest, DeliveryInfo } from '@/types/material-request';
-
 interface DeliveryManagementProps {
   request: MaterialRequest;
   onDeliveryUpdate?: () => void;
 }
-
 export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManagementProps) {
   const { user } = useAuth();
   const { updateRequestStatus, loading } = useMaterialRequests();
   const { toast } = useToast();
-  
   const [deliveryForm, setDeliveryForm] = useState({
     deliveryMethod: '직접배송',
     trackingNumber: '',
     estimatedDelivery: '',
     notes: ''
   });
-  
   const [receivingForm, setReceivingForm] = useState({
     receivedItems: request.requestedItems.map(item => ({
       materialId: item.materialId,
@@ -57,7 +52,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
     receiverName: user?.email || '',
     notes: ''
   });
-
   // 배송 시작 처리
   const handleStartShipping = async () => {
     try {
@@ -67,19 +61,15 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
         trackingNumber: deliveryForm.trackingNumber || undefined,
         deliveryStatus: 'shipped'
       };
-
       await updateRequestStatus(request.id, 'shipping', {
         delivery: deliveryInfo
       });
-
       // 배송 시작 알림 생성
       await createShippingNotification(request);
-
       toast({
         title: "배송 시작",
         description: "배송이 시작되었습니다. 지점에 알림이 전송되었습니다.",
       });
-
       onDeliveryUpdate?.();
     } catch (error) {
       console.error('배송 시작 오류:', error);
@@ -90,7 +80,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
       });
     }
   };
-
   // 입고 확인 처리
   const handleConfirmReceiving = async () => {
     try {
@@ -98,13 +87,11 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
       const hasDiscrepancy = receivingForm.receivedItems.some(item => 
         item.receivedQuantity !== item.requestedQuantity || item.condition !== 'good'
       );
-
       const deliveryInfo: DeliveryInfo = {
         ...request.delivery!,
         deliveryDate: { seconds: Date.now() / 1000, toMillis: () => Date.now(), toDate: () => new Date() } as any,
         deliveryStatus: 'delivered'
       };
-
       await updateRequestStatus(request.id, 'delivered', {
         delivery: deliveryInfo,
         receivingInfo: {
@@ -115,17 +102,14 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
           hasDiscrepancy
         }
       });
-
       // 재고 자동 업데이트 처리
       await updateInventoryFromReceiving();
-
       toast({
         title: "입고 완료",
         description: hasDiscrepancy 
           ? "입고가 완료되었습니다. 차이점이 기록되었습니다." 
           : "입고가 완료되었습니다. 재고가 자동으로 업데이트되었습니다.",
       });
-
       onDeliveryUpdate?.();
     } catch (error) {
       console.error('입고 확인 오류:', error);
@@ -136,7 +120,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
       });
     }
   };
-
   // 재고 자동 업데이트
   const updateInventoryFromReceiving = async () => {
     try {
@@ -144,10 +127,8 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
       for (const item of receivingForm.receivedItems) {
         if (item.receivedQuantity > 0 && item.condition === 'good') {
           // 실제 구현에서는 materials 컬렉션의 재고를 증가시킴
-          console.log(`재고 업데이트: ${item.materialName} +${item.receivedQuantity}`);
-        }
+          }
       }
-
       // stockHistory 컬렉션에 입고 기록 생성
       const stockHistoryRecord = {
         branchId: request.branchId,
@@ -166,14 +147,10 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
         createdBy: user?.uid || '',
         createdByName: user?.email || ''
       };
-
-      console.log('재고 기록 생성:', stockHistoryRecord);
-      
-    } catch (error) {
+      } catch (error) {
       console.error('재고 업데이트 오류:', error);
     }
   };
-
   // 배송 시작 알림 생성
   const createShippingNotification = async (request: MaterialRequest) => {
     try {
@@ -188,13 +165,10 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
         isRead: false,
         createdAt: new Date()
       };
-      
-      console.log('배송 시작 알림 생성:', notification);
-    } catch (error) {
+      } catch (error) {
       console.error('알림 생성 오류:', error);
     }
   };
-
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -206,7 +180,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
       minute: '2-digit'
     });
   };
-
   // 본사 관리자용 배송 시작 인터페이스
   if (user?.role === '본사 관리자' && request.status === 'purchased') {
     return (
@@ -247,7 +220,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
               />
             </div>
           </div>
-          
           <div>
             <Label htmlFor="notes">배송 메모</Label>
             <Textarea
@@ -261,7 +233,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
               rows={3}
             />
           </div>
-
           <Button 
             onClick={handleStartShipping}
             disabled={loading}
@@ -278,7 +249,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
       </Card>
     );
   }
-
   // 지점용 입고 확인 인터페이스
   if (request.branchId === user?.franchise && request.status === 'shipping') {
     return (
@@ -308,7 +278,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
               </AlertDescription>
             </Alert>
           )}
-
           {/* 입고 품목 확인 */}
           <div>
             <Label className="text-base font-medium">입고 품목 확인</Label>
@@ -327,7 +296,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
                        item.condition === 'damaged' ? '손상' : '누락'}
                     </Badge>
                   </div>
-                  
                   <div className="grid grid-cols-3 gap-3">
                     <div>
                       <Label htmlFor={`received-${index}`} className="text-sm">실제 입고 수량</Label>
@@ -346,7 +314,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
                         }}
                       />
                     </div>
-                    
                     <div>
                       <Label className="text-sm">상태</Label>
                       <select
@@ -366,7 +333,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
                         <option value="missing">누락</option>
                       </select>
                     </div>
-                    
                     <div>
                       <Label htmlFor={`notes-${index}`} className="text-sm">메모</Label>
                       <Input
@@ -388,7 +354,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
               ))}
             </div>
           </div>
-
           {/* 입고 정보 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -416,7 +381,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
               />
             </div>
           </div>
-
           <div>
             <Label htmlFor="receivingNotes">입고 메모</Label>
             <Textarea
@@ -430,7 +394,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
               rows={3}
             />
           </div>
-
           {/* 차이점 경고 */}
           {receivingForm.receivedItems.some(item => 
             item.receivedQuantity !== item.requestedQuantity || item.condition !== 'good'
@@ -443,7 +406,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
               </AlertDescription>
             </Alert>
           )}
-
           <Button 
             onClick={handleConfirmReceiving}
             disabled={loading}
@@ -460,7 +422,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
       </Card>
     );
   }
-
   // 배송 추적 정보 표시 (모든 사용자)
   return (
     <Card>
@@ -483,7 +444,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
                 <p className="font-medium">{request.delivery.deliveryMethod}</p>
               </div>
             </div>
-            
             {request.delivery.trackingNumber && (
               <div>
                 <p className="text-muted-foreground text-sm">송장번호</p>
@@ -492,7 +452,6 @@ export function DeliveryManagement({ request, onDeliveryUpdate }: DeliveryManage
                 </p>
               </div>
             )}
-            
             <div className="flex items-center gap-2">
               {request.delivery.deliveryStatus === 'delivered' ? (
                 <>

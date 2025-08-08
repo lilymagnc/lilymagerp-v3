@@ -1,15 +1,12 @@
 import * as XLSX from 'xlsx';
-
 interface SheetData {
   name: string;
   data: any[];
 }
-
 export const exportToExcel = async (sheets: SheetData[], filename: string) => {
   try {
     // 워크북 생성
     const workbook = XLSX.utils.book_new();
-
     // 각 시트 추가
     let hasValidSheet = false;
     sheets.forEach(sheet => {
@@ -17,11 +14,9 @@ export const exportToExcel = async (sheets: SheetData[], filename: string) => {
         hasValidSheet = true;
         // 워크시트 생성
         const worksheet = XLSX.utils.json_to_sheet(sheet.data);
-        
         // 열 너비 자동 조정
         const columnWidths = [];
         const headers = Object.keys(sheet.data[0]);
-        
         headers.forEach((header, index) => {
           const maxLength = Math.max(
             header.length,
@@ -29,14 +24,11 @@ export const exportToExcel = async (sheets: SheetData[], filename: string) => {
           );
           columnWidths[index] = { width: Math.min(maxLength + 2, 50) };
         });
-        
         worksheet['!cols'] = columnWidths;
-        
         // 워크북에 시트 추가
         XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
       }
     });
-
     // 유효한 시트가 없으면 기본 시트 생성
     if (!hasValidSheet && sheets.length > 0) {
       const firstSheet = sheets[0];
@@ -44,21 +36,17 @@ export const exportToExcel = async (sheets: SheetData[], filename: string) => {
         '메시지': '데이터가 없습니다.',
         '생성일시': new Date().toLocaleString()
       }];
-      
       const worksheet = XLSX.utils.json_to_sheet(defaultData);
       XLSX.utils.book_append_sheet(workbook, worksheet, firstSheet.name);
     }
-
     // 파일 다운로드
     const excelBuffer = XLSX.write(workbook, { 
       bookType: 'xlsx', 
       type: 'array' 
     });
-    
     const blob = new Blob([excelBuffer], { 
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     });
-    
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -67,18 +55,15 @@ export const exportToExcel = async (sheets: SheetData[], filename: string) => {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
-
   } catch (error) {
     console.error('Excel 내보내기 오류:', error);
     throw new Error('Excel 파일 생성에 실패했습니다.');
   }
 };
-
 // 단일 시트용 간단한 내보내기 함수
 export const exportSingleSheet = async (data: any[], sheetName: string, filename: string) => {
   await exportToExcel([{ name: sheetName, data }], filename);
 };
-
 // 주문 내역 엑셀 내보내기 (기존 호환성 유지)
 export const exportOrdersToExcel = async (orders: any[], filename: string) => {
   try {
@@ -89,7 +74,6 @@ export const exportOrdersToExcel = async (orders: any[], filename: string) => {
           ? order.orderDate.toDate().toLocaleDateString()
           : new Date(order.orderDate).toLocaleDateString()
         : '';
-
       return {
         '주문일시': orderDate,
         '지점명': order.branchName || '',
@@ -124,15 +108,12 @@ export const exportOrdersToExcel = async (orders: any[], filename: string) => {
         '익명주문': order.isAnonymous ? '예' : '아니오'
       };
     });
-
     await exportToExcel([{ name: '주문내역', data: excelData }], filename);
-
   } catch (error) {
     console.error('주문 엑셀 내보내기 오류:', error);
     throw new Error('주문 엑셀 파일 생성에 실패했습니다.');
   }
 };
-
 // 상태 텍스트 변환 함수들
 const getStatusText = (status: string) => {
   switch (status) {
@@ -142,7 +123,6 @@ const getStatusText = (status: string) => {
     default: return status || '';
   }
 };
-
 const getPaymentStatusText = (status: string) => {
   switch (status) {
     case 'completed': return '완결';
@@ -150,7 +130,6 @@ const getPaymentStatusText = (status: string) => {
     default: return status || '';
   }
 };
-
 const getPaymentMethodText = (method: string) => {
   switch (method) {
     case 'card': return '카드';
@@ -162,7 +141,6 @@ const getPaymentMethodText = (method: string) => {
     default: return method || '';
   }
 };
-
 const getOrderTypeText = (type: string) => {
   switch (type) {
     case 'store': return '매장';
@@ -173,7 +151,6 @@ const getOrderTypeText = (type: string) => {
     default: return type || '';
   }
 };
-
 const getReceiptTypeText = (type: string) => {
   switch (type) {
     case 'store_pickup': return '매장픽업';
@@ -184,7 +161,6 @@ const getReceiptTypeText = (type: string) => {
     default: return type || '';
   }
 }; 
-
 // 픽업/배송 예약 현황 엑셀 출력 함수
 export const exportPickupDeliveryToExcel = (
   orders: any[], 
@@ -198,7 +174,6 @@ export const exportPickupDeliveryToExcel = (
     const orderDateStr = orderDate.toISOString().split('T')[0];
     return orderDateStr >= startDate && orderDateStr <= endDate;
   });
-
   // 헤더 정의
   const headers = type === 'pickup' 
     ? [
@@ -210,7 +185,6 @@ export const exportPickupDeliveryToExcel = (
         '배송예정일', '배송예정시간', '배송지주소', '배송지역', '배송기사소속', '배송기사명', 
         '배송기사연락처', '지점명', '주문상태', '상품금액', '배송비', '실제배송비', '배송비차익', '총금액', '결제방법', '결제상태'
       ];
-
   // 데이터 변환
   const data = filteredOrders.map(order => {
     const orderDate = order.orderDate?.toDate?.() || new Date(order.orderDate);
@@ -221,14 +195,12 @@ export const exportPickupDeliveryToExcel = (
       hour: '2-digit',
       minute: '2-digit'
     });
-
     const baseData = [
       order.id,
       formattedOrderDate,
       order.orderer?.name || '-',
       order.orderer?.contact || '-',
     ];
-
     if (type === 'pickup') {
       return [
         ...baseData,
@@ -268,11 +240,9 @@ export const exportPickupDeliveryToExcel = (
       ];
     }
   });
-
   // 워크북 생성
   const workbook = XLSX.utils.book_new();
   const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
-
   // 열 너비 설정
   const colWidths = type === 'pickup' 
     ? [
@@ -316,27 +286,21 @@ export const exportPickupDeliveryToExcel = (
         { width: 10 }, // 결제방법
         { width: 10 }, // 결제상태
       ];
-
   worksheet['!cols'] = colWidths;
-
   // 시트 이름 설정
   const sheetName = type === 'pickup' ? '픽업예약현황' : '배송예약현황';
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-
   // 파일명 생성
   const typeText = type === 'pickup' ? '픽업예약' : '배송예약';
   const fileName = `${typeText}_현황_${startDate}_${endDate}.xlsx`;
-
   // 파일 다운로드
   const excelBuffer = XLSX.write(workbook, { 
     bookType: 'xlsx', 
     type: 'array' 
   });
-  
   const blob = new Blob([excelBuffer], { 
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
   });
-  
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,18 +32,14 @@ import {
 } from 'lucide-react';
 import { useReports } from '@/hooks/use-reports';
 import type { ReportFilter, BudgetReport } from '@/hooks/use-reports';
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'];
-
 interface BudgetReportViewProps {
   filters: ReportFilter;
 }
-
 export function BudgetReportView({ filters }: BudgetReportViewProps) {
   const [report, setReport] = useState<BudgetReport | null>(null);
   const [loading, setLoading] = useState(false);
   const { generateBudgetReport, exportToCSV } = useReports();
-
   // 리포트 생성
   const generateReport = async () => {
     try {
@@ -57,12 +52,10 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
       setLoading(false);
     }
   };
-
   // 필터 변경 시 자동 리포트 생성
   useEffect(() => {
     generateReport();
   }, [filters]);
-
   // 통화 포맷팅
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -70,7 +63,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
       currency: 'KRW'
     }).format(amount);
   };
-
   // 효율성 색상
   const getEfficiencyColor = (efficiency: string) => {
     switch (efficiency) {
@@ -81,7 +73,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
       default: return 'text-gray-600';
     }
   };
-
   // 효율성 배지 색상
   const getEfficiencyBadge = (efficiency: string) => {
     switch (efficiency) {
@@ -92,11 +83,9 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
       default: return 'outline';
     }
   };
-
   // CSV 내보내기
   const handleExport = () => {
     if (!report) return;
-
     const exportData = report.categoryPerformance.map(item => ({
       카테고리: item.categoryName,
       할당예산: item.allocated,
@@ -107,10 +96,8 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
               item.efficiency === 'good' ? '양호' :
               item.efficiency === 'fair' ? '보통' : '개선필요'
     }));
-
     exportToCSV(exportData, 'budget-report');
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -119,7 +106,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
       </div>
     );
   }
-
   if (!report) {
     return (
       <Card>
@@ -136,7 +122,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -158,7 +143,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
           </Button>
         </div>
       </div>
-
       {/* 요약 통계 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -177,7 +161,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -194,7 +177,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -211,7 +193,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -229,7 +210,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
           </CardContent>
         </Card>
       </div>
-
       {/* 예산 알림 */}
       {report.budgetAlerts.length > 0 && (
         <Card>
@@ -268,7 +248,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
           </CardContent>
         </Card>
       )}
-
       {/* 차트 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 카테고리별 예산 성과 */}
@@ -303,7 +282,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         {/* 지점별 예산 현황 */}
         <Card>
           <CardHeader>
@@ -334,7 +312,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
           </CardContent>
         </Card>
       </div>
-
       {/* 예산 효율성 분석 */}
       <Card>
         <CardHeader>
@@ -361,7 +338,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
                     </p>
                   </div>
                 </div>
-                
                 <div className="flex items-center gap-4">
                   <div className="text-right min-w-24">
                     <div className="flex items-center justify-between mb-1">
@@ -372,7 +348,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
                     </div>
                     <Progress value={Math.min(category.usage, 100)} className="h-2" />
                   </div>
-                  
                   <Badge variant={getEfficiencyBadge(category.efficiency)}>
                     {category.efficiency === 'excellent' ? '우수' :
                      category.efficiency === 'good' ? '양호' :
@@ -384,7 +359,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
           </div>
         </CardContent>
       </Card>
-
       {/* 지점별 상세 분석 */}
       <Card>
         <CardHeader>
@@ -407,7 +381,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
                     </p>
                   </div>
                 </div>
-                
                 <div className="flex items-center gap-4">
                   <div className="text-right min-w-32">
                     <p className="font-medium">{formatCurrency(branch.used)}</p>
@@ -422,7 +395,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
                     </div>
                     <Progress value={Math.min(branch.usage, 100)} className="h-2 mt-1" />
                   </div>
-                  
                   {branch.usage >= 100 && (
                     <Badge variant="destructive">
                       초과
@@ -444,7 +416,6 @@ export function BudgetReportView({ filters }: BudgetReportViewProps) {
           </div>
         </CardContent>
       </Card>
-
       {/* 예산 사용률 분포 */}
       <Card>
         <CardHeader>

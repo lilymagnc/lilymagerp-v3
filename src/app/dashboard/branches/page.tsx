@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -14,29 +13,24 @@ import { BranchForm, BranchFormValues } from "./components/branch-form";
 import { BranchDetails } from "./components/branch-details";
 import { useBranches, Branch } from "@/hooks/use-branches";
 import { Skeleton } from "@/components/ui/skeleton";
-
 export default function BranchesPage() {
   const { branches, loading, addBranch, updateBranch, deleteBranch } = useBranches();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-
   const handleAdd = () => {
     setSelectedBranch(null);
     setIsFormOpen(true);
   };
-  
   const handleEdit = (branch: Branch) => {
     setIsDetailOpen(false);
     setSelectedBranch(branch);
     setIsFormOpen(true);
   };
-
   const handleRowClick = (branch: Branch) => {
     setSelectedBranch(branch);
     setIsDetailOpen(true);
   }
-
   const handleFormSubmit = async (data: BranchFormValues) => {
     if (selectedBranch?.id) {
       await updateBranch(selectedBranch.id, data);
@@ -45,11 +39,9 @@ export default function BranchesPage() {
     }
     setIsFormOpen(false);
   };
-  
   const handleDelete = async (branchId: string) => {
     await deleteBranch(branchId);
   };
-
   return (
     <div>
       <PageHeader

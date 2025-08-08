@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +18,6 @@ import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, Store, Settings } from "lucide-react";
 import { BranchDiscountSettings, DiscountRate } from "@/types/discount";
-
 const DEFAULT_DISCOUNT_RATES: DiscountRate[] = [
   { rate: 5, label: "5%", isActive: true },
   { rate: 10, label: "10%", isActive: true },
@@ -32,13 +30,11 @@ const DEFAULT_DISCOUNT_RATES: DiscountRate[] = [
   { rate: 45, label: "45%", isActive: true },
   { rate: 50, label: "50%", isActive: true },
 ];
-
 export default function DiscountSettingsPage() {
   const { user } = useAuth();
   const { branches } = useBranches();
   const { discountSettings, updateGlobalSettings, updateBranchSettings } = useDiscountSettings();
   const { toast } = useToast();
-
   // 권한 확인
   if (user?.role !== '본사 관리자') {
     return (
@@ -50,7 +46,6 @@ export default function DiscountSettingsPage() {
       </div>
     );
   }
-
   // 전역 설정 상태
   const [globalSettings, setGlobalSettings] = useState({
     startDate: new Date(),
@@ -59,10 +54,8 @@ export default function DiscountSettingsPage() {
     allowPointAccumulation: true,
     minOrderAmount: 10000,
   });
-
   // 지점별 설정 상태
   const [branchSettings, setBranchSettings] = useState<Record<string, BranchDiscountSettings>>({});
-
   useEffect(() => {
     if (discountSettings) {
       setGlobalSettings({
@@ -75,7 +68,6 @@ export default function DiscountSettingsPage() {
       setBranchSettings(discountSettings.branchSettings);
     }
   }, [discountSettings]);
-
   const handleGlobalSettingsSave = async () => {
     try {
       await updateGlobalSettings(globalSettings);
@@ -91,7 +83,6 @@ export default function DiscountSettingsPage() {
       });
     }
   };
-
   const handleBranchSettingsSave = async (branchId: string) => {
     try {
       await updateBranchSettings(branchId, branchSettings[branchId]);
@@ -107,7 +98,6 @@ export default function DiscountSettingsPage() {
       });
     }
   };
-
   const toggleBranchDiscount = (branchId: string) => {
     const currentSettings = branchSettings[branchId] || {
       isActive: false,
@@ -121,7 +111,6 @@ export default function DiscountSettingsPage() {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-
     setBranchSettings(prev => ({
       ...prev,
       [branchId]: {
@@ -130,15 +119,12 @@ export default function DiscountSettingsPage() {
       },
     }));
   };
-
   const toggleDiscountRate = (branchId: string, rate: number) => {
     const currentSettings = branchSettings[branchId];
     if (!currentSettings) return;
-
     const updatedRates = currentSettings.discountRates.map(r =>
       r.rate === rate ? { ...r, isActive: !r.isActive } : r
     );
-
     setBranchSettings(prev => ({
       ...prev,
       [branchId]: {
@@ -147,14 +133,12 @@ export default function DiscountSettingsPage() {
       },
     }));
   };
-
   return (
     <div>
       <PageHeader
         title="할인 설정"
         description="지점별 할인율 및 정책을 관리합니다."
       />
-
       {/* 전역 설정 */}
       <Card className="mb-6">
         <CardHeader>
@@ -197,7 +181,6 @@ export default function DiscountSettingsPage() {
                 </PopoverContent>
               </Popover>
             </div>
-
             <div className="space-y-2">
               <Label>할인 종료일</Label>
               <Popover>
@@ -228,7 +211,6 @@ export default function DiscountSettingsPage() {
               </Popover>
             </div>
           </div>
-
           <div className="space-y-2">
             <Label>최소 주문 금액</Label>
             <Input
@@ -241,7 +223,6 @@ export default function DiscountSettingsPage() {
               placeholder="10000"
             />
           </div>
-
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -266,13 +247,11 @@ export default function DiscountSettingsPage() {
               <Label htmlFor="allow-points">할인 시 포인트 적립 허용</Label>
             </div>
           </div>
-
           <Button onClick={handleGlobalSettingsSave} className="w-full">
             전역 설정 저장
           </Button>
         </CardContent>
       </Card>
-
       {/* 지점별 설정 */}
       <Card>
         <CardHeader>
@@ -288,7 +267,6 @@ export default function DiscountSettingsPage() {
           {branches.filter(branch => branch.type !== '본사').map((branch) => {
             const branchSetting = branchSettings[branch.id];
             const isActive = branchSetting?.isActive || false;
-
             return (
               <div key={branch.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -305,7 +283,6 @@ export default function DiscountSettingsPage() {
                     {isActive ? "할인 비활성화" : "할인 활성화"}
                   </Button>
                 </div>
-
                 {isActive && branchSetting && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -319,7 +296,6 @@ export default function DiscountSettingsPage() {
                         </div>
                       ))}
                     </div>
-
                     <div className="space-y-2">
                       <Label>수동 할인율 (최대 50%)</Label>
                       <Input
@@ -340,7 +316,6 @@ export default function DiscountSettingsPage() {
                         className="w-32"
                       />
                     </div>
-
                     <div className="space-y-2">
                       <Label>지점별 최소 주문 금액 (기본값 사용 시 비워두세요)</Label>
                       <Input
@@ -359,7 +334,6 @@ export default function DiscountSettingsPage() {
                         placeholder="기본값 사용"
                       />
                     </div>
-
                     <Button
                       onClick={() => handleBranchSettingsSave(branch.id)}
                       className="w-full"

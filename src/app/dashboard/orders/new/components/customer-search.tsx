@@ -1,24 +1,20 @@
 
 "use client";
-
 import { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCustomers } from '@/hooks/use-customers';
 import { Customer } from '@/hooks/use-customers';
-
 interface CustomerSearchProps {
   onSelect: (customer: Customer) => void;
   selectedCustomer?: Customer | null;
 }
-
 export function CustomerSearch({ onSelect, selectedCustomer }: CustomerSearchProps) {
   const { customers, loading } = useCustomers();
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
   const [showResults, setShowResults] = useState(false);
-
   useEffect(() => {
     if (searchTerm.length > 0) {
       const filtered = customers.filter(customer =>
@@ -33,19 +29,16 @@ export function CustomerSearch({ onSelect, selectedCustomer }: CustomerSearchPro
       setShowResults(false);
     }
   }, [searchTerm, customers]);
-
   const handleSelect = (customer: Customer) => {
     onSelect(customer);
     setSearchTerm('');
     setShowResults(false);
   };
-
   const handleClear = () => {
     onSelect(null as any);
     setSearchTerm('');
     setShowResults(false);
   };
-
   if (selectedCustomer) {
     return (
       <Card>
@@ -68,7 +61,6 @@ export function CustomerSearch({ onSelect, selectedCustomer }: CustomerSearchPro
       </Card>
     );
   }
-
   return (
     <div className="relative">
       <Input
@@ -77,7 +69,6 @@ export function CustomerSearch({ onSelect, selectedCustomer }: CustomerSearchPro
         onChange={(e) => setSearchTerm(e.target.value)}
         onFocus={() => searchTerm && setShowResults(true)}
       />
-      
       {showResults && (
         <Card className="absolute top-full left-0 right-0 z-10 mt-1 max-h-60 overflow-y-auto">
           <CardContent className="p-0">
@@ -109,4 +100,3 @@ export function CustomerSearch({ onSelect, selectedCustomer }: CustomerSearchPro
     </div>
   );
 }
-

@@ -1,6 +1,5 @@
 
 "use client"
-
 import { useEffect, useState } from "react"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -20,13 +19,11 @@ import { getItemData } from "@/lib/data-fetch"
 import { Label } from "./ui/label"
 import { Skeleton } from "./ui/skeleton"
 import { cn } from "@/lib/utils"
-
 interface ItemWithQuantity {
   id: string;
   name: string;
   quantity: number;
 }
-
 interface MultiPrintOptionsDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,12 +31,10 @@ interface MultiPrintOptionsDialogProps {
   itemIds: string[];
   itemType: "product" | "material";
 }
-
 export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemIds, itemType }: MultiPrintOptionsDialogProps) {
   const [items, setItems] = useState<ItemWithQuantity[]>([]);
   const [startPosition, setStartPosition] = useState(1);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     if (isOpen) {
       const fetchItems = async () => {
@@ -56,17 +51,14 @@ export function MultiPrintOptionsDialog({ isOpen, onOpenChange, onSubmit, itemId
       fetchItems();
     }
   }, [isOpen, itemIds, itemType]);
-
   const handleQuantityChange = (id: string, quantity: number) => {
     const newQuantity = Math.max(1, quantity);
     setItems(prev => prev.map(item => item.id === id ? { ...item, quantity: newQuantity } : item));
   };
-
   const handleFormSubmit = () => {
     const itemsToSubmit = items.map(({id, quantity}) => ({id, quantity}));
     onSubmit(itemsToSubmit, startPosition);
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">

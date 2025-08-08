@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,14 +24,11 @@ import type {
 } from '@/hooks/use-reports';
 import { EXPENSE_CATEGORY_LABELS } from '@/types/expense';
 import { useBranches } from '@/hooks/use-branches';
-
 interface ReportFiltersProps {
   filters: ReportFilter;
   onChange: (filters: ReportFilter) => void;
 }
-
 // 지점 목록은 useBranches 훅에서 가져옴
-
 // 부서 목록
 const departments = [
   { id: 'dept-001', name: '영업팀' },
@@ -40,11 +36,9 @@ const departments = [
   { id: 'dept-003', name: '관리팀' },
   { id: 'dept-004', name: '운영팀' },
 ];
-
 export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
   const { branches } = useBranches();
   const [tempFilters, setTempFilters] = useState<ReportFilter>(filters);
-
   // 날짜 범위 프리셋
   const datePresets = [
     {
@@ -80,12 +74,10 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
       })
     }
   ];
-
   // 필터 적용
   const applyFilters = () => {
     onChange(tempFilters);
   };
-
   // 필터 초기화
   const resetFilters = () => {
     const defaultFilters: ReportFilter = {
@@ -99,7 +91,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
     setTempFilters(defaultFilters);
     onChange(defaultFilters);
   };
-
   // 날짜 프리셋 적용
   const applyDatePreset = (preset: typeof datePresets[0]) => {
     const dates = preset.getValue();
@@ -108,7 +99,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
       ...dates
     }));
   };
-
   // 지점 선택 토글
   const toggleBranch = (branchId: string) => {
     setTempFilters(prev => ({
@@ -118,7 +108,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
         : [...(prev.branchIds || []), branchId]
     }));
   };
-
   // 부서 선택 토글
   const toggleDepartment = (departmentId: string) => {
     setTempFilters(prev => ({
@@ -128,7 +117,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
         : [...(prev.departmentIds || []), departmentId]
     }));
   };
-
   // 카테고리 선택 토글
   const toggleCategory = (category: ExpenseCategory) => {
     setTempFilters(prev => ({
@@ -138,15 +126,12 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
         : [...(prev.categories || []), category]
     }));
   };
-
   const formatDate = (date: Date) => {
     return date.toISOString().split('T')[0];
   };
-
   const parseDate = (dateString: string) => {
     return new Date(dateString);
   };
-
   return (
     <div className="space-y-4">
       {/* 날짜 범위 */}
@@ -162,7 +147,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
             }))}
           />
         </div>
-        
         <div className="space-y-2">
           <Label>종료 날짜</Label>
           <Input
@@ -174,7 +158,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
             }))}
           />
         </div>
-
         <div className="space-y-2">
           <Label>빠른 선택</Label>
           <Select onValueChange={(value) => {
@@ -194,7 +177,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
           </Select>
         </div>
       </div>
-
       {/* 필터 옵션 */}
       <div className="flex flex-wrap gap-2">
         {/* 지점 필터 */}
@@ -225,7 +207,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
             </div>
           </PopoverContent>
         </Popover>
-
         {/* 부서 필터 */}
         <Popover>
           <PopoverTrigger asChild>
@@ -254,7 +235,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
             </div>
           </PopoverContent>
         </Popover>
-
         {/* 카테고리 필터 */}
         <Popover>
           <PopoverTrigger asChild>
@@ -284,7 +264,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
           </PopoverContent>
         </Popover>
       </div>
-
       {/* 선택된 필터 표시 */}
       {(tempFilters.branchIds?.length || tempFilters.departmentIds?.length || tempFilters.categories?.length) ? (
         <div className="flex flex-wrap gap-2">
@@ -300,7 +279,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
               </div>
             ) : null;
           })}
-          
           {tempFilters.departmentIds?.map(deptId => {
             const dept = departments.find(d => d.id === deptId);
             return dept ? (
@@ -313,7 +291,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
               </div>
             ) : null;
           })}
-          
           {tempFilters.categories?.map(category => (
             <div key={category} className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
               <Tag className="h-3 w-3" />
@@ -325,7 +302,6 @@ export function ReportFilters({ filters, onChange }: ReportFiltersProps) {
           ))}
         </div>
       ) : null}
-
       {/* 액션 버튼 */}
       <div className="flex items-center gap-2">
         <Button onClick={applyFilters} className="flex items-center gap-2">

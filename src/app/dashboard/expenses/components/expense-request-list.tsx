@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,19 +44,16 @@ import {
 import type { 
   ExpenseRequest
 } from '@/types/expense';
-
 interface ExpenseRequestListProps {
   expenses: ExpenseRequest[];
   loading: boolean;
   onRefresh: () => void;
 }
-
 export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequestListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ExpenseStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | 'all'>('all');
   const [branchFilter, setBranchFilter] = useState<string>('all');
-
   // 필터링된 비용 신청 목록
   const filteredExpenses = expenses.filter(expense => {
     const searchMatch = !searchTerm || 
@@ -65,20 +61,14 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
       expense.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.branchName.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const statusMatch = statusFilter === 'all' || expense.status === statusFilter;
-    
     const categoryMatch = categoryFilter === 'all' || 
       expense.items.some(item => item.category === categoryFilter);
-    
     const branchMatch = branchFilter === 'all' || expense.branchName === branchFilter;
-
     return searchMatch && statusMatch && categoryMatch && branchMatch;
   });
-
   // 고유 지점 목록 추출
   const uniqueBranches = Array.from(new Set(expenses.map(e => e.branchName)));
-
   // 상태별 아이콘 반환
   const getStatusIcon = (status: ExpenseStatus) => {
     switch (status) {
@@ -91,7 +81,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
       default: return <Clock className="h-4 w-4 text-gray-500" />;
     }
   };
-
   // 상태별 색상 반환
   const getStatusBadgeVariant = (status: ExpenseStatus) => {
     switch (status) {
@@ -104,12 +93,10 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
       default: return 'secondary';
     }
   };
-
   // 긴급 여부 확인
   const isUrgent = (expense: ExpenseRequest) => {
     return expense.urgency === 'urgent';
   };
-
   // 날짜 포맷팅
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
@@ -122,7 +109,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
       minute: '2-digit'
     });
   };
-
   // 통화 포맷팅
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -130,7 +116,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
       currency: 'KRW'
     }).format(amount);
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -139,7 +124,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
       </div>
     );
   }
-
   return (
     <div className="space-y-4">
       {/* 필터 및 검색 */}
@@ -155,7 +139,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
             />
           </div>
         </div>
-
         <div className="flex gap-2">
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ExpenseStatus | 'all')}>
             <SelectTrigger className="w-32">
@@ -171,7 +154,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
               <SelectItem value="cancelled">취소</SelectItem>
             </SelectContent>
           </Select>
-
           <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value as ExpenseCategory | 'all')}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="카테고리" />
@@ -185,7 +167,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
               ))}
             </SelectContent>
           </Select>
-
           <Select value={branchFilter} onValueChange={setBranchFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="지점" />
@@ -199,13 +180,11 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
               ))}
             </SelectContent>
           </Select>
-
           <Button variant="outline" onClick={onRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
-
       {/* 비용 신청 목록 테이블 */}
       <Card>
         <CardHeader>
@@ -251,7 +230,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           )}
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                         <div className="max-w-48">
                           <p className="font-medium truncate">{expense.title}</p>
@@ -260,7 +238,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           </p>
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
@@ -270,7 +247,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           </div>
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Building className="h-4 w-4 text-muted-foreground" />
@@ -282,7 +258,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           </div>
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{expense.items.length}개</span>
@@ -293,7 +268,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           )}
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                         <div>
                           <p className="font-medium">
@@ -306,7 +280,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           )}
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getStatusIcon(expense.status)}
@@ -315,7 +288,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           </Badge>
                         </div>
                       </TableCell>
-                      
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-4 w-4" />
@@ -327,7 +299,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
                           </div>
                         </div>
                       </TableCell>
-                      
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -363,7 +334,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
           )}
         </CardContent>
       </Card>
-
       {/* 요약 정보 */}
       {filteredExpenses.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -377,7 +347,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
               </div>
             </CardContent>
           </Card>
-          
           <Card>
             <CardContent className="p-4">
               <div className="text-center">
@@ -388,7 +357,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
               </div>
             </CardContent>
           </Card>
-          
           <Card>
             <CardContent className="p-4">
               <div className="text-center">
@@ -399,7 +367,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
               </div>
             </CardContent>
           </Card>
-          
           <Card>
             <CardContent className="p-4">
               <div className="text-center">
@@ -410,7 +377,6 @@ export function ExpenseRequestList({ expenses, loading, onRefresh }: ExpenseRequ
               </div>
             </CardContent>
           </Card>
-          
           <Card>
             <CardContent className="p-4">
               <div className="text-center">

@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,7 +40,6 @@ import {
 import type { 
   CreateExpenseRequestData
 } from '@/types/expense';
-
 // 폼 스키마 정의
 const expenseItemSchema = z.object({
   category: z.nativeEnum(ExpenseCategory),
@@ -55,7 +53,6 @@ const expenseItemSchema = z.object({
   supplier: z.string().optional(),
   purchaseDate: z.date(),
 });
-
 const expenseRequestSchema = z.object({
   title: z.string().min(1, '제목을 입력해주세요'),
   purpose: z.string().min(1, '사용 목적을 입력해주세요'),
@@ -67,21 +64,17 @@ const expenseRequestSchema = z.object({
   items: z.array(expenseItemSchema).min(1, '최소 1개 이상의 비용 항목을 추가해주세요'),
   tags: z.array(z.string()).optional(),
 });
-
 type ExpenseRequestFormData = z.infer<typeof expenseRequestSchema>;
-
 interface ExpenseRequestFormProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-
 // 지점 목록 (실제로는 API에서 가져와야 함)
 const branches = [
   { id: 'branch-001', name: '릴리맥광화문점' },
   { id: 'branch-002', name: '릴리맥여의도점' },
   { id: 'branch-003', name: '릴리맥NC이스트폴점' },
 ];
-
 // 부서 목록
 const departments = [
   { id: 'dept-001', name: '영업팀' },
@@ -89,14 +82,11 @@ const departments = [
   { id: 'dept-003', name: '관리팀' },
   { id: 'dept-004', name: '운영팀' },
 ];
-
 export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDraft, setIsDraft] = useState(false);
-  
   const { createExpenseRequest, submitExpenseRequest } = useExpenses();
   const { toast } = useToast();
-
   const form = useForm<ExpenseRequestFormData>({
     resolver: zodResolver(expenseRequestSchema),
     defaultValues: {
@@ -121,12 +111,10 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       tags: [],
     },
   });
-
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'items',
   });
-
   // 지점 선택 처리
   const handleBranchChange = (branchId: string) => {
     const branch = branches.find(b => b.id === branchId);
@@ -135,7 +123,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       form.setValue('branchName', branch.name);
     }
   };
-
   // 부서 선택 처리
   const handleDepartmentChange = (departmentId: string) => {
     const department = departments.find(d => d.id === departmentId);
@@ -144,7 +131,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       form.setValue('departmentName', department.name);
     }
   };
-
   // 새 비용 항목 추가
   const addExpenseItem = () => {
     append({
@@ -159,7 +145,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       supplier: ''
     });
   };
-
   // 금액 자동 계산
   const calculateAmount = (index: number) => {
     const quantity = form.watch(`items.${index}.quantity`) || 0;
@@ -167,7 +152,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
     const amount = quantity * unitPrice;
     form.setValue(`items.${index}.amount`, amount);
   };
-
   // 총 금액 계산
   const calculateTotalAmount = () => {
     return fields.reduce((total, field, index) => {
@@ -175,7 +159,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       return total + amount;
     }, 0);
   };
-
   // 총 세액 계산
   const calculateTotalTaxAmount = () => {
     return fields.reduce((total, field, index) => {
@@ -183,12 +166,10 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       return total + taxAmount;
     }, 0);
   };
-
   // 폼 제출 (임시저장)
   const onSaveDraft = async (data: ExpenseRequestFormData) => {
     setIsSubmitting(true);
     setIsDraft(true);
-    
     try {
       const requestData: CreateExpenseRequestData = {
         requesterId: 'current-user-id', // 실제로는 현재 사용자 ID
@@ -200,14 +181,11 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
           purchaseDate: new Date(item.purchaseDate) as any
         }))
       };
-
       await createExpenseRequest(requestData);
-      
       toast({
         title: '임시저장 완료',
         description: '비용 신청이 임시저장되었습니다.',
       });
-      
       onSuccess();
     } catch (error) {
       console.error('Draft save error:', error);
@@ -216,11 +194,9 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       setIsDraft(false);
     }
   };
-
   // 폼 제출 (신청)
   const onSubmit = async (data: ExpenseRequestFormData) => {
     setIsSubmitting(true);
-    
     try {
       const requestData: CreateExpenseRequestData = {
         requesterId: 'current-user-id', // 실제로는 현재 사용자 ID
@@ -232,14 +208,11 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
           purchaseDate: new Date(item.purchaseDate) as any
         }))
       };
-
       const requestId = await createExpenseRequest(requestData);
-      
       // 바로 제출
       if (requestId) {
         await submitExpenseRequest(requestId);
       }
-      
       onSuccess();
     } catch (error) {
       console.error('Expense request submission error:', error);
@@ -247,18 +220,15 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
       setIsSubmitting(false);
     }
   };
-
   const totalAmount = calculateTotalAmount();
   const totalTaxAmount = calculateTotalTaxAmount();
   const grandTotal = totalAmount + totalTaxAmount;
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW'
     }).format(amount);
   };
-
   return (
     <div className="space-y-6">
       <Form {...form}>
@@ -286,7 +256,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="urgency"
@@ -309,7 +278,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                   )}
                 />
               </div>
-
               <FormField
                 control={form.control}
                 name="purpose"
@@ -327,7 +295,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                   </FormItem>
                 )}
               />
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -353,7 +320,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="departmentId"
@@ -381,7 +347,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
               </div>
             </CardContent>
           </Card>
-
           {/* 비용 항목 */}
           <Card>
             <CardHeader>
@@ -424,7 +389,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                         </Button>
                       )}
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <FormField
                         control={form.control}
@@ -450,7 +414,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={form.control}
                         name={`items.${index}.supplier`}
@@ -464,7 +427,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={form.control}
                         name={`items.${index}.purchaseDate`}
@@ -487,7 +449,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                         )}
                       />
                     </div>
-
                     <div className="mb-4">
                       <FormField
                         control={form.control}
@@ -503,7 +464,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                         )}
                       />
                     </div>
-
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <FormField
                         control={form.control}
@@ -526,7 +486,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={form.control}
                         name={`items.${index}.unitPrice`}
@@ -548,7 +507,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                           </FormItem>
                         )}
                       />
-
                       <FormField
                         control={form.control}
                         name={`items.${index}.taxAmount`}
@@ -567,7 +525,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                           </FormItem>
                         )}
                       />
-
                       <div>
                         <Label>합계</Label>
                         <div className="text-lg font-bold text-blue-600 mt-2">
@@ -578,7 +535,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                         </div>
                       </div>
                     </div>
-
                     <FormField
                       control={form.control}
                       name={`items.${index}.memo`}
@@ -601,7 +557,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
               </div>
             </CardContent>
           </Card>
-
           {/* 총액 요약 */}
           <Card>
             <CardContent className="p-6">
@@ -627,7 +582,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
                   </p>
                 </div>
               </div>
-
               {grandTotal >= 500000 && (
                 <Alert className="mt-4">
                   <AlertTriangle className="h-4 w-4" />
@@ -638,7 +592,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
               )}
             </CardContent>
           </Card>
-
           {/* 액션 버튼 */}
           <div className="flex items-center justify-between">
             <Button
@@ -650,7 +603,6 @@ export function ExpenseRequestForm({ onSuccess, onCancel }: ExpenseRequestFormPr
               <X className="h-4 w-4 mr-2" />
               취소
             </Button>
-
             <div className="flex items-center gap-2">
               <Button
                 type="button"

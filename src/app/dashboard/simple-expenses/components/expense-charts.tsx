@@ -22,6 +22,7 @@ import { SimpleExpense, SIMPLE_EXPENSE_CATEGORY_LABELS, getCategoryColor } from 
 interface ExpenseChartsProps {
   expenses: SimpleExpense[];
   currentBranchName: string;
+  selectedBranchId?: string;
 }
 
 // 차트 색상 팔레트
@@ -30,94 +31,218 @@ const CHART_COLORS = [
   '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'
 ];
 
-export function ExpenseCharts({ expenses, currentBranchName }: ExpenseChartsProps) {
+export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }: ExpenseChartsProps) {
+  // 선택된 지점의 데이터만 필터링
+  const filteredExpenses = React.useMemo(() => {
+    if (!selectedBranchId) return expenses;
+    return expenses.filter(expense => expense.branchId === selectedBranchId);
+  }, [expenses, selectedBranchId]);
+
+  // 전체 선택 여부 확인
+  const isAllBranches = !selectedBranchId;
+
+  // 지점별 지출 데이터 (전체 선택 시에만 사용)
+  const branchComparisonData = React.useMemo(() => {
+    if (!isAllBranches) return [];
+
+    const branchMap = new Map<string, number>();
+    const branchNameMap = new Map<string, string>();
+
+    expenses.forEach(expense => {
+      if (!expense.branchId || !expense.amount) return;
+      const currentAmount = branchMap.get(expense.branchId) || 0;
+      branchMap.set(expense.branchId, currentAmount + expense.amount);
+
+      // 지점명 저장
+      if (expense.branchName) {
+        branchNameMap.set(expense.branchId, expense.branchName);
+      }
+    });
+
+    return Array.from(branchMap.entries()).map(([branchId, amount], index) => ({
+      branchId,
+      branchName: branchNameMap.get(branchId) || `지점 ${branchId}`,
+      amount,
+      color: CHART_COLORS[index % CHART_COLORS.length]
+    }));
+  }, [expenses, isAllBranches]);
+
+  // 지점별 카테고리 비교 데이터 (전체 선택 시에만 사용)
+  const branchCategoryData = React.useMemo(() => {
+    if (!isAllBranches) return { data: [], categories: [] };
+
+    const branchCategoryMap = new Map<string, Map<string, number>>();
+    const branchNameMap = new Map<string, string>();
+
+    expenses.forEach(expense => {
+      if (!expense.branchId || !expense.category || !expense.amount) return;
+
+      if (!branchCategoryMap.has(expense.branchId)) {
+        branchCategoryMap.set(expense.branchId, new Map());
+      }
+
+      const categoryMap = branchCategoryMap.get(expense.branchId)!;
+      const categoryName = SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category];
+      const currentAmount = categoryMap.get(categoryName) || 0;
+      categoryMap.set(categoryName, currentAmount + expense.amount);
+
+      // 지점명 저장
+      if (expense.branchName) {
+        branchNameMap.set(expense.branchId, expense.branchName);
+      }
+    });
+
+    // 모든 카테고리 수집
+    const allCategories = new Set<string>();
+    for (const categoryMap of branchCategoryMap.values()) {
+      for (const category of categoryMap.keys()) {
+        allCategories.add(category);
+      }
+    }
+
+    // 차트 데이터 형식으로 변환
+    const chartData = [];
+    for (const [branchId, categoryMap] of branchCategoryMap) {
+      const branchName = branchNameMap.get(branchId) || `지점 ${branchId}`;
+      const dataPoint: any = { branchName };
+
+      for (const category of allCategories) {
+        dataPoint[category] = categoryMap.get(category) || 0;
+      }
+
+      chartData.push(dataPoint);
+    }
+
+    return {
+      data: chartData,
+      categories: Array.from(allCategories)
+    };
+  }, [expenses, isAllBranches]);
+
   // 카테고리별 지출 데이터
   const categoryData = React.useMemo(() => {
     const categoryMap = new Map<string, number>();
-    
-    expenses.forEach(expense => {
+
+    // 전체 선택 시에는 모든 지점 데이터 사용, 그렇지 않으면 필터링된 데이터 사용
+    const dataToUse = isAllBranches ? expenses : filteredExpenses;
+
+    dataToUse.forEach(expense => {
       if (!expense.category) return;
       const category = SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category];
       const currentAmount = categoryMap.get(category) || 0;
       categoryMap.set(category, currentAmount + expense.amount);
     });
-    
+
     return Array.from(categoryMap.entries()).map(([name, value], index) => ({
       name,
       value,
       color: CHART_COLORS[index % CHART_COLORS.length]
     }));
-  }, [expenses]);
+  }, [expenses, filteredExpenses, isAllBranches]);
 
   // 월별 트렌드 데이터 (최근 6개월)
   const monthlyData = React.useMemo(() => {
     const monthlyMap = new Map<string, number>();
     const now = new Date();
-    
+
     // 최근 6개월 초기화
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthKey = date.toISOString().slice(0, 7); // YYYY-MM
       monthlyMap.set(monthKey, 0);
     }
-    
+
     // 지출 데이터 집계
-    expenses.forEach(expense => {
+    // 전체 선택 시에는 모든 지점 데이터 사용, 그렇지 않으면 필터링된 데이터 사용
+    const dataToUse = isAllBranches ? expenses : filteredExpenses;
+
+    dataToUse.forEach(expense => {
       if (!expense.date || !expense.amount) return;
       const expenseDate = expense.date.toDate();
       const monthKey = expenseDate.toISOString().slice(0, 7);
       const currentAmount = monthlyMap.get(monthKey) || 0;
       monthlyMap.set(monthKey, currentAmount + expense.amount);
     });
-    
+
     return Array.from(monthlyMap.entries()).map(([month, amount]) => ({
       month: month.replace('-', '/'),
       amount
     }));
-  }, [expenses]);
+  }, [expenses, filteredExpenses, isAllBranches]);
 
   // 구매처별 지출 데이터 (상위 10개)
   const supplierData = React.useMemo(() => {
     const supplierMap = new Map<string, number>();
-    
-    expenses.forEach(expense => {
-      if (!expense.supplier || !expense.amount) return;
-      const currentAmount = supplierMap.get(expense.supplier) || 0;
-      supplierMap.set(expense.supplier, currentAmount + expense.amount);
-    });
-    
-    return Array.from(supplierMap.entries())
-      .map(([name, amount]) => ({ name, amount }))
+
+    // 전체 선택 시에는 모든 지점 데이터 사용, 그렇지 않으면 필터링된 데이터 사용
+    const dataToUse = isAllBranches ? expenses : filteredExpenses;
+
+    dataToUse.forEach(expense => {
+      // 구매처명 검증
+      if (!expense.supplier || expense.supplier.trim() === '') {
+        return;
+      }
+
+      // 금액 검증 - 0보다 큰 값만 허용
+      const amount = Number(expense.amount);
+      if (isNaN(amount) || amount <= 0) {
+        return;
+      }
+
+      const supplierName = expense.supplier.trim();
+      const currentAmount = supplierMap.get(supplierName) || 0;
+      supplierMap.set(supplierName, currentAmount + amount);
+
+      });
+
+    const result = Array.from(supplierMap.entries())
+      .map(([name, amount]) => ({ 
+        name, 
+        amount: Number(amount) // 확실히 숫자로 변환
+      }))
+      .filter(item => item.amount > 0) // 0보다 큰 값만 필터링
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 10);
-  }, [expenses]);
+
+    // 데이터 구조 검증
+    result.forEach((item, index) => {
+      if (!item.name || typeof item.amount !== 'number') {
+        console.warn(`Invalid data at index ${index}:`, item);
+      }
+    });
+
+    return result;
+  }, [expenses, filteredExpenses, isAllBranches]);
 
   // 일별 지출 데이터 (최근 30일)
   const dailyData = React.useMemo(() => {
     const dailyMap = new Map<string, number>();
     const now = new Date();
-    
+
     // 최근 30일 초기화
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dayKey = date.toISOString().slice(0, 10); // YYYY-MM-DD
       dailyMap.set(dayKey, 0);
     }
-    
+
     // 지출 데이터 집계
-    expenses.forEach(expense => {
+    // 전체 선택 시에는 모든 지점 데이터 사용, 그렇지 않으면 필터링된 데이터 사용
+    const dataToUse = isAllBranches ? expenses : filteredExpenses;
+
+    dataToUse.forEach(expense => {
       if (!expense.date || !expense.amount) return;
       const expenseDate = expense.date.toDate();
       const dayKey = expenseDate.toISOString().slice(0, 10);
       const currentAmount = dailyMap.get(dayKey) || 0;
       dailyMap.set(dayKey, currentAmount + expense.amount);
     });
-    
+
     return Array.from(dailyMap.entries()).map(([day, amount]) => ({
       day: day.slice(5), // MM-DD만 표시
       amount
     }));
-  }, [expenses]);
+  }, [expenses, filteredExpenses, isAllBranches]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ko-KR').format(value);
@@ -141,10 +266,62 @@ export function ExpenseCharts({ expenses, currentBranchName }: ExpenseChartsProp
 
   return (
     <div className="space-y-6">
+      {/* 전체 선택 시 지점별 비교 차트 */}
+      {isAllBranches && branchComparisonData.length > 0 && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">지점별 총 지출 비교</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={branchComparisonData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="branchName" />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="amount" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {branchCategoryData.data.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">지점별 카테고리별 지출 비교</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={branchCategoryData.data}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="branchName" />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend />
+                    {branchCategoryData.categories.map((category, index) => (
+                      <Bar 
+                        key={category}
+                        dataKey={category}
+                        name={category}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
+                        stackId="a"
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
       {/* 카테고리별 지출 분포 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">카테고리별 지출 분포</CardTitle>
+          <CardTitle className="text-lg">
+            {isAllBranches ? '전체 카테고리별 지출 분포' : '카테고리별 지출 분포'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -172,7 +349,9 @@ export function ExpenseCharts({ expenses, currentBranchName }: ExpenseChartsProp
       {/* 월별 지출 트렌드 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">월별 지출 트렌드</CardTitle>
+          <CardTitle className="text-lg">
+            {isAllBranches ? '전체 월별 지출 트렌드' : '월별 지출 트렌드'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -197,25 +376,38 @@ export function ExpenseCharts({ expenses, currentBranchName }: ExpenseChartsProp
       {/* 구매처별 지출 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">구매처별 지출 (상위 10개)</CardTitle>
+          <CardTitle className="text-lg">
+            {isAllBranches ? '전체 구매처별 지출 (상위 10개)' : '구매처별 지출 (상위 10개)'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={supplierData} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
-              <YAxis dataKey="name" type="category" width={120} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="amount" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
+          {supplierData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={supplierData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="amount" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+              <div className="text-center">
+                <p className="text-lg font-medium">구매처별 지출 데이터가 없습니다</p>
+                <p className="text-sm">지출 데이터를 입력하면 구매처별 분석이 표시됩니다.</p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* 일별 지출 트렌드 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">일별 지출 트렌드 (최근 30일)</CardTitle>
+          <CardTitle className="text-lg">
+            {isAllBranches ? '전체 일별 지출 트렌드 (최근 30일)' : '일별 지출 트렌드 (최근 30일)'}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>

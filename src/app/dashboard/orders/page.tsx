@@ -1,6 +1,5 @@
 
 "use client";
-
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -26,14 +25,12 @@ import { Trash2, XCircle } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { exportOrdersToExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
-
 export default function OrdersPage() {
   const { orders, loading, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [isMessagePrintDialogOpen, setIsMessagePrintDialogOpen] = useState(false);
@@ -44,11 +41,9 @@ export default function OrdersPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
-
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
-
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
@@ -57,28 +52,23 @@ export default function OrdersPage() {
       return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
     }
   }, [branches, isAdmin, userBranch]);
-
   // 직원의 경우 자동으로 소속 지점으로 필터링
   useEffect(() => {
     if (!isAdmin && userBranch && selectedBranch === "all") {
       setSelectedBranch(userBranch);
     }
   }, [isAdmin, userBranch, selectedBranch]);
-
   const handlePrint = (orderId: string) => {
     router.push(`/dashboard/orders/print-preview/${orderId}`);
   };
-
   const handleMessagePrintClick = (order: Order) => {
     setSelectedOrderForPrint(order);
     setIsMessagePrintDialogOpen(true);
   };
-
   const handleOrderRowClick = (order: Order) => {
     setSelectedOrderForDetail(order);
     setIsOrderDetailDialogOpen(true);
   };
-
   // 주문 취소 처리
   const handleCancelOrder = async (orderId: string, reason?: string) => {
     try {
@@ -89,7 +79,6 @@ export default function OrdersPage() {
       console.error('주문 취소 오류:', error);
     }
   };
-
   // 주문 삭제 처리
   const handleDeleteOrder = async (orderId: string) => {
     try {
@@ -100,19 +89,16 @@ export default function OrdersPage() {
       console.error('주문 삭제 오류:', error);
     }
   };
-
   // 취소 다이얼로그 열기
   const openCancelDialog = (order: Order) => {
     setSelectedOrderForAction(order);
     setIsCancelDialogOpen(true);
   };
-
   // 삭제 다이얼로그 열기
   const openDeleteDialog = (order: Order) => {
     setSelectedOrderForAction(order);
     setIsDeleteDialogOpen(true);
   };
-
   const handleMessagePrintSubmit = ({ 
     orderId, 
     labelType, 
@@ -148,11 +134,9 @@ export default function OrdersPage() {
     router.push(`/dashboard/orders/print-message?${params.toString()}`);
     setIsMessagePrintDialogOpen(false);
   };
-
   const handleExcelDownload = () => {
     const ordersToExport = filteredOrders.length > 0 ? filteredOrders : orders;
     const filename = selectedBranch !== "all" ? `${selectedBranch}_주문내역` : "전체_주문내역";
-    
     if (ordersToExport.length === 0) {
       toast({
         title: "다운로드할 데이터가 없습니다",
@@ -161,9 +145,7 @@ export default function OrdersPage() {
       });
       return;
     }
-    
     try {
-      console.log('다운로드 시작:', ordersToExport.length, '건의 주문');
       exportOrdersToExcel(ordersToExport, filename);
       toast({
         title: "엑셀 다운로드 완료",
@@ -178,8 +160,6 @@ export default function OrdersPage() {
       });
     }
   };
-
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -192,7 +172,6 @@ export default function OrdersPage() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-  
   const getPaymentStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -203,18 +182,14 @@ export default function OrdersPage() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-
-
   const filteredOrders = useMemo(() => {
     let filtered = orders;
-
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
       filtered = filtered.filter(order => order.branchName === userBranch);
     } else if (selectedBranch !== "all") {
       filtered = filtered.filter(order => order.branchName === selectedBranch);
     }
-
     // 검색어 필터링
     if (searchTerm) {
       filtered = filtered.filter(order =>
@@ -222,10 +197,8 @@ export default function OrdersPage() {
         order.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
     return filtered;
   }, [orders, searchTerm, selectedBranch, isAdmin, userBranch]);
-
   return (
     <>
       <PageHeader
@@ -456,7 +429,6 @@ export default function OrdersPage() {
          isOpen={isExcelUploadDialogOpen}
          onOpenChange={setIsExcelUploadDialogOpen}
        />
-
                {/* 주문 취소 다이얼로그 */}
         <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
           <AlertDialogContent>
@@ -488,7 +460,6 @@ export default function OrdersPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-
        {/* 주문 삭제 다이얼로그 */}
        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
          <AlertDialogContent>

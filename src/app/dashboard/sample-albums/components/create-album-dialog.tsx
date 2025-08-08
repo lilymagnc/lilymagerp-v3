@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,13 +21,11 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { AlbumCategory, ALBUM_CATEGORIES, CreateAlbumData } from '@/types/album';
-
 interface CreateAlbumDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreateAlbum: (albumData: CreateAlbumData) => Promise<void>;
 }
-
 export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateAlbumDialogProps) {
   const [formData, setFormData] = useState<CreateAlbumData>({
     title: '',
@@ -37,15 +34,12 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
     isPublic: true
   });
   const [loading, setLoading] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!formData.title.trim()) {
       alert('앨범 제목을 입력해주세요.');
       return;
     }
-
     setLoading(true);
     try {
       await onCreateAlbum(formData);
@@ -63,14 +57,12 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
       setLoading(false);
     }
   };
-
   const handleInputChange = (field: keyof CreateAlbumData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -80,7 +72,6 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
             고객에게 보여줄 새로운 샘플 앨범을 만들어보세요.
           </DialogDescription>
         </DialogHeader>
-        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">앨범 제목 *</Label>
@@ -92,7 +83,6 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
               required
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="category">카테고리</Label>
             <Select
@@ -111,7 +101,6 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="description">설명</Label>
             <Textarea
@@ -122,7 +111,6 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
               rows={3}
             />
           </div>
-
           <div className="flex items-center space-x-2">
             <Switch
               id="isPublic"
@@ -131,7 +119,6 @@ export function CreateAlbumDialog({ open, onOpenChange, onCreateAlbum }: CreateA
             />
             <Label htmlFor="isPublic">공개 앨범</Label>
           </div>
-
           <DialogFooter>
             <Button
               type="button"

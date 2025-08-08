@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,16 +21,13 @@ import {
 import { usePurchaseBatches } from '@/hooks/use-purchase-batches';
 import { useMaterialRequests } from '@/hooks/use-material-requests';
 import { Timestamp } from 'firebase/firestore';
-
 interface ActualPurchaseFormProps {
   batch: PurchaseBatch;
   onComplete: () => void;
   onCancel: () => void;
   loading: boolean; // usePurchaseBatches 훅의 로딩 상태를 전달받음
 }
-
 // ... (중간 코드 생략)
-
 export function ActualPurchaseForm({
   batch,
   onComplete,
@@ -47,10 +43,8 @@ export function ActualPurchaseForm({
   // isSubmitting 상태는 더 이상 필요 없음 (prop으로 loading을 받으므로)
   // const [isSubmitting, setIsSubmitting] = useState(false);
   const [requests, setRequests] = useState<MaterialRequest[]>([]);
-
   const { updateActualPurchase } = usePurchaseBatches();
   const { getRequestById } = useMaterialRequests();
-
   // 관련 요청들 로드 및 초기 구매 품목 목록 생성
   useEffect(() => {
     const loadRequestsAndItems = async () => {
@@ -59,14 +53,11 @@ export function ActualPurchaseForm({
         const requestPromises = batch.includedRequests.map(requestId => 
           getRequestById(requestId)
         );
-        
         const loadedRequests = await Promise.all(requestPromises);
         const validRequests = loadedRequests.filter(req => req !== null) as MaterialRequest[];
         setRequests(validRequests);
-
         // 초기 구매 품목 목록 생성
         const items: PurchaseFormItem[] = [];
-        
         validRequests.forEach(request => {
           request.requestedItems.forEach(requestItem => {
             items.push({
@@ -87,28 +78,22 @@ export function ActualPurchaseForm({
             });
           });
         });
-        
         setPurchaseItems(items);
       } catch (error) {
         console.error('요청 로드 오류:', error);
       }
     };
-
     loadRequestsAndItems();
   }, [batch.includedRequests, getRequestById]);
-
   // 품목 업데이트 함수
   const updateItem = (index: number, field: keyof PurchaseFormItem, value: any) => {
     const newItems = [...purchaseItems];
     newItems[index] = { ...newItems[index], [field]: value };
-    
     // 수량이나 가격이 변경되면 총액 자동 계산
     if (field === 'actualQuantity' || field === 'actualPrice') {
       newItems[index].totalAmount = newItems[index].actualQuantity * newItems[index].actualPrice;
     }
-    
     setPurchaseItems(newItems);
-    
     // 에러 제거
     if (errors[`item-${index}-${field}`]) {
       const newErrors = { ...errors };
@@ -116,7 +101,6 @@ export function ActualPurchaseForm({
       setErrors(newErrors);
     }
   };
-
   // 대체품 설정 함수
   const setSubstitute = (index: number, isSubstitute: boolean) => {
     const newItems = [...purchaseItems];
@@ -131,52 +115,40 @@ export function ActualPurchaseForm({
     }
     setPurchaseItems(newItems);
   };
-
   // 총 비용 계산
   const totalCost = purchaseItems.reduce((sum, item) => sum + item.totalAmount, 0);
-
   // 유효성 검사
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-
     if (!purchaseDate) {
       newErrors.purchaseDate = '구매 날짜를 선택해주세요.';
     }
-
     purchaseItems.forEach((item, index) => {
       if (!item.actualMaterialName.trim()) {
         newErrors[`item-${index}-actualMaterialName`] = '자재명을 입력해주세요.';
       }
-      
       if (item.actualQuantity <= 0) {
         newErrors[`item-${index}-actualQuantity`] = '수량은 0보다 커야 합니다.';
       }
-      
       if (item.actualPrice < 0) {
         newErrors[`item-${index}-actualPrice`] = '가격은 0 이상이어야 합니다.';
       }
-      
       if (item.status === 'unavailable' && !item.memo.trim()) {
         newErrors[`item-${index}-memo`] = '구매 불가 사유를 입력해주세요.';
       }
-      
       if (item.status === 'substituted' && !item.memo.trim()) {
         newErrors[`item-${index}-memo`] = '대체 사유를 입력해주세요.';
       }
     });
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   // 폼 제출
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validateForm()) {
       return;
     }
-
     try {
       const purchaseData = {
         batchId: batch.id,
@@ -198,7 +170,6 @@ export function ActualPurchaseForm({
         totalCost,
         notes
       };
-
       const success = await updateActualPurchase(batch.id, purchaseData);
       if (success) {
         onComplete();
@@ -209,7 +180,6 @@ export function ActualPurchaseForm({
       // setIsSubmitting(false); // 외부에서 loading prop으로 관리되므로 제거
     }
   };
-
   // 상태별 색상 반환
   const getStatusColor = (status: PurchaseItemStatus) => {
     switch (status) {
@@ -220,7 +190,6 @@ export function ActualPurchaseForm({
       default: return 'bg-gray-100 text-gray-800';
     }
   };
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -240,7 +209,6 @@ export function ActualPurchaseForm({
           </Badge>
         </div>
       </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 구매 기본 정보 */}
         <Card>
@@ -272,7 +240,6 @@ export function ActualPurchaseForm({
                 </div>
               </div>
             </div>
-            
             <div>
               <Label htmlFor="notes">구매 메모</Label>
               <Textarea
@@ -285,7 +252,6 @@ export function ActualPurchaseForm({
             </div>
           </CardContent>
         </Card>
-
         {/* 구매 품목 목록 */}
         <Card>
           <CardHeader>
@@ -310,9 +276,7 @@ export function ActualPurchaseForm({
                       {PURCHASE_ITEM_STATUS_LABELS[item.status]}
                     </Badge>
                   </div>
-
                   <Separator />
-
                   {/* 구매 상태 선택 */}
                   <div className="grid grid-cols-4 gap-4">
                     <div>
@@ -334,7 +298,6 @@ export function ActualPurchaseForm({
                         </SelectContent>
                       </Select>
                     </div>
-
                     {item.status !== 'unavailable' && (
                       <>
                         <div>
@@ -355,7 +318,6 @@ export function ActualPurchaseForm({
                             </p>
                           )}
                         </div>
-
                         <div>
                           <Label>실제 단가 *</Label>
                           <Input
@@ -374,7 +336,6 @@ export function ActualPurchaseForm({
                             </p>
                           )}
                         </div>
-
                         <div>
                           <Label>총액</Label>
                           <div className="text-lg font-semibold text-green-600 mt-2">
@@ -384,7 +345,6 @@ export function ActualPurchaseForm({
                       </>
                     )}
                   </div>
-
                   {/* 대체품 정보 */}
                   {item.status === 'substituted' && (
                     <div className="grid grid-cols-2 gap-4 p-3 bg-yellow-50 rounded-lg">
@@ -416,7 +376,6 @@ export function ActualPurchaseForm({
                       </div>
                     </div>
                   )}
-
                   {/* 공급업체 및 메모 */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -451,7 +410,6 @@ export function ActualPurchaseForm({
                       )}
                     </div>
                   </div>
-
                   {/* 요청 vs 실제 비교 */}
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <div className="grid grid-cols-3 gap-4 text-sm">
@@ -479,7 +437,6 @@ export function ActualPurchaseForm({
             </div>
           </CardContent>
         </Card>
-
         {/* 경고 메시지 */}
         {Object.keys(errors).length > 0 && (
           <Alert>
@@ -489,7 +446,6 @@ export function ActualPurchaseForm({
             </AlertDescription>
           </Alert>
         )}
-
         {/* 액션 버튼 */}
         <div className="flex justify-end gap-3">
           <Button
@@ -511,5 +467,4 @@ export function ActualPurchaseForm({
       </form>
     </div>
   );
-
 }

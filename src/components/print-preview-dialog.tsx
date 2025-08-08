@@ -1,5 +1,4 @@
 "use client"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +13,6 @@ import {
 import { Printer, Download, X } from "lucide-react"
 import { ScrollArea } from "./ui/scroll-area"
 import { Badge } from "./ui/badge"
-
 interface PrintItem {
   id: string;
   name: string;
@@ -22,7 +20,6 @@ interface PrintItem {
   price?: number;
   barcode?: string;
 }
-
 interface PrintPreviewDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,33 +27,25 @@ interface PrintPreviewDialogProps {
   startPosition: number;
   itemType: "product" | "material";
 }
-
 export function PrintPreviewDialog({ isOpen, onOpenChange, items, startPosition, itemType }: PrintPreviewDialogProps) {
   const [isPrinting, setIsPrinting] = useState(false);
-
   const handlePrint = async () => {
     setIsPrinting(true);
     try {
       // 실제 인쇄 로직을 여기에 구현
       // 현재는 시뮬레이션
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // 성공 메시지
-      console.log('Printing labels:', items, 'Start position:', startPosition);
-    } catch (error) {
+      } catch (error) {
       console.error('Print error:', error);
     } finally {
       setIsPrinting(false);
     }
   };
-
   const handleDownload = () => {
     // PDF 다운로드 로직을 여기에 구현
-    console.log('Downloading labels as PDF');
-  };
-
+    };
   const totalLabels = items.reduce((sum, item) => sum + item.quantity, 0);
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh]">
@@ -66,7 +55,6 @@ export function PrintPreviewDialog({ isOpen, onOpenChange, items, startPosition,
             총 {totalLabels}개의 라벨이 인쇄됩니다. (시작 위치: {startPosition})
           </DialogDescription>
         </DialogHeader>
-        
         <div className="space-y-4 py-4">
           <div className="flex justify-between items-center">
             <Badge variant="outline">
@@ -76,7 +64,6 @@ export function PrintPreviewDialog({ isOpen, onOpenChange, items, startPosition,
               시작 위치: {startPosition}
             </div>
           </div>
-
           <ScrollArea className="h-96 w-full border rounded-md p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {items.map((item, itemIndex) => {
@@ -107,7 +94,6 @@ export function PrintPreviewDialog({ isOpen, onOpenChange, items, startPosition,
             </div>
           </ScrollArea>
         </div>
-
         <DialogFooter className="pt-4">
           <DialogClose asChild>
             <Button type="button" variant="secondary">

@@ -1,6 +1,5 @@
 
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -27,7 +26,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useEffect } from "react"
 import type { Branch } from "@/hooks/use-branches"
-
 const branchSchema = z.object({
   name: z.string().min(1, "지점명을 입력해주세요."),
   type: z.string().min(1, "유형을 선택해주세요."),
@@ -38,16 +36,13 @@ const branchSchema = z.object({
   phone: z.string().min(1, "연락처를 입력해주세요."),
   account: z.string().optional(),
 })
-
 export type BranchFormValues = z.infer<typeof branchSchema>
-
 interface BranchFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onSubmit: (data: Branch) => void
   branch?: Branch | null
 }
-
 const defaultValues: BranchFormValues = {
   name: "",
   type: "",
@@ -58,20 +53,17 @@ const defaultValues: BranchFormValues = {
   phone: "",
   account: "",
 }
-
 export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFormProps) {
   const form = useForm<BranchFormValues>({
     resolver: zodResolver(branchSchema),
     defaultValues: branch || defaultValues,
   })
-
   useEffect(() => {
     if (isOpen) {
       // Reset form with all data, including non-form fields to preserve them
       form.reset(branch || defaultValues);
     }
   }, [branch, form, isOpen]);
-  
   const handleFormSubmit = (data: BranchFormValues) => {
     // When submitting, combine form data with non-form data like deliveryFees
     // This ensures that data not present in the form is not lost on update.
@@ -81,7 +73,6 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
     } as Branch;
     onSubmit(fullBranchData);
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
@@ -219,4 +210,3 @@ export function BranchForm({ isOpen, onOpenChange, onSubmit, branch }: BranchFor
     </Dialog>
   )
 }
-

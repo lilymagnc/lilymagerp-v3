@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,22 +21,18 @@ import { BudgetList } from './components/budget-list';
 import { BudgetAnalytics } from './components/budget-analytics';
 import { BudgetAlerts } from './components/budget-alerts';
 import { useBudgets } from '@/hooks/use-budgets';
-
 export default function BudgetsPage() {
   const [activeTab, setActiveTab] = useState('list');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { budgets, loading, stats } = useBudgets();
-
   const handleCreateBudget = () => {
     setShowCreateForm(true);
     setActiveTab('create');
   };
-
   const handleBudgetCreated = () => {
     setShowCreateForm(false);
     setActiveTab('list');
   };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -45,13 +40,11 @@ export default function BudgetsPage() {
       notation: 'compact'
     }).format(amount);
   };
-
   const getUsageColor = (usage: number) => {
     if (usage >= 100) return 'text-red-600';
     if (usage >= 80) return 'text-yellow-600';
     return 'text-green-600';
   };
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 헤더 */}
@@ -67,7 +60,6 @@ export default function BudgetsPage() {
           새 예산 생성
         </Button>
       </div>
-
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -86,7 +78,6 @@ export default function BudgetsPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -103,7 +94,6 @@ export default function BudgetsPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -120,7 +110,6 @@ export default function BudgetsPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -138,7 +127,6 @@ export default function BudgetsPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 예산 사용률 요약 */}
       <Card>
         <CardHeader>
@@ -178,7 +166,6 @@ export default function BudgetsPage() {
               </div>
               <p className="text-sm text-muted-foreground">평균 사용률</p>
             </div>
-
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -189,7 +176,6 @@ export default function BudgetsPage() {
                   <div className="bg-blue-600 h-2 rounded-full" style={{ width: '100%' }}></div>
                 </div>
               </div>
-
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">사용 금액</span>
@@ -205,7 +191,6 @@ export default function BudgetsPage() {
                   ></div>
                 </div>
               </div>
-
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">잔여 예산</span>
@@ -219,7 +204,6 @@ export default function BudgetsPage() {
                 </div>
               </div>
             </div>
-
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                 <div className="flex items-center gap-2">
@@ -233,7 +217,6 @@ export default function BudgetsPage() {
                   }).length}개
                 </span>
               </div>
-
               <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-yellow-600 rounded-full"></div>
@@ -246,7 +229,6 @@ export default function BudgetsPage() {
                   }).length}개
                 </span>
               </div>
-
               <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-red-600 rounded-full"></div>
@@ -258,7 +240,6 @@ export default function BudgetsPage() {
           </div>
         </CardContent>
       </Card>
-
       {/* 메인 콘텐츠 */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
@@ -283,7 +264,6 @@ export default function BudgetsPage() {
             설정
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="list" className="mt-6">
           <Card>
             <CardHeader>
@@ -304,7 +284,6 @@ export default function BudgetsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="create" className="mt-6">
           <Card>
             <CardHeader>
@@ -324,15 +303,12 @@ export default function BudgetsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="alerts" className="mt-6">
           <BudgetAlerts />
         </TabsContent>
-
         <TabsContent value="analytics" className="mt-6">
           <BudgetAnalytics />
         </TabsContent>
-
         <TabsContent value="settings" className="mt-6">
           <Card>
             <CardHeader>

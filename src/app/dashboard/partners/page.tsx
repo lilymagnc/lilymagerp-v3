@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -17,54 +16,42 @@ import { useAuth } from "@/hooks/use-auth";
 import { downloadXLSX } from "@/lib/utils";
 import { format } from "date-fns";
 import { ImportButton } from "@/components/import-button";
-
 export default function PartnersPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedPartner, setSelectedPartner] = useState<Partner | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedType, setSelectedType] = useState("all");
-
     const { toast } = useToast();
     const { partners, loading: partnersLoading, addPartner, updatePartner, deletePartner, bulkAddPartners } = usePartners();
     const { user } = useAuth();
-    
     const isHeadOfficeAdmin = user?.role === '본사 관리자';
     const userBranch = user?.franchise;
-
     const partnerTypes = useMemo(() => [...new Set(partners.map(p => p.type))], [partners]);
-
     const filteredPartners = useMemo(() => {
         let filtered = partners;
-
         // 권한에 따른 지점 필터링
         if (!isHeadOfficeAdmin && userBranch) {
             filtered = filtered.filter(partner => partner.branch === userBranch);
         }
-
         // 검색어 필터링
         filtered = filtered.filter(partner => 
             partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (partner.contactPerson && partner.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-
         // 타입 필터링
         if (selectedType !== "all") {
             filtered = filtered.filter(partner => partner.type === selectedType);
         }
-
         return filtered;
     }, [partners, searchTerm, selectedType, isHeadOfficeAdmin, userBranch]);
-
     const handleAdd = () => {
         setSelectedPartner(null);
         setIsFormOpen(true);
     };
-
     const handleEdit = (partner: Partner) => {
         setSelectedPartner(partner);
         setIsFormOpen(true);
     };
-
     const handleFormSubmit = async (data: PartnerFormValues) => {
         if (selectedPartner?.id) {
             await updatePartner(selectedPartner.id, data);
@@ -74,11 +61,9 @@ export default function PartnersPage() {
         setIsFormOpen(false);
         setSelectedPartner(null);
     };
-
     const handleDelete = async (id: string) => {
         await deletePartner(id);
     };
-
     const handleExport = () => {
         if (filteredPartners.length === 0) {
             toast({
@@ -88,7 +73,6 @@ export default function PartnersPage() {
             });
             return;
         }
-
         const dataToExport = filteredPartners.map(partner => ({
             '거래처명': partner.name,
             '유형': partner.type,
@@ -100,14 +84,12 @@ export default function PartnersPage() {
             '메모': partner.memo || '',
             '등록일': partner.createdAt ? format(new Date(partner.createdAt), 'yyyy-MM-dd HH:mm') : '',
         }));
-
         downloadXLSX(dataToExport, "partners");
         toast({
             title: "내보내기 성공",
             description: `${dataToExport.length}개의 거래처 정보가 XLSX 파일로 다운로드되었습니다.`,
         });
     };
-
     const handleImport = async (data: any[]) => {
         try {
             await bulkAddPartners(data);
@@ -124,7 +106,6 @@ export default function PartnersPage() {
             });
         }
     };
-
     return (
         <div>
             <PageHeader title="거래처 관리" description="상품 및 자재를 공급하는 매입처 정보를 관리합니다.">
@@ -172,7 +153,6 @@ export default function PartnersPage() {
                     </div>
                 </CardContent>
             </Card>
-
             {partnersLoading ? (
                 <Card>
                     <CardContent className="pt-6">

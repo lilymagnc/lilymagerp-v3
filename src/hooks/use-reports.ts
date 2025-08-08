@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useCallback } from 'react';
 import { 
   collection, 
@@ -18,7 +17,6 @@ import type {
   ExpenseCategory,
   EXPENSE_CATEGORY_LABELS 
 } from '@/types';
-
 export interface ReportFilter {
   dateFrom: Date;
   dateTo: Date;
@@ -27,7 +25,6 @@ export interface ReportFilter {
   categories?: ExpenseCategory[];
   userIds?: string[];
 }
-
 export interface ExpenseReport {
   summary: {
     totalAmount: number;
@@ -60,7 +57,6 @@ export interface ExpenseReport {
   }[];
   topExpenses: ExpenseRequest[];
 }
-
 export interface BudgetReport {
   summary: {
     totalBudgets: number;
@@ -95,7 +91,6 @@ export interface BudgetReport {
     message: string;
   }[];
 }
-
 export interface PurchaseReport {
   summary: {
     totalRequests: number;
@@ -124,7 +119,6 @@ export interface PurchaseReport {
     percentage: number;
   }[];
 }
-
 export interface ConsolidatedReport {
   period: {
     from: Date;
@@ -148,16 +142,13 @@ export interface ConsolidatedReport {
     estimatedImpact: number;
   }[];
 }
-
 export function useReports() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-
   // 비용 리포트 생성
   const generateExpenseReport = useCallback(async (filter: ReportFilter): Promise<ExpenseReport> => {
     try {
       setLoading(true);
-
       // 비용 신청 데이터 조회
       let expenseQuery = query(
         collection(db, 'expenseRequests'),
@@ -165,31 +156,25 @@ export function useReports() {
         where('createdAt', '<=', filter.dateTo),
         orderBy('createdAt', 'desc')
       );
-
       const expenseSnapshot = await getDocs(expenseQuery);
       let expenses = expenseSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as ExpenseRequest[];
-
-      // 추가 필터링
       if (filter.branchIds?.length) {
         expenses = expenses.filter(e => filter.branchIds!.includes(e.branchId));
       }
-
       if (filter.categories?.length) {
         expenses = expenses.filter(e => 
           e.items.some(item => filter.categories!.includes(item.category))
         );
       }
-
       // 요약 통계 계산
       const totalAmount = expenses.reduce((sum, e) => sum + e.totalAmount, 0);
       const totalCount = expenses.length;
       const averageAmount = totalCount > 0 ? totalAmount / totalCount : 0;
       const approvedCount = expenses.filter(e => e.status === 'approved' || e.status === 'paid').length;
       const approvalRate = totalCount > 0 ? (approvedCount / totalCount) * 100 : 0;
-
       // 카테고리별 분석
       const categoryData = expenses.reduce((acc, expense) => {
         expense.items.forEach(item => {
@@ -201,7 +186,6 @@ export function useReports() {
         });
         return acc;
       }, {} as Record<ExpenseCategory, { amount: number; count: number }>);
-
       const categoryBreakdown = Object.entries(categoryData).map(([category, data]) => ({
         category: category as ExpenseCategory,
         categoryName: EXPENSE_CATEGORY_LABELS[category as ExpenseCategory],
@@ -209,7 +193,6 @@ export function useReports() {
         count: data.count,
         percentage: totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0
       })).sort((a, b) => b.amount - a.amount);
-
       // 지점별 분석
       const branchData = expenses.reduce((acc, expense) => {
         if (!acc[expense.branchId]) {
@@ -223,7 +206,6 @@ export function useReports() {
         acc[expense.branchId].count += 1;
         return acc;
       }, {} as Record<string, { branchName: string; amount: number; count: number }>);
-
       const branchBreakdown = Object.entries(branchData).map(([branchId, data]) => ({
         branchId,
         branchName: data.branchName,
@@ -231,42 +213,33 @@ export function useReports() {
         count: data.count,
         percentage: totalAmount > 0 ? (data.amount / totalAmount) * 100 : 0
       })).sort((a, b) => b.amount - a.amount);
-
       // 월별 트렌드
       const monthlyData = expenses.reduce((acc, expense) => {
         const date = expense.createdAt.toDate ? expense.createdAt.toDate() : new Date(expense.createdAt);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
         if (!acc[monthKey]) {
           acc[monthKey] = { amount: 0, count: 0, approved: 0, rejected: 0 };
         }
-        
         acc[monthKey].amount += expense.totalAmount;
         acc[monthKey].count += 1;
-        
         if (expense.status === 'approved' || expense.status === 'paid') {
           acc[monthKey].approved += 1;
         } else if (expense.status === 'rejected') {
           acc[monthKey].rejected += 1;
         }
-        
         return acc;
       }, {} as Record<string, any>);
-
       const monthlyTrend = Object.entries(monthlyData).map(([month, data]) => ({
         month,
         ...data
       })).sort((a, b) => a.month.localeCompare(b.month));
-
       // 상위 지출 항목
       const topExpenses = expenses
         .sort((a, b) => b.totalAmount - a.totalAmount)
         .slice(0, 10);
-
       // 최다 카테고리와 지점 찾기
       const topCategory = categoryBreakdown[0]?.categoryName || '';
       const topBranch = branchBreakdown[0]?.branchName || '';
-
       return {
         summary: {
           totalAmount,
@@ -281,7 +254,6 @@ export function useReports() {
         monthlyTrend,
         topExpenses
       };
-
     } catch (error) {
       console.error('Error generating expense report:', error);
       toast({
@@ -294,29 +266,24 @@ export function useReports() {
       setLoading(false);
     }
   }, [toast]);
-
   // 예산 리포트 생성
   const generateBudgetReport = useCallback(async (filter: ReportFilter): Promise<BudgetReport> => {
     try {
       setLoading(true);
-
       // 예산 데이터 조회
       const budgetQuery = query(
         collection(db, 'budgets'),
         where('isActive', '==', true)
       );
-
       const budgetSnapshot = await getDocs(budgetQuery);
       let budgets = budgetSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Budget[];
-
       // 필터링
       if (filter.branchIds?.length) {
         budgets = budgets.filter(b => !b.branchId || filter.branchIds!.includes(b.branchId));
       }
-
       // 요약 통계
       const totalBudgets = budgets.length;
       const totalAllocated = budgets.reduce((sum, b) => sum + b.allocatedAmount, 0);
@@ -324,7 +291,6 @@ export function useReports() {
       const totalRemaining = budgets.reduce((sum, b) => sum + b.remainingAmount, 0);
       const averageUsage = totalAllocated > 0 ? (totalUsed / totalAllocated) * 100 : 0;
       const overBudgetCount = budgets.filter(b => b.usedAmount > b.allocatedAmount).length;
-
       // 카테고리별 성과
       const categoryData = budgets.reduce((acc, budget) => {
         if (!acc[budget.category]) {
@@ -341,16 +307,13 @@ export function useReports() {
         acc[budget.category].count += 1;
         return acc;
       }, {} as Record<ExpenseCategory, any>);
-
       const categoryPerformance = Object.entries(categoryData).map(([category, data]) => {
         const usage = data.allocated > 0 ? (data.used / data.allocated) * 100 : 0;
         let efficiency: 'excellent' | 'good' | 'fair' | 'poor';
-        
         if (usage >= 80 && usage <= 100) efficiency = 'excellent';
         else if (usage >= 60 && usage < 120) efficiency = 'good';
         else if (usage >= 40 && usage < 140) efficiency = 'fair';
         else efficiency = 'poor';
-
         return {
           category: category as ExpenseCategory,
           categoryName: EXPENSE_CATEGORY_LABELS[category as ExpenseCategory],
@@ -361,12 +324,10 @@ export function useReports() {
           efficiency
         };
       }).sort((a, b) => b.allocated - a.allocated);
-
       // 지점별 성과
       const branchData = budgets.reduce((acc, budget) => {
         const branchKey = budget.branchId || 'headquarters';
         const branchName = budget.branchName || '본사';
-        
         if (!acc[branchKey]) {
           acc[branchKey] = {
             branchName,
@@ -380,7 +341,6 @@ export function useReports() {
         acc[branchKey].remaining += budget.remainingAmount;
         return acc;
       }, {} as Record<string, any>);
-
       const branchPerformance = Object.entries(branchData).map(([branchId, data]) => ({
         branchId,
         branchName: data.branchName,
@@ -389,14 +349,12 @@ export function useReports() {
         remaining: data.remaining,
         usage: data.allocated > 0 ? (data.used / data.allocated) * 100 : 0
       })).sort((a, b) => b.allocated - a.allocated);
-
       // 예산 알림
       const budgetAlerts = budgets
         .map(budget => {
           const usage = budget.allocatedAmount > 0 ? (budget.usedAmount / budget.allocatedAmount) * 100 : 0;
           let severity: 'high' | 'medium' | 'low';
           let message: string;
-
           if (usage >= 100) {
             severity = 'high';
             message = `예산을 ${(usage - 100).toFixed(1)}% 초과했습니다.`;
@@ -406,7 +364,6 @@ export function useReports() {
           } else {
             return null;
           }
-
           return {
             budgetId: budget.id,
             budgetName: budget.name,
@@ -416,7 +373,6 @@ export function useReports() {
           };
         })
         .filter(alert => alert !== null) as any[];
-
       return {
         summary: {
           totalBudgets,
@@ -430,7 +386,6 @@ export function useReports() {
         branchPerformance,
         budgetAlerts
       };
-
     } catch (error) {
       console.error('Error generating budget report:', error);
       toast({
@@ -443,30 +398,25 @@ export function useReports() {
       setLoading(false);
     }
   }, [toast]);
-
   // 통합 리포트 생성
   const generateConsolidatedReport = useCallback(async (filter: ReportFilter): Promise<ConsolidatedReport> => {
     try {
       setLoading(true);
-
       const [expenseReport, budgetReport] = await Promise.all([
         generateExpenseReport(filter),
         generateBudgetReport(filter)
       ]);
-
       // 구매 요청 데이터 (간단한 버전)
       const purchaseQuery = query(
         collection(db, 'materialRequests'),
         where('createdAt', '>=', filter.dateFrom),
         where('createdAt', '<=', filter.dateTo)
       );
-
       const purchaseSnapshot = await getDocs(purchaseQuery);
       const purchases = purchaseSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as MaterialRequest[];
-
       const purchaseReport: PurchaseReport = {
         summary: {
           totalRequests: purchases.length,
@@ -486,7 +436,6 @@ export function useReports() {
         branchActivity: [],
         statusDistribution: []
       };
-
       // 전체 개요
       const overview = {
         totalExpenses: expenseReport.summary.totalAmount,
@@ -495,10 +444,8 @@ export function useReports() {
         purchaseRequests: purchaseReport.summary.totalRequests,
         costSavings: 0 // 계산 로직 필요
       };
-
       // 권장사항 생성
       const recommendations = [];
-
       // 예산 초과 시 권장사항
       if (budgetReport.summary.overBudgetCount > 0) {
         recommendations.push({
@@ -509,7 +456,6 @@ export function useReports() {
           estimatedImpact: budgetReport.summary.overBudgetCount * 100000
         });
       }
-
       // 저활용 예산 권장사항
       const underUtilized = budgetReport.categoryPerformance.filter(c => c.usage < 50);
       if (underUtilized.length > 0) {
@@ -521,7 +467,6 @@ export function useReports() {
           estimatedImpact: underUtilized.reduce((sum, c) => sum + c.remaining, 0) * 0.1
         });
       }
-
       return {
         period: {
           from: filter.dateFrom,
@@ -533,7 +478,6 @@ export function useReports() {
         purchaseReport,
         recommendations
       };
-
     } catch (error) {
       console.error('Error generating consolidated report:', error);
       toast({
@@ -546,12 +490,10 @@ export function useReports() {
       setLoading(false);
     }
   }, [generateExpenseReport, generateBudgetReport, toast]);
-
   // 리포트 내보내기 (CSV)
   const exportToCSV = useCallback((data: any[], filename: string) => {
     try {
       if (data.length === 0) return;
-
       const headers = Object.keys(data[0]);
       const csvContent = [
         headers.join(','),
@@ -564,24 +506,19 @@ export function useReports() {
           }).join(',')
         )
       ].join('\n');
-
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      
       link.setAttribute('href', url);
       link.setAttribute('download', `${filename}.csv`);
       link.style.visibility = 'hidden';
-      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
       toast({
         title: '내보내기 완료',
         description: `${filename}.csv 파일이 다운로드되었습니다.`
       });
-
     } catch (error) {
       console.error('Error exporting to CSV:', error);
       toast({
@@ -591,7 +528,6 @@ export function useReports() {
       });
     }
   }, [toast]);
-
   return {
     loading,
     generateExpenseReport,

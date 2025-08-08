@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +20,6 @@ import {
 import { collection, query, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getFunctions, httpsCallable } from "firebase/functions";
-
 interface BackupRecord {
   id: string;
   timestamp: any;
@@ -30,7 +28,6 @@ interface BackupRecord {
   status: 'completed' | 'failed';
   dataSize?: number;
 }
-
 export default function BackupPage() {
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,20 +36,16 @@ export default function BackupPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isHQManager } = useUserRole();
-
   const functions = getFunctions();
-
   useEffect(() => {
     loadBackups();
   }, []);
-
   const loadBackups = async () => {
     // 본사 관리자가 아니면 백업 목록을 로드하지 않음
     if (!isHQManager()) {
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       const backupsQuery = query(
@@ -60,7 +53,6 @@ export default function BackupPage() {
         orderBy('timestamp', 'desc')
       );
       const snapshot = await getDocs(backupsQuery);
-      
       const backupsData: BackupRecord[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
@@ -73,7 +65,6 @@ export default function BackupPage() {
           dataSize: data.data ? JSON.stringify(data.data).length : 0
         });
       });
-      
       setBackups(backupsData);
     } catch (error) {
       console.error('백업 목록 로드 실패:', error);
@@ -86,18 +77,15 @@ export default function BackupPage() {
       setLoading(false);
     }
   };
-
   const createManualBackup = async () => {
     try {
       setCreatingBackup(true);
       const manualBackup = httpsCallable(functions, 'manualBackup');
       const result = await manualBackup();
-      
       toast({
         title: '성공',
         description: '수동 백업이 완료되었습니다.'
       });
-      
       loadBackups(); // 목록 새로고침
     } catch (error) {
       console.error('수동 백업 실패:', error);
@@ -110,13 +98,11 @@ export default function BackupPage() {
       setCreatingBackup(false);
     }
   };
-
   const restoreBackup = async (backupId: string) => {
     try {
       setRestoringBackup(backupId);
       const restoreBackupFunction = httpsCallable(functions, 'restoreBackup');
       await restoreBackupFunction({ backupId });
-      
       toast({
         title: '성공',
         description: '백업 복원이 완료되었습니다.'
@@ -132,13 +118,11 @@ export default function BackupPage() {
       setRestoringBackup(null);
     }
   };
-
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '알 수 없음';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleString('ko-KR');
   };
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -146,7 +130,6 @@ export default function BackupPage() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
   // 본사 관리자가 아니면 접근 제한
   if (!isHQManager()) {
     return (
@@ -159,9 +142,6 @@ export default function BackupPage() {
       </div>
     );
   }
-
-
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -172,14 +152,12 @@ export default function BackupPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="백업 관리"
         description="시스템 데이터의 백업을 관리하고 복원할 수 있습니다."
       />
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* 백업 통계 */}
         <Card>
@@ -216,7 +194,6 @@ export default function BackupPage() {
             </div>
           </CardContent>
         </Card>
-
         {/* 백업 설정 */}
         <Card>
           <CardHeader>
@@ -244,7 +221,6 @@ export default function BackupPage() {
             </Button>
           </CardContent>
         </Card>
-
         {/* 백업 정보 */}
         <Card>
           <CardHeader>
@@ -263,7 +239,6 @@ export default function BackupPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 백업 목록 */}
       <Card>
         <CardHeader>

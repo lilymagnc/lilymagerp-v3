@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,27 +10,21 @@ import { CategoryFilter } from './components/category-filter';
 import { useAlbums } from '@/hooks/use-albums';
 import { AlbumCategory } from '@/types/album';
 import { useAuth } from '@/hooks/use-auth';
-
 export default function SampleAlbumsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<AlbumCategory | 'all'>('all');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  
   const { albums, loading, createAlbum, deleteAlbum } = useAlbums();
   const { user } = useAuth();
-  
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
-
   // 검색 및 필터링된 앨범
   const filteredAlbums = albums.filter(album => {
     const matchesSearch = album.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          album.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || album.category === selectedCategory;
-    
     return matchesSearch && matchesCategory;
   });
-
   const handleCreateAlbum = async (albumData: any) => {
     try {
       await createAlbum(albumData);
@@ -40,7 +33,6 @@ export default function SampleAlbumsPage() {
       console.error('앨범 생성 실패:', error);
     }
   };
-
   const handleDeleteAlbum = async (albumId: string) => {
     if (confirm('앨범을 삭제하시겠습니까? 모든 사진이 함께 삭제됩니다.')) {
       try {
@@ -50,14 +42,12 @@ export default function SampleAlbumsPage() {
       }
     }
   };
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="샘플앨범"
         description="고객에게 보여줄 작품 샘플을 관리합니다"
       />
-
       {/* 검색 및 필터 영역 */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -69,25 +59,21 @@ export default function SampleAlbumsPage() {
             className="pl-10"
           />
         </div>
-        
         <CategoryFilter
           selectedCategory={selectedCategory}
           onCategoryChange={setSelectedCategory}
         />
-        
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           새 앨범
         </Button>
       </div>
-
       {/* 앨범 그리드 */}
       <AlbumGrid
         albums={filteredAlbums}
         loading={loading}
         onAlbumDelete={handleDeleteAlbum}
       />
-
       {/* 앨범 생성 다이얼로그 */}
       <CreateAlbumDialog
         open={isCreateDialogOpen}

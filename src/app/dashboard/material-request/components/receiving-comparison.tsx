@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,12 +23,10 @@ import {
 import { useInventorySync } from '@/hooks/use-inventory-sync';
 import { useToast } from '@/hooks/use-toast';
 import type { MaterialRequest } from '@/types/material-request';
-
 interface ReceivingComparisonProps {
   request: MaterialRequest;
   onInventorySync?: () => void;
 }
-
 interface ComparisonItem {
   materialId: string;
   materialName: string;
@@ -56,15 +53,12 @@ interface ComparisonItem {
     hasSubstitution: boolean;
   };
 }
-
 export function ReceivingComparison({ request, onInventorySync }: ReceivingComparisonProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'summary' | 'items' | 'issues'>('summary');
   const [isProcessingSync, setIsProcessingSync] = useState(false);
-  
   const { syncInventoryOnDelivery, loading: syncLoading } = useInventorySync();
   const { toast } = useToast();
-
   // 요청 vs 실제 vs 입고 비교 데이터 생성
   const generateComparisonData = (): ComparisonItem[] => {
     return request.requestedItems.map(requestedItem => {
@@ -72,18 +66,15 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
       const actualItem = request.actualPurchase?.items.find(
         item => item.originalMaterialId === requestedItem.materialId
       );
-
       // 입고 정보 찾기 (receivingInfo가 있다고 가정)
       const receivedItem = (request as any).receivingInfo?.receivedItems?.find(
         (item: any) => item.materialId === requestedItem.materialId
       );
-
       // 차이점 계산
       const quantityDiff = (receivedItem?.quantity || actualItem?.actualQuantity || 0) - requestedItem.requestedQuantity;
       const priceDiff = (actualItem?.actualPrice || requestedItem.estimatedPrice) - requestedItem.estimatedPrice;
       const conditionIssue = receivedItem?.condition !== 'good';
       const hasSubstitution = actualItem?.actualMaterialId !== actualItem?.originalMaterialId;
-
       return {
         materialId: requestedItem.materialId,
         materialName: requestedItem.materialName,
@@ -112,9 +103,7 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
       };
     });
   };
-
   const comparisonData = generateComparisonData();
-  
   // 전체 통계 계산
   const totalStats = {
     requestedItems: comparisonData.length,
@@ -132,12 +121,10 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
       sum + (item.actual ? item.actual.quantity * item.actual.actualPrice : 0), 0
     )
   };
-
   const costDifference = totalStats.totalActualCost - totalStats.totalRequestedCost;
   const costDifferencePercent = totalStats.totalRequestedCost > 0 
     ? (costDifference / totalStats.totalRequestedCost) * 100 
     : 0;
-
   const getStatusIcon = (item: ComparisonItem) => {
     if (!item.actual) return <XCircle className="h-4 w-4 text-red-500" />;
     if (!item.received) return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
@@ -146,7 +133,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
     }
     return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
-
   const getStatusText = (item: ComparisonItem) => {
     if (!item.actual) return '구매 안됨';
     if (!item.received) return '입고 대기';
@@ -155,14 +141,12 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
     if (item.discrepancies.quantityDiff < 0) return '부족 입고';
     return '정상 입고';
   };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
       currency: 'KRW'
     }).format(amount);
   };
-
   // 자동 재고 연동 처리
   const handleInventorySync = async () => {
     if (!request.actualPurchase?.items || request.actualPurchase.items.length === 0) {
@@ -173,9 +157,7 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
       });
       return;
     }
-
     setIsProcessingSync(true);
-    
     try {
       const result = await syncInventoryOnDelivery(
         request.id,
@@ -185,13 +167,11 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
         'current-user-id', // 실제로는 현재 사용자 ID를 가져와야 함
         'current-user-name' // 실제로는 현재 사용자 이름을 가져와야 함
       );
-
       if (result.success) {
         toast({
           title: '재고 연동 완료',
           description: `${result.updatedMaterials}개 자재의 재고가 업데이트되었습니다.`
         });
-        
         // 부모 컴포넌트에 재고 연동 완료 알림
         onInventorySync?.();
       } else {
@@ -212,14 +192,12 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
       setIsProcessingSync(false);
     }
   };
-
   // 재고 연동 가능 여부 확인
   const canSyncInventory = () => {
     return request.actualPurchase?.items && 
            request.actualPurchase.items.length > 0 &&
            request.status === 'delivered';
   };
-
   return (
     <div className="space-y-4">
       {/* 요약 통계 */}
@@ -252,7 +230,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
               <p className="text-sm text-orange-800">이슈 품목</p>
             </div>
           </div>
-
           {/* 비용 비교 */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h4 className="font-medium mb-3 flex items-center gap-2">
@@ -289,7 +266,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
               </div>
             </div>
           </div>
-
           {/* 이슈 알림 */}
           {totalStats.issueItems > 0 && (
             <Alert className="border-orange-200 bg-orange-50">
@@ -302,7 +278,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
           )}
         </CardContent>
       </Card>
-
       {/* 상세 비교 테이블 */}
       <Card>
         <CardHeader>
@@ -356,7 +331,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
                     )}
                   </div>
                 </div>
-
                 {/* 기본 정보 */}
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div className="bg-blue-50 rounded p-3">
@@ -367,7 +341,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
                       소계: {formatCurrency(item.requested.quantity * item.requested.estimatedPrice)}
                     </p>
                   </div>
-                  
                   <div className="bg-green-50 rounded p-3">
                     <p className="font-medium text-green-800 mb-1">구매</p>
                     {item.actual ? (
@@ -382,7 +355,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
                       <p className="text-red-600">구매 안됨</p>
                     )}
                   </div>
-                  
                   <div className="bg-purple-50 rounded p-3">
                     <p className="font-medium text-purple-800 mb-1">입고</p>
                     {item.received ? (
@@ -403,7 +375,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
                     )}
                   </div>
                 </div>
-
                 {/* 상세 정보 (토글) */}
                 {showDetails && (
                   <div className="mt-4 pt-4 border-t">
@@ -430,7 +401,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
                         </p>
                       </div>
                     </div>
-                    
                     {(item.discrepancies.conditionIssue || item.discrepancies.hasSubstitution) && (
                       <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
                         {item.discrepancies.conditionIssue && (
@@ -448,7 +418,6 @@ export function ReceivingComparison({ request, onInventorySync }: ReceivingCompa
           </div>
         </CardContent>
       </Card>
-
       {/* 처리 필요 사항 */}
       {totalStats.issueItems > 0 && (
         <Card>

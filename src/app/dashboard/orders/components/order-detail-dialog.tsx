@@ -1,5 +1,4 @@
 "use client";
-
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -23,16 +22,13 @@ import {
   Truck,
   Home
 } from "lucide-react";
-
 interface OrderDetailDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   order: Order | null;
 }
-
 export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDialogProps) {
   if (!order) return null;
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -45,7 +41,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-  
   const getPaymentStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -56,7 +51,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-
   const getDeliveryMethodBadge = (method: string) => {
     switch (method) {
       case 'pickup':
@@ -67,7 +61,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
         return <Badge variant="outline">{method}</Badge>;
     }
   };
-
   const getMessageTypeBadge = (type: string) => {
     switch (type) {
       case 'card':
@@ -80,7 +73,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
         return <Badge variant="outline">{type}</Badge>;
     }
   };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -96,7 +88,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
             주문의 상세 정보를 확인합니다.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6">
           {/* 주문 기본 정보 */}
           <Card>
@@ -146,7 +137,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
               </div>
             </CardContent>
           </Card>
-
           {/* 주문자 정보 */}
           <Card>
             <CardHeader>
@@ -192,7 +182,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
               </div>
             </CardContent>
           </Card>
-
           {/* 수령 정보 */}
           <Card>
             <CardHeader>
@@ -254,7 +243,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
               </div>
             </CardContent>
           </Card>
-
           {/* 주문 상품 */}
           <Card>
             <CardHeader>
@@ -284,7 +272,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
               </div>
             </CardContent>
           </Card>
-
           {/* 메시지 정보 */}
           {order.message && (
             <Card>
@@ -327,7 +314,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
               </CardContent>
             </Card>
           )}
-
           {/* 특별 요청사항 */}
           {order.specialRequests && order.specialRequests.trim() && (
             <Card>
@@ -346,7 +332,6 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
               </CardContent>
             </Card>
           )}
-
           {/* 주문 요약 */}
           <Card>
             <CardHeader>

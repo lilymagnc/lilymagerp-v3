@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -13,14 +12,12 @@ import { Input } from "@/components/ui/input";
 import { useBranches } from "@/hooks/use-branches";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
-
 interface DashboardStats {
   totalRevenue: number;
   newCustomers: number;
   totalProducts: number;
   pendingOrders: number;
 }
-
 interface Order {
   id: string;
   orderer: {
@@ -34,13 +31,11 @@ interface Order {
   status: string;
   branchName: string;
 }
-
 interface BranchSalesData {
   branch: string;
   sales: number;
   color: string;
 }
-
 export default function DashboardPage() {
   const { branches } = useBranches();
   const [stats, setStats] = useState<DashboardStats>({
@@ -51,50 +46,40 @@ export default function DashboardPage() {
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  
   // 차트별 데이터 상태
   const [dailySales, setDailySales] = useState<BranchSalesData[]>([]);
   const [weeklySales, setWeeklySales] = useState<BranchSalesData[]>([]);
   const [monthlySales, setMonthlySales] = useState<BranchSalesData[]>([]);
-  
   // 검색 날짜 상태
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedWeek, setSelectedWeek] = useState(format(new Date(), 'yyyy-\'W\'ww'));
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-
   // 매장별 색상 정의
   const branchColors = [
     '#FF8C00', '#32CD32', '#4682B4', '#DAA520', '#FF6347', '#9370DB', '#20B2AA', '#FF69B4'
   ];
-
   const getBranchColor = (index: number) => {
     return branchColors[index % branchColors.length];
   };
-
   // 실제 파이어스토어 데이터로 일별 매출 생성
   const generateRealDailySales = async (date: string) => {
     try {
       const selectedDateObj = parseISO(date);
       const startDate = startOfDay(selectedDateObj);
       const endDate = endOfDay(selectedDateObj);
-      
       const ordersQuery = query(
         collection(db, "orders"),
         where("orderDate", ">=", Timestamp.fromDate(startDate)),
         where("orderDate", "<=", Timestamp.fromDate(endDate))
       );
-      
       const ordersSnapshot = await getDocs(ordersQuery);
       const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
       const branchNames = branches.filter(b => b.type !== '본사').map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
-      
       // 각 매장별 매출 계산
       branchNames.forEach(branchName => {
         salesByBranch[branchName] = 0;
       });
-      
       orders.forEach((order: any) => {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
@@ -102,7 +87,6 @@ export default function DashboardPage() {
           salesByBranch[branchName] += total;
         }
       });
-      
       return branchNames.map((branchName, index) => ({
         branch: branchName,
         sales: salesByBranch[branchName],
@@ -113,30 +97,24 @@ export default function DashboardPage() {
       return [];
     }
   };
-
   // 실제 파이어스토어 데이터로 주간 매출 생성
   const generateRealWeeklySales = async (weekString: string) => {
     try {
       const [year, week] = weekString.split('-W');
       const startDate = startOfWeek(new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7));
       const endDate = endOfWeek(startDate);
-      
       const ordersQuery = query(
         collection(db, "orders"),
         where("orderDate", ">=", Timestamp.fromDate(startDate)),
         where("orderDate", "<=", Timestamp.fromDate(endDate))
       );
-      
       const ordersSnapshot = await getDocs(ordersQuery);
       const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
       const branchNames = branches.filter(b => b.type !== '본사').map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
-      
       branchNames.forEach(branchName => {
         salesByBranch[branchName] = 0;
       });
-      
       orders.forEach((order: any) => {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
@@ -144,7 +122,6 @@ export default function DashboardPage() {
           salesByBranch[branchName] += total;
         }
       });
-      
       return branchNames.map((branchName, index) => ({
         branch: branchName,
         sales: salesByBranch[branchName],
@@ -155,30 +132,24 @@ export default function DashboardPage() {
       return [];
     }
   };
-
   // 실제 파이어스토어 데이터로 월별 매출 생성
   const generateRealMonthlySales = async (monthString: string) => {
     try {
       const [year, month] = monthString.split('-');
       const startDate = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
       const endDate = endOfMonth(startDate);
-      
       const ordersQuery = query(
         collection(db, "orders"),
         where("orderDate", ">=", Timestamp.fromDate(startDate)),
         where("orderDate", "<=", Timestamp.fromDate(endDate))
       );
-      
       const ordersSnapshot = await getDocs(ordersQuery);
       const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
       const branchNames = branches.filter(b => b.type !== '본사').map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
-      
       branchNames.forEach(branchName => {
         salesByBranch[branchName] = 0;
       });
-      
       orders.forEach((order: any) => {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
@@ -186,7 +157,6 @@ export default function DashboardPage() {
           salesByBranch[branchName] += total;
         }
       });
-      
       return branchNames.map((branchName, index) => ({
         branch: branchName,
         sales: salesByBranch[branchName],
@@ -197,26 +167,22 @@ export default function DashboardPage() {
       return [];
     }
   };
-
   // 날짜 변경 핸들러
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
     const salesData = await generateRealDailySales(date);
     setDailySales(salesData);
   };
-
   const handleWeekChange = async (week: string) => {
     setSelectedWeek(week);
     const salesData = await generateRealWeeklySales(week);
     setWeeklySales(salesData);
   };
-
   const handleMonthChange = async (month: string) => {
     setSelectedMonth(month);
     const salesData = await generateRealMonthlySales(month);
     setMonthlySales(salesData);
   };
-
   useEffect(() => {
     async function fetchDashboardData() {
       setLoading(true);
@@ -224,7 +190,6 @@ export default function DashboardPage() {
         // 주문 데이터 가져오기
         const ordersSnapshot = await getDocs(collection(db, "orders"));
         const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
         // 최근 주문 (실제 데이터) - orderer.name과 branchName 사용
         const recentOrdersQuery = query(
           collection(db, "orders"),
@@ -234,7 +199,6 @@ export default function DashboardPage() {
         const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
         const recentOrdersData = recentOrdersSnapshot.docs.map(doc => {
           const orderData = doc.data();
-          
           return {
             id: doc.id,
             orderer: orderData.orderer || { name: '주문자 정보 없음' },
@@ -245,51 +209,42 @@ export default function DashboardPage() {
           };
         });
         setRecentOrders(recentOrdersData);
-
         // 기본 통계
         const totalRevenue = orders.reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
         const pendingOrders = orders.filter((order: any) => order.status === 'pending' || order.status === 'processing').length;
-        
         // 상품 수 (바코드 기준 - 고유 상품 ID 수)
         const productsSnapshot = await getDocs(collection(db, "products"));
         const products = productsSnapshot.docs.map(doc => doc.data());
-        
         // 고유한 상품 ID를 기준으로 바코드 수 계산
         const uniqueProductIds = new Set(products.map(product => product.id).filter(Boolean));
         const totalProducts = uniqueProductIds.size;
-        
         // 고객 수
         const customersSnapshot = await getDocs(collection(db, "customers"));
         const newCustomers = customersSnapshot.size;
-
         setStats({
           totalRevenue,
           newCustomers,
           totalProducts,
           pendingOrders
         });
-
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
       }
     }
-
     if (branches.length > 0) {
       fetchDashboardData().then(async () => {
         // 초기 차트 데이터 생성 (실제 데이터)
         const dailyData = await generateRealDailySales(selectedDate);
         const weeklyData = await generateRealWeeklySales(selectedWeek);
         const monthlyData = await generateRealMonthlySales(selectedMonth);
-        
         setDailySales(dailyData);
         setWeeklySales(weeklyData);
         setMonthlySales(monthlyData);
       });
     }
   }, [branches]);
-
   const formatCurrency = (value: number) => `₩${value.toLocaleString()}`;
   const formatDate = (date: any) => {
     if (!date) return '날짜 없음';
@@ -298,7 +253,6 @@ export default function DashboardPage() {
     }
     return new Date(date).toLocaleDateString('ko-KR');
   };
-
   const getStatusBadge = (status: string) => {
     const statusMap: { [key: string]: { text: string; color: string } } = {
       'completed': { text: '완료', color: 'bg-green-100 text-green-800' },
@@ -313,7 +267,6 @@ export default function DashboardPage() {
       </span>
     );
   };
-
   // 차트용 커스텀 툴팁
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -328,7 +281,6 @@ export default function DashboardPage() {
     }
     return null;
   };
-
   if (loading) {
     return (
       <div className="space-y-8">
@@ -349,14 +301,12 @@ export default function DashboardPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-8">
       <PageHeader
         title="대시보드"
         description="시스템의 현재 상태를 한 눈에 파악하세요."
       />
-      
       {/* 상단 통계 카드 */}
       <div className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
@@ -372,7 +322,6 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-
         <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">등록 고객</CardTitle>
@@ -386,7 +335,6 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-
         <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">등록된 상품 수</CardTitle>
@@ -397,7 +345,6 @@ export default function DashboardPage() {
             <p className="text-xs opacity-90">고유 바코드 기준</p>
           </CardContent>
         </Card>
-
         <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">처리 대기</CardTitle>
@@ -409,7 +356,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 차트 섹션 - 그리드 레이아웃으로 변경 */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 일별 매출 현황 */}
@@ -449,7 +395,6 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
         {/* 주간 매출 현황 */}
         <Card>
           <CardHeader>
@@ -488,7 +433,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 월별 매출 현황 */}
       <Card>
         <CardHeader>
@@ -526,7 +470,6 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-
       {/* 최근 주문 목록 (실제 데이터) - 테이블 형태로 개선 */}
       <Card>
         <CardHeader>

@@ -1,6 +1,5 @@
 
 "use client";
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,7 +12,6 @@ import { CalendarIcon, Search } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import type { Branch } from "@/hooks/use-branches";
-
 export interface StockHistoryFiltersState {
     dateRange: DateRange;
     branch: string;
@@ -21,20 +19,15 @@ export interface StockHistoryFiltersState {
     itemType: string;
     search: string;
 }
-
 interface HistoryFiltersProps {
     filters: StockHistoryFiltersState;
     onFiltersChange: React.Dispatch<React.SetStateAction<StockHistoryFiltersState>>;
     branches: Branch[];
 }
-
-
 export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFiltersProps) {
-
     const handleFilterChange = (key: keyof StockHistoryFiltersState, value: any) => {
         onFiltersChange(prev => ({ ...prev, [key]: value }));
     };
-
   return (
     <Card className="mb-4">
       <CardContent className="pt-6">
@@ -75,7 +68,6 @@ export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFi
                 />
                 </PopoverContent>
             </Popover>
-
             {/* Branch Filter */}
             <Select value={filters.branch} onValueChange={(value) => handleFilterChange('branch', value)}>
                 <SelectTrigger>
@@ -90,7 +82,6 @@ export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFi
                     ))}
                 </SelectContent>
             </Select>
-
             {/* Type Filter */}
             <Select value={filters.type} onValueChange={(value) => handleFilterChange('type', value)}>
                 <SelectTrigger>
@@ -103,7 +94,6 @@ export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFi
                     <SelectItem value="manual_update">수동 수정</SelectItem>
                 </SelectContent>
             </Select>
-            
             {/* Item Type Filter */}
             <Select value={filters.itemType} onValueChange={(value) => handleFilterChange('itemType', value)}>
                 <SelectTrigger>
@@ -115,7 +105,6 @@ export function HistoryFilters({ filters, onFiltersChange, branches }: HistoryFi
                     <SelectItem value="material">자재</SelectItem>
                 </SelectContent>
             </Select>
-
             {/* Search Input */}
              <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

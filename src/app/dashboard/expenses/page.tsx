@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,22 +21,18 @@ import { ExpenseRequestList } from './components/expense-request-list';
 import { ExpenseAnalytics } from './components/expense-analytics';
 import { ExpenseApproval } from './components/expense-approval';
 import { useExpenses } from '@/hooks/use-expenses';
-
 export default function ExpensesPage() {
   const [activeTab, setActiveTab] = useState('list');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { expenses, loading, stats } = useExpenses();
-
   const handleCreateExpense = () => {
     setShowCreateForm(true);
     setActiveTab('create');
   };
-
   const handleExpenseCreated = () => {
     setShowCreateForm(false);
     setActiveTab('list');
   };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -45,7 +40,6 @@ export default function ExpensesPage() {
       notation: 'compact'
     }).format(amount);
   };
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 헤더 */}
@@ -61,7 +55,6 @@ export default function ExpensesPage() {
           새 비용 신청
         </Button>
       </div>
-
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -80,7 +73,6 @@ export default function ExpensesPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -97,7 +89,6 @@ export default function ExpensesPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -114,7 +105,6 @@ export default function ExpensesPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -133,7 +123,6 @@ export default function ExpensesPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 메인 콘텐츠 */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
@@ -158,7 +147,6 @@ export default function ExpensesPage() {
             영수증
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="list" className="mt-6">
           <Card>
             <CardHeader>
@@ -179,7 +167,6 @@ export default function ExpensesPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="create" className="mt-6">
           <Card>
             <CardHeader>
@@ -199,7 +186,6 @@ export default function ExpensesPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="approval" className="mt-6">
           <Card>
             <CardHeader>
@@ -216,11 +202,9 @@ export default function ExpensesPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="analytics" className="mt-6">
           <ExpenseAnalytics />
         </TabsContent>
-
         <TabsContent value="receipts" className="mt-6">
           <Card>
             <CardHeader>

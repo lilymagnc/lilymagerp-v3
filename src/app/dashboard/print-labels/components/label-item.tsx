@@ -1,17 +1,13 @@
 
 "use client";
-
 import { Barcode } from "@/components/barcode";
-
 export interface LabelItemData {
   id: string;
   name: string;
 }
-
 interface LabelItemProps {
   item: LabelItemData;
 }
-
 export function LabelItem({ item }: LabelItemProps) {
   return (
     <div className="bg-white p-2 flex flex-col items-center justify-center text-center h-[33.8mm]">

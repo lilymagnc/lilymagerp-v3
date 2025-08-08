@@ -1,6 +1,5 @@
 
 "use client";
-
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -32,28 +31,22 @@ import { useAuth } from "@/hooks/use-auth";
 import { useDiscountSettings } from "@/hooks/use-discount-settings";
 import { Timestamp } from "firebase/firestore";
 import { debounce } from "lodash";
-
-
 interface OrderItem extends Product {
   quantity: number;
 }
-
 type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
 type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
 type MessageType = "card" | "ribbon";
 type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
 type PaymentStatus = "pending" | "paid";
-
 declare global {
   interface Window {
     daum: any;
   }
 }
-
 export default function NewOrderPage() {
   const { user } = useAuth();
   const { branches, loading: branchesLoading, fetchBranches } = useBranches();
-
   const { products: allProducts, loading: productsLoading } = useProducts();
   const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
   const { findCustomersByContact, customers } = useCustomers();
@@ -61,7 +54,6 @@ export default function NewOrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id');
-
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,51 +62,40 @@ export default function NewOrderPage() {
         setIsCustomerSearchOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const { toast } = useToast();
-  
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [deliveryFeeType, setDeliveryFeeType] = useState<"auto" | "manual">("auto");
   const [manualDeliveryFee, setManualDeliveryFee] = useState(0);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
-  
   const [ordererName, setOrdererName] = useState("");
   const [ordererContact, setOrdererContact] = useState("");
   const [ordererCompany, setOrdererCompany] = useState("");
   const [ordererEmail, setOrdererEmail] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [registerCustomer, setRegisterCustomer] = useState(true);
-
   const [contactSearchResults, setContactSearchResults] = useState<Customer[]>([]);
   const [isContactSearchOpen, setIsContactSearchOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [usedPoints, setUsedPoints] = useState(0);
-  
   // 할인율 관련 상태
   const [selectedDiscountRate, setSelectedDiscountRate] = useState<number>(0);
   const [customDiscountRate, setCustomDiscountRate] = useState<number>(0);
-  
   // 고객 검색 관련 상태
   const [customerSearchQuery, setCustomerSearchQuery] = useState("");
   const [customerSearchResults, setCustomerSearchResults] = useState<Customer[]>([]);
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
-
-  
   const [orderType, setOrderType] = useState<OrderType>("store");
   const [receiptType, setReceiptType] = useState<ReceiptType>("store_pickup");
-  
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
-
   // 사용자가 선택할 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
@@ -123,7 +104,6 @@ export default function NewOrderPage() {
       return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
     }
   }, [branches, isAdmin, userBranch]);
-
   // 직원의 경우 자동으로 소속 지점으로 설정
   useEffect(() => {
     if (!isAdmin && userBranch && !selectedBranch) {
@@ -133,55 +113,41 @@ export default function NewOrderPage() {
       }
     }
   }, [isAdmin, userBranch, selectedBranch, branches]);
-
   // 현재 시간을 30분 단위로 반올림하는 함수
   const getInitialTime = () => {
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    
     // 30분 단위로 반올림
     const roundedMinutes = minutes < 15 ? 0 : minutes < 45 ? 30 : 0;
     const adjustedHours = minutes >= 45 ? hours + 1 : hours;
-    
     // 영업시간 체크 (7:30 - 22:00)
     if (adjustedHours < 7 || (adjustedHours === 7 && roundedMinutes < 30)) {
       return "07:30"; // 영업시간 전이면 첫 영업시간
     } else if (adjustedHours >= 22) {
       return "07:30"; // 영업시간 후면 다음날 첫 영업시간
     }
-    
     return `${String(adjustedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
   };
-
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
   const [scheduleTime, setScheduleTime] = useState(getInitialTime());
-  
   const [pickerName, setPickerName] = useState("");
   const [pickerContact, setPickerContact] = useState("");
-
   const [recipientName, setRecipientName] = useState("");
   const [recipientContact, setRecipientContact] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryAddressDetail, setDeliveryAddressDetail] = useState("");
-
   const [messageType, setMessageType] = useState<MessageType>("card");
   const [messageContent, setMessageContent] = useState("");
   const [messageSender, setMessageSender] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
-
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
-
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
   const [existingOrder, setExistingOrder] = useState<Order | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [selectedMidCategory, setSelectedMidCategory] = useState<string | null>(null);
-
-
-
   const timeOptions = useMemo(() => {
     const options = [];
     for (let h = 7; h <= 22; h++) {
@@ -195,25 +161,21 @@ export default function NewOrderPage() {
     }
     return options;
   }, []);
-
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
-
   const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
   const midCategories = useMemo(() => {
     if (!selectedMainCategory) return [];
     return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
   }, [branchProducts, selectedMainCategory]);
-
   const filteredProducts = useMemo(() => {
     return branchProducts.filter(p => 
         (!selectedMainCategory || p.mainCategory === selectedMainCategory) &&
         (!selectedMidCategory || p.midCategory === selectedMidCategory)
     );
   }, [branchProducts, selectedMainCategory, selectedMidCategory]);
-
   const todaysOrders = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -225,7 +187,6 @@ export default function NewOrderPage() {
       return orderDate.getTime() === today.getTime();
     })
   }, [orders, selectedBranch]);
-
   // 사용자 역할에 따른 자동 지점 선택
   useEffect(() => {
     if (user && branches.length > 0 && !selectedBranch) {
@@ -238,7 +199,6 @@ export default function NewOrderPage() {
       }
     }
   }, [user, branches, selectedBranch]);
-
   useEffect(() => {
       if (orderId && !ordersLoading && orders.length > 0 && !productsLoading && allProducts.length > 0 && !branchesLoading && branches.length > 0) {
         const foundOrder = orders.find(o => o.id === orderId);
@@ -246,12 +206,10 @@ export default function NewOrderPage() {
             setExistingOrder(foundOrder);
             const branch = branches.find(b => b.id === foundOrder.branchId);
             setSelectedBranch(branch || null);
-
             setOrderItems(foundOrder.items.map(item => {
                 const product = allProducts.find(p => p.id === item.id && p.branch === foundOrder.branchName);
                 return { ...product!, quantity: item.quantity };
             }).filter(item => item.id)); 
-            
             if(foundOrder.deliveryInfo?.district && foundOrder.deliveryInfo.district !== '') {
                 setDeliveryFeeType("auto");
                 setSelectedDistrict(foundOrder.deliveryInfo.district);
@@ -259,13 +217,11 @@ export default function NewOrderPage() {
                 setDeliveryFeeType("manual");
                 setManualDeliveryFee(foundOrder.summary.deliveryFee);
             }
-            
             setOrdererName(foundOrder.orderer.name);
             setOrdererContact(foundOrder.orderer.contact);
             setOrdererCompany(foundOrder.orderer.company || "");
             setOrdererEmail(foundOrder.orderer.email || "");
             setIsAnonymous(foundOrder.isAnonymous);
-
             setOrderType(foundOrder.orderType);
             // 기존 데이터와의 호환성을 위한 타입 변환
             const legacyReceiptType = foundOrder.receiptType as any;
@@ -276,27 +232,22 @@ export default function NewOrderPage() {
             } else {
               setReceiptType(foundOrder.receiptType as ReceiptType);
             }
-            
             const schedule = foundOrder.pickupInfo || foundOrder.deliveryInfo;
             if(schedule) {
               setScheduleDate(schedule.date ? new Date(schedule.date) : new Date());
               setScheduleTime(schedule.time);
             }
-            
             if(foundOrder.pickupInfo){
               setPickerName(foundOrder.pickupInfo.pickerName);
               setPickerContact(foundOrder.pickupInfo.pickerContact);
             }
-            
             if(foundOrder.deliveryInfo){
               setRecipientName(foundOrder.deliveryInfo.recipientName);
               setRecipientContact(foundOrder.deliveryInfo.recipientContact);
               setDeliveryAddress(foundOrder.deliveryInfo.address);
               setDeliveryAddressDetail(""); 
             }
-
             setMessageType(foundOrder.message.type);
-            
             // 메시지 내용에서 보내는 사람 분리
             const messageParts = foundOrder.message.content.split('\n---\n');
             if (messageParts.length > 1) {
@@ -307,14 +258,11 @@ export default function NewOrderPage() {
               setMessageSender("");
             }
             setSpecialRequest(foundOrder.request || "");
-
             setPaymentMethod(foundOrder.payment.method);
             setPaymentStatus(foundOrder.payment.status as PaymentStatus);
         }
       }
   }, [orderId, orders, ordersLoading, branches, branchesLoading, allProducts, productsLoading])
-
-
   useEffect(() => {
     if (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') {
       setPickerName(ordererName);
@@ -322,7 +270,6 @@ export default function NewOrderPage() {
       setDeliveryFeeType("manual");
       setManualDeliveryFee(0);
       setSelectedDistrict(null);
-      
       // 매장픽업(즉시)일 때는 현재 날짜와 시간으로 설정
       if (receiptType === 'store_pickup') {
         setScheduleDate(new Date());
@@ -333,7 +280,6 @@ export default function NewOrderPage() {
       setDeliveryFeeType("auto");
     }
   }, [ordererName, ordererContact, receiptType]);
-  
   // 자동계산이 불가능할 경우 직접입력으로 변경하는 로직 추가
   useEffect(() => {
     if (receiptType === 'delivery_reservation' && deliveryFeeType === 'auto') {
@@ -344,7 +290,6 @@ export default function NewOrderPage() {
       }
     }
   }, [selectedBranch, deliveryFeeType, receiptType]);
-  
   const deliveryFee = useMemo(() => {
     if (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') return 0;
     if (deliveryFeeType === 'manual') {
@@ -356,7 +301,6 @@ export default function NewOrderPage() {
     const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
     return feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
   }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, receiptType]);
-
   const debouncedSearch = useCallback(
     debounce(async (contact: string) => {
       if (contact.length >= 4) {
@@ -374,11 +318,9 @@ export default function NewOrderPage() {
     }, 300),
     [findCustomersByContact]
   );
-  
 const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const formattedPhoneNumber = formatPhoneNumber(e.target.value);
   setOrdererContact(formattedPhoneNumber);
-  
   // 고객 검색 실행
   if (formattedPhoneNumber.replace(/[^0-9]/g, '').length >= 4) {
     debouncedSearch(formattedPhoneNumber);
@@ -388,7 +330,6 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedCustomer(null);
   }
 };
-
   const formatPhoneNumber = (value: string) => {
     if (!value) return value;
     const phoneNumber = value.replace(/[^\d]/g, '');
@@ -399,16 +340,13 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
     return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 7)}-${phoneNumber.slice(7, 11)}`;
   }
-
   const handleGenericContactChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
     const formattedPhoneNumber = formatPhoneNumber(e.target.value);
     setter(formattedPhoneNumber);
   }
-
   const handleAddProduct = (docId: string) => {
     const productToAdd = branchProducts.find(p => p.docId === docId);
     if (!productToAdd) return;
-
     setOrderItems(prevItems => {
         const existingItem = prevItems.find(item => item.docId === productToAdd.docId);
         if (existingItem) {
@@ -427,25 +365,18 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         }
     });
   };
-
   const updateItemQuantity = (docId: string, newQuantity: number) => {
     const itemToUpdate = orderItems.find(item => item.docId === docId);
     if (!itemToUpdate) return;
-    
     if (newQuantity > 0 && newQuantity <= itemToUpdate.stock) {
       setOrderItems(orderItems.map(item => item.docId === docId ? { ...item, quantity: newQuantity } : item));
     } else if (newQuantity > itemToUpdate.stock) {
         toast({ variant: 'destructive', title: '재고 부족', description: `최대 주문 가능 수량은 ${itemToUpdate.stock}개 입니다.` });
     }
   };
-
   const removeItem = (docId: string) => {
     setOrderItems(orderItems.filter(item => item.docId !== docId));
   };
-  
-
-
-
   const handleCompleteOrder = async () => {
     setIsSubmitting(true);
     if (orderItems.length === 0) {
@@ -458,7 +389,6 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setIsSubmitting(false);
         return;
     }
-    
     const orderPayload: OrderData = {
         branchId: selectedBranch.id,
         branchName: selectedBranch.name,
@@ -466,7 +396,6 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         status: existingOrder?.status || 'processing', 
         orderType: orderType,
         receiptType: receiptType,
-        
         items: orderItems.map(({id, name, quantity, price}) => ({id, name, quantity, price})),
         summary: {
           subtotal: orderSummary.subtotal,
@@ -477,7 +406,6 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           pointsEarned: orderSummary.pointsEarned,
           total: orderSummary.total,
         },
-
         orderer: { id: selectedCustomer?.id || "", name: ordererName, contact: ordererContact, company: ordererCompany, email: ordererEmail },
         isAnonymous: isAnonymous,
         registerCustomer: registerCustomer,
@@ -485,14 +413,12 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             method: paymentMethod,
             status: paymentStatus === "paid" ? "completed" : paymentStatus,
         },
-
         pickupInfo: (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
             time: scheduleTime, 
             pickerName, 
             pickerContact 
         } : null,
-        
         deliveryInfo: receiptType === 'delivery_reservation' ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
             time: scheduleTime,
@@ -501,21 +427,13 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             address: `${deliveryAddress} ${deliveryAddressDetail}`,
             district: selectedDistrict ?? '',
         } : null,
-
         message: { 
           type: messageType, 
           content: messageSender ? `${messageContent}\n---\n${messageSender}` : messageContent 
         },
         request: specialRequest,
     };
-
     try {
-      console.log('주문 데이터:', {
-        customerId: selectedCustomer?.id,
-        pointsUsed: orderSummary.pointsUsed,
-        customerPoints: selectedCustomer?.points
-      });
-      
       if (existingOrder) {
         await updateOrder(existingOrder.id, orderPayload);
       } else {
@@ -528,15 +446,11 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setIsSubmitting(false);
     }
   }
-
   // 지점 데이터 디버깅을 위한 useEffect 추가
   useEffect(() => {
     if (selectedBranch) {
-      console.log('Selected Branch:', selectedBranch);
-      console.log('Delivery Fees:', selectedBranch.deliveryFees);
-    }
+      }
   }, [selectedBranch]);
-
   const handleBranchChange = (branchId: string) => {
     // 먼저 관련 상태들을 초기화
     setOrderItems([]);
@@ -547,18 +461,15 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUsedPoints(0);
     setSelectedDiscountRate(0);
     setCustomDiscountRate(0);
-    
     if (!branchId) {
       setSelectedBranch(null);
       return;
     }
-    
     const branch = branches.find(b => b.id === branchId);
     if (branch) {
       setSelectedBranch(branch);
     }
   };
-
 const handleCustomerSelect = (customer: Customer) => {
   setSelectedCustomer(customer);
   setOrdererName(customer.name);
@@ -568,27 +479,22 @@ const handleCustomerSelect = (customer: Customer) => {
   setIsContactSearchOpen(false);
   setUsedPoints(0);
 };
-
 const handleCustomerSearch = async (query: string) => {
   if (!query.trim()) {
     setCustomerSearchResults([]);
     return;
   }
-
   setCustomerSearchLoading(true);
   try {
     let results = customers;
     const searchTerm = query.toLowerCase().trim();
-    
     // 통합 검색: 회사명, 주문자명, 연락처 뒷4자리로 검색
     results = results.filter(c => {
       const companyMatch = c.companyName?.toLowerCase().includes(searchTerm);
       const nameMatch = c.name.toLowerCase().includes(searchTerm);
       const contactMatch = c.contact.replace(/[^0-9]/g, '').endsWith(searchTerm);
-      
       return companyMatch || nameMatch || contactMatch;
     });
-    
     setCustomerSearchResults(results);
   } catch (error) {
     console.error('고객 검색 오류:', error);
@@ -601,7 +507,6 @@ const handleCustomerSearch = async (query: string) => {
     setCustomerSearchLoading(false);
   }
 };
-
 // 디바운스된 검색 함수
 const debouncedCustomerSearch = useCallback(
   debounce((query: string) => {
@@ -609,28 +514,22 @@ const debouncedCustomerSearch = useCallback(
   }, 300),
   [customers]
 );
-
   const orderSummary = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    
     // 할인율 적용
     const discountRate = selectedDiscountRate > 0 ? selectedDiscountRate : customDiscountRate;
     const discountAmount = Math.floor(subtotal * (discountRate / 100));
     const discountedSubtotal = subtotal - discountAmount;
-    
     // 포인트 사용 가능 여부 확인
     const canUsePoints = selectedCustomer && discountedSubtotal >= 5000;
     const maxUsablePoints = canUsePoints ? Math.min(selectedCustomer.points || 0, discountedSubtotal) : 0;
     const pointsToUse = Math.min(discountedSubtotal, usedPoints, maxUsablePoints);
-    
     // 최종 금액 계산
     const finalSubtotal = discountedSubtotal - pointsToUse;
     const total = finalSubtotal + deliveryFee;
-    
     // 포인트 적립 계산 (할인 설정에 따라)
     const shouldAccumulatePoints = discountSettings?.globalSettings?.allowPointAccumulation ?? true;
     const pointsEarned = shouldAccumulatePoints ? Math.floor(finalSubtotal * 0.02) : 0;
-
     return { 
       subtotal, 
       discountedSubtotal,
@@ -644,23 +543,17 @@ const debouncedCustomerSearch = useCallback(
       maxUsablePoints
     };
   }, [orderItems, deliveryFee, usedPoints, selectedCustomer, selectedDiscountRate, customDiscountRate, discountSettings]);
-
   const handleUseAllPoints = () => {
     if (!selectedCustomer) return;
     const maxPoints = Math.min(selectedCustomer.points || 0, orderSummary.subtotal);
     setUsedPoints(maxPoints);
   };
-
-
-
-
   const handleAddressSearch = () => {
     if (window.daum && window.daum.Postcode) {
       new window.daum.Postcode({
         oncomplete: function(data: any) {
           let fullAddress = data.address;
           let extraAddress = '';
-
           if (data.addressType === 'R') {
             if (data.bname !== '') {
               extraAddress += data.bname;
@@ -670,10 +563,8 @@ const debouncedCustomerSearch = useCallback(
             }
             fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
           }
-          
           setDeliveryAddress(fullAddress);
           setDeliveryAddressDetail('');
-
           const district = data.sigungu;
           if(selectedBranch?.deliveryFees?.some(df => df.district === district)) {
             setSelectedDistrict(district);
@@ -684,7 +575,6 @@ const debouncedCustomerSearch = useCallback(
       }).open();
     }
   }
-  
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -697,12 +587,9 @@ const debouncedCustomerSearch = useCallback(
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-
   const pageTitle = existingOrder ? '주문 수정' : '주문테이블';
   const pageDescription = existingOrder ? '기존 주문을 수정합니다.' : '새로운 주문을 등록합니다.';
-
   const isLoading = ordersLoading || productsLoading || branchesLoading;
-
   return (
     <div>
         <PageHeader
@@ -756,7 +643,6 @@ const debouncedCustomerSearch = useCallback(
               </div>
             </CardContent>
         </Card>
-
         <fieldset disabled={!selectedBranch || isLoading} className="disabled:opacity-50">
           <div className="grid gap-8 xl:grid-cols-3">
             <div className="xl:col-span-2">
@@ -862,7 +748,6 @@ const debouncedCustomerSearch = useCallback(
                             </CardContent>
                           </Card>
                       </div>
-
                        {/* 결제 정보 */}
                       <div>
                           <span className="text-sm font-medium">결제 정보</span>
@@ -889,7 +774,6 @@ const debouncedCustomerSearch = useCallback(
                             </CardContent>
                           </Card>
                       </div>
-
                       {/* 주문자 정보 */}
                       <div>
                           <span className="text-sm font-medium">주문자 정보</span>
@@ -911,7 +795,6 @@ const debouncedCustomerSearch = useCallback(
                                       고객 선택 해제
                                     </Button>
                                   </div>
-                                  
                                   {!selectedCustomer ? (
                                     <div className="space-y-4 customer-search-container">
                                       <div className="space-y-2">
@@ -935,7 +818,6 @@ const debouncedCustomerSearch = useCallback(
                                               <Loader2 className="h-4 w-4 animate-spin" />
                                             </div>
                                           )}
-                                          
                                           {/* 검색 결과 드롭다운 */}
                                           {isCustomerSearchOpen && customerSearchResults.length > 0 && (
                                             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -970,7 +852,6 @@ const debouncedCustomerSearch = useCallback(
                                               ))}
                                             </div>
                                           )}
-                                          
                                           {/* 검색 결과가 없을 때 */}
                                           {isCustomerSearchOpen && customerSearchQuery.trim() && customerSearchResults.length === 0 && !customerSearchLoading && (
                                             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
@@ -979,8 +860,6 @@ const debouncedCustomerSearch = useCallback(
                                           )}
                                         </div>
                                       </div>
-                                      
-
                                     </div>
                                   ) : (
                                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
@@ -1001,7 +880,6 @@ const debouncedCustomerSearch = useCallback(
                                     </div>
                                   )}
                                 </div>
-                                
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="orderer-company">회사명</Label>
@@ -1048,8 +926,6 @@ const debouncedCustomerSearch = useCallback(
                                         />
                                     </div>
                                 </div>
-                                
-                                
                                 <div className="flex items-center space-x-2 mt-4">
                                   <Checkbox id="anonymous" checked={isAnonymous} onCheckedChange={(checked) => setIsAnonymous(!!checked)} />
                                   <label
@@ -1071,7 +947,6 @@ const debouncedCustomerSearch = useCallback(
                               </CardContent>
                           </Card>
                       </div>
-
                       {/* 수령 정보 */}
                       <div>
                           <span className="text-sm font-medium">수령 정보</span>
@@ -1080,7 +955,6 @@ const debouncedCustomerSearch = useCallback(
                               <div className="flex items-center space-x-2"><RadioGroupItem value="pickup_reservation" id="receipt-pickup-reservation" /><Label htmlFor="receipt-pickup-reservation">픽업예약</Label></div>
                               <div className="flex items-center space-x-2"><RadioGroupItem value="delivery_reservation" id="receipt-delivery-reservation" /><Label htmlFor="receipt-delivery-reservation">배송예약</Label></div>
                           </RadioGroup>
-                          
                           {(receiptType === 'pickup_reservation') && (
                               <Card className="mt-2">
                                   <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1124,7 +998,6 @@ const debouncedCustomerSearch = useCallback(
                                   </CardContent>
                               </Card>
                           )}
-
                           {(receiptType === 'store_pickup') && (
                               <Card className="mt-2">
                                   <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1139,7 +1012,6 @@ const debouncedCustomerSearch = useCallback(
                                   </CardContent>
                               </Card>
                           )}
-
                           {(receiptType === 'delivery_reservation') && (
                               <Card className="mt-2">
                                   <CardContent className="p-4 space-y-4">
@@ -1255,7 +1127,6 @@ const debouncedCustomerSearch = useCallback(
                               </Card>
                           )}
                       </div>
-                      
                       {/* 메시지 */}
                       <div className="space-y-3">
                           <span className="text-sm font-medium">메시지</span>
@@ -1286,7 +1157,6 @@ const debouncedCustomerSearch = useCallback(
                               />
                           </div>
                       </div>
-
                       {/* 요청사항 */}
                         <div className="space-y-2">
                             <Label htmlFor="special-request">요청 사항</Label>
@@ -1295,7 +1165,6 @@ const debouncedCustomerSearch = useCallback(
                   </CardContent>
               </Card>
             </div>
-
             <div className="md:col-span-1">
                 <Card>
                     <CardHeader>
@@ -1307,7 +1176,6 @@ const debouncedCustomerSearch = useCallback(
                             <span>상품 합계</span>
                             <span>₩{orderSummary.subtotal.toLocaleString()}</span>
                         </div>
-                        
                         {/* 할인율 선택 */}
                         {selectedBranch && canApplyDiscount(selectedBranch.id, orderSummary.subtotal) && (
                           <>
@@ -1346,7 +1214,6 @@ const debouncedCustomerSearch = useCallback(
                                 <span className="text-sm text-muted-foreground">% (최대 50%)</span>
                               </div>
                             </div>
-                            
                             {(selectedDiscountRate > 0 || customDiscountRate > 0) && (
                               <div className="flex justify-between text-green-600">
                                 <span>할인 금액</span>
@@ -1355,14 +1222,11 @@ const debouncedCustomerSearch = useCallback(
                             )}
                           </>
                         )}
-                        
                         <div className="flex justify-between">
                             <span>배송비</span>
                             <span>₩{deliveryFee.toLocaleString()}</span>
                         </div>
-                        
                         <Separator />
-                        
                         <div className="space-y-2">
                             <Label htmlFor="used-points">포인트 사용</Label>
                             <div className="flex items-center gap-2">
@@ -1421,14 +1285,11 @@ const debouncedCustomerSearch = useCallback(
                             <span>적립 예정 포인트</span>
                             <span>{orderSummary.pointsEarned.toLocaleString()} P</span>
                         </div>
-
                         <Separator />
-
                         <div className="flex justify-between font-bold text-lg">
                             <span>총 결제 금액</span>
                             <span>₩{orderSummary.total.toLocaleString()}</span>
                         </div>
-                        
                         {/* 주문등록 버튼을 총결제금액 아래에 추가 */}
                         <div className="pt-4">
                             <Button onClick={handleCompleteOrder} disabled={isSubmitting} className="w-full">
@@ -1443,11 +1304,9 @@ const debouncedCustomerSearch = useCallback(
                             </Button>
                         </div>
                     </CardContent>
-
                 </Card>
             </div>
           </div>
-          
           <div className="mt-8">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -1494,7 +1353,6 @@ const debouncedCustomerSearch = useCallback(
                 )}
             </Card>
         </div>
-
         </fieldset>
     </div>
   );

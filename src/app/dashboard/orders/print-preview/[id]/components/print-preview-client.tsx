@@ -1,6 +1,5 @@
 
 "use client";
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,11 +10,9 @@ import { useBranches } from '@/hooks/use-branches';
 import { PageHeader } from '@/components/page-header';
 import { format } from 'date-fns';
 import type { SerializableOrder } from '../page';
-
 export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
     const router = useRouter();
     const { branches, loading: branchesLoading } = useBranches();
-    
     if (branchesLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
@@ -24,13 +21,9 @@ export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
             </div>
         );
     }
-
     const targetBranch = branches.find(b => b.id === order.branchId);
-    
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
-    
     const orderDateObject = new Date(order.orderDate);
-
     const printData: OrderPrintData | null = targetBranch ? {
         orderDate: format(orderDateObject, "yyyy-MM-dd HH:mm"),
         ordererName: order.orderer.name,
@@ -53,7 +46,6 @@ export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
             account: targetBranch.account || '',
         },
     } : null;
-
     return (
         <div>
              <style jsx global>{`

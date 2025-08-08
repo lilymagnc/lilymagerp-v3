@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
@@ -17,23 +16,19 @@ import {
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { EmployeeFormValues } from '@/app/dashboard/hr/components/employee-form';
-
 export interface Employee extends EmployeeFormValues {
   id: string;
   createdAt: Timestamp;
 }
-
 export function useEmployees() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true);
       const employeesCollection = collection(db, 'employees');
       const q = query(employeesCollection);
-      
       const employeesData = (await getDocs(q)).docs.map(doc => {
         const data = doc.data();
         return {
@@ -56,11 +51,9 @@ export function useEmployees() {
       setLoading(false);
     }
   }, [toast]);
-
   useEffect(() => {
     fetchEmployees();
   }, [fetchEmployees]);
-
   const addEmployee = async (data: EmployeeFormValues) => {
     setLoading(true);
     try {
@@ -78,7 +71,6 @@ export function useEmployees() {
       setLoading(false);
     }
   };
-
   const updateEmployee = async (id: string, data: EmployeeFormValues) => {
     setLoading(true);
     try {
@@ -93,7 +85,6 @@ export function useEmployees() {
       setLoading(false);
     }
   };
-
   const deleteEmployee = async (id: string) => {
     setLoading(true);
     try {
@@ -107,17 +98,14 @@ export function useEmployees() {
       setLoading(false);
     }
   };
-  
   const bulkAddEmployees = async (data: any[]) => {
     setLoading(true);
     let newCount = 0;
     let updateCount = 0;
     let errorCount = 0;
-
     await Promise.all(data.map(async (row) => {
       try {
         if (!row.email || !row.name) return;
-
         const employeeData = {
           email: String(row.email),
           name: String(row.name),
@@ -128,10 +116,8 @@ export function useEmployees() {
           birthDate: row.birthDate ? new Date(row.birthDate) : new Date(),
           address: String(row.address || ''),
         };
-
         const q = query(collection(db, "employees"), where("email", "==", employeeData.email));
         const querySnapshot = await getDocs(q);
-        
         if (!querySnapshot.empty) {
           const docRef = querySnapshot.docs[0].ref;
           await setDoc(docRef, employeeData, { merge: true });
@@ -145,9 +131,7 @@ export function useEmployees() {
         errorCount++;
       }
     }));
-
     setLoading(false);
-    
     if (errorCount > 0) {
       toast({ 
         variant: 'destructive', 
@@ -155,15 +139,12 @@ export function useEmployees() {
         description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
       });
     }
-    
     toast({ 
       title: '처리 완료', 
       description: `성공: 신규 직원 ${newCount}명 추가, ${updateCount}명 업데이트 완료.`
     });
-    
     await fetchEmployees();
   };
-
   return { 
     employees, 
     loading, 

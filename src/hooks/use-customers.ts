@@ -1,12 +1,10 @@
 
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, orderBy, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
-
 export interface Customer extends CustomerFormValues {
   id: string;
   createdAt: string | any;
@@ -16,7 +14,6 @@ export interface Customer extends CustomerFormValues {
   points?: number;
   address?: string;
   companyName?: string;
-  
   // 지점별 정보 (새로 추가)
   branches?: {
     [branchId: string]: {
@@ -25,22 +22,18 @@ export interface Customer extends CustomerFormValues {
       notes?: string;
     }
   };
-  
   // 주 거래 지점 (가장 많이 주문한 지점)
   primaryBranch?: string;
 }
-
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
   const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
       const customersCollection = collection(db, 'customers');
       const querySnapshot = await getDocs(customersCollection);
-      
       // 삭제되지 않은 고객만 필터링 (클라이언트 사이드에서 처리)
       const customersData = querySnapshot.docs
         .filter(doc => {
@@ -68,17 +61,14 @@ export function useCustomers() {
       setLoading(false);
     }
   }, [toast]);
-
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
-
   // 전 지점에서 고객 검색 (연락처 기준)
   const findCustomerByContact = useCallback(async (contact: string) => {
     try {
       const q = query(collection(db, 'customers'), where('contact', '==', contact));
       const querySnapshot = await getDocs(q);
-      
       const existingCustomers = querySnapshot.docs
         .filter(doc => {
           const data = doc.data();
@@ -93,23 +83,19 @@ export function useCustomers() {
             lastOrderDate: data.lastOrderDate?.toDate ? data.lastOrderDate.toDate().toISOString() : data.lastOrderDate,
           } as Customer;
         });
-      
       return existingCustomers.length > 0 ? existingCustomers[0] : null;
     } catch (error) {
       console.error('Error finding customer by contact:', error);
       return null;
     }
   }, []);
-
   // 고객 등록 (통합 관리)
   const addCustomer = async (data: CustomerFormValues) => {
     setLoading(true);
     try {
       const { contact } = data;
-      
       // 전 지점에서 동일 연락처 고객 검색
       const existingCustomer = await findCustomerByContact(contact);
-      
       if (existingCustomer) {
         // 기존 고객이면 현재 지점에 등록
         const currentBranch = data.branch || '';
@@ -120,7 +106,6 @@ export function useCustomers() {
             notes: data.memo
           }
         });
-        
         toast({ title: "성공", description: "기존 고객이 현재 지점에 등록되었습니다." });
       } else {
         // 새 고객 생성
@@ -140,11 +125,9 @@ export function useCustomers() {
           },
           primaryBranch: currentBranch
         };
-        
         await addDoc(collection(db, 'customers'), customerWithTimestamp);
         toast({ title: "성공", description: "새 고객이 추가되었습니다." });
       }
-      
       await fetchCustomers();
     } catch (error) {
       console.error("Error adding customer:", error);
@@ -153,7 +136,6 @@ export function useCustomers() {
       setLoading(false);
     }
   };
-
   const updateCustomer = async (id: string, data: CustomerFormValues) => {
     setLoading(true);
     try {
@@ -168,7 +150,6 @@ export function useCustomers() {
       setLoading(false);
     }
   };
-
   const deleteCustomer = async (id: string) => {
     setLoading(true);
     try {
@@ -183,17 +164,14 @@ export function useCustomers() {
       setLoading(false);
     }
   };
-
   const bulkAddCustomers = async (data: any[], selectedBranch?: string) => {
     setLoading(true);
     let newCount = 0;
     let duplicateCount = 0;
     let errorCount = 0;
-  
     await Promise.all(data.map(async (row) => {
       try {
         if (!row.contact || !row.name) return;
-  
         const customerData = {
           name: String(row.name),
           contact: String(row.contact),
@@ -205,13 +183,10 @@ export function useCustomers() {
           orderCount: 0,
           points: 0,
         };
-  
         // 중복 체크: 연락처 기준으로만 체크 (전 지점 공유)
         const contactQuery = query(collection(db, "customers"), where("contact", "==", customerData.contact));
         const contactSnapshot = await getDocs(contactQuery);
-        
         const existingCustomers = contactSnapshot.docs.filter(doc => !doc.data().isDeleted);
-        
         if (existingCustomers.length > 0) {
           // 기존 고객이면 현재 지점에 등록
           const existingCustomer = existingCustomers[0];
@@ -237,19 +212,15 @@ export function useCustomers() {
            },
            primaryBranch: selectedBranch
          };
-          
           await addDoc(collection(db, "customers"), newCustomerData);
           newCount++;
         }
-
       } catch (error) {
         console.error("Error processing row:", row, error);
         errorCount++;
       }
     }));
-  
     setLoading(false);
-    
     if (errorCount > 0) {
       toast({ 
         variant: 'destructive', 
@@ -257,15 +228,12 @@ export function useCustomers() {
         description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
       });
     }
-    
     toast({ 
       title: '처리 완료', 
       description: `성공: 신규 고객 ${newCount}명 추가, 기존 고객 ${duplicateCount}명 현재 지점 등록.`
     });
-    
     await fetchCustomers();
   };
-  
   // findCustomersByContact 함수 (기존 호환성 유지)
   const findCustomersByContact = useCallback(async (contact: string) => {
     try {
@@ -291,7 +259,6 @@ export function useCustomers() {
       return [];
     }
   }, []);
-  
   // 포인트 조회 (전 지점 공유)
   const getCustomerPoints = useCallback(async (contact: string) => {
     try {
@@ -302,7 +269,6 @@ export function useCustomers() {
       return 0;
     }
   }, [findCustomerByContact]);
-
   // 포인트 차감 (전 지점 공유)
   const deductCustomerPoints = useCallback(async (contact: string, pointsToDeduct: number) => {
     try {
@@ -310,13 +276,11 @@ export function useCustomers() {
       if (customer) {
         const currentPoints = customer.points || 0;
         const newPoints = Math.max(0, currentPoints - pointsToDeduct);
-        
         await updateDoc(doc(db, 'customers', customer.id), {
           points: newPoints,
           lastUpdated: serverTimestamp(),
         });
-        
-        console.log(`고객 포인트 차감: ${currentPoints} → ${newPoints} (차감: ${pointsToDeduct})`);
+        `);
         return newPoints;
       }
       return 0;
@@ -325,7 +289,6 @@ export function useCustomers() {
       return 0;
     }
   }, [findCustomerByContact]);
-
   // 포인트 적립 (전 지점 공유)
   const addCustomerPoints = useCallback(async (contact: string, pointsToAdd: number) => {
     try {
@@ -333,13 +296,11 @@ export function useCustomers() {
       if (customer) {
         const currentPoints = customer.points || 0;
         const newPoints = currentPoints + pointsToAdd;
-        
         await updateDoc(doc(db, 'customers', customer.id), {
           points: newPoints,
           lastUpdated: serverTimestamp(),
         });
-        
-        console.log(`고객 포인트 적립: ${currentPoints} → ${newPoints} (적립: ${pointsToAdd})`);
+        `);
         return newPoints;
       }
       return 0;
@@ -348,7 +309,6 @@ export function useCustomers() {
       return 0;
     }
   }, [findCustomerByContact]);
-
   return { 
     customers, 
     loading, 

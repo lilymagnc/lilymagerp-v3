@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,20 +7,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight, AlertTriangle, Package } from 'lucide-react';
 import type { ConsolidatedItem } from '@/types/material-request';
-
 interface ConsolidatedItemsViewProps {
   items: ConsolidatedItem[];
   selectedRequests: string[];
   onToggleRequest: (requestId: string) => void;
 }
-
 export function ConsolidatedItemsView({ 
   items, 
   selectedRequests, 
   onToggleRequest 
 }: ConsolidatedItemsViewProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-
   const toggleExpanded = (materialId: string) => {
     const newExpanded = new Set(expandedItems);
     if (newExpanded.has(materialId)) {
@@ -31,15 +27,12 @@ export function ConsolidatedItemsView({
     }
     setExpandedItems(newExpanded);
   };
-
   const expandAll = () => {
     setExpandedItems(new Set(items.map(item => item.materialId)));
   };
-
   const collapseAll = () => {
     setExpandedItems(new Set());
   };
-
   if (items.length === 0) {
     return (
       <Card>
@@ -53,7 +46,6 @@ export function ConsolidatedItemsView({
       </Card>
     );
   }
-
   return (
     <div className="space-y-4">
       {/* 컨트롤 버튼 */}
@@ -65,7 +57,6 @@ export function ConsolidatedItemsView({
           모두 접기
         </Button>
       </div>
-
       {/* 자재별 취합 목록 */}
       <div className="space-y-3">
         {items.map((item) => {
@@ -74,7 +65,6 @@ export function ConsolidatedItemsView({
           const selectedBranchCount = item.requestingBranches.filter(branch => 
             selectedRequests.includes(branch.requestId)
           ).length;
-
           return (
             <Card key={item.materialId} className={hasUrgent ? 'border-red-200' : ''}>
               <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(item.materialId)}>
@@ -87,7 +77,6 @@ export function ConsolidatedItemsView({
                         ) : (
                           <ChevronRight className="h-4 w-4" />
                         )}
-                        
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <CardTitle className="text-lg">{item.materialName}</CardTitle>
@@ -103,7 +92,6 @@ export function ConsolidatedItemsView({
                               </Badge>
                             )}
                           </div>
-                          
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span>총 필요량: <strong>{item.totalQuantity.toLocaleString()}개</strong></span>
                             <span>요청 지점: <strong>{item.requestingBranches.length}곳</strong></span>
@@ -114,17 +102,14 @@ export function ConsolidatedItemsView({
                     </div>
                   </CardHeader>
                 </CollapsibleTrigger>
-                
                 <CollapsibleContent>
                   <CardContent className="pt-0">
                     <div className="space-y-3">
                       <div className="text-sm font-medium text-muted-foreground mb-2">
                         요청 지점별 상세 내역
                       </div>
-                      
                       {item.requestingBranches.map((branch, index) => {
                         const isSelected = selectedRequests.includes(branch.requestId);
-                        
                         return (
                           <div 
                             key={`${branch.requestId}-${index}`}
@@ -137,7 +122,6 @@ export function ConsolidatedItemsView({
                                 checked={isSelected}
                                 onCheckedChange={() => onToggleRequest(branch.requestId)}
                               />
-                              
                               <div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">{branch.branchName}</span>
@@ -150,7 +134,6 @@ export function ConsolidatedItemsView({
                                 </div>
                               </div>
                             </div>
-                            
                             <div className="text-right">
                               <div className="text-sm font-medium">
                                 ₩{(branch.quantity * (item.estimatedTotalCost / item.totalQuantity)).toLocaleString()}
@@ -162,7 +145,6 @@ export function ConsolidatedItemsView({
                           </div>
                         );
                       })}
-                      
                       {/* 자재별 요약 */}
                       <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                         <div className="grid grid-cols-3 gap-4 text-sm">
@@ -190,7 +172,6 @@ export function ConsolidatedItemsView({
           );
         })}
       </div>
-
       {/* 하단 요약 */}
       <Card className="bg-muted/30">
         <CardContent className="pt-6">

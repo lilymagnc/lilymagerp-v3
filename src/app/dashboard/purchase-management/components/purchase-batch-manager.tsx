@@ -26,14 +26,14 @@ export function PurchaseBatchManager({
   const [isCreating, setIsCreating] = useState(false);
   const [batchNotes, setBatchNotes] = useState('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  
+
   const { toast } = useToast();
   const { user } = useAuth();
   const { createPurchaseBatch } = usePurchaseBatches();
 
   // 선택된 요청들의 통계 계산
   const selectedRequests = requests.filter(req => selectedRequestIds.includes(req.id));
-  
+
   const batchStats = {
     requestCount: selectedRequests.length,
     branchCount: new Set(selectedRequests.map(req => req.branchId)).size,
@@ -96,10 +96,10 @@ export function PurchaseBatchManager({
     }
 
     setIsCreating(true);
-    
+
     try {
       const selectedRequests = requests.filter(req => selectedRequestIds.includes(req.id));
-      
+
       const batchId = await createPurchaseBatch(
         {
           purchaserId: user.uid,
@@ -173,7 +173,7 @@ export function PurchaseBatchManager({
             <Package className="h-4 w-4" />
             구매 예정 자재 ({materialsList.length}종류)
           </h4>
-          
+
           <div className="max-h-40 overflow-y-auto space-y-1">
             {materialsList
               .sort((a, b) => b.urgentCount - a.urgentCount || b.totalQuantity - a.totalQuantity)
@@ -208,7 +208,7 @@ export function PurchaseBatchManager({
             <Users className="h-4 w-4" />
             요청 지점 ({batchStats.branchCount}곳)
           </h4>
-          
+
           <div className="flex flex-wrap gap-2">
             {Array.from(new Set(selectedRequests.map(req => req.branchName))).map(branchName => (
               <Badge key={branchName} variant="outline">
@@ -227,7 +227,7 @@ export function PurchaseBatchManager({
                 구매 배치 생성
               </Button>
             </DialogTrigger>
-            
+
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>구매 배치 생성 확인</DialogTitle>
@@ -235,7 +235,7 @@ export function PurchaseBatchManager({
                   선택한 자재 요청들을 하나의 구매 배치로 생성합니다.
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-4">
                 <div className="p-4 bg-muted/50 rounded-lg">
                   <h4 className="font-medium mb-2">배치 요약</h4>
@@ -245,7 +245,7 @@ export function PurchaseBatchManager({
                     <div>총 품목: <strong>{batchStats.totalItems}개</strong></div>
                     <div>예상 비용: <strong>₩{batchStats.totalCost.toLocaleString()}</strong></div>
                   </div>
-                  
+
                   {batchStats.urgentCount > 0 && (
                     <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-red-600" />

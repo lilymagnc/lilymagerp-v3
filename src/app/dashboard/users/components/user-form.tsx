@@ -1,6 +1,5 @@
 
 "use client"
-
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -31,7 +30,6 @@ import { doc, setDoc, addDoc, collection, serverTimestamp, getDoc, query, where,
 import { db } from "@/lib/firebase"
 import { Loader2 } from "lucide-react"
 import { POSITION_OPTIONS, POSITION_TO_ROLE } from "@/lib/constants";
-
 // 직원 데이터 타입 정의
 interface EmployeeData {
   id: string;
@@ -46,7 +44,6 @@ interface EmployeeData {
   createdAt: any;
   [key: string]: any;
 }
-
 const userSchema = z.object({
   email: z.string().email("유효한 이메일을 입력해주세요."),
   role: z.string().min(1, "권한을 선택해주세요."),
@@ -57,23 +54,19 @@ const userSchema = z.object({
   position: z.string().min(1, "직위를 입력해주세요."),
   contact: z.string().min(1, "연락처를 입력해주세요."),
 })
-
 type UserFormValues = z.infer<typeof userSchema>
-
 interface UserFormProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   user?: UserFormValues & { id: string } | null
   onUserUpdated?: () => void // 사용자 업데이트 후 콜백 추가
 }
-
 export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserFormProps) {
   const { branches } = useBranches()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null)
   const isEditMode = !!user
-
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
     defaultValues: {
@@ -86,7 +79,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
       contact: "",
     },
   })
-
   // 수정 모드일 때 사용자 데이터와 직원 데이터를 가져와서 폼 초기화
   useEffect(() => {
     const fetchUserAndEmployeeData = async () => {
@@ -102,11 +94,9 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
             position: "",
             contact: "",
           }
-
           // 직원 데이터 가져오기
           const employeesQuery = collection(db, "employees")
           const employeeSnapshot = await getDocs(query(employeesQuery, where("email", "==", user.email)))
-          
           if (!employeeSnapshot.empty) {
             const employeeDoc = employeeSnapshot.docs[0]
             const employee = employeeDoc.data() as EmployeeData
@@ -114,7 +104,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
               ...employee,
               id: employeeDoc.id // 문서 ID 추가
             })
-            
             // 직원 데이터로 폼 업데이트
             form.reset({
               ...userData,
@@ -152,22 +141,13 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
         })
       }
     }
-
     if (isOpen) {
       fetchUserAndEmployeeData()
     }
   }, [isOpen, user, isEditMode, form])
-
   const onSubmit = async (data: UserFormValues) => {
     setLoading(true);
     try {
-      console.log("=== 🚀 사용자 정보 수정 시작 ===");
-      console.log("📝 폼 데이터:", data);
-      console.log("🔧 수정 모드:", isEditMode);
-      console.log("📧 사용자 이메일:", data.email);
-      console.log("🎯 선택된 권한:", data.role);
-      console.log("🏢 선택된 소속:", data.franchise);
-      
       // 중복 이메일 체크 (새 사용자 추가 시에만)
       if (!isEditMode) {
         const existingUserQuery = query(
@@ -175,7 +155,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
           where("email", "==", data.email)
         );
         const existingUser = await getDocs(existingUserQuery);
-        
         if (!existingUser.empty) {
           toast({
             variant: "destructive",
@@ -186,32 +165,19 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
           return;
         }
       }
-
       // 최종 권한 결정
       let finalRole = data.role;
       // 수동으로 선택한 권한이 우선되도록 변경
       // if (data.position && POSITION_TO_ROLE[data.position as keyof typeof POSITION_TO_ROLE]) {
       //   finalRole = POSITION_TO_ROLE[data.position as keyof typeof POSITION_TO_ROLE];
       // }
-      
-      console.log("🎯 직위:", data.position);
-      console.log("🎯 수동 선택된 권한:", data.role);
-      console.log("🎯 최종 권한:", finalRole);
-
       if (isEditMode) {
-        console.log("=== 🔄 수정 모드 ===");
-        
         // 1. users 컬렉션 업데이트 (단순하게)
         const userDocRef = doc(db, "users", data.email);
-        
         // 기존 문서 확인
         const existingDoc = await getDoc(userDocRef);
-        console.log("📋 기존 문서 존재:", existingDoc.exists());
-        
         if (existingDoc.exists()) {
           const currentData = existingDoc.data();
-          console.log("📋 현재 데이터:", currentData);
-          
           // 새로운 데이터 준비
           const newData = {
             ...currentData,
@@ -219,22 +185,14 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
             franchise: data.franchise,
             updatedAt: serverTimestamp()
           };
-          
-          console.log("📝 새 데이터:", newData);
-          
           // 업데이트 실행
           await setDoc(userDocRef, newData);
-          console.log("✅ users 컬렉션 업데이트 완료");
-          
           // 업데이트 확인
           const verifyDoc = await getDoc(userDocRef);
           if (verifyDoc.exists()) {
             const updatedData = verifyDoc.data();
-            console.log("✅ 업데이트 확인:", updatedData);
-            console.log("✅ 권한이 변경되었는지 확인:", updatedData.role);
-          }
+            }
         } else {
-          console.log("⚠️ 문서가 존재하지 않음");
           toast({
             variant: "destructive",
             title: "오류",
@@ -243,19 +201,15 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
           setLoading(false);
           return;
         }
-        
         // 2. userRoles 컬렉션 업데이트 (단순하게)
         const roleMapping = {
           "본사 관리자": "hq_manager",
           "가맹점 관리자": "branch_manager", 
           "직원": "branch_user"
         };
-        
         const mappedRole = roleMapping[finalRole as keyof typeof roleMapping] || "branch_user";
-        
         const userRolesQuery = query(collection(db, "userRoles"), where("email", "==", data.email));
         const userRolesSnapshot = await getDocs(userRolesQuery);
-        
         if (!userRolesSnapshot.empty) {
           const userRoleDoc = userRolesSnapshot.docs[0];
           await updateDoc(userRoleDoc.ref, {
@@ -263,17 +217,13 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
             branchName: data.franchise,
             updatedAt: serverTimestamp()
           });
-          console.log("✅ userRoles 업데이트 완료");
-        }
-        
+          }
         toast({
           title: "성공",
           description: "사용자 정보가 성공적으로 수정되었습니다.",
         });
       } else {
         // 새 사용자 추가
-        console.log("=== ➕ 새 사용자 추가 ===");
-        
         const userDocRef = doc(db, "users", data.email);
         await setDoc(userDocRef, {
           email: data.email,
@@ -282,24 +232,19 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
           createdAt: serverTimestamp(),
           isActive: true
         });
-        
         toast({
           title: "성공",
           description: "새 사용자가 추가되었습니다.",
         });
       }
-      
       // 사용자 업데이트 콜백 호출
       if (onUserUpdated) {
-        console.log("🔄 사용자 업데이트 콜백 호출");
         onUserUpdated();
       }
-      
       // 다이얼로그 닫기
       setTimeout(() => {
         onOpenChange(false);
       }, 1000);
-      
     } catch(error) {
       console.error("❌ Error saving user:", error);
       toast({
@@ -311,7 +256,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
       setLoading(false);
     }
   }
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -343,7 +287,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                 </FormItem>
               )}
             />
-            
             <FormField
               control={form.control}
               name="name"
@@ -363,7 +306,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                 </FormItem>
               )}
             />
-            
             <FormField
               control={form.control}
               name="contact"
@@ -383,7 +325,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                 </FormItem>
               )}
             />
-            
             <FormField
               control={form.control}
               name="position"
@@ -420,7 +361,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                 </FormItem>
               )}
             />
-            
             <FormField
               control={form.control}
               name="role"
@@ -443,7 +383,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                 </FormItem>
               )}
             />
-            
             <FormField
               control={form.control}
               name="franchise"
@@ -474,7 +413,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                 </FormItem>
               )}
             />
-            
             {!isEditMode && (
               <FormField
                 control={form.control}
@@ -497,7 +435,6 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                 )}
               />
             )}
-            
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">취소</Button>

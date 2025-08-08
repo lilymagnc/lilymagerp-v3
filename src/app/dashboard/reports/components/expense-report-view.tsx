@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,18 +29,14 @@ import {
 } from 'lucide-react';
 import { useReports } from '@/hooks/use-reports';
 import type { ReportFilter, ExpenseReport } from '@/hooks/use-reports';
-
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C'];
-
 interface ExpenseReportViewProps {
   filters: ReportFilter;
 }
-
 export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
   const [report, setReport] = useState<ExpenseReport | null>(null);
   const [loading, setLoading] = useState(false);
   const { generateExpenseReport, exportToCSV } = useReports();
-
   // 리포트 생성
   const generateReport = async () => {
     try {
@@ -54,12 +49,10 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
       setLoading(false);
     }
   };
-
   // 필터 변경 시 자동 리포트 생성
   useEffect(() => {
     generateReport();
   }, [filters]);
-
   // 통화 포맷팅
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -67,21 +60,17 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
       currency: 'KRW'
     }).format(amount);
   };
-
   // CSV 내보내기
   const handleExport = () => {
     if (!report) return;
-
     const exportData = report.categoryBreakdown.map(item => ({
       카테고리: item.categoryName,
       금액: item.amount,
       건수: item.count,
       비율: `${item.percentage.toFixed(1)}%`
     }));
-
     exportToCSV(exportData, 'expense-report');
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -90,7 +79,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
       </div>
     );
   }
-
   if (!report) {
     return (
       <Card>
@@ -107,7 +95,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
       </Card>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -129,7 +116,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
           </Button>
         </div>
       </div>
-
       {/* 요약 통계 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -148,7 +134,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -165,7 +150,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -182,7 +166,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -200,7 +183,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
           </CardContent>
         </Card>
       </div>
-
       {/* 차트 섹션 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 카테고리별 분포 */}
@@ -236,7 +218,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         {/* 지점별 현황 */}
         <Card>
           <CardHeader>
@@ -267,7 +248,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
           </CardContent>
         </Card>
       </div>
-
       {/* 월별 트렌드 */}
       <Card>
         <CardHeader>
@@ -301,7 +281,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
           </div>
         </CardContent>
       </Card>
-
       {/* 상세 분석 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 카테고리별 상세 */}
@@ -337,7 +316,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
             </div>
           </CardContent>
         </Card>
-
         {/* 상위 지출 항목 */}
         <Card>
           <CardHeader>
@@ -379,7 +357,6 @@ export function ExpenseReportView({ filters }: ExpenseReportViewProps) {
           </CardContent>
         </Card>
       </div>
-
       {/* 지점별 상세 분석 */}
       <Card>
         <CardHeader>

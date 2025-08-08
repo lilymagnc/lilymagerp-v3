@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,23 +8,19 @@ import { useBranches } from '@/hooks/use-branches';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
 export default function DeliveryFeesPage() {
   const { deliveryFees, loading, updateDeliveryFee, initializeDeliveryFees } = useDeliveryFees();
   const { branches } = useBranches();
   const [selectedBranch, setSelectedBranch] = useState('all');
   const [editingFee, setEditingFee] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-
   const filteredFees = deliveryFees.filter(fee => 
     selectedBranch === 'all' || fee.branchId === selectedBranch
   );
-
   const handleEdit = (feeId: string, currentFee: number) => {
     setEditingFee(feeId);
     setEditValue(currentFee.toString());
   };
-
   const handleSave = async (feeId: string) => {
     const newFee = parseInt(editValue);
     if (!isNaN(newFee)) {
@@ -34,7 +29,6 @@ export default function DeliveryFeesPage() {
     setEditingFee(null);
     setEditValue('');
   };
-
   return (
     <div>
       <PageHeader
@@ -45,7 +39,6 @@ export default function DeliveryFeesPage() {
           배송비 데이터 초기화
         </Button>
       </PageHeader>
-      
       <Card>
         <CardHeader>
           <CardTitle>배송비 설정</CardTitle>

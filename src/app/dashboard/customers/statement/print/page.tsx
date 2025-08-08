@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,6 @@ import { Order } from "@/hooks/use-orders";
 import { Branch } from "@/hooks/use-branches";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-
 interface StatementData {
   customer: Customer;
   branch: Branch | null;
@@ -30,41 +28,33 @@ interface StatementData {
     grandTotal: number;
   };
 }
-
 export default function StatementPrintPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { customers } = useCustomers();
   const { orders } = useOrders();
   const { branches } = useBranches();
-  
   const [statementData, setStatementData] = useState<StatementData | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const customerId = searchParams.get('customerId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-
     if (!customerId || !startDate || !endDate) {
       alert('필수 파라미터가 누락되었습니다.');
       router.back();
       return;
     }
-
     const customer = customers.find(c => c.id === customerId);
     if (!customer) {
       alert('고객 정보를 찾을 수 없습니다.');
       router.back();
       return;
     }
-
     // 고객의 담당지점 정보 찾기
     const branch = branches.find(b => b.name === customer.branch);
-
     const start = new Date(startDate);
     const end = new Date(endDate);
-
     // 고객의 주문 내역 필터링 - 연락처로 매칭
     const customerOrders = orders.filter(order => {
       const orderDate = new Date(order.orderDate.seconds * 1000);
@@ -72,7 +62,6 @@ export default function StatementPrintPage() {
              orderDate >= start && 
              orderDate <= end;
     });
-
     // 요약 정보 계산
     const summary = {
       totalOrders: customerOrders.length,
@@ -80,7 +69,6 @@ export default function StatementPrintPage() {
       totalDeliveryFee: customerOrders.reduce((sum, order) => sum + (order.summary.deliveryFee || 0), 0),
       grandTotal: customerOrders.reduce((sum, order) => sum + (order.summary.total || 0), 0)
     };
-
     setStatementData({
       customer,
       branch,
@@ -88,22 +76,17 @@ export default function StatementPrintPage() {
       orders: customerOrders,
       summary
     });
-
     setLoading(false);
   }, [searchParams, customers, orders, branches, router]);
-
   const handlePrint = () => {
     window.print();
   };
-
   if (loading) {
     return <div className="flex justify-center items-center h-64">로딩 중...</div>;
   }
-
   if (!statementData) {
     return <div className="flex justify-center items-center h-64">데이터를 불러올 수 없습니다.</div>;
   }
-
   return (
     <div>
       <style jsx global>{`
@@ -127,7 +110,6 @@ export default function StatementPrintPage() {
           }
         }
       `}</style>
-      
       <div className="max-w-4xl mx-auto no-print">
         <PageHeader
           title="거래명세서 출력"
@@ -145,7 +127,6 @@ export default function StatementPrintPage() {
           </div>
         </PageHeader>
       </div>
-
       <div id="printable-area" className="max-w-4xl mx-auto p-8">
         {/* 제목 */}
         <div className="text-center mb-8">
@@ -158,7 +139,6 @@ export default function StatementPrintPage() {
             거 래 명 세 서
           </h1>
         </div>
-
         {/* 상단 정보 - 2열 구조 */}
         <div className="flex mb-8" style={{ gap: '20px' }}>
           {/* 왼쪽: 공급받는자 (고객정보) */}
@@ -193,7 +173,6 @@ export default function StatementPrintPage() {
               </tbody>
             </table>
           </div>
-
           {/* 오른쪽: 공급자 (지점정보) */}
           <div className="flex-1">
             <table className="w-full" style={{ borderCollapse: 'collapse', border: '2px solid black' }}>
@@ -225,7 +204,6 @@ export default function StatementPrintPage() {
             </table>
           </div>
         </div>
-
         {/* 거래 기간 */}
         <div className="mb-6">
           <table className="w-full" style={{ borderCollapse: 'collapse', border: '2px solid black' }}>
@@ -242,7 +220,6 @@ export default function StatementPrintPage() {
             </tbody>
           </table>
         </div>
-
         {/* 거래 내역 테이블 */}
         <div className="mb-6">
           <table className="w-full" style={{ borderCollapse: 'collapse', border: '2px solid black' }}>
@@ -309,7 +286,6 @@ export default function StatementPrintPage() {
             </tfoot>
           </table>
         </div>
-
         {/* 하단 정보 */}
         <div className="flex justify-between items-end">
           <div style={{ fontSize: '12px' }}>

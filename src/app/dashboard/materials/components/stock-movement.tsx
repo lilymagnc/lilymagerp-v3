@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState, useRef, useEffect, useMemo } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -13,23 +12,19 @@ import { useBranches } from "@/hooks/use-branches";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, MinusCircle, PlusCircle, ScanLine, Store, Trash2, Wand2, Paperclip } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-// import { processReceipt } from "@/ai/flows/receipt-processor"; // AI 기능 임시 비활성화
 import { useMaterials } from "@/hooks/use-materials";
 import { useAuth } from "@/hooks/use-auth";
 import { Label } from "@/components/ui/label";
-
 interface ScannedItem {
   id: string;
   name: string;
   quantity: number;
 }
-
 export function StockMovement() {
   const { branches } = useBranches();
   const { materials, loading: materialsLoading, updateStock } = useMaterials();
   const { user } = useAuth();
   const { toast } = useToast();
-  
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("stock-in");
   const [barcode, setBarcode] = useState("");
@@ -38,30 +33,23 @@ export function StockMovement() {
   const [receiptText, setReceiptText] = useState("");
   const [receiptPhoto, setReceiptPhoto] = useState<File | null>(null);
   const [receiptPhotoPreview, setReceiptPhotoPreview] = useState<string | null>(null);
-
   const [stockInList, setStockInList] = useState<ScannedItem[]>([]);
   const [stockOutList, setStockOutList] = useState<ScannedItem[]>([]);
-  
   const barcodeInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-
   const selectedBranchName = useMemo(() => {
     return branches.find(b => b.id === selectedBranchId)?.name || "지점";
   }, [selectedBranchId, branches]);
-
   useEffect(() => {
     if (selectedBranchId && barcodeInputRef.current) {
       barcodeInputRef.current.focus();
     }
   }, [selectedBranchId]);
-
   const handleScan = (e: React.FormEvent) => {
     e.preventDefault();
     if (!barcode) return;
-
     const scannedId = barcode.trim();
     const material = materials.find(m => m.id === scannedId);
-
     if (!material) {
       toast({
         variant: "destructive",
@@ -71,7 +59,6 @@ export function StockMovement() {
       setBarcode("");
       return;
     }
-
     const listUpdater = (list: ScannedItem[]): ScannedItem[] => {
         const existingItem = list.find(item => item.id === scannedId);
         if (existingItem) {
@@ -81,7 +68,6 @@ export function StockMovement() {
         }
         return [...list, { id: scannedId, name: material.name, quantity: 1 }];
     };
-
     if (activeTab === 'stock-in') {
       setStockInList(listUpdater);
     } else { // stock-out
@@ -89,23 +75,19 @@ export function StockMovement() {
     }
     setBarcode("");
   };
-
   const updateQuantity = (list: 'in' | 'out', id: string, newQuantity: number) => {
     const quantity = Math.max(1, newQuantity);
     const setter = list === 'in' ? setStockInList : setStockOutList;
     setter(prev => prev.map(item => item.id === id ? { ...item, quantity } : item));
   };
-  
   const removeItem = (list: 'in' | 'out', id: string) => {
     const setter = list === 'in' ? setStockInList : setStockOutList;
     setter(prev => prev.filter(item => item.id !== id));
   };
-
   const handleProcess = async () => {
     setIsProcessing(true);
     const list = activeTab === 'stock-in' ? stockInList : stockOutList;
     const type = activeTab === 'stock-in' ? 'in' : 'out';
-
     if (list.length === 0) {
       toast({ variant: "destructive", title: "목록이 비어있음", description: "처리할 자재를 먼저 스캔해주세요." });
       setIsProcessing(false);
@@ -116,24 +98,19 @@ export function StockMovement() {
         setIsProcessing(false);
         return;
     }
-    
     await updateStock(list, type, selectedBranchName, user.email || "Unknown User");
-    
     toast({
       title: "처리 완료",
       description: `${selectedBranchName}의 ${type === 'in' ? '입고' : '출고'}가 성공적으로 처리되었습니다.`
     });
-    
     if(type === 'in') setStockInList([]);
     else setStockOutList([]);
     setIsProcessing(false);
   };
-  
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setReceiptPhoto(file);
-      
       const reader = new FileReader();
       reader.onloadend = () => {
         setReceiptPhotoPreview(reader.result as string);
@@ -141,7 +118,6 @@ export function StockMovement() {
       reader.readAsDataURL(file);
     }
   };
-
   const fileToDataUri = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -150,7 +126,6 @@ export function StockMovement() {
         reader.readAsDataURL(file);
     });
   }
-
   // const handleAiProcess = async () => {
   //   if (!receiptText.trim() && !receiptPhoto) {
   //       toast({ variant: "destructive", title: "내용 없음", description: "분석할 영수증 텍스트나 사진을 제공해주세요." });
@@ -162,12 +137,9 @@ export function StockMovement() {
   //       if (receiptPhoto) {
   //           photoDataUri = await fileToDataUri(receiptPhoto);
   //   }
-
         // AI 기능 임시 비활성화
         // const result = await processReceipt({ receiptText, photoDataUri });
         const newItems: ScannedItem[] = [];
-        
-        // 임시로 빈 결과 처리
         // result.items.forEach(processedItem => {
         //     const material = materials.find(m => m.name === processedItem.itemName);
         //     if (material) {
@@ -178,7 +150,6 @@ export function StockMovement() {
         //         });
         //     }
         // });
-
   //       setStockInList(prevList => {
   //           const updatedList = [...prevList];
   //           newItems.forEach(newItem => {
@@ -191,7 +162,6 @@ export function StockMovement() {
   //           });
   //           return updatedList;
   //       });
-
   //       toast({
   //           title: "AI 분석 완료",
   //           description: `${newItems.length}개의 항목이 입고 목록에 추가되었습니다. 내용을 확인하고 입고 처리를 완료해주세요.`,
@@ -199,8 +169,6 @@ export function StockMovement() {
   //       setReceiptText("");
   //       setReceiptPhoto(null);
   //       setReceiptPhotoPreview(null);
-
-
   //   } catch (error) {
   //       console.error("AI processing error:", error);
   //       toast({
@@ -212,8 +180,6 @@ export function StockMovement() {
   //       setIsAiProcessing(false);
   //   }
   // };
-
-
   const renderList = (list: ScannedItem[], type: 'in' | 'out') => (
     <Card>
       <CardContent className="p-0">
@@ -252,7 +218,6 @@ export function StockMovement() {
       </CardContent>
     </Card>
   );
-
   return (
     <div>
       <PageHeader
@@ -281,7 +246,6 @@ export function StockMovement() {
             </div>
           </CardContent>
         </Card>
-
         <fieldset disabled={!selectedBranchId || materialsLoading} className="space-y-6">
            {materialsLoading && (
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
@@ -335,7 +299,6 @@ export function StockMovement() {
                 </div> */}
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>바코드 스캔</CardTitle>
@@ -354,7 +317,6 @@ export function StockMovement() {
               </form>
             </CardContent>
           </Card>
-          
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="flex justify-between items-end">
                 <TabsList>
@@ -373,7 +335,6 @@ export function StockMovement() {
               {renderList(stockOutList, 'out')}
             </TabsContent>
           </Tabs>
-
         </fieldset>
       </div>
     </div>

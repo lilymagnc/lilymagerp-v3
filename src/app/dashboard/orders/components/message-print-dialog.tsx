@@ -1,6 +1,5 @@
 
 "use client";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog";
@@ -12,8 +11,6 @@ import { Order } from "@/hooks/use-orders";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from "@/hooks/use-settings";
-
-
 interface MessagePrintDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -30,16 +27,13 @@ interface MessagePrintDialogProps {
   }) => void;
   order: Order;
 }
-
 const labelTypes = [
     { value: 'formtec-3107', label: '폼텍 3107 (6칸)', cells: 6, gridCols: 'grid-cols-2', height: '99.1mm', className: 'gap-x-0' },
     { value: 'formtec-3108', label: '폼텍 3108 (8칸)', cells: 8, gridCols: 'grid-cols-2', height: '70mm', className: 'gap-x-[4.5mm]' },
     { value: 'formtec-3109', label: '폼텍 3109 (12칸)', cells: 12, gridCols: 'grid-cols-2', height: '67.7mm', className: 'gap-x-[2.5mm]' },
 ];
-
 export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: MessagePrintDialogProps) {
   const { settings } = useSettings();
-  
   // 시스템 설정에서 폰트 목록 가져오기
   const fontOptions = (settings.availableFonts || [
     'Noto Sans KR',
@@ -62,13 +56,10 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
   const messageParts = (order.message?.content || "").split('\n---\n');
   const initialMessageContent = messageParts.length > 1 ? messageParts[0] : (order.message?.content || "");
   const initialSenderName = messageParts.length > 1 ? messageParts[1] : (order.orderer.name || "");
-  
   const [messageContent, setMessageContent] = useState(initialMessageContent);
   const [senderName, setSenderName] = useState(initialSenderName);
   const [isEditing, setIsEditing] = useState(false);
-  
   const selectedLabel = labelTypes.find(lt => lt.value === labelType) || labelTypes[0];
-
   const handleFormSubmit = () => {
     onSubmit({
         orderId: order.id,
@@ -82,17 +73,14 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
         senderName,
     });
   };
-
   const messagePreviewStyle: React.CSSProperties = {
     fontFamily: messageFont,
     fontSize: `${messageFontSize}pt`,
   };
-
   const senderPreviewStyle: React.CSSProperties = {
     fontFamily: senderFont,
     fontSize: `${senderFontSize}pt`,
   };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -102,7 +90,6 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
             &apos;{order.orderer.name}&apos;님의 메시지를 인쇄합니다. 메시지 편집과 폰트 설정이 가능합니다.
           </DialogDescription>
         </DialogHeader>
-        
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 설정 영역 */}
           <div className="space-y-4">
@@ -120,7 +107,6 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                   {isEditing ? "미리보기" : "편집"}
                 </Button>
               </div>
-              
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
@@ -151,7 +137,6 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                 </div>
               )}
             </div>
-
             {/* 폰트 설정 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-4">
@@ -183,7 +168,6 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                   </div>
                 </div>
               </div>
-              
               <div className="space-y-4">
                 <div>
                   <Label className="text-sm font-medium mb-2 block">보내는 사람 폰트 설정</Label>
@@ -214,7 +198,6 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                 </div>
               </div>
             </div>
-            
             {/* 라벨지 설정 */}
             <div>
               <Label htmlFor="label-type">라벨지 종류</Label>
@@ -229,7 +212,6 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                 </SelectContent>
               </Select>
             </div>
-            
             <div>
               <Label htmlFor="start-position">시작 위치 (1-{selectedLabel.cells})</Label>
               <div className={cn("grid gap-1 mt-2 border p-2 rounded-md", selectedLabel.gridCols)}>
@@ -251,11 +233,9 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
               </div>
             </div>
           </div>
-
           {/* 미리보기 영역 */}
           <div className="border rounded-lg p-4 bg-muted/50">
             <Label className="text-sm font-medium mb-3 block">실시간 미리보기 ({selectedLabel.label})</Label>
-            
             {/* 단일 라벨 미리보기 */}
             <div className="mb-4">
               <Label className="text-xs text-muted-foreground mb-2 block">선택된 라벨 미리보기</Label>
@@ -281,7 +261,6 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                 </div>
               </div>
             </div>
-
             {/* 전체 라벨 그리드 미리보기 */}
             <div>
               <Label className="text-xs text-muted-foreground mb-2 block">전체 라벨 레이아웃 (시작 위치: {startPosition})</Label>
@@ -310,13 +289,11 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                 })}
               </div>
             </div>
-
             <div className="mt-2 text-xs text-muted-foreground">
               라벨 크기: {selectedLabel.height} / 총 {selectedLabel.cells}칸
             </div>
           </div>
         </div>
-        
         <DialogFooter className="pt-4">
           <DialogClose asChild>
             <Button type="button" variant="secondary">취소</Button>

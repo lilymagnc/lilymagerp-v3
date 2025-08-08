@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { MoreVertical, Trash2, Move, Image as ImageIcon } from 'lucide-react';
 import { Photo } from '@/types/album';
@@ -12,7 +11,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-
 interface PhotoGridProps {
   photos: Photo[];
   loading: boolean;
@@ -21,7 +19,6 @@ interface PhotoGridProps {
   onReorder?: (photos: Photo[]) => void;
   isDraggable?: boolean;
 }
-
 export function PhotoGrid({ 
   photos, 
   loading, 
@@ -31,7 +28,6 @@ export function PhotoGrid({
   isDraggable = false 
 }: PhotoGridProps) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -39,47 +35,37 @@ export function PhotoGrid({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
   const handleDragStart = (e: React.DragEvent, index: number) => {
     if (!isDraggable) return;
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
   };
-
   const handleDragOver = (e: React.DragEvent) => {
     if (!isDraggable) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
   };
-
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
     if (!isDraggable || draggedIndex === null || !onReorder) return;
-    
     e.preventDefault();
-    
     if (draggedIndex === dropIndex) {
       setDraggedIndex(null);
       return;
     }
-
     const newPhotos = [...photos];
     const draggedPhoto = newPhotos[draggedIndex];
-    
     // 배열에서 드래그된 항목 제거
     newPhotos.splice(draggedIndex, 1);
     // 새 위치에 삽입
     newPhotos.splice(dropIndex, 0, draggedPhoto);
-    
     // order 값 재설정
     const reorderedPhotos = newPhotos.map((photo, index) => ({
       ...photo,
       order: index + 1
     }));
-
     onReorder(reorderedPhotos);
     setDraggedIndex(null);
   };
-
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -91,7 +77,6 @@ export function PhotoGrid({
       </div>
     );
   }
-
   if (photos.length === 0) {
     return (
       <div className="text-center py-12">
@@ -103,7 +88,6 @@ export function PhotoGrid({
       </div>
     );
   }
-
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       {photos.map((photo, index) => (
@@ -126,7 +110,6 @@ export function PhotoGrid({
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
             priority={index < 4}
           />
-
           {/* 드래그 핸들 */}
           {isDraggable && (
             <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -135,7 +118,6 @@ export function PhotoGrid({
               </div>
             </div>
           )}
-
           {/* 사진 정보 오버레이 */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <p className="text-white text-xs truncate">{photo.filename}</p>
@@ -143,7 +125,6 @@ export function PhotoGrid({
               {photo.width} × {photo.height} • {formatFileSize(photo.size)}
             </p>
           </div>
-
           {/* 액션 메뉴 */}
           {onPhotoDelete && (
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -173,7 +154,6 @@ export function PhotoGrid({
               </DropdownMenu>
             </div>
           )}
-
           {/* 순서 번호 */}
           <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
             {photo.order}

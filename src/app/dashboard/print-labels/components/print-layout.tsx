@@ -1,16 +1,13 @@
 
 "use client";
-
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { Printer } from "lucide-react";
 import { LabelGrid } from "./label-grid";
 import type { LabelItemData } from "./label-item";
-
 interface PrintLayoutProps {
   labels: (LabelItemData | null)[];
 }
-
 export function PrintLayout({ labels }: PrintLayoutProps) {
   return (
     <div className="max-w-4xl mx-auto">

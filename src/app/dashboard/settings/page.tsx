@@ -1,6 +1,16 @@
 "use client";
-
 import { useState, useEffect } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,10 +32,12 @@ import {
   MessageSquare,
   Mail,
   Type,
-  Percent
+  Percent,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 import { useSettings, defaultSettings } from "@/hooks/use-settings";
-
+import { useDataCleanup } from "@/hooks/use-data-cleanup";
 export default function SettingsPage() {
   const { settings, loading, error, saveSettings } = useSettings();
   const [localSettings, setLocalSettings] = useState(settings);
@@ -34,19 +46,45 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { isHQManager } = useUserRole();
-
+  const { loading: cleanupLoading, progress, cleanupAllData, cleanupSpecificData } = useDataCleanup();
+  const [selectedDataType, setSelectedDataType] = useState<string>('');
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const handleSpecificDataCleanup = (dataType: string) => {
+    setSelectedDataType(dataType);
+    setShowConfirmDialog(true);
+  };
+  const confirmSpecificDataCleanup = () => {
+    if (selectedDataType) {
+      cleanupSpecificData(selectedDataType);
+      setShowConfirmDialog(false);
+      setSelectedDataType('');
+    }
+  };
+  const getDataTypeName = (dataType: string): string => {
+    const dataTypeNames: { [key: string]: string } = {
+      'orders': '주문',
+      'customers': '고객',
+      'products': '상품',
+      'materials': '자재',
+      'expenses': '간편지출',
+      'materialRequests': '자재요청',
+             'employees': '직원',
+       'partners': '거래처',
+       'stockHistory': '재고이력',
+      'albums': '샘플앨범'
+    };
+    return dataTypeNames[dataType] || dataType;
+  };
   // settings가 로드되었을 때만 localSettings 업데이트
   useEffect(() => {
     if (!loading && settings !== defaultSettings) {
       setLocalSettings(settings);
     }
   }, [settings, loading]);
-
   const handleSaveSettings = async () => {
     try {
       setSaving(true);
       const success = await saveSettings(localSettings);
-      
       if (success) {
         toast({
           title: '성공',
@@ -70,7 +108,6 @@ export default function SettingsPage() {
       setSaving(false);
     }
   };
-
   const resetToDefaults = () => {
     setLocalSettings(settings);
     toast({
@@ -78,13 +115,10 @@ export default function SettingsPage() {
       description: '설정이 기본값으로 초기화되었습니다.'
     });
   };
-
   const addNewFont = () => {
     if (!newFont.trim()) return;
-    
     const fontName = newFont.trim();
     const currentFonts = localSettings.availableFonts || [];
-    
     if (currentFonts.includes(fontName)) {
       toast({
         variant: 'destructive',
@@ -93,19 +127,16 @@ export default function SettingsPage() {
       });
       return;
     }
-    
     setLocalSettings(prev => ({
       ...prev,
       availableFonts: [...currentFonts, fontName]
     }));
-    
     setNewFont('');
     toast({
       title: '성공',
       description: `폰트 "${fontName}"가 추가되었습니다.`
     });
   };
-
   // 본사 관리자가 아니면 접근 제한
   if (!isHQManager()) {
     return (
@@ -118,7 +149,6 @@ export default function SettingsPage() {
       </div>
     );
   }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -129,16 +159,14 @@ export default function SettingsPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="시스템 설정"
         description="시스템의 기본 설정을 관리합니다."
       />
-
              <Tabs defaultValue="general" className="space-y-4">
-         <TabsList className="grid w-full grid-cols-6">
+         <TabsList className="grid w-full grid-cols-8">
            <TabsTrigger value="general">일반 설정</TabsTrigger>
            <TabsTrigger value="delivery">배송 설정</TabsTrigger>
            <TabsTrigger value="notifications">알림 설정</TabsTrigger>
@@ -146,8 +174,8 @@ export default function SettingsPage() {
            <TabsTrigger value="auto-email">자동 이메일</TabsTrigger>
            <TabsTrigger value="security">보안 설정</TabsTrigger>
            <TabsTrigger value="discount">할인 설정</TabsTrigger>
+           <TabsTrigger value="data-cleanup">데이터 초기화</TabsTrigger>
          </TabsList>
-
         {/* 일반 설정 */}
         <TabsContent value="general" className="space-y-4">
           <Card>
@@ -195,7 +223,6 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -239,7 +266,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         {/* 배송 설정 */}
         <TabsContent value="delivery" className="space-y-4">
           <Card>
@@ -275,7 +301,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         {/* 알림 설정 */}
         <TabsContent value="notifications" className="space-y-4">
           <Card>
@@ -327,7 +352,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
                  </TabsContent>
-
          {/* 메시지 설정 */}
          <TabsContent value="messages" className="space-y-4">
            <Card>
@@ -391,7 +415,6 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
-
             {/* 폰트 관리 */}
             <Card>
               <CardHeader>
@@ -424,7 +447,6 @@ export default function SettingsPage() {
                     ))}
                   </div>
                 </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="newFont">새 폰트 추가</Label>
                   <div className="flex gap-2">
@@ -452,7 +474,6 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </TabsContent>
-
          {/* 자동 이메일 설정 */}
          <TabsContent value="auto-email" className="space-y-4">
            <Card>
@@ -513,10 +534,8 @@ export default function SettingsPage() {
                    />
                  </div>
                </div>
-               
                <div className="space-y-4 mt-6">
                  <h4 className="font-medium">이메일 템플릿</h4>
-                 
                  <div className="space-y-2">
                    <Label htmlFor="emailTemplateDeliveryComplete">배송완료 이메일 템플릿</Label>
                    <textarea
@@ -527,7 +546,6 @@ export default function SettingsPage() {
                      placeholder="배송완료 이메일 템플릿을 입력하세요"
                    />
                  </div>
-                 
                  <div className="space-y-2">
                    <Label htmlFor="emailTemplateOrderConfirm">주문확인 이메일 템플릿</Label>
                    <textarea
@@ -538,7 +556,6 @@ export default function SettingsPage() {
                      placeholder="주문확인 이메일 템플릿을 입력하세요"
                    />
                  </div>
-                 
                  <div className="space-y-2">
                    <Label htmlFor="emailTemplateStatusChange">상태변경 이메일 템플릿</Label>
                    <textarea
@@ -549,7 +566,6 @@ export default function SettingsPage() {
                      placeholder="상태변경 이메일 템플릿을 입력하세요"
                    />
                  </div>
-                 
                  <div className="space-y-2">
                    <Label htmlFor="emailTemplateBirthday">생일축하 이메일 템플릿</Label>
                    <textarea
@@ -560,7 +576,6 @@ export default function SettingsPage() {
                      placeholder="생일축하 이메일 템플릿을 입력하세요"
                    />
                  </div>
-                 
                  <p className="text-xs text-gray-500">
                    사용 가능한 변수: {'{고객명}'}, {'{주문번호}'}, {'{주문일}'}, {'{배송일}'}, {'{총금액}'}, {'{이전상태}'}, {'{현재상태}'}, {'{회사명}'}
                  </p>
@@ -568,7 +583,6 @@ export default function SettingsPage() {
              </CardContent>
            </Card>
          </TabsContent>
-
          {/* 보안 설정 */}
          <TabsContent value="security" className="space-y-4">
           <Card>
@@ -618,7 +632,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
          {/* 할인 설정 */}
          <TabsContent value="discount" className="space-y-4">
            <Card>
@@ -646,8 +659,246 @@ export default function SettingsPage() {
              </CardContent>
            </Card>
          </TabsContent>
+         {/* 데이터 초기화 */}
+         <TabsContent value="data-cleanup" className="space-y-4">
+           <Card>
+             <CardHeader>
+               <CardTitle className="flex items-center gap-2">
+                 <Trash2 className="h-5 w-5" />
+                 데이터 초기화
+               </CardTitle>
+             </CardHeader>
+             <CardContent className="space-y-4">
+               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                 <div className="flex items-start gap-3">
+                   <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                   <div>
+                     <h4 className="font-medium text-yellow-800 mb-2">⚠️ 주의사항</h4>
+                     <ul className="text-sm text-yellow-700 space-y-1">
+                       <li>• 삭제된 데이터는 복구할 수 없습니다.</li>
+                       <li>• 실제 운영 환경에서는 신중하게 사용하세요.</li>
+                       <li>• 테스트 데이터 정리 시에만 사용하세요.</li>
+                       <li>• 삭제 전 반드시 백업을 확인하세요.</li>
+                     </ul>
+                   </div>
+                 </div>
+               </div>
+               {/* 전체 데이터 초기화 */}
+               <div className="border border-red-200 rounded-lg p-4 bg-red-50">
+                 <h4 className="font-medium text-red-800 mb-3">전체 데이터 초기화</h4>
+                 <p className="text-sm text-red-700 mb-4">
+                   모든 테스트 데이터를 한 번에 삭제합니다. (주문, 고객, 상품, 자재, 지출 등)
+                 </p>
+                 <AlertDialog>
+                   <AlertDialogTrigger asChild>
+                     <Button 
+                       disabled={cleanupLoading}
+                       variant="destructive"
+                       className="w-full"
+                     >
+                       <Trash2 className="h-4 w-4 mr-2" />
+                       {cleanupLoading ? '전체 데이터 삭제 중...' : '전체 데이터 삭제'}
+                     </Button>
+                   </AlertDialogTrigger>
+                   <AlertDialogContent>
+                     <AlertDialogHeader>
+                       <AlertDialogTitle>⚠️ 전체 데이터 삭제</AlertDialogTitle>
+                       <AlertDialogDescription>
+                         정말로 모든 테스트 데이터를 삭제하시겠습니까?<br />
+                         <strong>이 작업은 되돌릴 수 없습니다.</strong><br /><br />
+                         삭제될 데이터:
+                         <ul className="list-disc list-inside mt-2 space-y-1">
+                           <li>주문 데이터</li>
+                           <li>고객 데이터</li>
+                           <li>상품 데이터</li>
+                           <li>자재 데이터</li>
+                           <li>간편지출 데이터</li>
+                           <li>자재요청 데이터</li>
+                                                       <li>직원 데이터</li>
+                            <li>거래처 데이터</li>
+                            <li>재고이력 데이터</li>
+                           <li>샘플앨범 데이터</li>
+                         </ul>
+                       </AlertDialogDescription>
+                     </AlertDialogHeader>
+                     <AlertDialogFooter>
+                       <AlertDialogCancel>취소</AlertDialogCancel>
+                       <AlertDialogAction
+                         onClick={cleanupAllData}
+                         className="bg-red-600 hover:bg-red-700"
+                       >
+                         삭제 확인
+                       </AlertDialogAction>
+                     </AlertDialogFooter>
+                   </AlertDialogContent>
+                 </AlertDialog>
+               </div>
+               {/* 개별 데이터 초기화 */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">주문 관리</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('orders')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     주문 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">고객 관리</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('customers')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     고객 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">상품 관리</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('products')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     상품 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">자재 관리</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('materials')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     자재 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">간편지출</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('expenses')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     지출 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">자재요청</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('materialRequests')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     자재요청 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">직원 관리</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('employees')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     직원 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">거래처 관리</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('partners')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     거래처 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">재고이력</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('stockHistory')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     재고이력 데이터 삭제
+                   </Button>
+                 </div>
+                 <div className="border rounded-lg p-4">
+                   <h4 className="font-medium mb-3">샘플앨범</h4>
+                   <Button 
+                     onClick={() => handleSpecificDataCleanup('albums')}
+                     disabled={cleanupLoading}
+                     variant="outline"
+                     size="sm"
+                     className="w-full"
+                   >
+                     샘플앨범 데이터 삭제
+                   </Button>
+                 </div>
+               </div>
+               {/* 진행률 표시 */}
+               {progress && (
+                 <div className="border rounded-lg p-4 bg-blue-50">
+                   <h4 className="font-medium text-blue-800 mb-2">진행 상황</h4>
+                   <div className="space-y-2">
+                     <div className="flex justify-between text-sm">
+                       <span>{progress.current}</span>
+                       <span>{progress.completed}/{progress.total}</span>
+                     </div>
+                     <div className="w-full bg-gray-200 rounded-full h-2">
+                       <div 
+                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                         style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                       ></div>
+                     </div>
+                   </div>
+                 </div>
+               )}
+               {/* 개별 데이터 삭제 확인 대화상자 */}
+               <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                 <AlertDialogContent>
+                   <AlertDialogHeader>
+                     <AlertDialogTitle>⚠️ 데이터 삭제 확인</AlertDialogTitle>
+                     <AlertDialogDescription>
+                       정말로 {getDataTypeName(selectedDataType)} 데이터를 삭제하시겠습니까?<br />
+                       <strong>이 작업은 되돌릴 수 없습니다.</strong>
+                     </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter>
+                     <AlertDialogCancel>취소</AlertDialogCancel>
+                     <AlertDialogAction
+                       onClick={confirmSpecificDataCleanup}
+                       className="bg-red-600 hover:bg-red-700"
+                     >
+                       삭제 확인
+                     </AlertDialogAction>
+                   </AlertDialogFooter>
+                 </AlertDialogContent>
+               </AlertDialog>
+             </CardContent>
+           </Card>
+         </TabsContent>
       </Tabs>
-
       {/* 액션 버튼 */}
       <div className="flex justify-end gap-4">
         <Button variant="outline" onClick={resetToDefaults}>

@@ -1,5 +1,4 @@
 "use client";
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -7,16 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar, MapPin, User, Package, AlertCircle } from 'lucide-react';
 import type { MaterialRequest } from '@/types/material-request';
-
 interface RequestDetailDialogProps {
   request: MaterialRequest | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
 export function RequestDetailDialog({ request, open, onOpenChange }: RequestDetailDialogProps) {
   if (!request) return null;
-
   const formatDate = (timestamp: any): string => {
     if (!timestamp) return '';
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -28,7 +24,6 @@ export function RequestDetailDialog({ request, open, onOpenChange }: RequestDeta
       minute: '2-digit'
     });
   };
-
   const getStatusText = (status: string) => {
     switch (status) {
       case 'submitted': return '제출됨';
@@ -41,7 +36,6 @@ export function RequestDetailDialog({ request, open, onOpenChange }: RequestDeta
       default: return status;
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'submitted': return 'secondary';
@@ -54,11 +48,9 @@ export function RequestDetailDialog({ request, open, onOpenChange }: RequestDeta
       default: return 'secondary';
     }
   };
-
   const totalCost = request.requestedItems.reduce(
     (sum, item) => sum + (item.requestedQuantity * item.estimatedPrice), 0
   );
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -71,7 +63,6 @@ export function RequestDetailDialog({ request, open, onOpenChange }: RequestDeta
             요청번호 {request.requestNumber}의 상세 정보를 확인합니다.
           </DialogDescription>
         </DialogHeader>
-
         <div className="space-y-6">
           {/* 기본 정보 */}
           <Card>
@@ -122,7 +113,6 @@ export function RequestDetailDialog({ request, open, onOpenChange }: RequestDeta
               </div>
             </CardContent>
           </Card>
-
           {/* 요청 품목 */}
           <Card>
             <CardHeader>
@@ -163,7 +153,6 @@ export function RequestDetailDialog({ request, open, onOpenChange }: RequestDeta
               </Table>
             </CardContent>
           </Card>
-
           {/* 배송 정보 */}
           {request.delivery && (
             <Card>
@@ -200,7 +189,6 @@ export function RequestDetailDialog({ request, open, onOpenChange }: RequestDeta
               </CardContent>
             </Card>
           )}
-
           {/* 처리 이력 */}
           {request.statusHistory && request.statusHistory.length > 0 && (
             <Card>

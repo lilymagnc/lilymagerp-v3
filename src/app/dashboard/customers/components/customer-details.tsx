@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,21 +22,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import { downloadXLSX } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-
-
 interface CustomerDetailsProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onEdit: () => void;
   customer: Customer | null;
 }
-
 export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: CustomerDetailsProps) {
   const { orders, loading: ordersLoading } = useOrders();
   const [orderHistory, setOrderHistory] = useState<Order[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const { toast } = useToast();
-
   useEffect(() => {
     if (isOpen && customer && !ordersLoading) {
         setHistoryLoading(true);
@@ -48,7 +43,6 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
         setHistoryLoading(false);
     }
   }, [isOpen, customer, orders, ordersLoading]);
-
   const handleDownloadOrderHistory = () => {
     if (!customer || orderHistory.length === 0) {
       toast({
@@ -58,7 +52,6 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
       });
       return;
     }
-
     const dataToExport = orderHistory.map(order => ({
       "주문일": order.orderDate?.toDate ? format((order.orderDate as Timestamp).toDate(), "yyyy-MM-dd HH:mm") : '-',
       "주문지점": order.branchName,
@@ -68,16 +61,13 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
       "결제상태": order.payment.status,
       "주문상태": order.status,
     }));
-
     downloadXLSX(dataToExport, `${customer.name}_주문내역`);
      toast({
       title: "다운로드 성공",
       description: `${customer.name}님의 주문 내역 ${dataToExport.length}건이 다운로드되었습니다.`,
     });
   }
-
   if (!customer) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
@@ -128,7 +118,6 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
                     <p className="text-sm text-muted-foreground">결혼 기념일</p>
                     <p className="col-span-2 text-sm">{customer.anniversary ? format(new Date(customer.anniversary), "MM월 dd일", { locale: ko }) : '-'}</p>
                 </div>
-                
                 {customer.type === 'company' && (
                     <>
                         <Separator />
@@ -195,7 +184,6 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
                     </Table>
                 </div>
               </div>
-
         </div>
         <DialogFooter className="sm:justify-between items-center pt-4">
             <Button variant="outline" size="sm" onClick={handleDownloadOrderHistory}>

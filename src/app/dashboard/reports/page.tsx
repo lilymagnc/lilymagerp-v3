@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,6 @@ import { ConsolidatedReportView } from './components/consolidated-report-view';
 import { ReportFilters } from './components/report-filters';
 import { useReports } from '@/hooks/use-reports';
 import type { ReportFilter } from '@/hooks/use-reports';
-
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState('consolidated');
   const [filters, setFilters] = useState<ReportFilter>({
@@ -35,17 +33,13 @@ export default function ReportsPage() {
     categories: [],
     userIds: []
   });
-  
   const { loading } = useReports();
-
   const handleFiltersChange = (newFilters: ReportFilter) => {
     setFilters(newFilters);
   };
-
   const formatDateRange = (from: Date, to: Date) => {
     return `${from.toLocaleDateString('ko-KR')} ~ ${to.toLocaleDateString('ko-KR')}`;
   };
-
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 헤더 */}
@@ -67,7 +61,6 @@ export default function ReportsPage() {
           </Button>
         </div>
       </div>
-
       {/* 필터 섹션 */}
       <Card>
         <CardHeader>
@@ -86,7 +79,6 @@ export default function ReportsPage() {
           />
         </CardContent>
       </Card>
-
       {/* 빠른 통계 */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
         <Card>
@@ -106,7 +98,6 @@ export default function ReportsPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -123,7 +114,6 @@ export default function ReportsPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -140,7 +130,6 @@ export default function ReportsPage() {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -158,7 +147,6 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
-
       {/* 메인 리포트 탭 */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
@@ -179,19 +167,15 @@ export default function ReportsPage() {
             맞춤 리포트
           </TabsTrigger>
         </TabsList>
-
         <TabsContent value="consolidated" className="mt-6">
           <ConsolidatedReportView filters={filters} />
         </TabsContent>
-
         <TabsContent value="expense" className="mt-6">
           <ExpenseReportView filters={filters} />
         </TabsContent>
-
         <TabsContent value="budget" className="mt-6">
           <BudgetReportView filters={filters} />
         </TabsContent>
-
         <TabsContent value="custom" className="mt-6">
           <Card>
             <CardHeader>

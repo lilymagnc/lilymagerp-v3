@@ -8,40 +8,40 @@ export interface SystemSettings {
   siteDescription: string;
   contactEmail: string;
   contactPhone: string;
-  
+
   // 기본 배송비 설정
   defaultDeliveryFee: number;
   freeDeliveryThreshold: number;
-  
+
   // 알림 설정
   emailNotifications: boolean;
   smsNotifications: boolean;
-  
+
   // 시스템 설정
   autoBackup: boolean;
   backupFrequency: 'daily' | 'weekly' | 'monthly';
   dataRetentionDays: number;
-  
+
   // 포인트 시스템
   pointEarnRate: number; // 구매 금액 대비 포인트 적립률
   pointUseRate: number;  // 포인트 사용 시 할인률
-  
+
   // 주문 설정
   orderNumberPrefix: string;
   autoOrderNumber: boolean;
-  
+
   // 보안 설정
   sessionTimeout: number; // 분 단위
   requirePasswordChange: boolean;
   passwordMinLength: number;
-  
+
   // 메시지 출력 설정
   messageFont: string;
   messageFontSize: number;
   messageColor: string;
   messageTemplate: string;
   availableFonts: string[]; // 사용 가능한 폰트 목록
-  
+
   // 자동 이메일 설정
   autoEmailDeliveryComplete: boolean;
   autoEmailOrderConfirm: boolean;
@@ -51,7 +51,7 @@ export interface SystemSettings {
   emailTemplateOrderConfirm: string;
   emailTemplateStatusChange: string;
   emailTemplateBirthday: string;
-  
+
   // 할인 설정
   defaultDiscountRate: number;
   maxDiscountRate: number;
@@ -128,13 +128,13 @@ export function useSettings() {
   const saveSettings = useCallback(async (newSettings: SystemSettings) => {
     try {
       setError(null);
-      
+
       const settingsDoc = doc(db, 'system', 'settings');
       await setDoc(settingsDoc, {
         ...newSettings,
         updatedAt: serverTimestamp()
       });
-      
+
       setSettings(newSettings);
       return true;
     } catch (err) {
@@ -153,10 +153,10 @@ export function useSettings() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const settingsDoc = doc(db, 'system', 'settings');
         const settingsSnapshot = await getDoc(settingsDoc);
-        
+
         if (settingsSnapshot.exists()) {
           const data = settingsSnapshot.data();
           setSettings({ ...defaultSettings, ...data });

@@ -1,6 +1,5 @@
 
 "use client";
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,11 +32,9 @@ import { useMaterialRequests } from '@/hooks/use-material-requests';
 import { useToast } from '@/hooks/use-toast';
 import type { MaterialRequest, RequestStatus } from '@/types/material-request';
 import { REQUEST_STATUS_LABELS, URGENCY_LABELS } from '@/types/material-request';
-
 interface RequestStatusTrackerProps {
   selectedBranch?: string;
 }
-
 export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerProps) {
   const { user } = useAuth();
   const { getRequestsByBranch, getRequestsByBranchId, getAllRequests, updateRequestStatus, loading } = useMaterialRequests();
@@ -47,44 +44,29 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [refreshKey, setRefreshKey] = useState(0); // 새로고침을 위한 키
   const [displayCount, setDisplayCount] = useState(5); // 표시할 요청 수
-
   // 컴포넌트를 외부에서 제어할 수 있도록 ref로 노출
   React.useImperativeHandle(React.useRef(), () => ({
     refresh: () => setRefreshKey(prev => prev + 1)
   }));
-
   const loadRequests = useCallback(async () => {
     if (!user) return;
-
-    console.log('요청 목록 로딩 시작:', {
-      userRole: user.role,
-      userFranchise: user.franchise,
-      selectedBranch
-    });
-
     try {
       let fetchedRequests: MaterialRequest[];
-      
       if (user.role === '본사 관리자') {
         if (selectedBranch) {
-          console.log('본사 관리자 - 선택된 지점별 요청 조회:', selectedBranch);
           // 선택된 지점의 요청만 조회
           try {
             const { getDocs, collection, query, where } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase');
-            
             const branchesQuery = query(
               collection(db, 'branches'),
               where('name', '==', selectedBranch)
             );
             const branchesSnapshot = await getDocs(branchesQuery);
-            
             if (!branchesSnapshot.empty) {
               const branchId = branchesSnapshot.docs[0].id;
-              console.log('찾은 branchId:', branchId);
               fetchedRequests = await getRequestsByBranchId(branchId);
             } else {
-              console.log('지점을 찾을 수 없음, branchName으로 쿼리');
               fetchedRequests = await getRequestsByBranch(selectedBranch);
             }
           } catch (error) {
@@ -92,29 +74,23 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
             fetchedRequests = await getRequestsByBranch(selectedBranch);
           }
         } else {
-          console.log('본사 관리자 - 전체 요청 조회');
           fetchedRequests = await getAllRequests();
         }
       } else if (user.franchise) {
-        console.log('지점 사용자 - 지점별 요청 조회:', user.franchise);
         // branchId로 직접 쿼리 (기존 인덱스 활용)
         try {
           // 먼저 지점 정보를 가져와서 branchId를 찾습니다
           const { getDocs, collection, query, where } = await import('firebase/firestore');
           const { db } = await import('@/lib/firebase');
-          
           const branchesQuery = query(
             collection(db, 'branches'),
             where('name', '==', user.franchise)
           );
           const branchesSnapshot = await getDocs(branchesQuery);
-          
           if (!branchesSnapshot.empty) {
             const branchId = branchesSnapshot.docs[0].id;
-            console.log('찾은 branchId:', branchId);
             fetchedRequests = await getRequestsByBranchId(branchId);
           } else {
-            console.log('지점을 찾을 수 없음, branchName으로 쿼리');
             fetchedRequests = await getRequestsByBranch(user.franchise);
           }
         } catch (error) {
@@ -122,12 +98,8 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
           fetchedRequests = await getRequestsByBranch(user.franchise);
         }
       } else {
-        console.log('지점 정보 없음 - 빈 배열 반환');
         fetchedRequests = [];
       }
-      
-      console.log('조회된 요청 수:', fetchedRequests.length);
-      
       // 안전한 timestamp 정렬
       setRequests(fetchedRequests.sort((a, b) => {
         const getTimestamp = (timestamp: any) => {
@@ -137,7 +109,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
           if (timestamp instanceof Date) return timestamp.getTime();
           return new Date(timestamp).getTime();
         };
-        
         return getTimestamp(b.createdAt) - getTimestamp(a.createdAt);
       }));
       setLastUpdated(new Date());
@@ -145,10 +116,8 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       console.error('요청 목록 로딩 오류:', error);
     }
   }, [user, getAllRequests, getRequestsByBranch, getRequestsByBranchId, selectedBranch]);
-
   useEffect(() => {
     let isMounted = true;
-    
     const loadData = async () => {
       if (isMounted) {
         await loadRequests();
@@ -157,19 +126,13 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
         }
       }
     };
-    
     loadData();
-    
     return () => {
       isMounted = false;
     };
   }, [loadRequests, refreshKey]); // refreshKey가 변경되면 새로고침
-
-
-
   const getStatusIcon = (status: RequestStatus) => {
     const iconProps = { className: "h-4 w-4" };
-    
     switch (status) {
       case 'submitted':
         return <ClipboardList {...iconProps} />;
@@ -189,7 +152,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
         return <Clock {...iconProps} />;
     }
   };
-
   const getStatusColor = (status: RequestStatus) => {
     switch (status) {
       case 'submitted':
@@ -210,7 +172,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
         return 'gray';
     }
   };
-
   const getStatusProgress = (status: RequestStatus): number => {
     switch (status) {
       case 'submitted': return 10;
@@ -223,15 +184,12 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       default: return 0;
     }
   };
-
   const getEstimatedDeliveryDate = (request: MaterialRequest): string => {
     if (request.delivery?.deliveryDate) {
       return formatDate(request.delivery.deliveryDate);
     }
-    
     const createdDate = getDateFromTimestamp(request.createdAt);
     let estimatedDays = 0;
-    
     switch (request.status) {
       case 'submitted':
       case 'reviewing':
@@ -249,26 +207,21 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       default:
         return '-';
     }
-    
     const estimatedDate = new Date(createdDate);
     estimatedDate.setDate(estimatedDate.getDate() + estimatedDays);
-    
     return estimatedDate.toLocaleDateString('ko-KR', {
       month: 'short',
       day: 'numeric'
     }) + ' 예상';
   };
-
   const compareRequestVsActual = (request: MaterialRequest) => {
     if (!request.actualPurchase) return null;
-    
     const requestedTotal = request.requestedItems.reduce(
       (sum, item) => sum + (item.requestedQuantity * item.estimatedPrice), 0
     );
     const actualTotal = request.actualPurchase.totalCost;
     const difference = actualTotal - requestedTotal;
     const percentDiff = ((difference / requestedTotal) * 100);
-    
     return {
       requestedTotal,
       actualTotal,
@@ -278,21 +231,18 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       isLower: difference < 0
     };
   };
-
   const urgentRequests = useMemo(() => {
     return requests.filter(request => 
       request.requestedItems.some(item => item.urgency === 'urgent') &&
       !['completed', 'delivered'].includes(request.status)
     );
   }, [requests]);
-
   const deliveryAlerts = useMemo(() => {
     return requests.filter(request => 
       request.status === 'shipping' || 
       (request.status === 'delivered' && !request.delivery?.deliveryDate)
     );
   }, [requests]);
-
   // 안전한 Date 변환 유틸리티 함수
   const getDateFromTimestamp = (timestamp: any): Date => {
     if (!timestamp) return new Date();
@@ -301,7 +251,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
     if (timestamp instanceof Date) return timestamp;
     return new Date(timestamp);
   };
-
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
     try {
@@ -318,7 +267,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       return '-';
     }
   };
-
   const formatRelativeTime = (timestamp: any) => {
     if (!timestamp) return '-';
     try {
@@ -327,7 +275,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       const diffMs = now.getTime() - date.getTime();
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffHours / 24);
-      
       if (diffDays > 0) {
         return `${diffDays}일 전`;
       } else if (diffHours > 0) {
@@ -340,11 +287,9 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       return '-';
     }
   };
-
   const toggleRequestExpansion = (requestId: string) => {
     setExpandedRequest(expandedRequest === requestId ? null : requestId);
   };
-
   if (loading) {
     return (
       <Card>
@@ -362,7 +307,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
       </Card>
     );
   }
-
   return (
     <div className="space-y-4">
       {/* 알림 섹션 */}
@@ -376,7 +320,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
               </AlertDescription>
             </Alert>
           )}
-          
           {deliveryAlerts.length > 0 && (
             <Alert className="border-blue-200 bg-blue-50">
               <Bell className="h-4 w-4 text-blue-600" />
@@ -387,7 +330,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
           )}
         </div>
       )}
-
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -419,7 +361,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
             <div className="space-y-3">
               {requests.slice(0, displayCount).map((request) => {
                 const comparison = compareRequestVsActual(request);
-                
                 return (
                   <div key={request.id} className="border rounded-lg">
                     {/* 요청 헤더 */}
@@ -445,7 +386,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               {getEstimatedDeliveryDate(request)}
                             </div>
                           )}
-                          
                           {/* 비용 비교 표시 */}
                           {comparison && (
                             <div className="flex items-center gap-1 text-xs">
@@ -464,7 +404,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               </span>
                             </div>
                           )}
-                          
                           <Badge variant="outline" className="text-xs">
                             {REQUEST_STATUS_LABELS[request.status]}
                           </Badge>
@@ -500,7 +439,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               배송완료
                             </Button>
                           )}
-                          
                           {/* 입고완료 버튼 - 배송완료 상태일 때 표시 */}
                           {request.status === 'delivered' && (
                             <Button
@@ -528,7 +466,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               입고완료
                             </Button>
                           )}
-                          
                           {/* 완료 버튼 - 요청됨 상태일 때 표시 (기존) */}
                           {request.status === 'submitted' && (
                             <Button
@@ -563,7 +500,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                           )}
                         </div>
                       </div>
-                      
                       {/* 진행률 표시 */}
                       <div className="mt-2">
                         <Progress 
@@ -572,7 +508,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                         />
                       </div>
                     </div>
-
                     {/* 요청 상세 정보 */}
                     {expandedRequest === request.id && (
                       <div className="border-t bg-muted/20">
@@ -615,7 +550,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               </div>
                             </div>
                           )}
-
                           {/* 요청 품목 */}
                           <div>
                             <h4 className="text-sm font-medium mb-2">요청 품목</h4>
@@ -640,7 +574,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               ))}
                             </div>
                           </div>
-
                           {/* 실제 구매 정보 (구매 완료 후) */}
                           {request.actualPurchase && (
                             <div>
@@ -669,7 +602,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               </div>
                             </div>
                           )}
-
                           {/* 배송 추적 정보 */}
                           {request.delivery && (
                             <div>
@@ -688,7 +620,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                                     <p>{request.delivery.deliveryMethod}</p>
                                   </div>
                                 </div>
-                                
                                 {request.delivery.trackingNumber && (
                                   <div>
                                     <p className="text-muted-foreground">송장번호</p>
@@ -697,7 +628,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                                     </p>
                                   </div>
                                 )}
-                                
                                 {request.delivery.deliveryDate ? (
                                   <div className="flex items-center gap-2 text-green-600">
                                     <CheckCircle className="h-4 w-4" />
@@ -712,7 +642,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                               </div>
                             </div>
                           )}
-
                           {/* 입고 예정 알림 */}
                           {request.status === 'shipping' && (
                             <Alert className="border-blue-200 bg-blue-50">
@@ -728,7 +657,6 @@ export function RequestStatusTracker({ selectedBranch }: RequestStatusTrackerPro
                   </div>
                 );
               })}
-
               {requests.length > displayCount && (
                 <div className="text-center pt-2">
                   <Button 

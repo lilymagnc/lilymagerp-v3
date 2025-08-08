@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Upload, Edit, Trash2 } from 'lucide-react';
@@ -10,20 +9,15 @@ import { PhotoUpload } from '../components/photo-upload';
 import { PhotoViewer } from '../components/photo-viewer';
 import { useAlbums } from '@/hooks/use-albums';
 import { usePhotos } from '@/hooks/use-photos';
-
 export default function AlbumDetailPage() {
   const params = useParams();
   const router = useRouter();
   const albumId = params.albumId as string;
-  
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
-  
   const { albums, deleteAlbum } = useAlbums();
   const { photos, loading, uploadPhotos, deletePhoto, reorderPhotos } = usePhotos(albumId);
-  
   const album = albums.find(a => a.id === albumId);
-
   const handleDeleteAlbum = async () => {
     if (confirm('앨범을 삭제하시겠습니까? 모든 사진이 함께 삭제됩니다.')) {
       try {
@@ -34,7 +28,6 @@ export default function AlbumDetailPage() {
       }
     }
   };
-
   const handleDeletePhoto = async (photoId: string) => {
     if (confirm('사진을 삭제하시겠습니까?')) {
       try {
@@ -44,7 +37,6 @@ export default function AlbumDetailPage() {
       }
     }
   };
-
   const handlePhotoUpload = async (files: File[]) => {
     try {
       await uploadPhotos(files);
@@ -53,7 +45,6 @@ export default function AlbumDetailPage() {
       console.error('사진 업로드 실패:', error);
     }
   };
-
   if (!album) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -61,7 +52,6 @@ export default function AlbumDetailPage() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       {/* 헤더 */}
@@ -75,7 +65,6 @@ export default function AlbumDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             뒤로가기
           </Button>
-          
           <div>
             <h1 className="text-2xl font-bold">{album.title}</h1>
             <p className="text-gray-600">{album.description}</p>
@@ -84,7 +73,6 @@ export default function AlbumDetailPage() {
             </p>
           </div>
         </div>
-        
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -93,14 +81,12 @@ export default function AlbumDetailPage() {
             <Upload className="h-4 w-4 mr-2" />
             사진 업로드
           </Button>
-          
           <Button
             variant="outline"
             size="sm"
           >
             <Edit className="h-4 w-4" />
           </Button>
-          
           <Button
             variant="outline"
             size="sm"
@@ -110,7 +96,6 @@ export default function AlbumDetailPage() {
           </Button>
         </div>
       </div>
-
       {/* 사진 업로드 영역 */}
       {isUploadOpen && (
         <PhotoUpload
@@ -119,7 +104,6 @@ export default function AlbumDetailPage() {
           onCancel={() => setIsUploadOpen(false)}
         />
       )}
-
       {/* 사진 그리드 */}
       <PhotoGrid
         photos={photos}
@@ -129,7 +113,6 @@ export default function AlbumDetailPage() {
         onReorder={reorderPhotos}
         isDraggable={true}
       />
-
       {/* 사진 뷰어 (라이트박스) */}
       {selectedPhotoIndex !== null && (
         <PhotoViewer

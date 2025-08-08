@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,65 +45,52 @@ import type {
   calculateBudgetUsage,
   getBudgetStatus 
 } from '@/types/expense';
-
 interface BudgetListProps {
   budgets: Budget[];
   loading: boolean;
   onRefresh: () => void;
 }
-
 export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | 'all'>('all');
   const [yearFilter, setYearFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  
   const { toggleBudgetStatus } = useBudgets();
-
   // 필터링된 예산 목록
   const filteredBudgets = budgets.filter(budget => {
     const searchMatch = !searchTerm || 
       budget.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (budget.branchName && budget.branchName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (budget.departmentName && budget.departmentName.toLowerCase().includes(searchTerm.toLowerCase()));
-    
     const categoryMatch = categoryFilter === 'all' || budget.category === categoryFilter;
     const yearMatch = yearFilter === 'all' || budget.fiscalYear.toString() === yearFilter;
     const statusMatch = statusFilter === 'all' || 
       (statusFilter === 'active' && budget.isActive) ||
       (statusFilter === 'inactive' && !budget.isActive);
-
     return searchMatch && categoryMatch && yearMatch && statusMatch;
   });
-
   // 고유 연도 목록 추출
   const uniqueYears = Array.from(new Set(budgets.map(b => b.fiscalYear.toString())));
-
   // 예산 사용률 계산
   const getBudgetUsage = (budget: Budget) => {
     return budget.allocatedAmount > 0 ? (budget.usedAmount / budget.allocatedAmount) * 100 : 0;
   };
-
   // 상태별 색상 반환
   const getStatusColor = (budget: Budget) => {
     if (!budget.isActive) return 'text-gray-500';
-    
     const usage = getBudgetUsage(budget);
     if (usage >= 100) return 'text-red-600';
     if (usage >= 80) return 'text-yellow-600';
     return 'text-green-600';
   };
-
   // 상태별 아이콘 반환
   const getStatusIcon = (budget: Budget) => {
     if (!budget.isActive) return <Pause className="h-4 w-4 text-gray-500" />;
-    
     const usage = getBudgetUsage(budget);
     if (usage >= 100) return <AlertTriangle className="h-4 w-4 text-red-500" />;
     if (usage >= 80) return <TrendingUp className="h-4 w-4 text-yellow-500" />;
     return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
-
   // 날짜 포맷팅
   const formatDate = (timestamp: any) => {
     if (!timestamp) return '-';
@@ -115,7 +101,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
       day: 'numeric'
     });
   };
-
   // 통화 포맷팅
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -123,12 +108,10 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
       currency: 'KRW'
     }).format(amount);
   };
-
   // 예산 활성화/비활성화 토글
   const handleToggleStatus = async (budgetId: string, currentStatus: boolean) => {
     await toggleBudgetStatus(budgetId, !currentStatus);
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -137,7 +120,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
       </div>
     );
   }
-
   return (
     <div className="space-y-4">
       {/* 필터 및 검색 */}
@@ -153,7 +135,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
             />
           </div>
         </div>
-
         <div className="flex gap-2">
           <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value as ExpenseCategory | 'all')}>
             <SelectTrigger className="w-32">
@@ -168,7 +149,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
               ))}
             </SelectContent>
           </Select>
-
           <Select value={yearFilter} onValueChange={setYearFilter}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="연도" />
@@ -182,7 +162,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
               ))}
             </SelectContent>
           </Select>
-
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'all' | 'active' | 'inactive')}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="상태" />
@@ -193,13 +172,11 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
               <SelectItem value="inactive">비활성</SelectItem>
             </SelectContent>
           </Select>
-
           <Button variant="outline" onClick={onRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
       </div>
-
       {/* 예산 목록 테이블 */}
       <Card>
         <CardHeader>
@@ -237,7 +214,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
                 <TableBody>
                   {filteredBudgets.map((budget) => {
                     const usage = getBudgetUsage(budget);
-                    
                     return (
                       <TableRow key={budget.id}>
                         <TableCell>
@@ -251,13 +227,11 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
                             </div>
                           </div>
                         </TableCell>
-                        
                         <TableCell>
                           <Badge variant="outline">
                             {EXPENSE_CATEGORY_LABELS[budget.category]}
                           </Badge>
                         </TableCell>
-                        
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -269,7 +243,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
                             )}
                           </div>
                         </TableCell>
-                        
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Building className="h-4 w-4 text-muted-foreground" />
@@ -285,7 +258,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
                             </div>
                           </div>
                         </TableCell>
-                        
                         <TableCell>
                           <div>
                             <p className="font-medium">
@@ -296,7 +268,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
                             </p>
                           </div>
                         </TableCell>
-                        
                         <TableCell>
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
@@ -318,7 +289,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
                             </p>
                           </div>
                         </TableCell>
-                        
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {budget.isActive ? (
@@ -334,13 +304,11 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
                             )}
                           </div>
                         </TableCell>
-                        
                         <TableCell>
                           <div className="text-sm text-muted-foreground">
                             {formatDate(budget.createdAt)}
                           </div>
                         </TableCell>
-                        
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -388,7 +356,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
           )}
         </CardContent>
       </Card>
-
       {/* 요약 정보 */}
       {filteredBudgets.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -405,7 +372,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
               </div>
             </CardContent>
           </Card>
-          
           <Card>
             <CardContent className="p-4">
               <div className="text-center">
@@ -419,7 +385,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
               </div>
             </CardContent>
           </Card>
-          
           <Card>
             <CardContent className="p-4">
               <div className="text-center">
@@ -430,7 +395,6 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
               </div>
             </CardContent>
           </Card>
-          
           <Card>
             <CardContent className="p-4">
               <div className="text-center">

@@ -1,13 +1,10 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Download } from 'lucide-react';
 import { Photo } from '@/types/album';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-
 import Image from 'next/image';
-
 interface PhotoViewerProps {
   photos: Photo[];
   currentIndex: number;
@@ -16,7 +13,6 @@ interface PhotoViewerProps {
   onNext: () => void;
   onPrevious: () => void;
 }
-
 export function PhotoViewer({ 
   photos, 
   currentIndex, 
@@ -30,14 +26,11 @@ export function PhotoViewer({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
   const currentPhoto = photos[currentIndex];
-
   // 키보드 이벤트 처리
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-
       switch (e.key) {
         case 'Escape':
           onClose();
@@ -60,40 +53,32 @@ export function PhotoViewer({
           break;
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, onNext, onPrevious]);
-
   // 사진이 변경될 때 뷰 초기화
   useEffect(() => {
     resetView();
   }, [currentIndex]);
-
   const resetView = () => {
     setZoom(1);
     setRotation(0);
     setPosition({ x: 0, y: 0 });
   };
-
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev * 1.2, 5));
   };
-
   const handleZoomOut = () => {
     setZoom(prev => Math.max(prev / 1.2, 0.1));
   };
-
   const handleRotate = () => {
     setRotation(prev => (prev + 90) % 360);
   };
-
   const handleMouseDown = (e: React.MouseEvent) => {
     if (zoom <= 1) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
   };
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || zoom <= 1) return;
     setPosition({
@@ -101,14 +86,11 @@ export function PhotoViewer({
       y: e.clientY - dragStart.y
     });
   };
-
   const handleMouseUp = () => {
     setIsDragging(false);
   };
-
   const handleDownload = async () => {
     if (!currentPhoto) return;
-    
     try {
       const response = await fetch(currentPhoto.originalUrl);
       const blob = await response.blob();
@@ -125,7 +107,6 @@ export function PhotoViewer({
       alert('다운로드에 실패했습니다.');
     }
   };
-
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -133,9 +114,7 @@ export function PhotoViewer({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
-
   if (!currentPhoto) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95">
@@ -163,7 +142,6 @@ export function PhotoViewer({
               </Button>
             </div>
           </div>
-
           {/* 메인 이미지 영역 */}
           <div 
             className="flex-1 flex items-center justify-center overflow-hidden cursor-move"
@@ -189,7 +167,6 @@ export function PhotoViewer({
               />
             </div>
           </div>
-
           {/* 네비게이션 버튼 */}
           {photos.length > 1 && (
             <>
@@ -211,7 +188,6 @@ export function PhotoViewer({
               </Button>
             </>
           )}
-
           {/* 하단 컨트롤 */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
             <div className="flex items-center justify-center space-x-2">
@@ -224,11 +200,9 @@ export function PhotoViewer({
               >
                 <ZoomOut className="h-4 w-4" />
               </Button>
-              
               <span className="text-white text-sm min-w-[60px] text-center">
                 {Math.round(zoom * 100)}%
               </span>
-              
               <Button
                 variant="ghost"
                 size="sm"
@@ -238,9 +212,7 @@ export function PhotoViewer({
               >
                 <ZoomIn className="h-4 w-4" />
               </Button>
-              
               <div className="w-px h-6 bg-white/30 mx-2" />
-              
               <Button
                 variant="ghost"
                 size="sm"
@@ -249,7 +221,6 @@ export function PhotoViewer({
               >
                 <RotateCw className="h-4 w-4" />
               </Button>
-              
               <Button
                 variant="ghost"
                 size="sm"
@@ -258,7 +229,6 @@ export function PhotoViewer({
               >
                 <Download className="h-4 w-4" />
               </Button>
-              
               <Button
                 variant="ghost"
                 size="sm"

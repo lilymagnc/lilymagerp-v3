@@ -31,8 +31,6 @@ export type Material = {
   color: string;
   branch: string;
 };
-
-
 interface MaterialTableProps {
   materials: Material[];
   onSelectionChange: (selectedIds: string[]) => void;
@@ -59,7 +57,7 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, 
     setSelectedRows(newSelection);
     onSelectionChange(Object.keys(newSelection));
   };
-  
+
   const handleSelectAll = (checked: boolean) => {
     const newSelection: Record<string, boolean> = {};
     if (checked) {
@@ -77,12 +75,12 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, 
     setIsDetailOpen(false);
     onEdit(material);
   };
-  
+
   const handleStockUpdate = (material: any) => {
     setSelectedMaterial(material);
     setIsStockFormOpen(true);
   };
-  
+
   const handleRowClick = (material: any) => {
     setSelectedMaterial(material);
     setIsDetailOpen(true);
@@ -104,8 +102,6 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, 
     router.push(`/dashboard/print-labels?${params.toString()}`);
     setIsPrintDialogOpen(false);
   };
-
-
   const handleCloseForms = () => {
     setIsStockFormOpen(false);
     setIsDetailOpen(false);
@@ -260,5 +256,3 @@ export function MaterialTable({ materials, onSelectionChange, onEdit, onDelete, 
     </>
   );
 }
-
-    

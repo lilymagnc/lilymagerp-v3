@@ -1,6 +1,5 @@
 
 "use client"
-
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,7 +12,6 @@ import {
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Barcode } from "@/components/barcode"
-
 type Material = {
   id: string;
   name: string;
@@ -25,17 +23,14 @@ type Material = {
   size: string;
   color: string;
 } | null;
-
 interface MaterialDetailsProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   onEdit: () => void
   material: Material
 }
-
 export function MaterialDetails({ isOpen, onOpenChange, onEdit, material }: MaterialDetailsProps) {
   if (!material) return null;
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">

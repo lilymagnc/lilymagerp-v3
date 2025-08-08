@@ -1,10 +1,8 @@
 "use client";
-
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, query, where, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
-
 export interface DeliveryFeeData {
   id: string;
   branchId: string;
@@ -15,26 +13,22 @@ export interface DeliveryFeeData {
   createdAt: Date;
   updatedAt: Date;
 }
-
 export function useDeliveryFees() {
   const [deliveryFees, setDeliveryFees] = useState<DeliveryFeeData[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-
   const fetchDeliveryFees = useCallback(async () => {
     try {
       setLoading(true);
       const deliveryFeesCollection = collection(db, 'deliveryFees');
       const q = query(deliveryFeesCollection, where("isActive", "==", true));
       const querySnapshot = await getDocs(q);
-      
       const feesData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
         updatedAt: doc.data().updatedAt?.toDate(),
       } as DeliveryFeeData));
-      
       setDeliveryFees(feesData);
     } catch (error) {
       console.error("Error fetching delivery fees:", error);
@@ -47,11 +41,9 @@ export function useDeliveryFees() {
       setLoading(false);
     }
   }, [toast]);
-
   const getDeliveryFeesByBranch = useCallback((branchId: string) => {
     return deliveryFees.filter(fee => fee.branchId === branchId);
   }, [deliveryFees]);
-
   const updateDeliveryFee = async (feeId: string, updates: Partial<DeliveryFeeData>) => {
     try {
       const feeDoc = doc(db, 'deliveryFees', feeId);
@@ -59,12 +51,10 @@ export function useDeliveryFees() {
         ...updates,
         updatedAt: new Date()
       }, { merge: true });
-      
       toast({
         title: '성공',
         description: '배송비가 성공적으로 수정되었습니다.',
       });
-      
       await fetchDeliveryFees();
     } catch (error) {
       console.error("Error updating delivery fee:", error);
@@ -75,11 +65,9 @@ export function useDeliveryFees() {
       });
     }
   };
-
   const initializeDeliveryFees = async (branches: any[]) => {
     try {
       const batch = writeBatch(db);
-      
       branches.forEach(branch => {
         if (branch.deliveryFees) {
           branch.deliveryFees.forEach((fee: any) => {
@@ -96,10 +84,8 @@ export function useDeliveryFees() {
           });
         }
       });
-      
       await batch.commit();
       await fetchDeliveryFees();
-      
       toast({
         title: '성공',
         description: '배송비 데이터가 초기화되었습니다.',
@@ -113,11 +99,9 @@ export function useDeliveryFees() {
       });
     }
   };
-
   useEffect(() => {
     fetchDeliveryFees();
   }, [fetchDeliveryFees]);
-
   return {
     deliveryFees,
     loading,

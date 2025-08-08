@@ -1,5 +1,4 @@
 "use client"
-
 import {
   Dialog,
   DialogContent,
@@ -18,70 +17,58 @@ import { Customer } from "@/hooks/use-customers"
 import { useOrders } from "@/hooks/use-orders"
 import { useState, useEffect } from "react"
 import { Eye, Package, Calendar, DollarSign, Download } from "lucide-react"
-
 // 안전한 날짜 포맷팅 함수
 const formatSafeDate = (dateValue: any): string => {
   try {
     if (!dateValue) return '-';
-    
     // 문자열인 경우
     if (typeof dateValue === 'string') {
       return format(new Date(dateValue), 'yyyy년 MM월 dd일 HH:mm', { locale: ko });
     }
-    
     // Firebase Timestamp인 경우
     if (dateValue && typeof dateValue.toDate === 'function') {
       return format(dateValue.toDate(), 'yyyy년 MM월 dd일 HH:mm', { locale: ko });
     }
-    
     // Date 객체인 경우
     if (dateValue instanceof Date) {
       return format(dateValue, 'yyyy년 MM월 dd일 HH:mm', { locale: ko });
     }
-    
     return '-';
   } catch (error) {
     console.error('Date formatting error:', error, dateValue);
     return '-';
   }
 };
-
 interface CustomerDetailDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   customer: Customer | null
 }
-
 export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: CustomerDetailDialogProps) {
   const { orders } = useOrders();
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
-
   // 엑셀 다운로드 함수
   const handleExportOrders = () => {
     if (customerOrders.length === 0) {
       alert('다운로드할 구매 내역이 없습니다.');
       return;
     }
-
     // 엑셀 데이터 준비 (상세 정보 포함)
     const excelData = customerOrders.map(order => {
       // 상품 목록을 문자열로 변환
       const itemsList = order.items?.map((item: any) => 
         `${item.name} (${item.quantity}개 x ${item.price?.toLocaleString()}원)`
       ).join('; ') || '';
-      
       // 배송 정보
       const deliveryInfo = order.deliveryInfo ? 
         `${order.deliveryInfo.recipientName} / ${order.deliveryInfo.recipientContact} / ${order.deliveryInfo.address}` : 
         '픽업';
-      
       // 픽업 정보
       const pickupInfo = order.pickupInfo ? 
         `${order.pickupInfo.pickerName} / ${order.pickupInfo.pickerContact} / ${order.pickupInfo.date} ${order.pickupInfo.time}` : 
         '';
-      
       return {
         '주문일': formatSafeDate(order.orderDate),
         '주문번호': order.id || '',
@@ -112,14 +99,11 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
         '요청사항': order.request || ''
       };
     });
-
     // 파일명 생성
     const fileName = `${customer.name}_상세구매내역_${new Date().toISOString().split('T')[0]}`;
-
     // 엑셀 다운로드
     import('xlsx').then((XLSX) => {
       const ws = XLSX.utils.json_to_sheet(excelData);
-      
       // 컬럼 너비 자동 조정
       const colWidths = [
         { wch: 15 }, // 주문일
@@ -149,90 +133,46 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
         { wch: 30 }  // 요청사항
       ];
       ws['!cols'] = colWidths;
-      
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, '상세구매내역');
       XLSX.writeFile(wb, `${fileName}.xlsx`);
     });
   };
-
   useEffect(() => {
     if (customer && orders.length > 0) {
-      console.log('고객 정보:', {
-        name: customer.name,
-        contact: customer.contact,
-        id: customer.id
-      });
-      
-      console.log('전체 주문 수:', orders.length);
-      console.log('주문 샘플:', orders.slice(0, 2).map(order => ({
+      .map(order => ({
         id: order.id,
         orderer: order.orderer,
         status: order.status
       })));
-      
       // 이름과 연락처가 모두 일치하는 주문만 필터링 (가장 정확한 매칭)
       const filteredOrders = orders.filter(order => {
         const nameMatch = order.orderer?.name === customer.name;
         const contactMatch = order.orderer?.contact === customer.contact;
-        
         // 연락처 형식 정규화 (하이픈 제거)
         const normalizedOrderContact = order.orderer?.contact?.replace(/[-]/g, '');
         const normalizedCustomerContact = customer.contact?.replace(/[-]/g, '');
         const normalizedContactMatch = normalizedOrderContact === normalizedCustomerContact;
-        
         // 이름과 연락처가 모두 일치하는 경우만 매칭
         const exactNameContactMatch = nameMatch && (contactMatch || normalizedContactMatch);
-        
         // 고객 ID가 있는 경우 ID 매칭도 허용
         const idMatch = order.orderer?.id === customer.id;
-        
-        console.log(`주문 ${order.id}:`, {
-          orderContact: order.orderer?.contact,
-          orderName: order.orderer?.name,
-          customerName: customer.name,
-          customerContact: customer.contact,
-          nameMatch,
-          contactMatch,
-          normalizedContactMatch,
-          exactNameContactMatch,
-          idMatch
-        });
-        
         return exactNameContactMatch || idMatch;
       });
-      
-      console.log('필터링된 주문 수:', filteredOrders.length);
       setCustomerOrders(filteredOrders);
     } else {
       setCustomerOrders([]);
     }
   }, [customer, orders]);
-
     if (!customer) return null
-   
   // 디버깅을 위한 로그
-  console.log('CustomerDetailDialog - customer data:', {
-    id: customer.id,
-    name: customer.name,
-    contact: customer.contact,
-    createdAt: customer.createdAt,
-    createdAtType: typeof customer.createdAt,
-    lastOrderDate: customer.lastOrderDate,
-    lastOrderDateType: typeof customer.lastOrderDate
-  });
-  
-  console.log('CustomerDetailDialog - orders data:', {
-    totalOrders: orders.length,
-    customerOrders: customerOrders.length,
-    ordersSample: orders.slice(0, 3).map(order => ({
+  .map(order => ({
       id: order.id,
       orderer: order.orderer,
       status: order.status,
       orderDate: order.orderDate
     }))
   });
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -246,13 +186,11 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
               고객의 상세 정보, 포인트 현황, 구매 내역을 확인할 수 있습니다.
             </DialogDescription>
           </DialogHeader>
-          
           <Tabs defaultValue="info" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="info">기본 정보</TabsTrigger>
               <TabsTrigger value="orders">구매 내역 ({customerOrders.length})</TabsTrigger>
             </TabsList>
-            
             <TabsContent value="info" className="space-y-6">
               {/* 기본 정보 */}
               <div>
@@ -276,9 +214,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                   </div>
                 </div>
               </div>
-
               <Separator />
-
                              {/* 추가 정보 */}
                <div>
                  <h3 className="text-lg font-semibold mb-3">추가 정보</h3>
@@ -293,9 +229,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                    </div>
                  </div>
                </div>
-
                <Separator />
-
                {/* 지점별 등록 정보 */}
                {customer.branches && Object.keys(customer.branches).length > 0 && (
                  <div>
@@ -331,9 +265,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                    </div>
                  </div>
                )}
-
               <Separator />
-
               {/* 포인트 정보 */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">포인트 정보</h3>
@@ -344,9 +276,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                   </Badge>
                 </div>
               </div>
-
               <Separator />
-
               {/* 등록 정보 */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">등록 정보</h3>
@@ -368,7 +298,6 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                 </div>
               </div>
             </TabsContent>
-            
             <TabsContent value="orders" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">구매 내역</h3>
@@ -390,7 +319,6 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                   )}
                 </div>
               </div>
-              
               {customerOrders.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-4 text-gray-300" />
@@ -457,7 +385,6 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
           </Tabs>
         </DialogContent>
       </Dialog>
-
       {/* 주문 상세 정보 다이얼로그 */}
       {selectedOrder && (
         <Dialog open={showOrderDetail} onOpenChange={setShowOrderDetail}>
@@ -471,7 +398,6 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                 주문의 상세 정보와 상품 목록을 확인할 수 있습니다.
               </DialogDescription>
             </DialogHeader>
-            
             <div className="space-y-6">
               {/* 주문 기본 정보 */}
               <div>
@@ -499,9 +425,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                   </div>
                 </div>
               </div>
-
               <Separator />
-
               {/* 상품 목록 */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">상품 목록</h3>

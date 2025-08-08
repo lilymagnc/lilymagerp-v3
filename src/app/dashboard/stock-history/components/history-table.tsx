@@ -1,6 +1,5 @@
 
 "use client";
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ArrowRight, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-
 export type StockHistory = {
   id: string;
   date: string;
@@ -25,12 +23,10 @@ export type StockHistory = {
   price?: number;
   totalAmount?: number;
 };
-
 interface HistoryTableProps {
   history: StockHistory[];
   onDelete?: (id: string) => void;
 }
-
 export function HistoryTable({ history, onDelete }: HistoryTableProps) {
     const { user } = useAuth();
     const isAdmin = user?.role === '본사 관리자';
@@ -42,7 +38,6 @@ export function HistoryTable({ history, onDelete }: HistoryTableProps) {
             default: return <Badge>{type}</Badge>;
         }
     }
-
     const renderQuantity = (item: StockHistory) => {
         if (item.type === 'manual_update') {
             return (
@@ -59,7 +54,6 @@ export function HistoryTable({ history, onDelete }: HistoryTableProps) {
             </span>
         );
     }
-
   return (
     <Card>
       <CardContent>
