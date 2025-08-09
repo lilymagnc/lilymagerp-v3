@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -15,9 +15,10 @@ import {
   User,
   CheckCircle,
   AlertCircle,
-  Info
+  Info,
+  Trash
 } from "lucide-react";
-import { collection, query, orderBy, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, query, orderBy, getDocs, doc, getDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getFunctions, httpsCallable } from "firebase/functions";
 interface BackupRecord {
@@ -35,17 +36,20 @@ export default function BackupPage() {
   const [restoringBackup, setRestoringBackup] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const { isHQManager } = useUserRole();
+  const { isHQManager, loading: roleLoading } = useUserRole();
   const functions = getFunctions();
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
-    loadBackups();
-  }, []);
-  const loadBackups = async () => {
-    // 본사 관리자가 아니면 백업 목록을 로드하지 않음
-    if (!isHQManager()) {
+    if (roleLoading || hasLoadedRef.current) return;
+    if (isHQManager()) {
+      hasLoadedRef.current = true;
+      loadBackups();
+    } else {
       setLoading(false);
-      return;
+      hasLoadedRef.current = true;
     }
+  }, [roleLoading]);
+  const loadBackups = async () => {
     try {
       setLoading(true);
       const backupsQuery = query(
@@ -75,6 +79,25 @@ export default function BackupPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [deletingBackupId, setDeletingBackupId] = useState<string | null>(null);
+
+  const deleteBackup = async (backupId: string) => {
+    try {
+      // 간단한 확인
+      const confirmed = typeof window !== 'undefined' ? window.confirm('해당 백업을 삭제하시겠습니까?') : true;
+      if (!confirmed) return;
+      setDeletingBackupId(backupId);
+      await deleteDoc(doc(db, 'backups', backupId));
+      setBackups(prev => prev.filter(b => b.id !== backupId));
+      toast({ title: '삭제 완료', description: '백업이 삭제되었습니다.' });
+    } catch (error) {
+      console.error('백업 삭제 실패:', error);
+      toast({ variant: 'destructive', title: '오류', description: '백업 삭제 중 오류가 발생했습니다.' });
+    } finally {
+      setDeletingBackupId(null);
     }
   };
   const createManualBackup = async () => {
@@ -130,6 +153,18 @@ export default function BackupPage() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+  // 역할 로딩 중
+  if (roleLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>권한 확인 중...</p>
+        </div>
+      </div>
+    );
+  }
+
   // 본사 관리자가 아니면 접근 제한
   if (!isHQManager()) {
     return (
@@ -294,6 +329,15 @@ export default function BackupPage() {
                     >
                       <Upload className="h-4 w-4 mr-1" />
                       {restoringBackup === backup.id ? '복원 중...' : '복원'}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteBackup(backup.id)}
+                      disabled={deletingBackupId === backup.id}
+                    >
+                      <Trash className="h-4 w-4 mr-1" />
+                      {deletingBackupId === backup.id ? '삭제 중...' : '삭제'}
                     </Button>
                   </div>
                 </div>
