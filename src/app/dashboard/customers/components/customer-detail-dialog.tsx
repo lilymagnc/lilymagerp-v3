@@ -140,11 +140,6 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
   };
   useEffect(() => {
     if (customer && orders.length > 0) {
-      .map(order => ({
-        id: order.id,
-        orderer: order.orderer,
-        status: order.status
-      })));
       // 이름과 연락처가 모두 일치하는 주문만 필터링 (가장 정확한 매칭)
       const filteredOrders = orders.filter(order => {
         const nameMatch = order.orderer?.name === customer.name;
@@ -164,15 +159,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
       setCustomerOrders([]);
     }
   }, [customer, orders]);
-    if (!customer) return null
-  // 디버깅을 위한 로그
-  .map(order => ({
-      id: order.id,
-      orderer: order.orderer,
-      status: order.status,
-      orderDate: order.orderDate
-    }))
-  });
+  if (!customer) return null
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>

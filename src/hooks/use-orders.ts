@@ -376,7 +376,6 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
         // 주 거래 지점 업데이트 (가장 최근 주문 지점)
         primaryBranch: currentBranch
       }, { merge: true });
-      `);
     } else {
       // 신규 고객 등록 (통합 관리)
       const currentBranch = orderData.branchName;
@@ -393,7 +392,6 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
         primaryBranch: currentBranch
       };
       await addDoc(collection(db, 'customers'), newCustomerData);
-      `);
     }
   } catch (error) {
     console.error('고객 등록 중 오류:', error);
@@ -412,7 +410,6 @@ const deductCustomerPoints = async (customerId: string, pointsToDeduct: number) 
         points: newPoints,
         lastUpdated: serverTimestamp(),
       }, { merge: true });
-      `);
     }
   } catch (error) {
     console.error('포인트 차감 중 오류:', error);
@@ -431,7 +428,6 @@ const refundCustomerPoints = async (customerId: string, pointsToRefund: number) 
         points: newPoints,
         lastUpdated: serverTimestamp(),
       }, { merge: true });
-      `);
     }
   } catch (error) {
     console.error('포인트 환불 중 오류:', error);

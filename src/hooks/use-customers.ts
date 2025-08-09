@@ -190,11 +190,13 @@ export function useCustomers() {
         if (existingCustomers.length > 0) {
           // 기존 고객이면 현재 지점에 등록
           const existingCustomer = existingCustomers[0];
+          const gradeFromRow = String((row as any).grade ?? '신규');
+          const notesFromRow = String((row as any).notes ?? '');
           await updateDoc(doc(db, 'customers', existingCustomer.id), {
             [`branches.${selectedBranch}`]: {
               registeredAt: serverTimestamp(),
-              grade: customerData.grade,
-              notes: customerData.notes
+              grade: gradeFromRow,
+              notes: notesFromRow
             }
           });
           duplicateCount++;
@@ -280,7 +282,6 @@ export function useCustomers() {
           points: newPoints,
           lastUpdated: serverTimestamp(),
         });
-        `);
         return newPoints;
       }
       return 0;
@@ -300,7 +301,6 @@ export function useCustomers() {
           points: newPoints,
           lastUpdated: serverTimestamp(),
         });
-        `);
         return newPoints;
       }
       return 0;
