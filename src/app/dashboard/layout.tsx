@@ -170,11 +170,7 @@ export default function DashboardLayout({
                              <SidebarMenuItem>
                                  <SidebarMenuButton onClick={() => router.push('/dashboard/users')}><UserCog />사용자 관리</SidebarMenuButton>
                              </SidebarMenuItem>
-                             {/* 20. 백업 관리 (본사 관리자만) */}
-                             <SidebarMenuItem>
-                                 <SidebarMenuButton onClick={() => router.push('/dashboard/backup')}><Database />백업 관리</SidebarMenuButton>
-                             </SidebarMenuItem>
-                             {/* 21. 시스템 설정 (본사 관리자만) */}
+                              {/* 21. 시스템 설정 (본사 관리자만) */}
                              <SidebarMenuItem>
                                  <SidebarMenuButton onClick={() => router.push('/dashboard/settings')}><Settings />시스템 설정</SidebarMenuButton>
                              </SidebarMenuItem>

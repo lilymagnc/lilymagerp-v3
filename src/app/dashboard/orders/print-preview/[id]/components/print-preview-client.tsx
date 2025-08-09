@@ -65,7 +65,8 @@ export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
                         left: 0;
                         top: 0;
                         width: 100%;
-                        height: 45px;
+                         /* Allow natural height to avoid content/logo squashing */
+                         height: auto;
                     }
                 }
              `}</style>

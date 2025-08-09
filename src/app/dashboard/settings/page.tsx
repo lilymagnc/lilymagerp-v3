@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +39,11 @@ import {
 } from "lucide-react";
 import { useSettings, defaultSettings } from "@/hooks/use-settings";
 import { useDataCleanup } from "@/hooks/use-data-cleanup";
+import BackupManagement from "./components/backup-management";
 export default function SettingsPage() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'general';
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const { settings, loading, error, saveSettings } = useSettings();
   const [localSettings, setLocalSettings] = useState(settings);
   const [saving, setSaving] = useState(false);
@@ -165,17 +170,18 @@ export default function SettingsPage() {
         title="시스템 설정"
         description="시스템의 기본 설정을 관리합니다."
       />
-             <Tabs defaultValue="general" className="space-y-4">
-         <TabsList className="grid w-full grid-cols-8">
-           <TabsTrigger value="general">일반 설정</TabsTrigger>
-           <TabsTrigger value="delivery">배송 설정</TabsTrigger>
-           <TabsTrigger value="notifications">알림 설정</TabsTrigger>
-           <TabsTrigger value="messages">메시지 설정</TabsTrigger>
-           <TabsTrigger value="auto-email">자동 이메일</TabsTrigger>
-           <TabsTrigger value="security">보안 설정</TabsTrigger>
-           <TabsTrigger value="discount">할인 설정</TabsTrigger>
-           <TabsTrigger value="data-cleanup">데이터 초기화</TabsTrigger>
-         </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-9">
+          <TabsTrigger value="general">일반 설정</TabsTrigger>
+          <TabsTrigger value="delivery">배송 설정</TabsTrigger>
+          <TabsTrigger value="notifications">알림 설정</TabsTrigger>
+          <TabsTrigger value="messages">메시지 설정</TabsTrigger>
+          <TabsTrigger value="auto-email">자동 이메일</TabsTrigger>
+          <TabsTrigger value="security">보안 설정</TabsTrigger>
+          <TabsTrigger value="discount">할인 설정</TabsTrigger>
+          <TabsTrigger value="backup">백업 관리</TabsTrigger>
+          <TabsTrigger value="data-cleanup">데이터 초기화</TabsTrigger>
+        </TabsList>
         {/* 일반 설정 */}
         <TabsContent value="general" className="space-y-4">
           <Card>
@@ -471,6 +477,20 @@ export default function SettingsPage() {
                     • 웹 폰트를 사용하려면 CSS에서 @import 또는 @font-face를 추가해야 합니다
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          {/* 백업 관리 */}
+          <TabsContent value="backup" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  백업 관리
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <BackupManagement />
               </CardContent>
             </Card>
           </TabsContent>

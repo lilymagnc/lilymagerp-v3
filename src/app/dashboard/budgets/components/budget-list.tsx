@@ -38,7 +38,7 @@ import {
   Play
 } from 'lucide-react';
 import { useBudgets } from '@/hooks/use-budgets';
-import type { 
+import { 
   Budget, 
   ExpenseCategory,
   EXPENSE_CATEGORY_LABELS,

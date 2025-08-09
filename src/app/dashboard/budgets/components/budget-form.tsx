@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { useBudgets } from '@/hooks/use-budgets';
 import { useToast } from '@/hooks/use-toast';
-import type { 
+import { 
   ExpenseCategory, 
   EXPENSE_CATEGORY_LABELS,
   ApprovalLevel 
