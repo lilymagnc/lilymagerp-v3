@@ -84,11 +84,38 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
     const fetchUserAndEmployeeData = async () => {
       if (isEditMode && user?.email) {
         try {
-          // 사용자 데이터 설정
+          // 1) 사용자 기본 문서 조회로 최신 값 확보
+          const userDocRef = doc(db, "users", user.email)
+          const userDocSnap = await getDoc(userDocRef)
+          // 2) userRoles에서 branchName/role 코드 보완
+          const userRolesSnap = await getDocs(query(collection(db, "userRoles"), where("email", "==", user.email), where("isActive", "==", true)))
+          const roleCodeToLabel: Record<string, string> = {
+            hq_manager: "본사 관리자",
+            branch_manager: "가맹점 관리자",
+            branch_user: "직원",
+            admin: "본사 관리자",
+          }
+          let resolvedRole = user.role || ""
+          let resolvedFranchise = user.franchise || ""
+          if (userDocSnap.exists()) {
+            const d = userDocSnap.data() as any
+            resolvedRole = (d.role || resolvedRole) as string
+            resolvedFranchise = (d.franchise || resolvedFranchise) as string
+          }
+          if (!resolvedFranchise || !resolvedRole) {
+            if (!userRolesSnap.empty) {
+              const r = userRolesSnap.docs[0].data() as any
+              // role 코드 → 라벨 매핑
+              const mapped = roleCodeToLabel[r.role as string]
+              if (!resolvedRole && mapped) resolvedRole = mapped
+              if (!resolvedFranchise && r.branchName) resolvedFranchise = r.branchName
+            }
+          }
+          // 사용자 데이터 설정 (권한/소속 보완값 반영)
           const userData = {
             email: user.email,
-            role: user.role,
-            franchise: user.franchise,
+            role: resolvedRole,
+            franchise: resolvedFranchise,
             password: "",
             name: "",
             position: "",
@@ -120,8 +147,8 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
           // 에러가 발생해도 사용자 데이터는 설정
           form.reset({
             email: user.email,
-            role: user.role,
-            franchise: user.franchise,
+            role: user.role || "",
+            franchise: user.franchise || "",
             password: "",
             name: "",
             position: "",
@@ -396,6 +423,14 @@ export function UserForm({ isOpen, onOpenChange, user, onUserUpdated }: UserForm
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent id="user-franchise-content">
+                      {/* 현재 값이 옵션 목록에 없더라도 표시되도록 임시 옵션 추가 */}
+                      {field.value &&
+                        field.value !== '' &&
+                        !['본사', ...branches.map(b => b.name)].includes(field.value) && (
+                          <SelectItem value={field.value} id={`franchise-current`} className="cursor-pointer">
+                            {field.value}
+                          </SelectItem>
+                        )}
                       <SelectItem value="본사" id="franchise-hq" className="cursor-pointer">본사</SelectItem>
                       {branches.map(branch => (
                         <SelectItem 

@@ -18,9 +18,9 @@ export function CustomerSearch({ onSelect, selectedCustomer }: CustomerSearchPro
   useEffect(() => {
     if (searchTerm.length > 0) {
       const filtered = customers.filter(customer =>
-        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+        String(customer.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(customer.contact ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(customer.companyName ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredCustomers(filtered);
       setShowResults(true);

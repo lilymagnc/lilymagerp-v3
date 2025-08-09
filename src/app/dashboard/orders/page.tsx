@@ -193,8 +193,8 @@ export default function OrdersPage() {
     // 검색어 필터링
     if (searchTerm) {
       filtered = filtered.filter(order =>
-        order.orderer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase())
+        String(order.orderer?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     return filtered;

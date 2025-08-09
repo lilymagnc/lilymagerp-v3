@@ -96,9 +96,9 @@ export default function PickupDeliveryPage() {
     // 검색어 필터링
     if (searchTerm) {
       filteredOrders = filteredOrders.filter(order =>
-        order.orderer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.pickupInfo?.pickerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase())
+        String(order.orderer?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(order.pickupInfo?.pickerName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     return filteredOrders.sort((a, b) => {
@@ -126,9 +126,9 @@ export default function PickupDeliveryPage() {
     // 검색어 필터링
     if (searchTerm) {
       filteredOrders = filteredOrders.filter(order =>
-        order.orderer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.deliveryInfo?.recipientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase())
+        String(order.orderer?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(order.deliveryInfo?.recipientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     return filteredOrders.sort((a, b) => {

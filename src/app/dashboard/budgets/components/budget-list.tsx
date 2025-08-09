@@ -59,9 +59,9 @@ export function BudgetList({ budgets, loading, onRefresh }: BudgetListProps) {
   // 필터링된 예산 목록
   const filteredBudgets = budgets.filter(budget => {
     const searchMatch = !searchTerm || 
-      budget.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (budget.branchName && budget.branchName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (budget.departmentName && budget.departmentName.toLowerCase().includes(searchTerm.toLowerCase()));
+      String(budget.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(budget.branchName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(budget.departmentName ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     const categoryMatch = categoryFilter === 'all' || budget.category === categoryFilter;
     const yearMatch = yearFilter === 'all' || budget.fiscalYear.toString() === yearFilter;
     const statusMatch = statusFilter === 'all' || 

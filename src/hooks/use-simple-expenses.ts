@@ -446,7 +446,7 @@ export function useSimpleExpenses() {
       // 검색어가 있으면 필터링
       if (searchTerm) {
         suggestions = suggestions.filter(s => 
-          s.name.toLowerCase().includes(searchTerm.toLowerCase())
+          String((s as any).name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
       setSupplierSuggestions(suggestions);

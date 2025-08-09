@@ -780,8 +780,8 @@ export function ExpenseInputForm({
 
   // 검색된 거래처 필터링
   const filteredPartners = partners.filter(partner =>
-    partner.name.toLowerCase().includes(supplierSearchValue.toLowerCase()) ||
-    partner.type.toLowerCase().includes(supplierSearchValue.toLowerCase())
+    String(partner.name ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase()) ||
+    String(partner.type ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase())
   );
 
   return (

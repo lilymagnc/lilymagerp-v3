@@ -48,9 +48,9 @@ export default function RecipientsPage() {
   // 필터링된 수령자 목록
   const filteredRecipients = useMemo(() => {
     let filtered = recipients.filter(recipient => {
-      const matchesSearch = recipient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        recipient.contact.includes(searchTerm) ||
-        recipient.address.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = String(recipient.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(recipient.contact ?? '').includes(searchTerm) ||
+        String(recipient.address ?? '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesDistrict = selectedDistrict === "all" || recipient.district === selectedDistrict;
       return matchesSearch && matchesDistrict;
     });

@@ -35,8 +35,8 @@ export default function PartnersPage() {
         }
         // 검색어 필터링
         filtered = filtered.filter(partner => 
-            partner.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (partner.contactPerson && partner.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()))
+            String(partner.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(partner.contactPerson ?? '').toLowerCase().includes(searchTerm.toLowerCase())
         );
         // 타입 필터링
         if (selectedType !== "all") {

@@ -165,10 +165,10 @@ export default function NewOrderPage() {
     if (!selectedBranch) return [];
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
-  const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory))], [branchProducts]);
+  const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory).filter(Boolean))], [branchProducts]);
   const midCategories = useMemo(() => {
     if (!selectedMainCategory) return [];
-    return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory))];
+    return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory).filter(Boolean))];
   }, [branchProducts, selectedMainCategory]);
   const filteredProducts = useMemo(() => {
     return branchProducts.filter(p => 

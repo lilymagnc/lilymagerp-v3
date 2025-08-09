@@ -304,8 +304,8 @@ export default function BarcodeScannerPage() {
   };
   // 필터링된 아이템
   const filteredItems = scannedItems.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.id.toLowerCase().includes(searchTerm.toLowerCase())
+    String(item.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(item.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
   // 처리할 아이템 수
   const itemsToProcessCount = scannedItems.filter(item => item.quantity > 0).length;

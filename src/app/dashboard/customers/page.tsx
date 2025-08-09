@@ -54,9 +54,9 @@ export default function CustomersPage() {
         }
         // 검색어 필터링 (전 지점 검색)
         filtered = filtered.filter(customer => 
-            customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            customer.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+            String(customer.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(customer.contact ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(customer.companyName ?? '').toLowerCase().includes(searchTerm.toLowerCase())
         );
         // 타입 및 등급 필터링
         if (selectedType !== "all") {

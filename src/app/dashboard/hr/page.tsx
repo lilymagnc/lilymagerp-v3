@@ -33,7 +33,7 @@ export default function HrPage() {
     return employees
       .filter(emp => (selectedBranch === "all" || emp.department === selectedBranch))
       .filter(emp => (selectedPosition === "all" || emp.position === selectedPosition))
-      .filter(emp => emp.name.toLowerCase().includes(searchTerm.toLowerCase()) || emp.email.toLowerCase().includes(searchTerm.toLowerCase()));
+      .filter(emp => String(emp.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || String(emp.email ?? '').toLowerCase().includes(searchTerm.toLowerCase()));
   }, [employees, searchTerm, selectedBranch, selectedPosition]);
   const handleAdd = () => {
     setSelectedEmployee(null);
