@@ -13,10 +13,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { ko } from "date-fns/locale"
-import { Customer } from "@/hooks/use-customers"
+import { Customer, useCustomers } from "@/hooks/use-customers"
 import { useOrders } from "@/hooks/use-orders"
 import { useState, useEffect } from "react"
-import { Eye, Package, Calendar, DollarSign, Download } from "lucide-react"
+import { PointEditDialog } from "./point-edit-dialog"
+import { PointHistoryDialog } from "./point-history-dialog"
+import { Eye, Package, Calendar, DollarSign, Download, Coins, History } from "lucide-react"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
 // 안전한 날짜 포맷팅 함수
 const formatSafeDate = (dateValue: any): string => {
   try {
@@ -43,12 +47,55 @@ interface CustomerDetailDialogProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
   customer: Customer | null
+  onCustomerUpdate?: (updatedCustomer: Customer) => void
 }
-export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: CustomerDetailDialogProps) {
+export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustomerUpdate }: CustomerDetailDialogProps) {
   const { orders } = useOrders();
+  const { updateCustomerPoints } = useCustomers();
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [showPointEdit, setShowPointEdit] = useState(false);
+  const [showPointHistory, setShowPointHistory] = useState(false);
+  const [currentCustomer, setCurrentCustomer] = useState<Customer | null>(customer);
+
+  // 고객 정보 실시간 업데이트
+  const fetchCustomerData = async (customerId: string) => {
+    try {
+      const customerDoc = await getDoc(doc(db, 'customers', customerId));
+      if (customerDoc.exists()) {
+        const data = customerDoc.data();
+        const updatedCustomer = {
+          id: customerDoc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+          lastOrderDate: data.lastOrderDate?.toDate ? data.lastOrderDate.toDate().toISOString() : data.lastOrderDate,
+        } as Customer;
+        setCurrentCustomer(updatedCustomer);
+        // 부모 컴포넌트에 업데이트된 고객 정보 전달
+        if (onCustomerUpdate) {
+          onCustomerUpdate(updatedCustomer);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching customer data:', error);
+    }
+  };
+
+  // 포인트 업데이트 핸들러
+  const handlePointUpdate = async (customerId: string, newPoints: number, reason: string, modifier: string) => {
+    await updateCustomerPoints(customerId, newPoints, reason, modifier);
+    // 포인트 수정 후 고객 정보 새로고침
+    await fetchCustomerData(customerId);
+  };
+
+  // 다이얼로그가 열릴 때 고객 정보 설정
+  useEffect(() => {
+    if (isOpen && customer) {
+      setCurrentCustomer(customer);
+    }
+  }, [isOpen, customer]);
+
   // 엑셀 다운로드 함수
   const handleExportOrders = () => {
     if (customerOrders.length === 0) {
@@ -139,27 +186,27 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
     });
   };
   useEffect(() => {
-    if (customer && orders.length > 0) {
+    if (currentCustomer && orders.length > 0) {
       // 이름과 연락처가 모두 일치하는 주문만 필터링 (가장 정확한 매칭)
       const filteredOrders = orders.filter(order => {
-        const nameMatch = order.orderer?.name === customer.name;
-        const contactMatch = order.orderer?.contact === customer.contact;
-        // 연락처 형식 정규화 (하이픈 제거)
-        const normalizedOrderContact = order.orderer?.contact?.replace(/[-]/g, '');
-        const normalizedCustomerContact = customer.contact?.replace(/[-]/g, '');
+        const nameMatch = order.orderer?.name === currentCustomer.name;
+        const contactMatch = order.orderer?.contact === currentCustomer.contact;
+        // 연락처 형식 정규화 (하이픈 제거) - 안전한 문자열 처리
+        const normalizedOrderContact = typeof order.orderer?.contact === 'string' ? order.orderer.contact.replace(/[-]/g, '') : '';
+        const normalizedCustomerContact = typeof currentCustomer.contact === 'string' ? currentCustomer.contact.replace(/[-]/g, '') : '';
         const normalizedContactMatch = normalizedOrderContact === normalizedCustomerContact;
         // 이름과 연락처가 모두 일치하는 경우만 매칭
         const exactNameContactMatch = nameMatch && (contactMatch || normalizedContactMatch);
         // 고객 ID가 있는 경우 ID 매칭도 허용
-        const idMatch = order.orderer?.id === customer.id;
+        const idMatch = order.orderer?.id === currentCustomer.id;
         return exactNameContactMatch || idMatch;
       });
       setCustomerOrders(filteredOrders);
     } else {
       setCustomerOrders([]);
     }
-  }, [customer, orders]);
-  if (!customer) return null
+  }, [currentCustomer, orders]);
+  if (!currentCustomer) return null
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -167,7 +214,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>고객 상세 정보</span>
-              <Badge variant="outline">{customer.companyName || customer.name}</Badge>
+              <Badge variant="outline">{currentCustomer.companyName || currentCustomer.name}</Badge>
             </DialogTitle>
             <DialogDescription>
               고객의 상세 정보, 포인트 현황, 구매 내역을 확인할 수 있습니다.
@@ -185,19 +232,19 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">고객명</label>
-                    <p className="text-sm mt-1">{customer.name}</p>
+                    <p className="text-sm mt-1">{currentCustomer.name}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">회사명</label>
-                    <p className="text-sm mt-1">{customer.companyName || '-'}</p>
+                    <p className="text-sm mt-1">{currentCustomer.companyName || '-'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">연락처</label>
-                    <p className="text-sm mt-1">{customer.contact}</p>
+                    <p className="text-sm mt-1">{currentCustomer.contact}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">이메일</label>
-                    <p className="text-sm mt-1">{customer.email || '-'}</p>
+                    <p className="text-sm mt-1">{currentCustomer.email || '-'}</p>
                   </div>
                 </div>
               </div>
@@ -208,21 +255,21 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div>
                      <label className="text-sm font-medium text-muted-foreground">주 거래 지점</label>
-                     <p className="text-sm mt-1">{customer.primaryBranch || customer.branch || '-'}</p>
+                     <p className="text-sm mt-1">{currentCustomer.primaryBranch || currentCustomer.branch || '-'}</p>
                    </div>
                    <div>
                      <label className="text-sm font-medium text-muted-foreground">고객 등급</label>
-                     <p className="text-sm mt-1">{customer.grade || '신규'}</p>
+                     <p className="text-sm mt-1">{currentCustomer.grade || '신규'}</p>
                    </div>
                  </div>
                </div>
                <Separator />
                {/* 지점별 등록 정보 */}
-               {customer.branches && Object.keys(customer.branches).length > 0 && (
+               {currentCustomer.branches && Object.keys(currentCustomer.branches).length > 0 && (
                  <div>
                    <h3 className="text-lg font-semibold mb-3">등록된 지점</h3>
                    <div className="space-y-3">
-                     {Object.entries(customer.branches).map(([branchId, branchInfo]) => (
+                     {Object.entries(currentCustomer.branches).map(([branchId, branchInfo]) => (
                        <div key={branchId} className="border rounded-lg p-3">
                          <div className="flex items-center justify-between">
                            <div>
@@ -236,7 +283,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                                </p>
                              )}
                            </div>
-                           {branchId === customer.primaryBranch && (
+                           {branchId === currentCustomer.primaryBranch && (
                              <Badge variant="secondary" className="text-xs">
                                주 거래 지점
                              </Badge>
@@ -253,16 +300,38 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                  </div>
                )}
               <Separator />
-              {/* 포인트 정보 */}
-              <div>
-                <h3 className="text-lg font-semibold mb-3">포인트 정보</h3>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">보유 포인트:</span>
-                  <Badge variant="secondary" className="text-lg font-bold">
-                    {(customer.points || 0).toLocaleString()} P
-                  </Badge>
-                </div>
-              </div>
+                             {/* 포인트 정보 */}
+               <div>
+                 <div className="flex items-center justify-between mb-3">
+                   <h3 className="text-lg font-semibold">포인트 정보</h3>
+                   <div className="flex gap-2">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => setShowPointHistory(true)}
+                       className="flex items-center gap-2"
+                     >
+                       <History className="h-4 w-4" />
+                       이력 조회
+                     </Button>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => setShowPointEdit(true)}
+                       className="flex items-center gap-2"
+                     >
+                       <Coins className="h-4 w-4" />
+                       포인트 수정
+                     </Button>
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <span className="text-sm font-medium text-muted-foreground">보유 포인트:</span>
+                   <Badge variant="secondary" className="text-lg font-bold">
+                     {(currentCustomer.points || 0).toLocaleString()} P
+                   </Badge>
+                 </div>
+               </div>
               <Separator />
               {/* 등록 정보 */}
               <div>
@@ -271,14 +340,14 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">등록일</label>
                     <p className="text-sm mt-1">
-                      {formatSafeDate(customer.createdAt)}
+                      {formatSafeDate(currentCustomer.createdAt)}
                     </p>
                   </div>
-                  {customer.lastOrderDate && (
+                  {currentCustomer.lastOrderDate && (
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">최근 주문일</label>
                       <p className="text-sm mt-1">
-                        {formatSafeDate(customer.lastOrderDate)}
+                        {formatSafeDate(currentCustomer.lastOrderDate)}
                       </p>
                     </div>
                   )}
@@ -404,11 +473,11 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">상태</label>
-                    <p className="text-sm mt-1">
+                    <div className="text-sm mt-1">
                       <Badge variant={selectedOrder.status === 'completed' ? 'default' : 'secondary'}>
                         {selectedOrder.status === 'completed' ? '완료' : '진행중'}
                       </Badge>
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -441,7 +510,23 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer }: Custome
             </div>
           </DialogContent>
         </Dialog>
-      )}
-    </>
-  )
-} 
+             )}
+
+       {/* 포인트 수정 다이얼로그 */}
+       <PointEditDialog
+         isOpen={showPointEdit}
+         onOpenChange={setShowPointEdit}
+         customer={currentCustomer}
+         onPointUpdate={handlePointUpdate}
+       />
+
+       {/* 포인트 이력 다이얼로그 */}
+       <PointHistoryDialog
+         isOpen={showPointHistory}
+         onOpenChange={setShowPointHistory}
+         customerId={currentCustomer?.id}
+         customerName={currentCustomer?.name}
+       />
+     </>
+   )
+ } 

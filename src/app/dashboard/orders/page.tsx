@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,6 +20,7 @@ import { useBranches } from "@/hooks/use-branches";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
 import { MessagePrintDialog } from "./components/message-print-dialog";
 import { OrderDetailDialog } from "./components/order-detail-dialog";
+import { OrderEditDialog } from "./components/order-edit-dialog";
 import { ExcelUploadDialog } from "./components/excel-upload-dialog";
 import { Trash2, XCircle } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
@@ -40,6 +41,7 @@ export default function OrdersPage() {
   const [isExcelUploadDialogOpen, setIsExcelUploadDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isOrderEditDialogOpen, setIsOrderEditDialogOpen] = useState(false);
   const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -336,6 +338,14 @@ export default function OrdersPage() {
                            <MessageSquareText className="mr-2 h-4 w-4" />
                            메시지 인쇄
                          </DropdownMenuItem>
+                         <DropdownMenuItem onClick={(e) => {
+                           e.stopPropagation();
+                           setIsOrderEditDialogOpen(true);
+                           setSelectedOrderForAction(order);
+                         }}>
+                           <FileText className="mr-2 h-4 w-4" />
+                           주문 수정
+                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                                                  <DropdownMenuSub>
                            <DropdownMenuSubTrigger>주문 상태 변경</DropdownMenuSubTrigger>
@@ -423,6 +433,13 @@ export default function OrdersPage() {
             isOpen={isOrderDetailDialogOpen}
             onOpenChange={setIsOrderDetailDialogOpen}
             order={selectedOrderForDetail}
+        />
+      )}
+      {selectedOrderForAction && (
+        <OrderEditDialog
+            isOpen={isOrderEditDialogOpen}
+            onOpenChange={setIsOrderEditDialogOpen}
+            order={selectedOrderForAction}
         />
       )}
              <ExcelUploadDialog

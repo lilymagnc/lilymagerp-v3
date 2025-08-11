@@ -130,6 +130,12 @@ export default function CustomersPage() {
             description: `${dataToExport.length}개의 고객 정보가 XLSX 파일로 다운로드되었습니다.`,
         });
     };
+
+    // 고객 정보 업데이트 핸들러
+    const handleCustomerUpdate = (updatedCustomer: Customer) => {
+        setSelectedCustomer(updatedCustomer);
+    };
+
     return (
         <div>
             <PageHeader title="고객 관리" description="고객 정보를 등록하고 관리합니다.">
@@ -228,6 +234,7 @@ export default function CustomersPage() {
                 isOpen={isCustomerDetailOpen}
                 onOpenChange={setIsCustomerDetailOpen}
                 customer={selectedCustomer}
+                onCustomerUpdate={handleCustomerUpdate}
             />
             <StatementDialog
                 isOpen={isStatementOpen}

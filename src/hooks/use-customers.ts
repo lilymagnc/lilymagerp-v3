@@ -1,7 +1,7 @@
 
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, orderBy, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, orderBy, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
@@ -29,6 +29,54 @@ export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // 실시간 고객 데이터 리스너
+  useEffect(() => {
+    setLoading(true);
+    const customersCollection = collection(db, 'customers');
+    
+    const unsubscribe = onSnapshot(customersCollection, (querySnapshot) => {
+      try {
+        // 삭제되지 않은 고객만 필터링 (클라이언트 사이드에서 처리)
+        const customersData = querySnapshot.docs
+          .filter(doc => {
+            const data = doc.data();
+            return !data.isDeleted;
+          })
+          .map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+              lastOrderDate: data.lastOrderDate?.toDate ? data.lastOrderDate.toDate().toISOString() : data.lastOrderDate,
+            } as Customer;
+          });
+        setCustomers(customersData);
+      } catch (error) {
+        console.error("Error processing customers data: ", error);
+        toast({
+          variant: 'destructive',
+          title: '오류',
+          description: '고객 정보를 처리하는 중 오류가 발생했습니다.',
+        });
+      } finally {
+        setLoading(false);
+      }
+    }, (error) => {
+      console.error("Error fetching customers: ", error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '고객 정보를 불러오는 중 오류가 발생했습니다.',
+      });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+
+  // 기존 fetchCustomers 함수는 수동 새로고침용으로 유지
   const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
@@ -61,9 +109,6 @@ export function useCustomers() {
       setLoading(false);
     }
   }, [toast]);
-  useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
   // 전 지점에서 고객 검색 (연락처 기준)
   const findCustomerByContact = useCallback(async (contact: string) => {
     try {
@@ -146,6 +191,60 @@ export function useCustomers() {
     } catch (error) {
       console.error("Error updating customer:", error);
       toast({ variant: 'destructive', title: '오류', description: '고객 정보 수정 중 오류가 발생했습니다.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 포인트 업데이트 함수 (이력 포함)
+  const updateCustomerPoints = async (customerId: string, newPoints: number, reason: string, modifier: string) => {
+    setLoading(true);
+    try {
+      const customerDocRef = doc(db, 'customers', customerId);
+      const customerDoc = await getDoc(customerDocRef);
+      
+      if (!customerDoc.exists()) {
+        throw new Error('고객을 찾을 수 없습니다.');
+      }
+
+      const customerData = customerDoc.data();
+      const previousPoints = customerData.points || 0;
+      const difference = newPoints - previousPoints;
+
+      // 고객 포인트 업데이트
+      await updateDoc(customerDocRef, {
+        points: newPoints
+      });
+
+      // 포인트 수정 이력 저장
+      const pointHistoryData = {
+        customerId,
+        previousPoints,
+        newPoints,
+        difference,
+        reason,
+        modifier,
+        timestamp: serverTimestamp(),
+        customerName: customerData.name,
+        customerContact: customerData.contact
+      };
+
+      await addDoc(collection(db, 'pointHistory'), pointHistoryData);
+
+      toast({ 
+        title: "성공", 
+        description: `포인트가 ${difference > 0 ? '+' : ''}${difference.toLocaleString()}P ${difference > 0 ? '증가' : '감소'}되었습니다.` 
+      });
+      
+      await fetchCustomers();
+    } catch (error) {
+      console.error("Error updating customer points:", error);
+      toast({ 
+        variant: 'destructive', 
+        title: '오류', 
+        description: '포인트 수정 중 오류가 발생했습니다.' 
+      });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -314,6 +413,7 @@ export function useCustomers() {
     loading, 
     addCustomer, 
     updateCustomer, 
+    updateCustomerPoints,
     deleteCustomer, 
     bulkAddCustomers,
     findCustomersByContact,
