@@ -513,6 +513,7 @@ const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId:
         orderCount: 1,
         lastOrderDate: serverTimestamp(),
         createdAt: serverTimestamp(),
+        email: '', // 기본값 (나중에 UI에서 입력 가능하도록 수정)
         // 마케팅 활용을 위한 추가 필드
         marketingConsent: true, // 기본값 (나중에 UI에서 선택 가능하도록 수정)
         source: 'order', // 데이터 출처

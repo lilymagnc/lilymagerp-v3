@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Search, MapPin, Phone, Calendar, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { RecipientDetailDialog } from "./components/recipient-detail-dialog";
 export default function RecipientsPage() {
   const { recipients, loading, fetchRecipients, getRecipientsByDistrict, getFrequentRecipients } = useRecipients();
   const { branches } = useBranches();
@@ -21,6 +22,8 @@ export default function RecipientsPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedDistrict, setSelectedDistrict] = useState<string>("all");
   const [viewMode] = useState<"list" | "stats">("list");
+  const [selectedRecipient, setSelectedRecipient] = useState<any>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
@@ -65,6 +68,13 @@ export default function RecipientsPage() {
   const frequentRecipients = getFrequentRecipients();
   // 고유 지역 목록
   const uniqueDistricts = [...new Set(recipients.map(r => r.district))].filter(Boolean);
+
+  // 수령자 행 클릭 핸들러
+  const handleRecipientRowClick = (recipient: any) => {
+    setSelectedRecipient(recipient);
+    setIsDetailDialogOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -217,7 +227,11 @@ export default function RecipientsPage() {
                     </TableRow>
                   ) : (
                     filteredRecipients.map((recipient) => (
-                      <TableRow key={recipient.id}>
+                      <TableRow 
+                        key={recipient.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleRecipientRowClick(recipient)}
+                      >
                         <TableCell className="font-medium">{recipient.name}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-1">
@@ -247,7 +261,7 @@ export default function RecipientsPage() {
                               recipient.orderCount >= 3 ? "secondary" : "outline"}
                           >
                             {recipient.orderCount >= 5 ? "VIP" :
-                              recipient.orderCount >= 3 ? "단골" : "일반"}
+                              recipient.orderCount >= 3 ? "secondary" : "일반"}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -318,6 +332,13 @@ export default function RecipientsPage() {
           </Card>
         </div>
       )}
+
+      {/* 수령자 상세 정보 다이얼로그 */}
+      <RecipientDetailDialog
+        isOpen={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+        recipient={selectedRecipient}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ export interface Recipient {
   branchName: string;
   orderCount: number;
   lastOrderDate: Timestamp;
+  email?: string;
   marketingConsent?: boolean;
   source?: string;
   createdAt?: Timestamp;
