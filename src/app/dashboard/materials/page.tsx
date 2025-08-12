@@ -254,35 +254,36 @@ export default function MaterialsPage() {
               <Download className="mr-2 h-4 w-4" />
               현재 목록 다운로드
             </Button>
+            {/* 바코드 라벨 출력 버튼 (모든 사용자) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsMultiPrintDialogOpen(true)}
+              disabled={selectedMaterials.length === 0}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              선택 항목 라벨 출력
+            </Button>
+            
+            {/* 본사 관리자만 접근 가능한 기능들 */}
             {isHeadOfficeAdmin && (
-              <>
-                <ImportButton
-                  onImport={handleImport}
-                  templateData={[
-                    {
-                      id: "MAT001",
-                      name: "예시 자재",
-                      mainCategory: "대분류",
-                      midCategory: "중분류",
-                      price: 10000,
-                      supplier: "공급업체",
-                      size: "크기",
-                      color: "색상",
-                      stock: 100
-                    }
-                  ]}
-                  fileName="materials_template"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsMultiPrintDialogOpen(true)}
-                  disabled={selectedMaterials.length === 0}
-                >
-                  <Printer className="mr-2 h-4 w-4" />
-                  선택 항목 라벨 출력
-                </Button>
-              </>
+              <ImportButton
+                onImport={handleImport}
+                templateData={[
+                  {
+                    id: "MAT001",
+                    name: "예시 자재",
+                    mainCategory: "대분류",
+                    midCategory: "중분류",
+                    price: 10000,
+                    supplier: "공급업체",
+                    size: "크기",
+                    color: "색상",
+                    stock: 100
+                  }
+                ]}
+                fileName="materials_template"
+              />
             )}
           </div>
         </CardContent>
