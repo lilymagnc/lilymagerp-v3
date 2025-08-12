@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MessagePrintLayout } from './components/message-print-layout';
 import type { Order as OrderType } from '@/hooks/use-orders';
 import { useAuth } from '@/hooks/use-auth';
+import { useSearchParams } from 'next/navigation';
 
 export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
   id: string;
@@ -39,42 +40,24 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
     }
 }
 
-// URL 파라미터를 파싱하는 함수
-function parseSearchParams(): Record<string, string> {
-    if (typeof window === 'undefined') return {};
-    
-    const searchParams = new URLSearchParams(window.location.search);
-    const params: Record<string, string> = {};
-    
-    for (const [key, value] of searchParams.entries()) {
-        params[key] = value;
-    }
-    
-    return params;
-}
+
 
 export default function PrintMessagePage() {
     const { user, loading } = useAuth();
+    const searchParams = useSearchParams();
     const [orderData, setOrderData] = useState<SerializableOrder | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [params, setParams] = useState<Record<string, string>>({});
 
-    useEffect(() => {
-        // URL 파라미터 파싱
-        const urlParams = parseSearchParams();
-        setParams(urlParams);
-    }, []);
-
-    const orderId = params.orderId;
-    const labelType = params.labelType || 'formtec-3108';
-    const startPosition = parseInt(params.start) || 1;
-    const messageFont = params.messageFont || 'Noto Sans KR';
-    const messageFontSize = parseInt(params.messageFontSize) || 14;
-    const senderFont = params.senderFont || 'Noto Sans KR';
-    const senderFontSize = parseInt(params.senderFontSize) || 12;
-    const messageContent = params.messageContent || '';
-    const senderName = params.senderName || '';
+    const orderId = searchParams.get('orderId') || '';
+    const labelType = searchParams.get('labelType') || 'formtec-3108';
+    const startPosition = parseInt(searchParams.get('start') || '1');
+    const messageFont = searchParams.get('messageFont') || 'Noto Sans KR';
+    const messageFontSize = parseInt(searchParams.get('messageFontSize') || '14');
+    const senderFont = searchParams.get('senderFont') || 'Noto Sans KR';
+    const senderFontSize = parseInt(searchParams.get('senderFontSize') || '12');
+    const messageContent = searchParams.get('messageContent') || '';
+    const senderName = searchParams.get('senderName') || '';
 
     useEffect(() => {
         const fetchOrder = async () => {
