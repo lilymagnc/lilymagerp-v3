@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { Package, Truck, CheckCircle, Clock, MapPin, Phone, Calendar as CalendarIcon, Download, DollarSign } from "lucide-react";
+import { Package, Truck, CheckCircle, Clock, MapPin, Phone, Calendar as CalendarIcon, Download, DollarSign, Filter, Edit, Plus, Search, User, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+
 export default function PickupDeliveryPage() {
   const { orders, loading, updateOrderStatus, updateOrder } = useOrders();
   const { branches, loading: branchesLoading, updateBranch } = useBranches();
@@ -64,9 +65,20 @@ export default function PickupDeliveryPage() {
     largeItem: 0,
     express: 0
   });
+  // 편집 모드 상태 추가
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingDistrict, setEditingDistrict] = useState('');
+  const [editingFee, setEditingFee] = useState('');
+  
+  // 날짜 필터링 상태 추가
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [dateFilterType, setDateFilterType] = useState<'order' | 'pickup' | 'delivery'>('order');
+
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
+
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
@@ -75,24 +87,41 @@ export default function PickupDeliveryPage() {
       return branches.filter(branch => branch.name === userBranch); // 직원은 소속 지점만
     }
   }, [branches, isAdmin, userBranch]);
+
   // 직원의 경우 자동으로 소속 지점으로 필터링
   useEffect(() => {
     if (!isAdmin && userBranch && selectedBranch === "all") {
       setSelectedBranch(userBranch);
     }
   }, [isAdmin, userBranch, selectedBranch]);
+
+  // 날짜 필터링 함수
+  const isDateInRange = (dateString: string, startDate?: Date, endDate?: Date) => {
+    if (!dateString) return true;
+    
+    const targetDate = new Date(dateString);
+    if (isNaN(targetDate.getTime())) return true;
+    
+    if (startDate && targetDate < startDate) return false;
+    if (endDate && targetDate > endDate) return false;
+    
+    return true;
+  };
+
   // 픽업 주문 필터링 (예약 주문만)
   const pickupOrders = useMemo(() => {
     let filteredOrders = orders.filter(order => 
       order.receiptType === 'pickup_reservation' && 
       order.status !== 'canceled'
     );
+    
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
       filteredOrders = filteredOrders.filter(order => order.branchName === userBranch);
     } else if (selectedBranch !== 'all') {
       filteredOrders = filteredOrders.filter(order => order.branchName === selectedBranch);
     }
+    
     // 검색어 필터링
     if (searchTerm) {
       filteredOrders = filteredOrders.filter(order =>
@@ -101,6 +130,20 @@ export default function PickupDeliveryPage() {
         String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+    
+    // 날짜 필터링
+    if (startDate || endDate) {
+      filteredOrders = filteredOrders.filter(order => {
+        if (dateFilterType === 'order') {
+          const orderDate = order.orderDate?.toDate?.() || new Date(order.orderDate as any);
+          return isDateInRange(orderDate.toISOString().split('T')[0], startDate, endDate);
+        } else if (dateFilterType === 'pickup' && order.pickupInfo?.date) {
+          return isDateInRange(order.pickupInfo.date, startDate, endDate);
+        }
+        return true;
+      });
+    }
+    
     return filteredOrders.sort((a, b) => {
       // 처리중인 주문을 먼저 표시
       if (a.status === 'processing' && b.status !== 'processing') return -1;
@@ -110,19 +153,22 @@ export default function PickupDeliveryPage() {
       const bDate = b.pickupInfo?.date || '';
       return aDate.localeCompare(bDate);
     });
-  }, [orders, selectedBranch, searchTerm, isAdmin, userBranch]);
+  }, [orders, selectedBranch, searchTerm, isAdmin, userBranch, startDate, endDate, dateFilterType]);
+
   // 배송 주문 필터링 (예약 주문만)
   const deliveryOrders = useMemo(() => {
     let filteredOrders = orders.filter(order => 
       order.receiptType === 'delivery_reservation' && 
       order.status !== 'canceled'
     );
+    
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
       filteredOrders = filteredOrders.filter(order => order.branchName === userBranch);
     } else if (selectedBranch !== 'all') {
       filteredOrders = filteredOrders.filter(order => order.branchName === selectedBranch);
     }
+    
     // 검색어 필터링
     if (searchTerm) {
       filteredOrders = filteredOrders.filter(order =>
@@ -131,6 +177,20 @@ export default function PickupDeliveryPage() {
         String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+    
+    // 날짜 필터링
+    if (startDate || endDate) {
+      filteredOrders = filteredOrders.filter(order => {
+        if (dateFilterType === 'order') {
+          const orderDate = order.orderDate?.toDate?.() || new Date(order.orderDate as any);
+          return isDateInRange(orderDate.toISOString().split('T')[0], startDate, endDate);
+        } else if (dateFilterType === 'delivery' && order.deliveryInfo?.date) {
+          return isDateInRange(order.deliveryInfo.date, startDate, endDate);
+        }
+        return true;
+      });
+    }
+    
     return filteredOrders.sort((a, b) => {
       // 처리중인 주문을 먼저 표시
       if (a.status === 'processing' && b.status !== 'processing') return -1;
@@ -140,7 +200,7 @@ export default function PickupDeliveryPage() {
       const bDate = b.deliveryInfo?.date || '';
       return aDate.localeCompare(bDate);
     });
-  }, [orders, selectedBranch, searchTerm, isAdmin, userBranch]);
+  }, [orders, selectedBranch, searchTerm, isAdmin, userBranch, startDate, endDate, dateFilterType]);
   // 배송 주문 필터링 (배송비 관리용 - 완료 전 주문도 포함)
   const completedDeliveryOrders = useMemo(() => {
     let filteredOrders = orders.filter(order => 
@@ -153,13 +213,36 @@ export default function PickupDeliveryPage() {
     } else if (selectedBranch !== 'all') {
       filteredOrders = filteredOrders.filter(order => order.branchName === selectedBranch);
     }
+    
+    // 검색어 필터링
+    if (searchTerm) {
+      filteredOrders = filteredOrders.filter(order =>
+        String(order.orderer?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(order.deliveryInfo?.recipientName ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // 날짜 필터링
+    if (startDate || endDate) {
+      filteredOrders = filteredOrders.filter(order => {
+        if (dateFilterType === 'order') {
+          const orderDate = order.orderDate?.toDate?.() || new Date(order.orderDate as any);
+          return isDateInRange(orderDate.toISOString().split('T')[0], startDate, endDate);
+        } else if (dateFilterType === 'delivery' && order.deliveryInfo?.date) {
+          return isDateInRange(order.deliveryInfo.date, startDate, endDate);
+        }
+        return true;
+      });
+    }
+    
     return filteredOrders.sort((a, b) => {
       // 최근 완료된 주문을 먼저 표시
       const aDate = a.orderDate?.toDate?.() || new Date(a.orderDate as any);
       const bDate = b.orderDate?.toDate?.() || new Date(b.orderDate as any);
       return bDate.getTime() - aDate.getTime();
     });
-  }, [orders, selectedBranch, isAdmin, userBranch]);
+  }, [orders, selectedBranch, searchTerm, isAdmin, userBranch, startDate, endDate, dateFilterType]);
   // 배송비 분석 데이터 계산
   const deliveryCostAnalytics = useMemo(() => {
     const ordersWithCost = completedDeliveryOrders.filter(order => 
@@ -276,6 +359,10 @@ export default function PickupDeliveryPage() {
         largeItem: branch.surcharges?.largeItem || 0,
         express: branch.surcharges?.express || 0
       });
+      // 편집 모드 초기화
+      setEditingIndex(null);
+      setEditingDistrict('');
+      setEditingFee('');
       setIsDeliveryFeeSettingsOpen(true);
     }
   };
@@ -293,6 +380,10 @@ export default function PickupDeliveryPage() {
         title: '성공',
         description: '배송비 설정이 저장되었습니다.',
       });
+      // 편집 모드 초기화
+      setEditingIndex(null);
+      setEditingDistrict('');
+      setEditingFee('');
       setIsDeliveryFeeSettingsOpen(false);
     } catch (error) {
       toast({
@@ -312,6 +403,36 @@ export default function PickupDeliveryPage() {
   };
   const removeDeliveryFee = (index: number) => {
     setEditingDeliveryFees(prev => prev.filter((_, i) => i !== index));
+  };
+  
+  // 편집 관련 함수들 추가
+  const startEditing = (index: number, district: string, fee: number) => {
+    setEditingIndex(index);
+    setEditingDistrict(district);
+    setEditingFee(fee.toString());
+  };
+  
+  const saveEdit = () => {
+    if (editingIndex === null || !editingDistrict.trim() || !editingFee.trim()) return;
+    const fee = parseInt(editingFee);
+    if (isNaN(fee)) return;
+    
+    setEditingDeliveryFees(prev => prev.map((item, index) => 
+      index === editingIndex 
+        ? { district: editingDistrict.trim(), fee }
+        : item
+    ));
+    
+    // 편집 모드 종료
+    setEditingIndex(null);
+    setEditingDistrict('');
+    setEditingFee('');
+  };
+  
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setEditingDistrict('');
+    setEditingFee('');
   };
   const handleCompletePickup = async (orderId: string) => {
     try {
@@ -508,38 +629,154 @@ export default function PickupDeliveryPage() {
           )}
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="주문자명, 수령자명, 주문번호로 검색..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
+          <div className="space-y-4">
+            {/* 검색 및 기본 필터 */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="주문자명, 수령자명, 주문번호로 검색..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-sm"
+                />
+              </div>
+              {isAdmin && (
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="지점 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">모든 지점</SelectItem>
+                    {availableBranches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.name}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => setIsExportDialogOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                엑셀 출력
+              </Button>
             </div>
-            {isAdmin && (
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="지점 선택" />
+            
+            {/* 날짜 필터링 */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Label className="text-sm font-medium">날짜 필터:</Label>
+              </div>
+              
+              <Select value={dateFilterType} onValueChange={(value: 'order' | 'pickup' | 'delivery') => setDateFilterType(value)}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="날짜 유형" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">모든 지점</SelectItem>
-                  {availableBranches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.name}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="order">주문일</SelectItem>
+                  <SelectItem value="pickup">픽업일</SelectItem>
+                  <SelectItem value="delivery">배송일</SelectItem>
                 </SelectContent>
               </Select>
+              
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[200px] justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP", { locale: ko }) : "시작일 선택"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                      locale={ko}
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <span className="text-muted-foreground">~</span>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[200px] justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP", { locale: ko }) : "종료일 선택"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      initialFocus
+                      locale={ko}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStartDate(undefined);
+                  setEndDate(undefined);
+                }}
+                disabled={!startDate && !endDate}
+              >
+                날짜 초기화
+              </Button>
+            </div>
+            
+            {/* 전체 필터 초기화 버튼 */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("");
+                  setStartDate(undefined);
+                  setEndDate(undefined);
+                  setDateFilterType('order');
+                }}
+                disabled={!searchTerm && !startDate && !endDate}
+              >
+                모든 필터 초기화
+              </Button>
+            </div>
+            
+            {/* 필터 상태 표시 */}
+            {(startDate || endDate) && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Filter className="w-4 h-4" />
+                <span>
+                  {dateFilterType === 'order' ? '주문일' : dateFilterType === 'pickup' ? '픽업일' : '배송일'} 기준:
+                  {startDate && ` ${format(startDate, "yyyy-MM-dd", { locale: ko })}`}
+                  {startDate && endDate && ' ~ '}
+                  {endDate && ` ${format(endDate, "yyyy-MM-dd", { locale: ko })}`}
+                </span>
+              </div>
             )}
-            <Button
-              variant="outline"
-              onClick={() => setIsExportDialogOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              엑셀 출력
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -603,7 +840,7 @@ export default function PickupDeliveryPage() {
            </TabsTrigger>
            <TabsTrigger value="delivery-costs" className="flex items-center gap-2">
              <DollarSign className="w-4 h-4" />
-             배송비 관리
+             배송비 관리 ({completedDeliveryOrders.length})
            </TabsTrigger>
          </TabsList>
         {/* 픽업 관리 탭 */}
@@ -1382,7 +1619,15 @@ export default function PickupDeliveryPage() {
          </DialogContent>
        </Dialog>
        {/* 배송비 설정 다이얼로그 */}
-       <Dialog open={isDeliveryFeeSettingsOpen} onOpenChange={setIsDeliveryFeeSettingsOpen}>
+       <Dialog open={isDeliveryFeeSettingsOpen} onOpenChange={(open) => {
+         setIsDeliveryFeeSettingsOpen(open);
+         if (!open) {
+           // 다이얼로그가 닫힐 때 편집 모드 초기화
+           setEditingIndex(null);
+           setEditingDistrict('');
+           setEditingFee('');
+         }
+       }}>
          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
            <DialogHeader>
              <DialogTitle>{selectedBranchForSettings} 배송비 설정</DialogTitle>
@@ -1423,18 +1668,79 @@ export default function PickupDeliveryPage() {
                  </div>
                  <div className="space-y-2">
                    {editingDeliveryFees.map((item, index) => (
-                     <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                       <div className="flex-1">
-                         <span className="font-medium">{item.district}</span>
-                         <span className="ml-4 text-muted-foreground">₩{item.fee.toLocaleString()}</span>
-                       </div>
-                       <Button
-                         variant="outline"
-                         size="sm"
-                         onClick={() => removeDeliveryFee(index)}
-                       >
-                         삭제
-                       </Button>
+                     <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${
+                       editingIndex === index ? 'bg-blue-50 border border-blue-200' : 'bg-muted'
+                     }`}>
+                       {editingIndex === index ? (
+                         // 편집 모드
+                         <div className="flex-1">
+                           <div className="flex items-center gap-2">
+                             <Edit className="w-4 h-4 text-blue-600" />
+                             <Input
+                               value={editingDistrict}
+                               onChange={(e) => setEditingDistrict(e.target.value)}
+                               placeholder="지역명"
+                               className="flex-1"
+                               onKeyDown={(e) => {
+                                 if (e.key === 'Enter') saveEdit();
+                                 if (e.key === 'Escape') cancelEdit();
+                               }}
+                             />
+                             <Input
+                               type="number"
+                               value={editingFee}
+                               onChange={(e) => setEditingFee(e.target.value)}
+                               placeholder="배송비"
+                               className="w-24"
+                               onKeyDown={(e) => {
+                                 if (e.key === 'Enter') saveEdit();
+                                 if (e.key === 'Escape') cancelEdit();
+                               }}
+                             />
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={saveEdit}
+                             >
+                               저장
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={cancelEdit}
+                             >
+                               취소
+                             </Button>
+                           </div>
+                           <div className="text-xs text-muted-foreground mt-1 ml-6">
+                             Enter: 저장, Escape: 취소
+                           </div>
+                         </div>
+                       ) : (
+                         // 일반 모드
+                         <>
+                           <div className="flex-1">
+                             <span className="font-medium">{item.district}</span>
+                             <span className="ml-4 text-muted-foreground">₩{item.fee.toLocaleString()}</span>
+                           </div>
+                           <div className="flex gap-2">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => startEditing(index, item.district, item.fee)}
+                             >
+                               수정
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => removeDeliveryFee(index)}
+                             >
+                               삭제
+                             </Button>
+                           </div>
+                         </>
+                       )}
                      </div>
                    ))}
                  </div>
