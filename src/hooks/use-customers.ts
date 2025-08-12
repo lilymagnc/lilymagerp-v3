@@ -65,11 +65,8 @@ export function useCustomers() {
       }
     }, (error) => {
       console.error("Error fetching customers: ", error);
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: '고객 정보를 불러오는 중 오류가 발생했습니다.',
-      });
+      // 오류가 발생해도 토스트를 표시하지 않고 조용히 처리
+      console.warn('Customers fetch failed, will retry:', error);
       setLoading(false);
     });
 

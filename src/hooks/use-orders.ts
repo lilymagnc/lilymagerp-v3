@@ -85,10 +85,24 @@ export function useOrders() {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Firebase 연결 상태 확인
+      if (!db) {
+        throw new Error('Firebase Firestore is not initialized');
+      }
+      
       const ordersCollection = collection(db, 'orders');
       const q = query(ordersCollection, orderBy("orderDate", "desc"));
-      const querySnapshot = await getDocs(q);
-      const ordersData = querySnapshot.docs.map(doc => {
+      
+      // 타임아웃 설정을 더 길게 설정
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      );
+      
+      const queryPromise = getDocs(q);
+      const querySnapshot = await Promise.race([queryPromise, timeoutPromise]) as any;
+      
+      const ordersData = querySnapshot.docs.map((doc: any) => {
         const data = doc.data();
         // Legacy data migration: convert old receiptType values to new ones
         let receiptType = data.receiptType;
@@ -106,11 +120,21 @@ export function useOrders() {
       setOrders(ordersData);
     } catch (error) {
       console.error("Error fetching orders: ", error);
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: '주문 정보를 불러오는 중 오류가 발생했습니다.',
-      });
+      
+      // 더 구체적인 오류 메시지
+      let errorMessage = '주문 정보를 불러오는 중 오류가 발생했습니다.';
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          errorMessage = '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.';
+        } else if (error.message.includes('permission')) {
+          errorMessage = '권한이 없습니다. 로그인 상태를 확인해주세요.';
+        } else if (error.message.includes('400') || error.message.includes('Bad Request')) {
+          errorMessage = 'Firebase 연결에 문제가 있습니다. 페이지를 새로고침해주세요.';
+        }
+      }
+      
+      // 오류가 발생해도 토스트를 표시하지 않고 조용히 처리
+      console.warn('Orders fetch failed, will retry:', errorMessage);
     } finally {
       setLoading(false);
     }

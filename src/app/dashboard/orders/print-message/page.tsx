@@ -1,18 +1,18 @@
+"use client";
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { notFound } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessagePrintLayout } from './components/message-print-layout';
 import type { Order as OrderType } from '@/hooks/use-orders';
-interface PageProps {
-  searchParams: { [key: string]: string | string[] | undefined };
-}
+import { useAuth } from '@/hooks/use-auth';
+
 export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
   id: string;
   orderDate: string; // ISO string format
 }
+
 async function getOrder(orderId: string): Promise<SerializableOrder | null> {
     try {
         const docRef = doc(db, 'orders', orderId);
@@ -38,24 +38,113 @@ async function getOrder(orderId: string): Promise<SerializableOrder | null> {
         return null;
     }
 }
-export default async function PrintMessagePage({ searchParams }: PageProps) {
-    const params = await searchParams;
-    const orderId = params.orderId as string;
-    const labelType = params.labelType as string || 'formtec-3108';
-    const startPosition = parseInt(params.start as string) || 1;
-    const messageFont = params.messageFont as string || 'Noto Sans KR';
-    const messageFontSize = parseInt(params.messageFontSize as string) || 14;
-    const senderFont = params.senderFont as string || 'Noto Sans KR';
-    const senderFontSize = parseInt(params.senderFontSize as string) || 12;
-    const messageContent = params.messageContent as string || '';
-    const senderName = params.senderName as string || '';
-    if (!orderId) {
-        notFound();
+
+// URL 파라미터를 파싱하는 함수
+function parseSearchParams(): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    const params: Record<string, string> = {};
+    
+    for (const [key, value] of searchParams.entries()) {
+        params[key] = value;
     }
-    const orderData = await getOrder(orderId);
+    
+    return params;
+}
+
+export default function PrintMessagePage() {
+    const { user, loading } = useAuth();
+    const [orderData, setOrderData] = useState<SerializableOrder | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [params, setParams] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        // URL 파라미터 파싱
+        const urlParams = parseSearchParams();
+        setParams(urlParams);
+    }, []);
+
+    const orderId = params.orderId;
+    const labelType = params.labelType || 'formtec-3108';
+    const startPosition = parseInt(params.start) || 1;
+    const messageFont = params.messageFont || 'Noto Sans KR';
+    const messageFontSize = parseInt(params.messageFontSize) || 14;
+    const senderFont = params.senderFont || 'Noto Sans KR';
+    const senderFontSize = parseInt(params.senderFontSize) || 12;
+    const messageContent = params.messageContent || '';
+    const senderName = params.senderName || '';
+
+    useEffect(() => {
+        const fetchOrder = async () => {
+            if (!orderId) {
+                setError('주문 ID가 필요합니다.');
+                setIsLoading(false);
+                return;
+            }
+
+            if (!user && !loading) {
+                setError('로그인이 필요합니다.');
+                setIsLoading(false);
+                return;
+            }
+
+            if (user) {
+                try {
+                    const data = await getOrder(orderId);
+                    if (data) {
+                        setOrderData(data);
+                    } else {
+                        setError('주문을 찾을 수 없습니다.');
+                    }
+                } catch (err) {
+                    setError('주문 데이터를 가져오는 중 오류가 발생했습니다.');
+                    console.error('Error fetching order:', err);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        if (orderId) {
+            fetchOrder();
+        }
+    }, [orderId, user, loading]);
+
+    // 로딩 중이거나 인증 대기 중
+    if (loading || isLoading) {
+        return (
+            <div className="max-w-4xl mx-auto p-6">
+                <Skeleton className="h-96 w-full"/>
+            </div>
+        );
+    }
+
+    // 에러 발생
+    if (error) {
+        return (
+            <div className="max-w-4xl mx-auto p-6">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-red-600 mb-4">오류 발생</h2>
+                    <p className="text-gray-600">{error}</p>
+                </div>
+            </div>
+        );
+    }
+
+    // 주문 데이터가 없음
     if (!orderData) {
-        notFound();
+        return (
+            <div className="max-w-4xl mx-auto p-6">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-600 mb-4">주문을 찾을 수 없습니다</h2>
+                    <p className="text-gray-500">요청하신 주문 정보가 존재하지 않습니다.</p>
+                </div>
+            </div>
+        );
     }
+
     return (
         <Suspense fallback={<div className="max-w-4xl mx-auto p-6"><Skeleton className="h-96 w-full"/></div>}>
             <MessagePrintLayout

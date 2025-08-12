@@ -54,10 +54,10 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                         <Image
                             src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg"
                             alt="Logo"
-                            width={180}
-                            height={45}
+                            width={150}
+                            height={60}
                             className="mx-auto"
-                            style={{ height: 'auto' }}
+                            style={{ width: '150px', height: 'auto' }}
                             priority
                             unoptimized
                         />
@@ -69,10 +69,10 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             <Image
                                 src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg"
                                 alt="Logo"
-                                width={90}
-                                height={23}
+                                width={100}
+                                height={40}
                                 className="mx-auto"
-                                style={{ height: 'auto' }}
+                                style={{ width: '100px', height: 'auto' }}
                                 priority
                                 unoptimized
                             />

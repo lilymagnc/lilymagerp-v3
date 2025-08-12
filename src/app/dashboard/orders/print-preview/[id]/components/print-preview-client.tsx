@@ -1,26 +1,110 @@
 
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Printer, Loader2 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { PrintableOrder, OrderPrintData } from '@/app/dashboard/orders/new/components/printable-order';
 import { useBranches } from '@/hooks/use-branches';
+import { useAuth } from '@/hooks/use-auth';
 import { PageHeader } from '@/components/page-header';
 import { format } from 'date-fns';
-import type { SerializableOrder } from '../page';
-export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Order as OrderType } from '@/hooks/use-orders';
+
+// Define the type for serializable order data
+export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
+  id: string;
+  orderDate: string; // ISO string format
+}
+
+interface PrintPreviewClientProps {
+  orderId: string;
+}
+
+export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
     const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
     const { branches, loading: branchesLoading } = useBranches();
-    if (branchesLoading) {
+    const [order, setOrder] = useState<SerializableOrder | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function fetchOrder() {
+            if (!user) {
+                setError('인증이 필요합니다.');
+                setLoading(false);
+                return;
+            }
+
+            try {
+                setLoading(true);
+                const docRef = doc(db, 'orders', orderId);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    let orderDateIso = new Date().toISOString();
+                    if (data.orderDate && typeof (data.orderDate as Timestamp).toDate === 'function') {
+                        orderDateIso = (data.orderDate as Timestamp).toDate().toISOString();
+                    }
+                    const orderBase = data as Omit<OrderType, 'id' | 'orderDate'>;
+                    const orderData: SerializableOrder = {
+                        ...orderBase,
+                        id: docSnap.id,
+                        orderDate: orderDateIso,
+                    };
+                    setOrder(orderData);
+                } else {
+                    setError('주문을 찾을 수 없습니다.');
+                }
+            } catch (error) {
+                console.error("Error fetching document:", error);
+                setError('주문 데이터를 불러오는 중 오류가 발생했습니다.');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        if (!authLoading) {
+            fetchOrder();
+        }
+    }, [orderId, user, authLoading]);
+
+    if (authLoading || loading || branchesLoading) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
-                <p className="ml-2">지점 정보를 불러오는 중입니다...</p>
+                <p className="ml-2">데이터를 불러오는 중입니다...</p>
             </div>
         );
     }
+
+    if (error) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-500 mb-4">{error}</p>
+                    <Button onClick={() => router.back()}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        목록으로 돌아가기
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!order) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <p>주문 데이터를 찾을 수 없습니다.</p>
+            </div>
+        );
+    }
+
     const targetBranch = branches.find(b => b.id === order.branchId);
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
     const orderDateObject = new Date(order.orderDate);
@@ -46,6 +130,7 @@ export function PrintPreviewClient({ order }: { order: SerializableOrder }) {
             account: targetBranch.account || '',
         },
     } : null;
+
     return (
         <div>
              <style jsx global>{`

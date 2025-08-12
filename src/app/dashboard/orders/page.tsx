@@ -237,29 +237,36 @@ export default function OrdersPage() {
         <CardContent>
           <div className="flex flex-col sm:flex-row items-center gap-2 mb-4">
               <div className="relative w-full sm:w-auto flex-1 sm:flex-initial">
+                  <label htmlFor="order-search" className="sr-only">주문 검색</label>
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
+                      id="order-search"
+                      name="order-search"
                       type="search"
                       placeholder="주문자명, 주문ID 검색..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-8"
+                      autoComplete="off"
                   />
               </div>
               {isAdmin && (
-                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="지점 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">전체 지점</SelectItem>
-                        {availableBranches.map((branch) => (
-                            <SelectItem key={branch.id} value={branch.name}>
-                                {branch.name}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <div>
+                  <label htmlFor="branch-select" className="sr-only">지점 선택</label>
+                  <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                      <SelectTrigger id="branch-select" name="branch-select" className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="지점 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="all">전체 지점</SelectItem>
+                          {availableBranches.map((branch) => (
+                              <SelectItem key={branch.id} value={branch.name}>
+                                  {branch.name}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                </div>
               )}
               <div className="text-sm text-muted-foreground">
                 총 {filteredOrders.length}건의 주문

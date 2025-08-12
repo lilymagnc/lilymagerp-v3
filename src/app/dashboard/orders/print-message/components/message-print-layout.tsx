@@ -115,11 +115,18 @@ export function MessagePrintLayout({
           description={`주문자: ${order.orderer.name} / 라벨지: ${labelType}`}
         >
             <div className="flex gap-2">
-                <Button variant="outline" onClick={() => router.back()}>
+                <Button 
+                    variant="outline" 
+                    onClick={() => router.back()}
+                    aria-label="이전 페이지로 돌아가기"
+                >
                     <ArrowLeft className="mr-2 h-4 w-4"/>
                     뒤로가기
                 </Button>
-                <Button onClick={() => window.print()}>
+                <Button 
+                    onClick={() => window.print()}
+                    aria-label="메시지 라벨 인쇄하기"
+                >
                     <Printer className="mr-2 h-4 w-4" />
                     인쇄하기
                 </Button>
@@ -134,24 +141,30 @@ export function MessagePrintLayout({
             config.gridCols, 
             config.className
           )}
+          role="grid"
+          aria-label={`${labelType} 라벨 그리드 (${config.cells}칸)`}
         >
           {labels.map((labelData, index) => (
             <div 
               key={index} 
               className="bg-white p-4 flex flex-col items-center justify-center text-center border border-dashed border-gray-300 print:border-transparent relative"
               style={{ height: config.height }}
+              role="gridcell"
+              aria-label={labelData ? `라벨 ${index + 1}: ${labelData.content.substring(0, 50)}${labelData.content.length > 50 ? '...' : ''}` : `빈 라벨 ${index + 1}`}
             >
               {labelData ? (
                 <>
                   <div 
                     className="whitespace-pre-wrap flex-1 flex items-center justify-center"
                     style={messageFontStyle}
+                    aria-label={`메시지 내용: ${labelData.content}`}
                   >
                     {labelData.content}
                   </div>
                   <div 
                     className="absolute bottom-2 left-1/2 transform -translate-x-1/2"
                     style={senderFontStyle}
+                    aria-label={`보내는 사람: ${labelData.senderName}`}
                   >
                     - {labelData.senderName} -
                   </div>

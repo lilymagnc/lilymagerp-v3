@@ -46,7 +46,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
     value: font,
     label: font
   }));
-  const [labelType, setLabelType] = useState(labelTypes[0].value);
+  const [labelType, setLabelType] = useState('formtec-3108');
   const [startPosition, setStartPosition] = useState(1);
   const [messageFont, setMessageFont] = useState(fontOptions[0].value);
   const [messageFontSize, setMessageFontSize] = useState(14);
@@ -97,38 +97,43 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
             <div className="border rounded-lg p-4 bg-muted/50">
               <div className="flex justify-between items-center mb-3">
                 <Label className="text-sm font-medium">메시지 편집</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditing(!isEditing)}
-                >
-                  <Edit3 className="mr-2 h-4 w-4" />
-                  {isEditing ? "미리보기" : "편집"}
-                </Button>
+                                 <Button
+                   type="button"
+                   variant="outline"
+                   size="sm"
+                   onClick={() => setIsEditing(!isEditing)}
+                   aria-label={isEditing ? "미리보기 모드로 전환" : "편집 모드로 전환"}
+                 >
+                   <Edit3 className="mr-2 h-4 w-4" />
+                   {isEditing ? "미리보기" : "편집"}
+                 </Button>
               </div>
               {isEditing ? (
                 <div className="space-y-3">
                   <div>
                     <Label htmlFor="message-content">메시지 내용</Label>
-                    <Textarea
-                      id="message-content"
-                      value={messageContent}
-                      onChange={(e) => setMessageContent(e.target.value)}
-                      placeholder="메시지 내용을 입력하세요"
-                      className="mt-1"
-                      rows={4}
-                    />
+                                         <Textarea
+                       id="message-content"
+                       name="message-content"
+                       value={messageContent}
+                       onChange={(e) => setMessageContent(e.target.value)}
+                       placeholder="메시지 내용을 입력하세요"
+                       className="mt-1"
+                       rows={4}
+                       autoComplete="off"
+                     />
                   </div>
                   <div>
                     <Label htmlFor="sender-name">보내는 사람</Label>
-                    <Input
-                      id="sender-name"
-                      value={senderName}
-                      onChange={(e) => setSenderName(e.target.value)}
-                      placeholder="보내는 사람 이름"
-                      className="mt-1"
-                    />
+                                         <Input
+                       id="sender-name"
+                       name="sender-name"
+                       value={senderName}
+                       onChange={(e) => setSenderName(e.target.value)}
+                       placeholder="보내는 사람 이름"
+                       className="mt-1"
+                       autoComplete="off"
+                     />
                   </div>
                 </div>
               ) : (
@@ -146,7 +151,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                     <div>
                       <Label htmlFor="message-font">폰트</Label>
                       <Select value={messageFont} onValueChange={setMessageFont}>
-                        <SelectTrigger id="message-font">
+                        <SelectTrigger id="message-font" name="message-font">
                           <SelectValue placeholder="폰트 선택" />
                         </SelectTrigger>
                         <SelectContent>
@@ -160,9 +165,11 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                       <Label htmlFor="message-font-size">글자 크기 (pt)</Label>
                       <Input 
                         id="message-font-size" 
+                        name="message-font-size"
                         type="number" 
                         value={messageFontSize} 
                         onChange={(e) => setMessageFontSize(Number(e.target.value) || 14)} 
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -175,7 +182,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                     <div>
                       <Label htmlFor="sender-font">폰트</Label>
                       <Select value={senderFont} onValueChange={setSenderFont}>
-                        <SelectTrigger id="sender-font">
+                        <SelectTrigger id="sender-font" name="sender-font">
                           <SelectValue placeholder="폰트 선택" />
                         </SelectTrigger>
                         <SelectContent>
@@ -189,9 +196,11 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                       <Label htmlFor="sender-font-size">글자 크기 (pt)</Label>
                       <Input 
                         id="sender-font-size" 
+                        name="sender-font-size"
                         type="number" 
                         value={senderFontSize} 
                         onChange={(e) => setSenderFontSize(Number(e.target.value) || 12)} 
+                        autoComplete="off"
                       />
                     </div>
                   </div>
@@ -202,7 +211,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
             <div>
               <Label htmlFor="label-type">라벨지 종류</Label>
               <Select value={labelType} onValueChange={(value) => { setLabelType(value); setStartPosition(1); }}>
-                <SelectTrigger id="label-type">
+                <SelectTrigger id="label-type" name="label-type">
                   <SelectValue placeholder="라벨지 선택" />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,8 +222,8 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
               </Select>
             </div>
             <div>
-              <Label htmlFor="start-position">시작 위치 (1-{selectedLabel.cells})</Label>
-              <div className={cn("grid gap-1 mt-2 border p-2 rounded-md", selectedLabel.gridCols)}>
+              <Label id="start-position" htmlFor="start-position">시작 위치 (1-{selectedLabel.cells})</Label>
+              <div className={cn("grid gap-1 mt-2 border p-2 rounded-md", selectedLabel.gridCols)} role="group" aria-labelledby="start-position">
                 {Array.from({ length: selectedLabel.cells }).map((_, i) => {
                   const position = i + 1;
                   return (
@@ -225,6 +234,8 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                       size="sm"
                       className={cn("h-8", startPosition === position && "bg-primary text-primary-foreground")}
                       onClick={() => setStartPosition(position)}
+                      aria-pressed={startPosition === position}
+                      aria-label={`위치 ${position} 선택`}
                     >
                       {position}
                     </Button>
