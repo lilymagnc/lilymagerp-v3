@@ -36,6 +36,7 @@ export default function DashboardLayout({
         '/dashboard/orders',               // 주문현황
         '/dashboard/orders/print-message', // 메시지 인쇄 미리보기
         '/dashboard/print-labels',         // 라벨 인쇄 미리보기
+        '/dashboard/customers/statement/print', // 거래명세서 인쇄 미리보기
         '/dashboard/pickup-delivery',      // 픽업/배송관리
         '/dashboard/recipients',           // 수령자관리
         '/dashboard/materials',            // 자재관리
