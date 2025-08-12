@@ -354,7 +354,7 @@ export default function StatementPrintPage() {
             </Button>
             <Button variant="outline" onClick={handleDownloadPDF}>
               <Download className="mr-2 h-4 w-4" />
-              PDF로 저장
+              인쇄/PDF저장
             </Button>
           </div>
         </PageHeader>

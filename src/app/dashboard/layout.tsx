@@ -34,6 +34,7 @@ export default function DashboardLayout({
         '/dashboard/orders/new',           // 주문접수
         '/dashboard/material-request',     // 자재요청
         '/dashboard/orders',               // 주문현황
+        '/dashboard/orders/print-message', // 메시지 인쇄 미리보기
         '/dashboard/pickup-delivery',      // 픽업/배송관리
         '/dashboard/recipients',           // 수령자관리
         '/dashboard/materials',            // 자재관리
