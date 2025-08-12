@@ -307,6 +307,12 @@ export function useOrders() {
         canceledAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
+      
+      // 배송 예약 주문인 경우 수령자 정보도 처리 (주문 취소 시에는 수령자 정보는 유지하되 주문 횟수만 감소)
+      if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
+        await updateRecipientInfoOnOrderDelete(orderData.deliveryInfo, orderData.branchName);
+      }
+      
       const successMessage = pointsUsed > 0 
         ? `주문이 취소되고 금액이 0원으로 설정되었습니다. 사용한 ${pointsUsed}포인트가 환불되었습니다.`
         : "주문이 취소되고 금액이 0원으로 설정되었습니다.";
@@ -330,8 +336,24 @@ export function useOrders() {
   const deleteOrder = async (orderId: string) => {
     setLoading(true);
     try {
+      // 주문 정보 먼저 가져오기
       const orderRef = doc(db, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+      
+      if (!orderDoc.exists()) {
+        throw new Error('주문을 찾을 수 없습니다.');
+      }
+      
+      const orderData = orderDoc.data() as Order;
+      
+      // 주문 삭제
       await deleteDoc(orderRef);
+      
+      // 배송 예약 주문인 경우 수령자 정보 처리
+      if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
+        await updateRecipientInfoOnOrderDelete(orderData.deliveryInfo, orderData.branchName);
+      }
+      
       toast({
         title: "주문 삭제 완료",
         description: "주문이 성공적으로 삭제되었습니다."
@@ -500,5 +522,38 @@ const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId:
   } catch (error) {
     console.error('수령자 정보 저장 중 오류:', error);
     // 수령자 저장 실패해도 주문은 계속 진행
+  }
+};
+
+// 주문 삭제 시 수령자 정보 업데이트 함수
+const updateRecipientInfoOnOrderDelete = async (deliveryInfo: any, branchName: string) => {
+  try {
+    // 해당 수령자 검색
+    const recipientsQuery = query(
+      collection(db, 'recipients'),
+      where('contact', '==', deliveryInfo.recipientContact),
+      where('branchName', '==', branchName)
+    );
+    const existingRecipients = await getDocs(recipientsQuery);
+    
+    if (!existingRecipients.empty) {
+      const recipientDoc = existingRecipients.docs[0];
+      const existingData = recipientDoc.data();
+      const newOrderCount = Math.max(0, (existingData.orderCount || 1) - 1);
+      
+      if (newOrderCount === 0) {
+        // 주문 횟수가 0이 되면 수령자 정보 삭제
+        await deleteDoc(recipientDoc.ref);
+      } else {
+        // 주문 횟수만 감소시키고 최근 주문일은 유지 (다른 주문이 있을 수 있으므로)
+        await setDoc(recipientDoc.ref, {
+          orderCount: newOrderCount,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+    }
+  } catch (error) {
+    console.error('수령자 정보 업데이트 중 오류:', error);
+    // 수령자 업데이트 실패해도 주문 삭제는 계속 진행
   }
 };

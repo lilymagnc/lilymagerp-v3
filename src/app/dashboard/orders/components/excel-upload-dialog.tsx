@@ -11,10 +11,12 @@ import { useBranches } from "@/hooks/use-branches";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, XCircle, Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Timestamp } from "firebase/firestore";
+
 interface ExcelUploadDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
 interface ExcelOrderData {
   orderDate: string;
   branchName: string;
@@ -37,12 +39,14 @@ interface ExcelOrderData {
   messageContent: string;
   specialRequests: string;
 }
+
 interface UploadResult {
   success: number;
   duplicate: number;
   error: number;
   errors: string[];
 }
+
 export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -51,6 +55,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
   const { toast } = useToast();
   const { addOrder } = useOrders();
   const { branches } = useBranches();
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -67,6 +72,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       }
     }
   };
+
   const parseExcelData = (data: any[][]): ExcelOrderData[] => {
     const orders: ExcelOrderData[] = [];
     // 첫 번째 행은 헤더이므로 건너뛰기
@@ -106,55 +112,117 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
     }
     return orders;
   };
+
   const convertToOrderFormat = (excelData: ExcelOrderData) => {
+    // 지점 ID 찾기
+    const branch = branches.find(b => b.name === excelData.branchName);
+    if (!branch) {
+      throw new Error(`지점을 찾을 수 없습니다: ${excelData.branchName}`);
+    }
+
+    // 주문 상품 파싱
     const orderItems = excelData.orderItems.split(',').map(item => ({
+      id: `temp_${Date.now()}_${Math.random()}`, // 임시 ID 생성
       name: item.trim(),
       price: excelData.itemPrice,
       quantity: 1
     }));
+
+    // 수령 방법에 따른 정보 설정
+    const isDelivery = excelData.deliveryMethod === 'delivery';
+    const receiptType = isDelivery ? 'delivery_reservation' : 'pickup_reservation';
+
+    // 픽업 정보 설정
+    const pickupInfo = !isDelivery ? {
+      date: excelData.pickupDate ? new Date(excelData.pickupDate).toISOString().split('T')[0] : '',
+      time: excelData.pickupDate ? new Date(excelData.pickupDate).toTimeString().split(' ')[0] : '',
+      pickerName: excelData.recipientName || excelData.ordererName,
+      pickerContact: excelData.recipientContact || excelData.ordererContact
+    } : null;
+
+    // 배송 정보 설정
+    const deliveryInfo = isDelivery ? {
+      date: excelData.pickupDate ? new Date(excelData.pickupDate).toISOString().split('T')[0] : '',
+      time: excelData.pickupDate ? new Date(excelData.pickupDate).toTimeString().split(' ')[0] : '',
+      recipientName: excelData.recipientName || excelData.ordererName,
+      recipientContact: excelData.recipientContact || excelData.ordererContact,
+      address: excelData.deliveryAddress || '',
+      district: ''
+    } : null;
+
+    // 결제 수단 매핑
+    const paymentMethodMap: { [key: string]: string } = {
+      '카드': 'card',
+      '현금': 'cash',
+      '계좌이체': 'transfer',
+      '메인페이': 'mainpay',
+      '쇼핑몰': 'shopping_mall',
+      '이페이': 'epay'
+    };
+
+    // 주문 상태 매핑
+    const orderStatusMap: { [key: string]: string } = {
+      'processing': 'processing',
+      'completed': 'completed',
+      'canceled': 'canceled',
+      '처리중': 'processing',
+      '완료': 'completed',
+      '취소': 'canceled'
+    };
+
+    // 결제 상태 매핑
+    const paymentStatusMap: { [key: string]: string } = {
+      'pending': 'pending',
+      'completed': 'completed',
+      'paid': 'completed',
+      '미결': 'pending',
+      '완결': 'completed'
+    };
+
     const order = {
-      orderDate: Timestamp.fromDate(new Date(excelData.orderDate)),
+      branchId: branch.id,
       branchName: excelData.branchName,
+      orderDate: new Date(excelData.orderDate),
+      status: (orderStatusMap[excelData.orderStatus] || 'processing') as 'processing' | 'completed' | 'canceled',
       items: orderItems,
       summary: {
         subtotal: excelData.itemPrice,
+        discountAmount: 0,
+        discountRate: 0,
         deliveryFee: excelData.deliveryFee,
-        total: excelData.totalAmount,
         pointsUsed: 0,
         pointsEarned: Math.floor(excelData.itemPrice * 0.02),
-        discount: 0
+        total: excelData.totalAmount
       },
       orderer: {
         name: excelData.ordererName,
         contact: excelData.ordererContact,
-        email: excelData.ordererEmail,
-        companyName: ''
+        company: '',
+        email: excelData.ordererEmail
       },
-      delivery: {
-        method: excelData.deliveryMethod,
-        pickupDate: excelData.pickupDate ? Timestamp.fromDate(new Date(excelData.pickupDate)) : null,
-        recipient: excelData.recipientName ? {
-          name: excelData.recipientName,
-          contact: excelData.recipientContact
-        } : null,
-        address: excelData.deliveryAddress || null
-      },
+      isAnonymous: false,
+      registerCustomer: true,
+      orderType: "store" as const,
+      receiptType: receiptType as any,
       payment: {
-        method: excelData.paymentMethod,
-        status: excelData.paymentStatus
+        method: (paymentMethodMap[excelData.paymentMethod] || 'card') as "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay",
+        status: (paymentStatusMap[excelData.paymentStatus] || 'pending') as "paid" | "pending" | "completed"
       },
-      status: excelData.orderStatus,
+      pickupInfo: pickupInfo,
+      deliveryInfo: deliveryInfo,
       message: excelData.messageType !== 'none' ? {
-        type: excelData.messageType,
-        content: excelData.messageContent,
-        sender: ''
-      } : null,
-      specialRequests: excelData.specialRequests || null,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+        type: excelData.messageType as "card" | "ribbon",
+        content: excelData.messageContent
+      } : {
+        type: "card" as const,
+        content: ""
+      },
+      request: excelData.specialRequests || ''
     };
+
     return order;
   };
+
   const handleUpload = async () => {
     if (!selectedFile) return;
     setUploading(true);
@@ -181,14 +249,13 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       // 중복 체크 및 업로드
       for (let i = 0; i < excelOrders.length; i++) {
         const excelOrder = excelOrders[i];
-        const order = convertToOrderFormat(excelOrder);
         try {
           // 중복 체크 (주문자명 + 연락처 + 주문일시로 판단)
-          const isDuplicate = await checkDuplicateOrder(order);
+          const isDuplicate = await checkDuplicateOrder(excelOrder);
                      if (isDuplicate) {
              result.duplicate++;
            } else {
-             await addOrder(order);
+             await addOrder(convertToOrderFormat(excelOrder));
              result.success++;
            }
         } catch (error) {
@@ -232,7 +299,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       reader.readAsArrayBuffer(file);
     });
   };
-  const checkDuplicateOrder = async (order: any): Promise<boolean> => {
+  const checkDuplicateOrder = async (order: ExcelOrderData): Promise<boolean> => {
     // 간단한 중복 체크 (실제로는 더 정교한 로직이 필요할 수 있음)
     // 여기서는 주문자명 + 연락처 + 주문일시로 중복을 판단
     return false; // 실제 구현에서는 기존 주문과 비교

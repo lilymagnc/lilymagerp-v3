@@ -1,0 +1,5 @@
+[33m71e55ed[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix: Make barcode label print button available for all users in materials page
+[33m37e3089[m Fix: Add customers statement print route to allowed pages for branch users
+[33m0454e3b[m Fix: Add print-labels route to allowed pages for branch users
+[33m2288799[m Fix: Use useSearchParams hook for better URL parameter handling in print-message page
+[33m6d239d9[m Fix: Add print-message route to allowed pages for branch users
