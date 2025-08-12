@@ -941,8 +941,7 @@ const debouncedCustomerSearch = useCallback(
                                     htmlFor="register-customer"
                                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                   >
-                                    이 주문자 정보를 고객으로 등록/업데이트합니다
-                                  </label>
+                                    이 주문자 정보를 고객으로 등록/업데이트합니다.(마케팅동의 및 포인트적립 사용 동의)                                  </label>
                                 </div>
                               </CardContent>
                           </Card>
