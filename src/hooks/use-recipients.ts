@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, Timestamp, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 export interface Recipient {
   id: string;
@@ -74,11 +74,40 @@ export function useRecipients() {
   useEffect(() => {
     fetchRecipients();
   }, [fetchRecipients]);
+  // 수령자 정보 수정
+  const updateRecipient = useCallback(async (recipientId: string, updatedData: Partial<Recipient>) => {
+    try {
+      const recipientRef = doc(db, 'recipients', recipientId);
+      await updateDoc(recipientRef, {
+        ...updatedData,
+        updatedAt: serverTimestamp()
+      });
+      await fetchRecipients(); // 목록 새로고침
+    } catch (error) {
+      console.error('Error updating recipient:', error);
+      throw error;
+    }
+  }, [fetchRecipients]);
+
+  // 수령자 삭제
+  const deleteRecipient = useCallback(async (recipientId: string) => {
+    try {
+      const recipientRef = doc(db, 'recipients', recipientId);
+      await deleteDoc(recipientRef);
+      await fetchRecipients(); // 목록 새로고침
+    } catch (error) {
+      console.error('Error deleting recipient:', error);
+      throw error;
+    }
+  }, [fetchRecipients]);
+
   return {
     recipients,
     loading,
     fetchRecipients,
     getRecipientsByDistrict,
-    getFrequentRecipients
+    getFrequentRecipients,
+    updateRecipient,
+    deleteRecipient
   };
 }
