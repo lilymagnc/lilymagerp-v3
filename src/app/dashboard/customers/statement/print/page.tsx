@@ -356,10 +356,6 @@ export default function StatementPrintPage() {
               <Download className="mr-2 h-4 w-4" />
               PDF로 저장
             </Button>
-            <Button onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              인쇄하기
-            </Button>
           </div>
         </PageHeader>
       </div>
