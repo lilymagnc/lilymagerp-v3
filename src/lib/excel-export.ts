@@ -321,7 +321,7 @@ export const exportProductsToExcel = async (products: any[], filename: string) =
         '상품코드': product.code || '',
         '바코드': product.barcode || '',
         '카테고리': product.mainCategory || '',
-        '서브카테고리': product.subCategory || '',
+        '서브카테고리': product.midCategory || '', // subCategory에서 midCategory로 수정
         '가격': product.price || 0,
         '원가': product.cost || 0,
         '재고': product.stock || 0,
