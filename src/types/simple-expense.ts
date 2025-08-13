@@ -76,7 +76,12 @@ export enum InsuranceSubCategory {
   BUSINESS = 'business',       // 사업자보험
   DELIVERY = 'delivery',       // 배송보험
   LIABILITY = 'liability',     // 책임보험
-  PROPERTY = 'property'       // 재산보험
+  PROPERTY = 'property',       // 재산보험
+  // 4대보험 관련
+  NATIONAL_PENSION = 'national_pension',     // 국민연금
+  HEALTH_INSURANCE = 'health_insurance',     // 건강보험
+  EMPLOYMENT_INSURANCE = 'employment_insurance', // 고용보험
+  INDUSTRIAL_ACCIDENT = 'industrial_accident' // 산재보험
 }
 // 식비 세부 분류
 export enum MealSubCategory {
@@ -187,6 +192,32 @@ export interface BranchExpenseSummary {
   }[];
   lastUpdated: Timestamp;
 }
+// 민감한 세부 분류 (본사 관리자만 접근 가능)
+export const SENSITIVE_SUBCATEGORIES = {
+  [SimpleExpenseCategory.FIXED_COST]: [
+    FixedCostSubCategory.LABOR, // 인건비
+  ],
+  [SimpleExpenseCategory.INSURANCE]: [
+    InsuranceSubCategory.NATIONAL_PENSION,     // 국민연금
+    InsuranceSubCategory.HEALTH_INSURANCE,     // 건강보험
+    InsuranceSubCategory.EMPLOYMENT_INSURANCE, // 고용보험
+    InsuranceSubCategory.INDUSTRIAL_ACCIDENT,  // 산재보험
+  ]
+};
+
+// 민감한 세부 분류 접근 권한 체크 함수
+export const canViewSubCategory = (category: SimpleExpenseCategory, subCategory: string, userRole: string): boolean => {
+  const sensitiveSubs = SENSITIVE_SUBCATEGORIES[category] || [];
+  const isSensitive = sensitiveSubs.includes(subCategory as any);
+  return !isSensitive || userRole === 'head_office_admin' || userRole === 'hq_manager';
+};
+
+// 민감한 세부 분류인지 확인하는 함수
+export const isSensitiveSubCategory = (category: SimpleExpenseCategory, subCategory: string): boolean => {
+  const sensitiveSubs = SENSITIVE_SUBCATEGORIES[category] || [];
+  return sensitiveSubs.includes(subCategory as any);
+};
+
 // 라벨 매핑
 export const SIMPLE_EXPENSE_CATEGORY_LABELS: Record<SimpleExpenseCategory, string> = {
   [SimpleExpenseCategory.MATERIAL]: '자재비',
@@ -262,7 +293,12 @@ export const INSURANCE_SUB_CATEGORY_LABELS: Record<InsuranceSubCategory, string>
   [InsuranceSubCategory.BUSINESS]: '사업자보험',
   [InsuranceSubCategory.DELIVERY]: '배송보험',
   [InsuranceSubCategory.LIABILITY]: '책임보험',
-  [InsuranceSubCategory.PROPERTY]: '재산보험'
+  [InsuranceSubCategory.PROPERTY]: '재산보험',
+  // 4대보험
+  [InsuranceSubCategory.NATIONAL_PENSION]: '국민연금',
+  [InsuranceSubCategory.HEALTH_INSURANCE]: '건강보험',
+  [InsuranceSubCategory.EMPLOYMENT_INSURANCE]: '고용보험',
+  [InsuranceSubCategory.INDUSTRIAL_ACCIDENT]: '산재보험'
 };
 export const generateExpenseId = (): string => {
   const now = new Date();

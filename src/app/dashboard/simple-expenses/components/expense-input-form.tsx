@@ -47,6 +47,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useMaterials } from '@/hooks/use-materials';
 import { useProducts } from '@/hooks/use-products';
 import { useBranches } from '@/hooks/use-branches';
+import { useUserRole } from '@/hooks/use-user-role';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -69,7 +70,10 @@ import {
   OFFICE_SUB_CATEGORY_LABELS,
   MARKETING_SUB_CATEGORY_LABELS,
   MAINTENANCE_SUB_CATEGORY_LABELS,
-  INSURANCE_SUB_CATEGORY_LABELS
+  INSURANCE_SUB_CATEGORY_LABELS,
+  SENSITIVE_SUBCATEGORIES,
+  canViewSubCategory,
+  isSensitiveSubCategory
 } from '@/types/simple-expense';
 import { Timestamp } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
@@ -243,15 +247,7 @@ export function ExpenseInputForm({
   }, [form]);
 
   // 지점 데이터 로딩 상태 확인
-  useEffect(() => {
-    if (!branchesLoading) {
-      console.log('지점 데이터 로딩 완료:', {
-        loading: branchesLoading,
-        count: branches.length,
-        branches: branches.map(b => ({ id: b.id, name: b.name, type: b.type }))
-      });
-    }
-  }, [branchesLoading, branches]);
+
 
   // 안전한 상태 업데이트 함수
   const safeSetState = useCallback((setter: React.Dispatch<React.SetStateAction<any>>, value: any) => {
@@ -276,32 +272,58 @@ export function ExpenseInputForm({
   const totalAmount = form.watch('items').reduce((sum, item) => sum + (item.amount || 0), 0);
 
   const selectedCategory = form.watch('category');
+  const { isHQManager, isHeadOfficeAdmin } = useUserRole();
+  const userRole = isHeadOfficeAdmin() ? 'head_office_admin' : isHQManager() ? 'hq_manager' : 'branch_user';
 
-  // 카테고리별 세부 분류 옵션
+  // 카테고리별 세부 분류 옵션 (민감한 항목 필터링 포함)
   const getSubCategoryOptions = useCallback((category: SimpleExpenseCategory) => {
+    let options: [string, string][] = [];
+    
     switch (category) {
       case SimpleExpenseCategory.MATERIAL:
-        return Object.entries(MATERIAL_SUB_CATEGORY_LABELS);
+        options = Object.entries(MATERIAL_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.FIXED_COST:
-        return Object.entries(FIXED_COST_SUB_CATEGORY_LABELS);
+        options = Object.entries(FIXED_COST_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.UTILITY:
-        return Object.entries(UTILITY_SUB_CATEGORY_LABELS);
+        options = Object.entries(UTILITY_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.MEAL:
-        return Object.entries(MEAL_SUB_CATEGORY_LABELS);
+        options = Object.entries(MEAL_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.TRANSPORT:
-        return Object.entries(TRANSPORT_SUB_CATEGORY_LABELS);
+        options = Object.entries(TRANSPORT_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.OFFICE:
-        return Object.entries(OFFICE_SUB_CATEGORY_LABELS);
+        options = Object.entries(OFFICE_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.MARKETING:
-        return Object.entries(MARKETING_SUB_CATEGORY_LABELS);
+        options = Object.entries(MARKETING_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.MAINTENANCE:
-        return Object.entries(MAINTENANCE_SUB_CATEGORY_LABELS);
+        options = Object.entries(MAINTENANCE_SUB_CATEGORY_LABELS);
+        break;
       case SimpleExpenseCategory.INSURANCE:
-        return Object.entries(INSURANCE_SUB_CATEGORY_LABELS);
+        options = Object.entries(INSURANCE_SUB_CATEGORY_LABELS);
+        break;
       default:
-        return [];
+        options = [];
     }
-  }, []);
+    
+
+    
+    // 민감한 세부 분류 필터링 (본사 관리자가 아닌 경우)
+    if (!isHeadOfficeAdmin() && !isHQManager()) {
+      options = options.filter(([key, label]) => {
+        return canViewSubCategory(category, key, userRole);
+      });
+    }
+    
+
+    
+    return options;
+  }, [isHeadOfficeAdmin, isHQManager, userRole]);
 
   // 구매처 검색 - 거래처관리에서 가져온 데이터 사용
   const handleSupplierSearch = useCallback((searchTerm: string) => {
@@ -589,7 +611,7 @@ export function ExpenseInputForm({
                 quantity: item.quantity,
                 unitPrice: item.unitPrice
               });
-              console.log(`기존 자재 사용 - ID: ${existingMaterial.id}`);
+
             } else {
               // 해당 지점에 같은 이름의 자재가 없으면 새로 생성
               const materialId = `M${String(Date.now()).slice(-5)}`;
@@ -600,7 +622,7 @@ export function ExpenseInputForm({
                 quantity: item.quantity,
                 unitPrice: item.unitPrice
               });
-              console.log(`새 자재 생성 - ID: ${materialId}`);
+
             }
           }
 
@@ -647,7 +669,6 @@ export function ExpenseInputForm({
           };
 
           // 거래처 자동 등록을 위해 addExpense 함수 사용
-          console.log(`엑셀 데이터 처리 중: ${item['구매처']} - ${item['품목명']}`);
           await addExpense(expenseData, branchId, finalBranchName);
           successCount++;
         } catch (error) {

@@ -54,7 +54,7 @@ const initializeFirebase = () => {
       // connectFirestoreEmulator(db, 'localhost', 8080);
     }
 
-    console.log('Firebase initialized successfully');
+
     return { app, auth, db, storage };
 
   } catch (error) {

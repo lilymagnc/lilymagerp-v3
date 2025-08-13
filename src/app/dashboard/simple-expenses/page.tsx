@@ -70,13 +70,7 @@ export default function SimpleExpensesPage() {
     }
   };
   
-  // 디버깅을 위한 로그
-  console.log({
-    uniqueBranchIds: expenses.map(e => e.branchId).filter((id, index, arr) => arr.indexOf(id) === index), // 고유한 branchId들
-    branchesInfo: branches.map(b => ({ id: b.id, name: b.name, type: b.type })), // 지점 정보
-    emptyBranchIdCount: expenses.filter(e => !e.branchId || e.branchId === '').length, // 빈 branchId 개수
-    nonEmptyBranchIdCount: expenses.filter(e => e.branchId && e.branchId !== '').length // 비어있지 않은 branchId 개수
-  });
+
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {

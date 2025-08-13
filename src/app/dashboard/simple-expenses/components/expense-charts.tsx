@@ -17,7 +17,8 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { SimpleExpense, SIMPLE_EXPENSE_CATEGORY_LABELS, getCategoryColor } from '@/types/simple-expense';
+import { SimpleExpense, SIMPLE_EXPENSE_CATEGORY_LABELS, getCategoryColor, canViewSubCategory } from '@/types/simple-expense';
+import { useUserRole } from '@/hooks/use-user-role';
 
 interface ExpenseChartsProps {
   expenses: SimpleExpense[];
@@ -33,7 +34,10 @@ const CHART_COLORS = [
 ];
 
 export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId, selectedMonth }: ExpenseChartsProps) {
-  // 선택된 지점과 월의 데이터만 필터링
+  const { isHQManager, isHeadOfficeAdmin } = useUserRole();
+  const userRole = isHeadOfficeAdmin() ? 'head_office_admin' : isHQManager() ? 'hq_manager' : 'branch_user';
+  
+  // 선택된 지점과 월의 데이터만 필터링 (민감한 데이터 제어 포함)
   const filteredExpenses = React.useMemo(() => {
     let filtered = expenses;
     
@@ -55,6 +59,14 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId, s
       });
     }
     
+    // 민감한 데이터 필터링 (본사 관리자가 아닌 경우)
+    if (!isHeadOfficeAdmin() && !isHQManager()) {
+      filtered = filtered.filter(expense => {
+        if (!expense.category || !expense.subCategory) return true;
+        return canViewSubCategory(expense.category, expense.subCategory, userRole);
+      });
+    }
+    
     return filtered;
   }, [expenses, selectedBranchId, selectedMonth]);
 
@@ -70,6 +82,14 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId, s
 
     expenses.forEach(expense => {
       if (!expense.branchId || !expense.amount) return;
+      
+      // 민감한 데이터 필터링 (본사 관리자가 아닌 경우)
+      if (!isHeadOfficeAdmin() && !isHQManager()) {
+        if (expense.subCategory && !canViewSubCategory(expense.category, expense.subCategory, userRole)) {
+          return;
+        }
+      }
+      
       const currentAmount = branchMap.get(expense.branchId) || 0;
       branchMap.set(expense.branchId, currentAmount + expense.amount);
 
@@ -96,6 +116,13 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId, s
 
     expenses.forEach(expense => {
       if (!expense.branchId || !expense.category || !expense.amount) return;
+      
+      // 민감한 데이터 필터링 (본사 관리자가 아닌 경우)
+      if (!isHeadOfficeAdmin() && !isHQManager()) {
+        if (expense.subCategory && !canViewSubCategory(expense.category, expense.subCategory, userRole)) {
+          return;
+        }
+      }
 
       if (!branchCategoryMap.has(expense.branchId)) {
         branchCategoryMap.set(expense.branchId, new Map());

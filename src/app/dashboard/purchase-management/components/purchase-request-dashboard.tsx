@@ -181,7 +181,7 @@ export function PurchaseRequestDashboard({ requests, onRefresh }: PurchaseReques
   const handleActualPurchaseSubmit = async (purchaseData: ActualPurchaseInputData) => {
     // 이 함수는 실제로는 호출되지 않습니다.
     // ActualPurchaseForm에서 직접 updateActualPurchase를 호출하고 onComplete를 실행합니다.
-    console.log('실제 구매 데이터:', purchaseData);
+
   };
   // 실제 구매 폼 취소
   const handleActualPurchaseCancel = () => {

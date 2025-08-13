@@ -223,6 +223,11 @@ export function useUserRole() {
   const isAdmin = (): boolean => {
     return userRole?.role === 'admin' && userRole.isActive;
   };
+  
+  // 본사 관리자 권한 확인 (hq_manager 또는 admin)
+  const isHeadOfficeAdmin = (): boolean => {
+    return (userRole?.role === 'hq_manager' || userRole?.role === 'admin') && userRole.isActive;
+  };
   // 컴포넌트 마운트 시 사용자 역할 조회
   useEffect(() => {
     fetchUserRole();
@@ -239,5 +244,6 @@ export function useUserRole() {
     isBranchUser,
     isBranchManager,
     isAdmin,
+    isHeadOfficeAdmin,
   };
 }

@@ -135,7 +135,7 @@ export function useSimpleExpenses() {
             };
             await addDoc(collection(db, 'partners'), partnerData);
             supplierAdded = true;
-            console.log(`새 거래처 등록: ${supplierName} (지점: ${branchName || '미지정'})`);
+
           } else {
             // 중복이 있으면 기존 거래처 사용 (지점 정보 업데이트)
             const existingPartner = supplierSnapshot.docs[0];
@@ -151,9 +151,8 @@ export function useSimpleExpenses() {
                 memo: updatedMemo,
                 updatedAt: serverTimestamp()
               });
-              console.log(`기존 거래처 업데이트: ${supplierName} (추가 지점: ${branchName})`);
+
             }
-            console.log(`기존 거래처 사용: ${supplierName}`);
           }
         } catch (error) {
           console.error("거래처 추가 오류:", error);

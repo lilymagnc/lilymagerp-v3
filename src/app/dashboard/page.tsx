@@ -283,12 +283,10 @@ export default function DashboardPage() {
     async function fetchDashboardData() {
       setLoading(true);
       try {
-        console.log("대시보드 데이터 로딩 시작...");
-        console.log("사용자 정보:", { isAdmin, userBranch, currentFilteredBranch });
+
         
         // 주문 데이터 가져오기 (필터링 적용) - 단순화된 쿼리
         let ordersQuery = collection(db, "orders");
-        console.log("모든 주문 데이터 조회 후 필터링");
         
         const ordersSnapshot = await getDocs(ordersQuery);
         const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -297,7 +295,6 @@ export default function DashboardPage() {
         const orders = currentFilteredBranch 
           ? allOrders.filter(order => order.branchName === currentFilteredBranch)
           : allOrders;
-        console.log(`주문 데이터 로드 완료: ${orders.length}개 (전체: ${allOrders.length}개)`);
 
         // 최근 주문 (실제 데이터) - 단순화된 쿼리
         let recentOrdersQuery = query(
@@ -325,7 +322,6 @@ export default function DashboardPage() {
           : allRecentOrders.slice(0, 5);
           
         setRecentOrders(recentOrdersData);
-        console.log(`최근 주문 데이터 로드 완료: ${recentOrdersData.length}개`);
 
         // 기본 통계 (필터링 적용)
         // 년 매출 계산 (현재 년도의 매출만)
@@ -374,7 +370,6 @@ export default function DashboardPage() {
           return data.branch === currentFilteredBranch;
         }) : allCustomers;
         const newCustomers = customers.length;
-        console.log(`고객 데이터 로드 완료: ${newCustomers}개 (전체: ${allCustomers.length}개)`);
 
         const statsData = {
           totalRevenue: yearlyRevenue, // 총 매출을 년 매출로 변경
@@ -384,7 +379,6 @@ export default function DashboardPage() {
         };
         
         setStats(statsData);
-        console.log("통계 데이터 설정 완료:", statsData);
         
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -402,10 +396,8 @@ export default function DashboardPage() {
     }
     
     if (branches.length > 0 && user) {
-      console.log("대시보드 데이터 로딩 시작 조건 충족");
       fetchDashboardData().then(async () => {
         try {
-          console.log("차트 데이터 생성 시작...");
           // 초기 차트 데이터 생성 (실제 데이터)
           const dailyData = await generateRealDailySales(selectedDate);
           const weeklyData = await generateRealWeeklySales(selectedWeek);
@@ -413,13 +405,10 @@ export default function DashboardPage() {
           setDailySales(dailyData);
           setWeeklySales(weeklyData);
           setMonthlySales(monthlyData);
-          console.log("차트 데이터 생성 완료:", { dailyData, weeklyData, monthlyData });
         } catch (error) {
           console.error("차트 데이터 생성 오류:", error);
         }
       });
-    } else {
-      console.log("대시보드 데이터 로딩 조건 미충족:", { branchesLength: branches.length, user: !!user });
     }
   }, [branches, user, currentFilteredBranch]);
 
