@@ -314,34 +314,21 @@ export const exportPickupDeliveryToExcel = (
 // 상품 데이터 엑셀 내보내기
 export const exportProductsToExcel = async (products: any[], filename: string) => {
   try {
-    // 상품 데이터를 Excel 형식으로 변환
+    // 상품 데이터를 Excel 형식으로 변환 (가져오기와 일치하는 필드)
     const excelData = products.map(product => {
       return {
+        '상품코드': product.id || '',
         '상품명': product.name || '',
-        '상품코드': product.code || '',
-        '바코드': product.barcode || '',
-        '카테고리': product.mainCategory || '',
-        '서브카테고리': product.midCategory || '', // subCategory에서 midCategory로 수정
+        '대분류': product.mainCategory || '',
+        '중분류': product.midCategory || '',
         '가격': product.price || 0,
-        '원가': product.cost || 0,
+        '공급업체': product.supplier || '',
         '재고': product.stock || 0,
+        '규격': product.size || '',
+        '색상': product.color || '',
         '지점': product.branch || '',
-        '상품설명': product.description || '',
-        '상품상태': product.status || 'active',
-        '등록일': product.createdAt ? 
-          (typeof product.createdAt === 'object' && 'toDate' in product.createdAt) 
-            ? product.createdAt.toDate().toLocaleDateString()
-            : new Date(product.createdAt).toLocaleDateString()
-          : '',
-        '수정일': product.updatedAt ? 
-          (typeof product.updatedAt === 'object' && 'toDate' in product.updatedAt) 
-            ? product.updatedAt.toDate().toLocaleDateString()
-            : new Date(product.updatedAt).toLocaleDateString()
-          : '',
-        '상품ID': product.id || '',
-        '이미지URL': product.imageUrl || '',
-        '태그': product.tags?.join(', ') || '',
-        '메모': product.memo || ''
+        '코드': product.code || '',
+        '카테고리': product.category || ''
       };
     });
 
