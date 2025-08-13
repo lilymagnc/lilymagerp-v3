@@ -18,6 +18,7 @@ import { ImportButton } from "@/components/import-button";
 import { FileUp, Download } from "lucide-react";
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { downloadXLSX } from "@/lib/utils";
 import { format } from "date-fns";
 export default function CustomersPage() {
@@ -33,6 +34,7 @@ export default function CustomersPage() {
     const { customers, loading, addCustomer, updateCustomer, deleteCustomer, bulkAddCustomers } = useCustomers();
     const { branches } = useBranches();
     const { user } = useAuth();
+    const { toast } = useToast();
     const isHeadOfficeAdmin = user?.role === '본사 관리자';
     const userBranch = user?.franchise;
     const customerGrades = useMemo(() => [...new Set(customers.map(c => c.grade || "신규"))], [customers]);
