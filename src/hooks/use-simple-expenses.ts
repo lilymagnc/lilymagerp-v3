@@ -115,23 +115,31 @@ export function useSimpleExpenses() {
       let supplierAdded = false;
       if (data.supplier && data.supplier.trim() !== '') {
         try {
-          const supplierQuery = query(collection(db, "partners"), where("name", "==", data.supplier.trim()));
+          const supplierName = data.supplier.trim();
+          const supplierQuery = query(collection(db, "partners"), where("name", "==", supplierName));
           const supplierSnapshot = await getDocs(supplierQuery);
           if (supplierSnapshot.empty) {
             const partnerData = {
-              name: data.supplier.trim(),
+              name: supplierName,
               type: '기타공급업체',
               contact: '',
+              contactPerson: '',
+              email: '',
               address: '',
+              branch: branchName || '',
               items: '기타',
-              memo: `간편지출에서 자동 추가된 공급업체: ${data.supplier.trim()}`,
+              memo: `간편지출에서 자동 추가된 공급업체: ${supplierName} (${branchName || '지점미지정'})`,
               createdAt: serverTimestamp()
             };
             await addDoc(collection(db, 'partners'), partnerData);
             supplierAdded = true;
+            console.log(`새 거래처 등록: ${supplierName} (지점: ${branchName || '미지정'})`);
+          } else {
+            console.log(`기존 거래처 발견: ${supplierName}`);
           }
         } catch (error) {
           console.error("거래처 추가 오류:", error);
+          // 오류가 발생해도 지출 등록은 계속 진행
         }
       }
              // 자재비인 경우 자재관리에 자동 등록

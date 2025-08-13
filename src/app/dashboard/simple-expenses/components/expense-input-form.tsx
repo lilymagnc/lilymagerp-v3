@@ -152,7 +152,7 @@ export function ExpenseInputForm({
   });
 
   const { addExpense, fetchExpenses } = useSimpleExpenses();
-  const { partners } = usePartners();
+  const { partners, fetchPartners } = usePartners();
   const { user } = useAuth();
   const { toast } = useToast();
   const { materials } = useMaterials();
@@ -617,6 +617,8 @@ export function ExpenseInputForm({
             inventoryUpdates: inventoryUpdates, // 자재 자동 업데이트 추가
           };
 
+          // 거래처 자동 등록을 위해 addExpense 함수 사용
+          console.log(`엑셀 데이터 처리 중: ${item['구매처']} - ${item['품목명']}`);
           await addExpense(expenseData, branchId, finalBranchName);
           successCount++;
         } catch (error) {
@@ -634,6 +636,8 @@ export function ExpenseInputForm({
         if (successCount > 0) {
           safeSetState(setExcelData, []);
           safeSetState(setUploadMode, 'manual');
+          // 거래처 목록 새로고침
+          await fetchPartners();
           onSuccess?.();
         }
       }
@@ -736,6 +740,8 @@ export function ExpenseInputForm({
           safeSetState(setIsDirectInput, false);
         }
 
+        // 거래처 목록 새로고침
+        await fetchPartners();
         onSuccess?.();
       }
     } catch (error) {
