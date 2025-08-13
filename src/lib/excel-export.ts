@@ -310,3 +310,44 @@ export const exportPickupDeliveryToExcel = (
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }; 
+
+// 상품 데이터 엑셀 내보내기
+export const exportProductsToExcel = async (products: any[], filename: string) => {
+  try {
+    // 상품 데이터를 Excel 형식으로 변환
+    const excelData = products.map(product => {
+      return {
+        '상품명': product.name || '',
+        '상품코드': product.code || '',
+        '바코드': product.barcode || '',
+        '카테고리': product.mainCategory || '',
+        '서브카테고리': product.subCategory || '',
+        '가격': product.price || 0,
+        '원가': product.cost || 0,
+        '재고': product.stock || 0,
+        '지점': product.branch || '',
+        '상품설명': product.description || '',
+        '상품상태': product.status || 'active',
+        '등록일': product.createdAt ? 
+          (typeof product.createdAt === 'object' && 'toDate' in product.createdAt) 
+            ? product.createdAt.toDate().toLocaleDateString()
+            : new Date(product.createdAt).toLocaleDateString()
+          : '',
+        '수정일': product.updatedAt ? 
+          (typeof product.updatedAt === 'object' && 'toDate' in product.updatedAt) 
+            ? product.updatedAt.toDate().toLocaleDateString()
+            : new Date(product.updatedAt).toLocaleDateString()
+          : '',
+        '상품ID': product.id || '',
+        '이미지URL': product.imageUrl || '',
+        '태그': product.tags?.join(', ') || '',
+        '메모': product.memo || ''
+      };
+    });
+
+    await exportToExcel([{ name: '상품목록', data: excelData }], filename);
+  } catch (error) {
+    console.error('상품 엑셀 내보내기 오류:', error);
+    throw new Error('상품 엑셀 파일 생성에 실패했습니다.');
+  }
+}; 

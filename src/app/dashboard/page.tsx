@@ -3,12 +3,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
-import { Building, DollarSign, Package, Users, TrendingUp, Calendar, CalendarDays } from "lucide-react";
+import { Building, DollarSign, Package, Users, TrendingUp, Calendar, CalendarDays, ShoppingCart } from "lucide-react";
 import { collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from "date-fns";
@@ -17,7 +18,7 @@ import { ko } from "date-fns/locale";
 interface DashboardStats {
   totalRevenue: number;
   newCustomers: number;
-  totalProducts: number;
+  weeklyOrders: number; // 총 주문 건수에서 주간 주문 건수로 변경
   pendingOrders: number;
 }
 
@@ -49,6 +50,9 @@ export default function DashboardPage() {
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
   
+  // 본사 관리자용 지점 필터링 상태
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('전체');
+  
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
@@ -58,10 +62,19 @@ export default function DashboardPage() {
     }
   }, [branches, isAdmin, userBranch]);
 
+  // 현재 필터링된 지점 (본사 관리자는 선택된 지점, 지점 사용자는 자신의 지점)
+  const currentFilteredBranch = useMemo(() => {
+    if (isAdmin) {
+      return selectedBranchFilter === '전체' ? null : selectedBranchFilter;
+    } else {
+      return userBranch;
+    }
+  }, [isAdmin, selectedBranchFilter, userBranch]);
+
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     newCustomers: 0,
-    totalProducts: 0,
+    weeklyOrders: 0, // 총 주문 건수에서 주간 주문 건수로 변경
     pendingOrders: 0
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -104,7 +117,9 @@ export default function DashboardPage() {
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
       // 클라이언트 사이드에서 지점 필터링
-      const orders = isAdmin ? allOrders : allOrders.filter(order => order.branchName === userBranch);
+      const orders = currentFilteredBranch 
+        ? allOrders.filter(order => order.branchName === currentFilteredBranch)
+        : allOrders;
       
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
@@ -151,7 +166,9 @@ export default function DashboardPage() {
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
       // 클라이언트 사이드에서 지점 필터링
-      const orders = isAdmin ? allOrders : allOrders.filter(order => order.branchName === userBranch);
+      const orders = currentFilteredBranch 
+        ? allOrders.filter(order => order.branchName === currentFilteredBranch)
+        : allOrders;
       
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
@@ -197,7 +214,9 @@ export default function DashboardPage() {
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
       // 클라이언트 사이드에서 지점 필터링
-      const orders = isAdmin ? allOrders : allOrders.filter(order => order.branchName === userBranch);
+      const orders = currentFilteredBranch 
+        ? allOrders.filter(order => order.branchName === currentFilteredBranch)
+        : allOrders;
       
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
@@ -244,47 +263,48 @@ export default function DashboardPage() {
     setMonthlySales(salesData);
   };
 
+  // 지점 필터링 변경 핸들러
+  const handleBranchFilterChange = async (branch: string) => {
+    setSelectedBranchFilter(branch);
+    // 필터링 변경 시 차트 데이터도 업데이트
+    try {
+      const dailyData = await generateRealDailySales(selectedDate);
+      const weeklyData = await generateRealWeeklySales(selectedWeek);
+      const monthlyData = await generateRealMonthlySales(selectedMonth);
+      setDailySales(dailyData);
+      setWeeklySales(weeklyData);
+      setMonthlySales(monthlyData);
+    } catch (error) {
+      console.error("Error updating chart data after branch filter change:", error);
+    }
+  };
+
   useEffect(() => {
     async function fetchDashboardData() {
       setLoading(true);
       try {
         console.log("대시보드 데이터 로딩 시작...");
-        console.log("사용자 정보:", { isAdmin, userBranch });
+        console.log("사용자 정보:", { isAdmin, userBranch, currentFilteredBranch });
         
         // 주문 데이터 가져오기 (필터링 적용) - 단순화된 쿼리
-        let ordersQuery;
-        if (isAdmin) {
-          ordersQuery = collection(db, "orders");
-          console.log("본사 관리자: 모든 주문 데이터 조회");
-        } else {
-          // 지점 사용자는 클라이언트 사이드에서 필터링
-          ordersQuery = collection(db, "orders");
-          console.log(`지점 사용자: 모든 주문 데이터 조회 후 필터링`);
-        }
+        let ordersQuery = collection(db, "orders");
+        console.log("모든 주문 데이터 조회 후 필터링");
         
         const ordersSnapshot = await getDocs(ordersQuery);
         const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
         
         // 클라이언트 사이드에서 필터링
-        const orders = isAdmin ? allOrders : allOrders.filter(order => order.branchName === userBranch);
+        const orders = currentFilteredBranch 
+          ? allOrders.filter(order => order.branchName === currentFilteredBranch)
+          : allOrders;
         console.log(`주문 데이터 로드 완료: ${orders.length}개 (전체: ${allOrders.length}개)`);
 
         // 최근 주문 (실제 데이터) - 단순화된 쿼리
-        let recentOrdersQuery;
-        if (isAdmin) {
-          recentOrdersQuery = query(
-            collection(db, "orders"),
-            orderBy("orderDate", "desc"),
-            limit(10) // 더 많은 데이터를 가져와서 클라이언트에서 필터링
-          );
-        } else {
-          // 지점 사용자는 모든 주문을 가져와서 클라이언트에서 필터링
-          recentOrdersQuery = query(
-            collection(db, "orders"),
-            orderBy("orderDate", "desc"),
-            limit(20)
-          );
-        }
+        let recentOrdersQuery = query(
+          collection(db, "orders"),
+          orderBy("orderDate", "desc"),
+          limit(20)
+        );
         
         const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
         const allRecentOrders = recentOrdersSnapshot.docs.map(doc => {
@@ -300,29 +320,48 @@ export default function DashboardPage() {
         });
         
         // 클라이언트 사이드에서 필터링
-        const recentOrdersData = isAdmin 
-          ? allRecentOrders.slice(0, 5)
-          : allRecentOrders.filter(order => order.branchName === userBranch).slice(0, 5);
+        const recentOrdersData = currentFilteredBranch 
+          ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 5)
+          : allRecentOrders.slice(0, 5);
           
         setRecentOrders(recentOrdersData);
         console.log(`최근 주문 데이터 로드 완료: ${recentOrdersData.length}개`);
 
         // 기본 통계 (필터링 적용)
-        const totalRevenue = orders.reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
+        // 년 매출 계산 (현재 년도의 매출만)
+        const currentYear = new Date().getFullYear();
+        const yearlyRevenue = orders.filter((order: any) => {
+          const orderDate = order.orderDate;
+          if (!orderDate) return false;
+          
+          let orderDateObj;
+          if (orderDate.toDate) {
+            orderDateObj = orderDate.toDate();
+          } else {
+            orderDateObj = new Date(orderDate);
+          }
+          
+          return orderDateObj.getFullYear() === currentYear;
+        }).reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
+        
         const pendingOrders = orders.filter((order: any) => order.status === 'pending' || order.status === 'processing').length;
-
-        // 상품 수 (필터링 적용) - 단순화된 쿼리
-        let productsQuery = collection(db, "products");
-        const productsSnapshot = await getDocs(productsQuery);
-        const allProducts = productsSnapshot.docs.map(doc => doc.data());
         
-        // 클라이언트 사이드에서 필터링
-        const products = isAdmin ? allProducts : allProducts.filter(product => product.branch === userBranch);
-        console.log(`상품 데이터 로드 완료: ${products.length}개 (전체: ${allProducts.length}개)`);
-        
-        // 고유한 상품 ID를 기준으로 바코드 수 계산
-        const uniqueProductIds = new Set(products.map(product => product.id).filter(Boolean));
-        const totalProducts = uniqueProductIds.size;
+        // 주간 주문 건수 계산
+        const currentWeekStart = startOfWeek(new Date());
+        const currentWeekEnd = endOfWeek(new Date());
+        const weeklyOrders = orders.filter((order: any) => {
+          const orderDate = order.orderDate;
+          if (!orderDate) return false;
+          
+          let orderDateObj;
+          if (orderDate.toDate) {
+            orderDateObj = orderDate.toDate();
+          } else {
+            orderDateObj = new Date(orderDate);
+          }
+          
+          return orderDateObj >= currentWeekStart && orderDateObj <= currentWeekEnd;
+        }).length;
 
         // 고객 수 (필터링 적용) - 단순화된 쿼리
         let customersQuery = collection(db, "customers");
@@ -330,17 +369,17 @@ export default function DashboardPage() {
         const allCustomers = customersSnapshot.docs;
         
         // 클라이언트 사이드에서 필터링
-        const customers = isAdmin ? allCustomers : allCustomers.filter(doc => {
+        const customers = currentFilteredBranch ? allCustomers.filter(doc => {
           const data = doc.data();
-          return data.branch === userBranch;
-        });
+          return data.branch === currentFilteredBranch;
+        }) : allCustomers;
         const newCustomers = customers.length;
         console.log(`고객 데이터 로드 완료: ${newCustomers}개 (전체: ${allCustomers.length}개)`);
 
         const statsData = {
-          totalRevenue,
+          totalRevenue: yearlyRevenue, // 총 매출을 년 매출로 변경
           newCustomers,
-          totalProducts,
+          weeklyOrders, // 주간 주문 건수로 변경
           pendingOrders
         };
         
@@ -353,7 +392,7 @@ export default function DashboardPage() {
         setStats({
           totalRevenue: 0,
           newCustomers: 0,
-          totalProducts: 0,
+          weeklyOrders: 0, // 주간 주문 건수로 변경
           pendingOrders: 0
         });
         setRecentOrders([]);
@@ -382,7 +421,7 @@ export default function DashboardPage() {
     } else {
       console.log("대시보드 데이터 로딩 조건 미충족:", { branchesLength: branches.length, user: !!user });
     }
-  }, [branches, user, isAdmin, userBranch]);
+  }, [branches, user, currentFilteredBranch]);
 
   const formatCurrency = (value: number) => `₩${value.toLocaleString()}`;
   
@@ -424,12 +463,38 @@ export default function DashboardPage() {
     return null;
   };
 
+  // 대시보드 제목 생성
+  const getDashboardTitle = () => {
+    if (isAdmin) {
+      if (currentFilteredBranch) {
+        return `${currentFilteredBranch} 대시보드`;
+      } else {
+        return '전체 대시보드';
+      }
+    } else {
+      return `${userBranch} 대시보드`;
+    }
+  };
+
+  // 대시보드 설명 생성
+  const getDashboardDescription = () => {
+    if (isAdmin) {
+      if (currentFilteredBranch) {
+        return `${currentFilteredBranch}의 현재 상태를 한 눈에 파악하세요.`;
+      } else {
+        return '시스템의 현재 상태를 한 눈에 파악하세요.';
+      }
+    } else {
+      return `${userBranch}의 현재 상태를 한 눈에 파악하세요.`;
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-8">
         <PageHeader 
-          title={`${isAdmin ? '전체' : userBranch} 대시보드`} 
-          description={`${isAdmin ? '시스템의 현재 상태를 한 눈에 파악하세요.' : `${userBranch}의 현재 상태를 한 눈에 파악하세요.`}`} 
+          title={getDashboardTitle()} 
+          description={getDashboardDescription()} 
         />
         <div className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -451,16 +516,46 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title={`${isAdmin ? '전체' : userBranch} 대시보드`}
-        description={`${isAdmin ? '시스템의 현재 상태를 한 눈에 파악하세요.' : `${userBranch}의 현재 상태를 한 눈에 파악하세요.`}`}
+        title={getDashboardTitle()}
+        description={getDashboardDescription()}
       />
+      
+      {/* 본사 관리자용 지점 필터링 드롭다운 */}
+      {isAdmin && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-700">지점 선택:</label>
+              <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="지점을 선택하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="전체">전체 지점</SelectItem>
+                  {availableBranches.map((branch) => (
+                    <SelectItem key={branch.name} value={branch.name}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-500">
+                {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       {/* 상단 통계 카드 */}
       <div className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin ? '총 매출' : `${userBranch} 매출`}
+              {isAdmin 
+                ? (currentFilteredBranch ? `${currentFilteredBranch} 년 매출` : '총 년 매출')
+                : `${userBranch} 년 매출`
+              }
             </CardTitle>
             <DollarSign className="h-4 w-4 opacity-90" />
           </CardHeader>
@@ -468,7 +563,7 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
             <p className="text-xs opacity-90 flex items-center mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
-              {isAdmin ? '실시간 매출 현황' : '실시간 매출 현황'}
+              {new Date().getFullYear()}년 매출 현황
             </p>
           </CardContent>
         </Card>
@@ -476,7 +571,10 @@ export default function DashboardPage() {
         <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin ? '등록 고객' : `${userBranch} 고객`}
+              {isAdmin 
+                ? (currentFilteredBranch ? `${currentFilteredBranch} 고객` : '등록 고객')
+                : `${userBranch} 고객`
+              }
             </CardTitle>
             <Users className="h-4 w-4 opacity-90" />
           </CardHeader>
@@ -484,7 +582,7 @@ export default function DashboardPage() {
             <div className="text-2xl font-bold">{stats.newCustomers}</div>
             <p className="text-xs opacity-90 flex items-center mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
-              {isAdmin ? '전체 등록 고객' : '등록된 고객'}
+              {isAdmin && !currentFilteredBranch ? '전체 등록 고객' : '등록된 고객'}
             </p>
           </CardContent>
         </Card>
@@ -492,20 +590,26 @@ export default function DashboardPage() {
         <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin ? '등록된 상품 수' : `${userBranch} 상품`}
+              {isAdmin 
+                ? (currentFilteredBranch ? `${currentFilteredBranch} 주문` : '총 주문')
+                : `${userBranch} 주문`
+              }
             </CardTitle>
-            <Package className="h-4 w-4 opacity-90" />
+            <ShoppingCart className="h-4 w-4 opacity-90" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts.toLocaleString()}</div>
-            <p className="text-xs opacity-90">고유 바코드 기준</p>
+            <div className="text-2xl font-bold">{stats.weeklyOrders.toLocaleString()}</div>
+            <p className="text-xs opacity-90">이번 주 주문 건수</p>
           </CardContent>
         </Card>
         
         <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin ? '처리 대기' : `${userBranch} 대기`}
+              {isAdmin 
+                ? (currentFilteredBranch ? `${currentFilteredBranch} 대기` : '처리 대기')
+                : `${userBranch} 대기`
+              }
             </CardTitle>
             <Calendar className="h-4 w-4 opacity-90" />
           </CardHeader>
@@ -525,11 +629,14 @@ export default function DashboardPage() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-blue-600" />
-                  {isAdmin ? '일별 매출 현황' : `${userBranch} 일별 매출`}
+                  {isAdmin 
+                    ? (currentFilteredBranch ? `${currentFilteredBranch} 일별 매출` : '일별 매출 현황')
+                    : `${userBranch} 일별 매출`
+                  }
                 </CardTitle>
                 <p className="text-sm text-gray-600">
                   {format(new Date(selectedDate), 'yyyy년 M월 d일', { locale: ko })} 
-                  {isAdmin ? ' 매장별 매출' : ' 매출'}
+                  {isAdmin && !currentFilteredBranch ? ' 매장별 매출' : ' 매출'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -566,10 +673,13 @@ export default function DashboardPage() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-green-600" />
-                  {isAdmin ? '주간 매출 현황' : `${userBranch} 주간 매출`}
+                  {isAdmin 
+                    ? (currentFilteredBranch ? `${currentFilteredBranch} 주간 매출` : '주간 매출 현황')
+                    : `${userBranch} 주간 매출`
+                  }
                 </CardTitle>
                 <p className="text-sm text-gray-600">
-                  {isAdmin ? '선택된 주간의 매장별 매출' : '선택된 주간의 매출'}
+                  {isAdmin && !currentFilteredBranch ? '선택된 주간의 매장별 매출' : '선택된 주간의 매출'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -607,11 +717,14 @@ export default function DashboardPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5 text-purple-600" />
-                {isAdmin ? '월별 매출 현황' : `${userBranch} 월별 매출`}
+                {isAdmin 
+                  ? (currentFilteredBranch ? `${currentFilteredBranch} 월별 매출` : '월별 매출 현황')
+                  : `${userBranch} 월별 매출`
+                }
               </CardTitle>
               <p className="text-sm text-gray-600">
                 {format(new Date(selectedMonth + '-01'), 'yyyy년 M월', { locale: ko })} 
-                {isAdmin ? ' 매장별 매출' : ' 매출'}
+                {isAdmin && !currentFilteredBranch ? ' 매장별 매출' : ' 매출'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -644,7 +757,12 @@ export default function DashboardPage() {
       {/* 최근 주문 목록 (실제 데이터) - 테이블 형태로 개선 */}
       <Card>
         <CardHeader>
-          <CardTitle>{isAdmin ? '최근 주문' : `${userBranch} 최근 주문`}</CardTitle>
+          <CardTitle>
+            {isAdmin 
+              ? (currentFilteredBranch ? `${currentFilteredBranch} 최근 주문` : '최근 주문')
+              : `${userBranch} 최근 주문`
+            }
+          </CardTitle>
           <p className="text-sm text-gray-600">실시간 주문 현황</p>
         </CardHeader>
         <CardContent>
@@ -655,7 +773,7 @@ export default function DashboardPage() {
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium text-gray-600">주문자</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">주문일</th>
-                    {isAdmin && (
+                    {isAdmin && !currentFilteredBranch && (
                       <th className="text-left py-3 px-4 font-medium text-gray-600">출고지점</th>
                     )}
                     <th className="text-left py-3 px-4 font-medium text-gray-600">상태</th>
@@ -671,7 +789,7 @@ export default function DashboardPage() {
                       <td className="py-3 px-4">
                         <p className="text-sm text-gray-600">{formatDate(order.orderDate)}</p>
                       </td>
-                      {isAdmin && (
+                      {isAdmin && !currentFilteredBranch && (
                         <td className="py-3 px-4">
                           <p className="text-sm">{order.branchName}</p>
                         </td>

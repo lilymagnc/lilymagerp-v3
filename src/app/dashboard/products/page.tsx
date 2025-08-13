@@ -17,8 +17,9 @@ import { ImportButton } from "@/components/import-button";
 import { ProductForm } from "./components/product-form";
 import { ProductTable } from "./components/product-table";
 import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
-import { ScanLine, Plus } from "lucide-react";
-import { useRouter } from "next/navigation"; 
+import { ScanLine, Plus, Download } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { exportProductsToExcel } from "@/lib/excel-export";
 
 export default function ProductsPage() {
   const router = useRouter(); 
@@ -118,6 +119,17 @@ export default function ProductsPage() {
     await fetchProducts();
   };
 
+  const handleExportToExcel = async () => {
+    try {
+      const branchText = !isAdmin ? userBranch : (selectedBranch === "all" ? "전체지점" : selectedBranch);
+      const filename = `상품목록_${branchText}`;
+      await exportProductsToExcel(filteredProducts, filename);
+    } catch (error) {
+      console.error('엑셀 내보내기 오류:', error);
+      alert('엑셀 파일 생성에 실패했습니다.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader 
@@ -183,6 +195,14 @@ export default function ProductsPage() {
                 onImport={bulkAddProducts}
                 fileName="products_template.xlsx"
               />
+              <Button 
+                variant="outline"
+                onClick={handleExportToExcel}
+                disabled={filteredProducts.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                엑셀 내보내기
+              </Button>
               {selectedProducts.length > 0 && (
                 <Button 
                   variant="outline" 
