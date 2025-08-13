@@ -157,7 +157,7 @@ export function ExpenseInputForm({
   const { toast } = useToast();
   const { materials } = useMaterials();
   const { products } = useProducts();
-  const { branches } = useBranches();
+  const { branches, loading: branchesLoading } = useBranches();
 
   // 중복 데이터 체크 함수
   const checkDuplicateData = useCallback(async (processedData: any[]) => {
@@ -241,6 +241,17 @@ export function ExpenseInputForm({
       form.reset();
     };
   }, [form]);
+
+  // 지점 데이터 로딩 상태 확인
+  useEffect(() => {
+    if (!branchesLoading) {
+      console.log('지점 데이터 로딩 완료:', {
+        loading: branchesLoading,
+        count: branches.length,
+        branches: branches.map(b => ({ id: b.id, name: b.name, type: b.type }))
+      });
+    }
+  }, [branchesLoading, branches]);
 
   // 안전한 상태 업데이트 함수
   const safeSetState = useCallback((setter: React.Dispatch<React.SetStateAction<any>>, value: any) => {
@@ -379,6 +390,16 @@ export function ExpenseInputForm({
   const handleExcelUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!isMountedRef.current) return;
 
+    // 지점 데이터가 로드되기 전에 업로드를 시도하는 것을 방지
+    if (branchesLoading) {
+      toast({
+        title: "알림",
+        description: "지점 데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -431,10 +452,18 @@ export function ExpenseInputForm({
               throw new Error(`행 ${index + 2}: 필수 데이터가 누락되었습니다.`);
             }
 
-            // 지점명 검증 - 등록된 지점인지 확인
-            const isValidBranch = branches.some(branch => branch.name === rowData['지점']);
+            // 지점명 검증 - 등록된 지점인지 확인 (부분 일치 허용)
+            const branchName = rowData['지점'].trim();
+            const isValidBranch = branches.some(branch => 
+              branch.name === branchName || 
+              branch.name.includes(branchName) || 
+              branchName.includes(branch.name)
+            );
+            
             if (!isValidBranch) {
-              console.warn(`행 ${index + 2}: 등록되지 않은 지점명 "${rowData['지점']}"입니다.`);
+              const errorMessage = `행 ${index + 2}: 등록되지 않은 지점명 "${branchName}"입니다. 등록된 지점: ${branches.map(b => b.name).join(', ')}`;
+              console.warn(errorMessage);
+              throw new Error(errorMessage);
             }
 
             // 날짜 처리 개선

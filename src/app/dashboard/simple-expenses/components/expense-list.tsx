@@ -332,8 +332,8 @@ export function ExpenseList({
 
     // 시트1: 통합 시트
     const consolidatedData = filteredExpenses.length > 0 ? filteredExpenses.map(expense => ({
-      '지점': expense.branchName,
       '날짜': expense.date?.toDate().toLocaleDateString() || '-',
+      '지점': expense.branchName,
       '구매처': expense.supplier,
       '분류': SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category],
       '세부분류': expense.subCategory || '-',
@@ -343,8 +343,8 @@ export function ExpenseList({
       '금액': expense.amount,
       '등록일': expense.createdAt?.toDate().toLocaleDateString() || '-'
     })) : [{
-      '지점': '데이터 없음',
       '날짜': '',
+      '지점': '데이터 없음',
       '구매처': '',
       '분류': '',
       '세부분류': '',
@@ -397,6 +397,7 @@ export function ExpenseList({
       }
       branchExpenses[expense.branchId].push({
         '날짜': expense.date?.toDate().toLocaleDateString() || '-',
+        '지점': expense.branchName || '미지정',
         '구매처': expense.supplier,
         '분류': SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category],
         '세부분류': expense.subCategory || '-',
@@ -426,6 +427,7 @@ export function ExpenseList({
           name: branch.name,
           data: [{
             '날짜': '데이터 없음',
+            '지점': branch.name,
             '구매처': '',
             '분류': '',
             '세부분류': '',
@@ -446,6 +448,7 @@ export function ExpenseList({
   const exportBranchExcel = async () => {
     const data = filteredExpenses.length > 0 ? filteredExpenses.map(expense => ({
       '날짜': expense.date.toDate().toLocaleDateString(),
+      '지점': expense.branchName || '미지정',
       '구매처': expense.supplier,
       '분류': SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category],
       '세부분류': expense.subCategory || '-',
@@ -455,7 +458,8 @@ export function ExpenseList({
       '금액': expense.amount,
       '등록일': expense.createdAt?.toDate().toLocaleDateString() || '-'
     })) : [{
-      '날짜': '데이터 없음',
+      '날짜': '',
+      '지점': '데이터 없음',
       '구매처': '',
       '분류': '',
       '세부분류': '',

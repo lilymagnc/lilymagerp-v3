@@ -23,6 +23,7 @@ interface ExpenseChartsProps {
   expenses: SimpleExpense[];
   currentBranchName: string;
   selectedBranchId?: string;
+  selectedMonth?: string; // YYYY-MM 형식
 }
 
 // 차트 색상 팔레트
@@ -31,12 +32,31 @@ const CHART_COLORS = [
   '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'
 ];
 
-export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }: ExpenseChartsProps) {
-  // 선택된 지점의 데이터만 필터링
+export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId, selectedMonth }: ExpenseChartsProps) {
+  // 선택된 지점과 월의 데이터만 필터링
   const filteredExpenses = React.useMemo(() => {
-    if (!selectedBranchId) return expenses;
-    return expenses.filter(expense => expense.branchId === selectedBranchId);
-  }, [expenses, selectedBranchId]);
+    let filtered = expenses;
+    
+    // 지점 필터링
+    if (selectedBranchId) {
+      filtered = filtered.filter(expense => expense.branchId === selectedBranchId);
+    }
+    
+    // 월 필터링
+    if (selectedMonth) {
+      filtered = filtered.filter(expense => {
+        if (!expense.date) return false;
+        const expenseDate = expense.date.toDate();
+        // 한국 시간 기준으로 월 비교
+        const expenseYear = expenseDate.getFullYear();
+        const expenseMonth = expenseDate.getMonth() + 1; // getMonth()는 0부터 시작하므로 +1
+        const expenseMonthKey = `${expenseYear}-${expenseMonth.toString().padStart(2, '0')}`;
+        return expenseMonthKey === selectedMonth;
+      });
+    }
+    
+    return filtered;
+  }, [expenses, selectedBranchId, selectedMonth]);
 
   // 전체 선택 여부 확인
   const isAllBranches = !selectedBranchId;
@@ -138,7 +158,7 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }:
       value,
       color: CHART_COLORS[index % CHART_COLORS.length]
     }));
-  }, [expenses, filteredExpenses, isAllBranches]);
+  }, [filteredExpenses]);
 
   // 월별 트렌드 데이터 (최근 6개월)
   const monthlyData = React.useMemo(() => {
@@ -148,34 +168,45 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }:
     // 최근 6개월 초기화
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = date.toISOString().slice(0, 7); // YYYY-MM
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1; // getMonth()는 0부터 시작하므로 +1
+      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
       monthlyMap.set(monthKey, 0);
     }
 
-    // 지출 데이터 집계
-    // 전체 선택 시에는 모든 지점 데이터 사용, 그렇지 않으면 필터링된 데이터 사용
-    const dataToUse = isAllBranches ? expenses : filteredExpenses;
+    // 지출 데이터 집계 (필터링된 데이터 사용)
+    const dataToUse = filteredExpenses;
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
 
     dataToUse.forEach(expense => {
       if (!expense.date || !expense.amount) return;
       const expenseDate = expense.date.toDate();
-      const monthKey = expenseDate.toISOString().slice(0, 7);
+      
+      // 최근 6개월 데이터만 포함 (월 필터가 없을 때만)
+      if (!selectedMonth && expenseDate < sixMonthsAgo) return;
+      
+      const year = expenseDate.getFullYear();
+      const month = expenseDate.getMonth() + 1; // getMonth()는 0부터 시작하므로 +1
+      const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
       const currentAmount = monthlyMap.get(monthKey) || 0;
       monthlyMap.set(monthKey, currentAmount + expense.amount);
     });
 
-    return Array.from(monthlyMap.entries()).map(([month, amount]) => ({
-      month: month.replace('-', '/'),
-      amount
-    }));
-  }, [expenses, filteredExpenses, isAllBranches]);
+    // 날짜 순서대로 정렬 (과거부터 최신순)
+    return Array.from(monthlyMap.entries())
+      .sort(([monthA], [monthB]) => monthA.localeCompare(monthB))
+      .map(([month, amount]) => ({
+        month: month.replace('-', '/'),
+        amount
+      }));
+  }, [filteredExpenses, selectedMonth]);
 
   // 구매처별 지출 데이터 (상위 10개)
   const supplierData = React.useMemo(() => {
     const supplierMap = new Map<string, number>();
 
-    // 전체 선택 시에는 모든 지점 데이터 사용, 그렇지 않으면 필터링된 데이터 사용
-    const dataToUse = isAllBranches ? expenses : filteredExpenses;
+    // 필터링된 데이터 사용 (지점 + 월 필터 적용)
+    const dataToUse = filteredExpenses;
 
     dataToUse.forEach(expense => {
       // 구매처명 검증
@@ -212,37 +243,44 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }:
     });
 
     return result;
-  }, [expenses, filteredExpenses, isAllBranches]);
+  }, [filteredExpenses]);
 
   // 일별 지출 데이터 (최근 30일)
   const dailyData = React.useMemo(() => {
     const dailyMap = new Map<string, number>();
     const now = new Date();
 
-    // 최근 30일 초기화
+    // 최근 30일 초기화 (오늘부터 29일 전까지)
     for (let i = 29; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dayKey = date.toISOString().slice(0, 10); // YYYY-MM-DD
       dailyMap.set(dayKey, 0);
     }
 
-    // 지출 데이터 집계
-    // 전체 선택 시에는 모든 지점 데이터 사용, 그렇지 않으면 필터링된 데이터 사용
-    const dataToUse = isAllBranches ? expenses : filteredExpenses;
+    // 지출 데이터 집계 (필터링된 데이터 사용)
+    const dataToUse = filteredExpenses;
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     dataToUse.forEach(expense => {
       if (!expense.date || !expense.amount) return;
       const expenseDate = expense.date.toDate();
+      
+      // 최근 30일 데이터만 포함 (월 필터가 없을 때만)
+      if (!selectedMonth && expenseDate < thirtyDaysAgo) return;
+      
       const dayKey = expenseDate.toISOString().slice(0, 10);
       const currentAmount = dailyMap.get(dayKey) || 0;
       dailyMap.set(dayKey, currentAmount + expense.amount);
     });
 
-    return Array.from(dailyMap.entries()).map(([day, amount]) => ({
-      day: day.slice(5), // MM-DD만 표시
-      amount
-    }));
-  }, [expenses, filteredExpenses, isAllBranches]);
+    // 날짜 순서대로 정렬 (과거부터 최신순)
+    return Array.from(dailyMap.entries())
+      .sort(([dayA], [dayB]) => dayA.localeCompare(dayB))
+      .map(([day, amount]) => ({
+        day: day.slice(5), // MM-DD만 표시
+        amount
+      }));
+  }, [filteredExpenses, selectedMonth]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('ko-KR').format(value);
@@ -321,6 +359,11 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }:
         <CardHeader>
           <CardTitle className="text-lg">
             {isAllBranches ? '전체 카테고리별 지출 분포' : '카테고리별 지출 분포'}
+            {selectedMonth && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({selectedMonth.replace('-', '년 ') + '월'})
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -351,6 +394,11 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }:
         <CardHeader>
           <CardTitle className="text-lg">
             {isAllBranches ? '전체 월별 지출 트렌드' : '월별 지출 트렌드'}
+            {selectedMonth && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({selectedMonth.replace('-', '년 ') + '월'})
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -378,6 +426,11 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }:
         <CardHeader>
           <CardTitle className="text-lg">
             {isAllBranches ? '전체 구매처별 지출 (상위 10개)' : '구매처별 지출 (상위 10개)'}
+            {selectedMonth && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({selectedMonth.replace('-', '년 ') + '월'})
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -407,6 +460,11 @@ export function ExpenseCharts({ expenses, currentBranchName, selectedBranchId }:
         <CardHeader>
           <CardTitle className="text-lg">
             {isAllBranches ? '전체 일별 지출 트렌드 (최근 30일)' : '일별 지출 트렌드 (최근 30일)'}
+            {selectedMonth && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({selectedMonth.replace('-', '년 ') + '월'})
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>

@@ -111,14 +111,16 @@ export function useSimpleExpenses() {
         receiptUrl = await getDownloadURL(uploadResult.ref);
         receiptFileName = data.receiptFile.name;
       }
-      // 거래처 자동 등록
+      // 거래처 자동 등록 (지점에 상관없이 구매처명이 같으면 중복 처리)
       let supplierAdded = false;
       if (data.supplier && data.supplier.trim() !== '') {
         try {
           const supplierName = data.supplier.trim();
+          // 지점에 상관없이 구매처명이 같은 거래처가 있는지 확인
           const supplierQuery = query(collection(db, "partners"), where("name", "==", supplierName));
           const supplierSnapshot = await getDocs(supplierQuery);
           if (supplierSnapshot.empty) {
+            // 중복이 없으면 새로 등록 (첫 번째 등록한 지점 정보로 저장)
             const partnerData = {
               name: supplierName,
               type: '기타공급업체',
@@ -135,7 +137,23 @@ export function useSimpleExpenses() {
             supplierAdded = true;
             console.log(`새 거래처 등록: ${supplierName} (지점: ${branchName || '미지정'})`);
           } else {
-            console.log(`기존 거래처 발견: ${supplierName}`);
+            // 중복이 있으면 기존 거래처 사용 (지점 정보 업데이트)
+            const existingPartner = supplierSnapshot.docs[0];
+            const existingData = existingPartner.data();
+            
+            // 기존 거래처에 현재 지점 정보가 없으면 추가
+            if (existingData.branch && existingData.branch !== branchName) {
+              const updatedMemo = existingData.memo 
+                ? `${existingData.memo}\n추가 사용 지점: ${branchName}`
+                : `추가 사용 지점: ${branchName}`;
+              
+              await updateDoc(existingPartner.ref, {
+                memo: updatedMemo,
+                updatedAt: serverTimestamp()
+              });
+              console.log(`기존 거래처 업데이트: ${supplierName} (추가 지점: ${branchName})`);
+            }
+            console.log(`기존 거래처 사용: ${supplierName}`);
           }
         } catch (error) {
           console.error("거래처 추가 오류:", error);

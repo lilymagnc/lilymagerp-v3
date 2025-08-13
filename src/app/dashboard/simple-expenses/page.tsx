@@ -32,6 +32,7 @@ export default function SimpleExpensesPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeTab, setActiveTab] = useState('charts');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
+  const [selectedMonth, setSelectedMonth] = useState<string>('current');
   const { expenses, fetchExpenses, calculateStats } = useSimpleExpenses();
   const { user } = useAuth();
   const { branches } = useBranches();
@@ -152,6 +153,39 @@ export default function SimpleExpensesPage() {
     return isToday;
   });
   const todayTotal = todayExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+  // 실제 데이터가 있는 월들 계산
+  const availableMonths = useMemo(() => {
+    const monthSet = new Set<string>();
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
+    
+    // 현재 월은 항상 포함
+    monthSet.add(currentMonthKey);
+    
+    // 지출 데이터에서 월 추출
+    expenses.forEach(expense => {
+      if (expense.date) {
+        const expenseDate = expense.date.toDate();
+        const year = expenseDate.getFullYear();
+        const month = expenseDate.getMonth() + 1;
+        const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+        monthSet.add(monthKey);
+      }
+    });
+    
+    // 월별로 정렬 (최신순)
+    return Array.from(monthSet).sort((a, b) => b.localeCompare(a));
+  }, [expenses]);
+  // 현재 월을 기본값으로 설정
+  useEffect(() => {
+    if (selectedMonth === 'current' && availableMonths.length > 0) {
+      setSelectedMonth(availableMonths[0]); // 가장 최신 월(현재 월)로 설정
+    }
+  }, [selectedMonth, availableMonths]);
+
   // 초기 데이터 로드
   useEffect(() => {
     if (!isAdmin && user?.franchise) {
@@ -196,29 +230,52 @@ export default function SimpleExpensesPage() {
           </p>
         </div>
         {/* 지점 선택 드롭다운 (관리자만) */}
-        {isAdmin && (
-          <div className="flex items-center gap-2">
-            <Building className="h-4 w-4 text-muted-foreground" />
-            <Select value={selectedBranchId} onValueChange={handleBranchChange}>
-              <SelectTrigger className="w-[200px] text-foreground">
-                <SelectValue placeholder="지점 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체</SelectItem>
-                {branches.filter(branch => branch.type === '본사').map(branch => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-                {branches.filter(branch => branch.type !== '본사').map((branch) => (
-                  <SelectItem key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* 월 선택 드롭다운 */}
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+            <SelectTrigger className="w-[150px] text-foreground">
+              <SelectValue placeholder="월 선택" />
+            </SelectTrigger>
+                         <SelectContent>
+               <SelectItem value="all">전체 기간</SelectItem>
+               {availableMonths.map(monthKey => {
+                 const [year, month] = monthKey.split('-');
+                 const monthLabel = `${year}년 ${parseInt(month)}월`;
+                 return (
+                   <SelectItem key={monthKey} value={monthKey}>
+                     {monthLabel}
+                   </SelectItem>
+                 );
+               })}
+             </SelectContent>
+          </Select>
+          
+          {/* 지점 선택 드롭다운 (관리자만) */}
+          {isAdmin && (
+            <>
+              <Building className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedBranchId} onValueChange={handleBranchChange}>
+                <SelectTrigger className="w-[200px] text-foreground">
+                  <SelectValue placeholder="지점 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  {branches.filter(branch => branch.type === '본사').map(branch => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                  {branches.filter(branch => branch.type !== '본사').map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+        </div>
       </div>
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
@@ -365,6 +422,7 @@ export default function SimpleExpensesPage() {
              expenses={filteredExpenses}
              currentBranchName={currentBranch?.name || ''}
              selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
+             selectedMonth={selectedMonth === 'all' || selectedMonth === 'current' ? undefined : selectedMonth}
            />
          </TabsContent>
          {isHQManager && (

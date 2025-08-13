@@ -29,10 +29,7 @@ export default function PartnersPage() {
     const partnerTypes = useMemo(() => [...new Set(partners.map(p => p.type))], [partners]);
     const filteredPartners = useMemo(() => {
         let filtered = partners;
-        // 권한에 따른 지점 필터링
-        if (!isHeadOfficeAdmin && userBranch) {
-            filtered = filtered.filter(partner => partner.branch === userBranch);
-        }
+        // 모든 사용자가 모든 거래처를 볼 수 있도록 수정 (지점 필터링 제거)
         // 검색어 필터링
         filtered = filtered.filter(partner => 
             String(partner.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,7 +40,7 @@ export default function PartnersPage() {
             filtered = filtered.filter(partner => partner.type === selectedType);
         }
         return filtered;
-    }, [partners, searchTerm, selectedType, isHeadOfficeAdmin, userBranch]);
+    }, [partners, searchTerm, selectedType]);
     const handleAdd = () => {
         setSelectedPartner(null);
         setIsFormOpen(true);

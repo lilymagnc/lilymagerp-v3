@@ -142,5 +142,5 @@ export function usePartners() {
     });
     await fetchPartners();
   };
-  return { partners, loading, addPartner, updatePartner, deletePartner, bulkAddPartners };
+  return { partners, loading, fetchPartners, addPartner, updatePartner, deletePartner, bulkAddPartners };
 }
