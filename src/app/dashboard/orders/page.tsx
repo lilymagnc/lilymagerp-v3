@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
@@ -32,6 +32,7 @@ export default function OrdersPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [isMessagePrintDialogOpen, setIsMessagePrintDialogOpen] = useState(false);
@@ -60,6 +61,37 @@ export default function OrdersPage() {
       setSelectedBranch(userBranch);
     }
   }, [isAdmin, userBranch, selectedBranch]);
+
+  // URL 파라미터에서 메시지 인쇄 다이얼로그 자동 열기
+  useEffect(() => {
+    const openMessagePrint = searchParams.get('openMessagePrint');
+    const orderId = searchParams.get('orderId');
+    
+    if (openMessagePrint === 'true' && orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        setSelectedOrderForPrint(order);
+        setIsMessagePrintDialogOpen(true);
+        
+        // URL에서 파라미터 제거
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('openMessagePrint');
+        newParams.delete('orderId');
+        newParams.delete('labelType');
+        newParams.delete('start');
+        newParams.delete('messageFont');
+        newParams.delete('messageFontSize');
+        newParams.delete('senderFont');
+        newParams.delete('senderFontSize');
+        newParams.delete('messageContent');
+        newParams.delete('senderName');
+        newParams.delete('positions');
+        
+        const newUrl = newParams.toString() ? `?${newParams.toString()}` : '';
+        router.replace(`/dashboard/orders${newUrl}`, { scroll: false });
+      }
+    }
+  }, [searchParams, orders, router]);
   const handlePrint = (orderId: string) => {
     router.push(`/dashboard/orders/print-preview/${orderId}`);
   };
@@ -110,7 +142,8 @@ export default function OrdersPage() {
     senderFont,
     senderFontSize,
     messageContent,
-    senderName
+    senderName,
+    selectedPositions
   }: { 
     orderId: string; 
     labelType: string; 
@@ -121,6 +154,7 @@ export default function OrdersPage() {
     senderFontSize: number;
     messageContent: string;
     senderName: string;
+    selectedPositions: number[];
   }) => {
     const params = new URLSearchParams({
         orderId,
@@ -132,6 +166,7 @@ export default function OrdersPage() {
         senderFontSize: String(senderFontSize),
         messageContent,
         senderName,
+        positions: selectedPositions.join(','),
     });
     router.push(`/dashboard/orders/print-message?${params.toString()}`);
     setIsMessagePrintDialogOpen(false);

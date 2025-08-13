@@ -11,6 +11,7 @@ import { Order } from "@/hooks/use-orders";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSettings } from "@/hooks/use-settings";
+import { useSearchParams } from "next/navigation";
 interface MessagePrintDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -23,7 +24,8 @@ interface MessagePrintDialogProps {
     senderFont: string,
     senderFontSize: number,
     messageContent: string,
-    senderName: string
+    senderName: string,
+    selectedPositions: number[]
   }) => void;
   order: Order;
 }
@@ -34,6 +36,8 @@ const labelTypes = [
 ];
 export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: MessagePrintDialogProps) {
   const { settings } = useSettings();
+  const searchParams = useSearchParams();
+  
   // 시스템 설정에서 폰트 목록 가져오기
   const fontOptions = (settings.availableFonts || [
     'Noto Sans KR',
@@ -46,18 +50,38 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
     value: font,
     label: font
   }));
-  const [labelType, setLabelType] = useState('formtec-3108');
-  const [startPosition, setStartPosition] = useState(1);
-  const [messageFont, setMessageFont] = useState(fontOptions[0].value);
-  const [messageFontSize, setMessageFontSize] = useState(14);
-  const [senderFont, setSenderFont] = useState(fontOptions[0].value);
-  const [senderFontSize, setSenderFontSize] = useState(12);
+
+  // URL 파라미터에서 초기값 가져오기
+  const getInitialValue = (paramName: string, defaultValue: string) => {
+    return searchParams.get(paramName) || defaultValue;
+  };
+
+  const getInitialNumberValue = (paramName: string, defaultValue: number) => {
+    const value = searchParams.get(paramName);
+    return value ? parseInt(value) : defaultValue;
+  };
+
+  const getInitialPositions = () => {
+    const positionsParam = searchParams.get('positions');
+    if (positionsParam) {
+      return positionsParam.split(',').map(p => parseInt(p)).filter(p => !isNaN(p));
+    }
+    return [1];
+  };
+
+  const [labelType, setLabelType] = useState(getInitialValue('labelType', 'formtec-3108'));
+  const [startPosition, setStartPosition] = useState(getInitialNumberValue('start', 1));
+  const [selectedPositions, setSelectedPositions] = useState<number[]>(getInitialPositions());
+  const [messageFont, setMessageFont] = useState(getInitialValue('messageFont', fontOptions[0].value));
+  const [messageFontSize, setMessageFontSize] = useState(getInitialNumberValue('messageFontSize', 14));
+  const [senderFont, setSenderFont] = useState(getInitialValue('senderFont', fontOptions[0].value));
+  const [senderFontSize, setSenderFontSize] = useState(getInitialNumberValue('senderFontSize', 12));
   // 메시지 내용에서 보내는 사람 분리
   const messageParts = (order.message?.content || "").split('\n---\n');
-  const initialMessageContent = messageParts.length > 1 ? messageParts[0] : (order.message?.content || "");
-  const initialSenderName = messageParts.length > 1 ? messageParts[1] : (order.orderer.name || "");
-  const [messageContent, setMessageContent] = useState(initialMessageContent);
-  const [senderName, setSenderName] = useState(initialSenderName);
+  const defaultMessageContent = messageParts.length > 1 ? messageParts[0] : (order.message?.content || "");
+  const defaultSenderName = messageParts.length > 1 ? messageParts[1] : (order.orderer.name || "");
+  const [messageContent, setMessageContent] = useState(getInitialValue('messageContent', defaultMessageContent));
+  const [senderName, setSenderName] = useState(getInitialValue('senderName', defaultSenderName));
   const [isEditing, setIsEditing] = useState(false);
   const selectedLabel = labelTypes.find(lt => lt.value === labelType) || labelTypes[0];
   const handleFormSubmit = () => {
@@ -71,6 +95,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
         senderFontSize,
         messageContent,
         senderName,
+        selectedPositions,
     });
   };
   const messagePreviewStyle: React.CSSProperties = {
@@ -210,7 +235,11 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
             {/* 라벨지 설정 */}
             <div>
               <Label htmlFor="label-type">라벨지 종류</Label>
-              <Select value={labelType} onValueChange={(value) => { setLabelType(value); setStartPosition(1); }}>
+              <Select value={labelType} onValueChange={(value) => { 
+                setLabelType(value); 
+                setStartPosition(1); 
+                setSelectedPositions([1]); 
+              }}>
                 <SelectTrigger id="label-type" name="label-type">
                   <SelectValue placeholder="라벨지 선택" />
                 </SelectTrigger>
@@ -222,26 +251,66 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
               </Select>
             </div>
             <div>
-              <Label id="start-position" htmlFor="start-position">시작 위치 (1-{selectedLabel.cells})</Label>
+              <Label id="start-position" htmlFor="start-position">출력 위치 선택 (1-{selectedLabel.cells})</Label>
+              <div className="flex items-center gap-2 mb-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedPositions([1])}
+                  className="text-xs"
+                >
+                  첫 번째만
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedPositions(Array.from({ length: selectedLabel.cells }, (_, i) => i + 1))}
+                  className="text-xs"
+                >
+                  전체 선택
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedPositions([])}
+                  className="text-xs"
+                >
+                  전체 해제
+                </Button>
+              </div>
               <div className={cn("grid gap-1 mt-2 border p-2 rounded-md", selectedLabel.gridCols)} role="group" aria-labelledby="start-position">
                 {Array.from({ length: selectedLabel.cells }).map((_, i) => {
                   const position = i + 1;
+                  const isSelected = selectedPositions.includes(position);
                   return (
                     <Button
                       key={position}
                       type="button"
                       variant="outline"
                       size="sm"
-                      className={cn("h-8", startPosition === position && "bg-primary text-primary-foreground")}
-                      onClick={() => setStartPosition(position)}
-                      aria-pressed={startPosition === position}
-                      aria-label={`위치 ${position} 선택`}
+                      className={cn("h-8", isSelected && "bg-primary text-primary-foreground")}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedPositions(prev => prev.filter(p => p !== position));
+                        } else {
+                          setSelectedPositions(prev => [...prev, position]);
+                        }
+                      }}
+                      aria-pressed={isSelected}
+                      aria-label={`위치 ${position} ${isSelected ? '해제' : '선택'}`}
                     >
                       {position}
                     </Button>
                   );
                 })}
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                선택된 위치: {selectedPositions.length > 0 ? selectedPositions.join(', ') : '없음'} 
+                ({selectedPositions.length}개)
+              </p>
             </div>
           </div>
           {/* 미리보기 영역 */}
@@ -274,11 +343,13 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
             </div>
             {/* 전체 라벨 그리드 미리보기 */}
             <div>
-              <Label className="text-xs text-muted-foreground mb-2 block">전체 라벨 레이아웃 (시작 위치: {startPosition})</Label>
+              <Label className="text-xs text-muted-foreground mb-2 block">
+                전체 라벨 레이아웃 (선택된 위치: {selectedPositions.length > 0 ? selectedPositions.join(', ') : '없음'})
+              </Label>
               <div className={cn("grid gap-1 border p-2 rounded-md bg-white", selectedLabel.gridCols)}>
                 {Array.from({ length: selectedLabel.cells }).map((_, i) => {
                   const position = i + 1;
-                  const isSelected = position === startPosition;
+                  const isSelected = selectedPositions.includes(position);
                   return (
                     <div
                       key={position}
@@ -309,7 +380,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
           <DialogClose asChild>
             <Button type="button" variant="secondary">취소</Button>
           </DialogClose>
-          <Button type="button" onClick={handleFormSubmit} disabled={!messageContent}>
+          <Button type="button" onClick={handleFormSubmit} disabled={!messageContent || selectedPositions.length === 0}>
             <Printer className="mr-2 h-4 w-4"/> 인쇄 미리보기
           </Button>
         </DialogFooter>

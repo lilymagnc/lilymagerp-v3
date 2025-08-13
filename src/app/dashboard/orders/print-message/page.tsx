@@ -58,6 +58,8 @@ export default function PrintMessagePage() {
     const senderFontSize = parseInt(searchParams.get('senderFontSize') || '12');
     const messageContent = searchParams.get('messageContent') || '';
     const senderName = searchParams.get('senderName') || '';
+    const positionsParam = searchParams.get('positions') || '';
+    const selectedPositions = positionsParam ? positionsParam.split(',').map(p => parseInt(p)).filter(p => !isNaN(p)) : [startPosition];
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -140,6 +142,7 @@ export default function PrintMessagePage() {
                 senderFontSize={senderFontSize}
                 messageContent={messageContent}
                 senderName={senderName}
+                selectedPositions={selectedPositions}
             />
         </Suspense>
     );

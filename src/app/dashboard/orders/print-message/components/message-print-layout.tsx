@@ -17,6 +17,7 @@ interface MessagePrintLayoutProps {
   senderFontSize: number;
   messageContent: string;
   senderName: string;
+  selectedPositions?: number[];
 }
 
 const labelConfigs: Record<string, { cells: number; gridCols: string; height: string, className?: string }> = {
@@ -34,7 +35,8 @@ export function MessagePrintLayout({
   senderFont, 
   senderFontSize, 
   messageContent, 
-  senderName 
+  senderName,
+  selectedPositions = [startPosition]
 }: MessagePrintLayoutProps) {
   const router = useRouter();
   const config = labelConfigs[labelType] || labelConfigs['formtec-3108'];
@@ -54,9 +56,12 @@ export function MessagePrintLayout({
   }
 
   if (finalMessageContent) {
-      if (startPosition - 1 < config.cells) {
-          labels[startPosition - 1] = { content: finalMessageContent, senderName: finalSenderName };
-      }
+      // 선택된 모든 위치에 메시지 배치
+      selectedPositions.forEach(position => {
+          if (position - 1 < config.cells && position > 0) {
+              labels[position - 1] = { content: finalMessageContent, senderName: finalSenderName };
+          }
+      });
   }
 
   const messageFontStyle: React.CSSProperties = {
@@ -120,17 +125,33 @@ export function MessagePrintLayout({
       <div className="no-print">
         <PageHeader
           title="메시지 인쇄 미리보기"
-          description={`주문자: ${order.orderer.name} / 라벨지: ${labelType}`}
+          description={`주문자: ${order.orderer.name} / 라벨지: ${labelType} / 출력 위치: ${selectedPositions.join(', ')}`}
         >
             <div className="flex gap-2">
-                <Button 
-                    variant="outline" 
-                    onClick={() => router.back()}
-                    aria-label="이전 페이지로 돌아가기"
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4"/>
-                    뒤로가기
-                </Button>
+                                 <Button 
+                     variant="outline" 
+                     onClick={() => {
+                       // URL 파라미터를 유지하면서 주문 페이지로 돌아가기
+                       const params = new URLSearchParams();
+                       params.set('orderId', order.id);
+                       params.set('labelType', labelType);
+                       params.set('start', String(startPosition));
+                       params.set('messageFont', messageFont);
+                       params.set('messageFontSize', String(messageFontSize));
+                       params.set('senderFont', senderFont);
+                       params.set('senderFontSize', String(senderFontSize));
+                       params.set('messageContent', messageContent);
+                       params.set('senderName', senderName);
+                       params.set('positions', selectedPositions.join(','));
+                       params.set('openMessagePrint', 'true');
+                       
+                       router.push(`/dashboard/orders?${params.toString()}`);
+                     }}
+                     aria-label="메시지 인쇄 옵션으로 돌아가기"
+                 >
+                     <ArrowLeft className="mr-2 h-4 w-4"/>
+                     옵션 수정
+                 </Button>
                 <Button 
                     onClick={() => window.print()}
                     aria-label="메시지 라벨 인쇄하기"
