@@ -20,9 +20,9 @@ interface MessagePrintLayoutProps {
 }
 
 const labelConfigs: Record<string, { cells: number; gridCols: string; height: string, className?: string }> = {
-    'formtec-3107': { cells: 6, gridCols: 'grid-cols-2', height: '99.1mm', className: 'gap-x-0' }, // 2x3
-    'formtec-3108': { cells: 8, gridCols: 'grid-cols-2', height: '70mm', className: 'gap-x-[4.5mm]' }, // 2x4
-    'formtec-3109': { cells: 12, gridCols: 'grid-cols-2', height: '67.7mm', className: 'gap-x-[2.5mm]' }, // 2x6
+    'formtec-3107': { cells: 6, gridCols: 'grid-cols-2', height: '93mm', className: 'gap-x-[2mm]' }, // 2x3
+    'formtec-3108': { cells: 8, gridCols: 'grid-cols-2', height: '67.5mm', className: 'gap-x-[2mm]' }, // 2x4
+    'formtec-3109': { cells: 12, gridCols: 'grid-cols-2', height: '45mm', className: 'gap-x-[2mm]' }, // 2x6
 };
 
 export function MessagePrintLayout({ 
@@ -105,7 +105,15 @@ export function MessagePrintLayout({
               width: 210mm;
               height: 297mm;
               box-sizing: border-box;
-              padding: 13.5mm 6.5mm;
+              padding: 14mm 5mm 13mm 5mm; /* 상 좌 하 우 - 폼텍 3108 최적화 */
+            }
+            /* 6칸 라벨용 여백 설정 */
+            #printable-area-wrapper[data-label-type="formtec-3107"] {
+              padding: 8mm 5mm 10mm 5mm; /* 상 좌 하 우 - 폼텍 3107 최적화 */
+            }
+            /* 12칸 라벨용 여백 설정 */
+            #printable-area-wrapper[data-label-type="formtec-3109"] {
+              padding: 11mm 5mm 16mm 5mm; /* 상 좌 하 우 - 폼텍 3109 최적화 */
             }
           }
         `}</style>
