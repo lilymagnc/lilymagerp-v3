@@ -300,9 +300,45 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
     });
   };
   const checkDuplicateOrder = async (order: ExcelOrderData): Promise<boolean> => {
-    // 간단한 중복 체크 (실제로는 더 정교한 로직이 필요할 수 있음)
-    // 여기서는 주문자명 + 연락처 + 주문일시로 중복을 판단
-    return false; // 실제 구현에서는 기존 주문과 비교
+    try {
+      // 주문자명 + 연락처 + 주문일시로 중복 체크
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+      
+      // 주문일시를 Date 객체로 변환
+      const orderDate = new Date(order.orderDate);
+      const startOfDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+      const endOfDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate(), 23, 59, 59);
+      
+      // 기존 주문 검색
+      const q = query(
+        collection(db, 'orders'),
+        where('orderer.name', '==', order.ordererName),
+        where('orderer.contact', '==', order.ordererContact)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      // 같은 날짜에 같은 주문자명과 연락처로 주문한 내역이 있는지 확인
+      for (const doc of querySnapshot.docs) {
+        const existingOrder = doc.data();
+        if (existingOrder.orderDate) {
+          const existingDate = existingOrder.orderDate.toDate ? 
+            existingOrder.orderDate.toDate() : 
+            new Date(existingOrder.orderDate);
+          
+          // 같은 날짜인지 확인
+          if (existingDate >= startOfDay && existingDate <= endOfDay) {
+            return true; // 중복 발견
+          }
+        }
+      }
+      
+      return false; // 중복 없음
+    } catch (error) {
+      console.error('중복 체크 오류:', error);
+      return false; // 오류 발생 시 중복이 아닌 것으로 처리
+    }
   };
   const downloadTemplate = () => {
     const template = [

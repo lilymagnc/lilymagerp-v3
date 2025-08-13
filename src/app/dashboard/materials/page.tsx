@@ -125,7 +125,7 @@ export default function MaterialsPage() {
       return;
     }
     const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
-      ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, current_stock: stock })
+      ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, stock })
     );
     downloadXLSX(dataToExport, "materials_list");
     toast({

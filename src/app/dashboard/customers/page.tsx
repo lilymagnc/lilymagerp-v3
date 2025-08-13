@@ -108,21 +108,20 @@ export default function CustomersPage() {
             toast({
                 variant: "destructive",
                 title: "내보낼 데이터 없음",
-                description: "목록에 데이터가 없습니다.",
+                description: "현재 필터에 맞는 고객 데이터가 없습니다.",
             });
             return;
         }
         const dataToExport = filteredCustomers.map(customer => ({
-            '고객명': customer.name,
-            '회사명': customer.companyName || '',
-            '고객유형': customer.type === 'personal' ? '개인' : '기업',
-            '연락처': customer.contact,
-            '이메일': customer.email || '',
-            '주소': customer.address || '',
-            '고객등급': customer.grade || '신규',
-            '담당지점': customer.branch,
-            '메모': customer.memo || '',
-            '등록일': customer.createdAt ? format(new Date(customer.createdAt), 'yyyy-MM-dd HH:mm') : '',
+            'name': customer.name || '',
+            'contact': customer.contact || '',
+            'companyName': customer.companyName || '',
+            'email': customer.email || '',
+            'address': customer.address || '',
+            'grade': customer.grade || '신규',
+            'branch': customer.branch,
+            'memo': customer.memo || '',
+            'createdAt': customer.createdAt ? format(new Date(customer.createdAt), 'yyyy-MM-dd HH:mm') : '',
         }));
         downloadXLSX(dataToExport, "customers");
         toast({
