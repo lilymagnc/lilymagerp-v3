@@ -312,6 +312,7 @@ export default function OrdersPage() {
             <TableRow>
               <TableHead>주문 ID</TableHead>
               <TableHead>주문자</TableHead>
+              <TableHead>상품명</TableHead>
               <TableHead>주문일</TableHead>
               <TableHead>출고지점</TableHead>
               <TableHead>상태</TableHead>
@@ -325,6 +326,7 @@ export default function OrdersPage() {
                   <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
@@ -333,7 +335,17 @@ export default function OrdersPage() {
                   </TableRow>
               ))
             ) : (
-              filteredOrders.map((order) => (
+              filteredOrders.map((order) => {
+                // 상품명 추출 로직
+                const getProductNames = (order: Order) => {
+                  if (order.items && order.items.length > 0) {
+                    const names = order.items.map(item => item.name || '상품명 없음');
+                    return names.join(', ');
+                  }
+                  return '상품 정보 없음';
+                };
+
+                return (
                   <TableRow 
                     key={order.id} 
                     className="cursor-pointer hover:bg-muted/50"
@@ -341,6 +353,11 @@ export default function OrdersPage() {
                   >
                   <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
                   <TableCell>{order.orderer.name}</TableCell>
+                  <TableCell className="max-w-xs">
+                    <div className="truncate" title={getProductNames(order)}>
+                      {getProductNames(order)}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     {order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}
                   </TableCell>
@@ -456,7 +473,8 @@ export default function OrdersPage() {
                     </DropdownMenu>
                   </TableCell>
                   </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

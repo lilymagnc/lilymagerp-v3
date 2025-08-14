@@ -34,6 +34,7 @@ interface Order {
   total: number;
   status: string;
   branchName: string;
+  productNames?: string; // 상품명 필드 추가
 }
 
 interface BranchSalesData {
@@ -306,13 +307,25 @@ export default function DashboardPage() {
         const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
         const allRecentOrders = recentOrdersSnapshot.docs.map(doc => {
           const orderData = doc.data() as any;
+          
+          // 상품명 추출 로직
+          let productNames = '상품 정보 없음';
+          if (orderData.items && Array.isArray(orderData.items)) {
+            const names = orderData.items.map((item: any) => item.name || item.productName || '상품명 없음');
+            productNames = names.length > 0 ? names.join(', ') : '상품 정보 없음';
+          } else if (orderData.products && Array.isArray(orderData.products)) {
+            const names = orderData.products.map((product: any) => product.name || product.productName || '상품명 없음');
+            productNames = names.length > 0 ? names.join(', ') : '상품 정보 없음';
+          }
+          
           return {
             id: doc.id,
             orderer: orderData.orderer || { name: '주문자 정보 없음' },
             orderDate: orderData.orderDate,
             total: orderData.summary?.total || orderData.total || 0,
             status: orderData.status || 'pending',
-            branchName: orderData.branchName || '지점 미지정'
+            branchName: orderData.branchName || '지점 미지정',
+            productNames: productNames
           };
         });
         
@@ -760,34 +773,54 @@ export default function DashboardPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">주문ID</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">주문자</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">상품명</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">주문일</th>
-                    {isAdmin && !currentFilteredBranch && (
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">출고지점</th>
-                    )}
+                    <th className="text-left py-3 px-4 font-medium text-gray-600">출고지점</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-600">상태</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600">금액</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600">작업</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentOrders.map((order) => (
                     <tr key={order.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4">
+                        <p className="text-sm font-mono text-gray-500">#{order.id.slice(-6)}</p>
+                      </td>
+                      <td className="py-3 px-4">
                         <p className="font-medium">{order.orderer?.name || '주문자 정보 없음'}</p>
+                      </td>
+                      <td className="py-3 px-4 max-w-xs">
+                        <p className="text-sm text-gray-600 truncate" title={order.productNames}>
+                          {order.productNames || '상품 정보 없음'}
+                        </p>
                       </td>
                       <td className="py-3 px-4">
                         <p className="text-sm text-gray-600">{formatDate(order.orderDate)}</p>
                       </td>
-                      {isAdmin && !currentFilteredBranch && (
-                        <td className="py-3 px-4">
-                          <p className="text-sm">{order.branchName}</p>
-                        </td>
-                      )}
+                      <td className="py-3 px-4">
+                        <p className="text-sm">{order.branchName}</p>
+                      </td>
                       <td className="py-3 px-4">
                         {getStatusBadge(order.status)}
                       </td>
                       <td className="py-3 px-4 text-right">
                         <p className="font-bold">{formatCurrency(order.total)}</p>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => {
+                            // 주문 상세보기 기능 (추후 구현 가능)
+                            console.log('주문 상세보기:', order.id);
+                          }}
+                        >
+                          상세보기
+                        </Button>
                       </td>
                     </tr>
                   ))}
