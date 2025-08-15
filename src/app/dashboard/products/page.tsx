@@ -62,15 +62,15 @@ export default function ProductsPage() {
     }
   }, [isAdmin, userBranch, selectedBranch]);
 
-  // 카테고리 목록 생성
-  const categories = useMemo(() => {
-    return [...new Set(products.map(product => product.mainCategory).filter(Boolean))];
-  }, [products]);
-
   const filteredProducts = useMemo(() => {
     let filtered = products;
 
-    // 검색어 및 카테고리 필터링만 유지
+    // 지점 필터링 추가
+    if (selectedBranch !== "all") {
+      filtered = filtered.filter(product => product.branch === selectedBranch);
+    }
+
+    // 검색어 및 카테고리 필터링
     const finalFiltered = filtered.filter(product => {
       const matchesSearch = (product.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                           (product.code?.toLowerCase() || '').includes(searchTerm.toLowerCase());
@@ -80,6 +80,11 @@ export default function ProductsPage() {
 
     return finalFiltered;
   }, [products, searchTerm, selectedBranch, selectedCategory, isAdmin, userBranch, user]);
+
+  // 카테고리 목록 생성 (필터링된 상품 기준)
+  const categories = useMemo(() => {
+    return [...new Set(filteredProducts.map(product => product.mainCategory).filter(Boolean))];
+  }, [filteredProducts]);
 
   const handleFormSubmit = async (data: any) => {
     try {
@@ -191,10 +196,11 @@ export default function ProductsPage() {
                 상품 추가
               </Button>
               {/* 마이그레이션 버튼 제거 */}
-              <ImportButton
-                onImport={bulkAddProducts}
-                fileName="products_template.xlsx"
-              />
+                             <ImportButton
+                 onImport={(data) => bulkAddProducts(data, selectedBranch)}
+                 fileName="products_template.xlsx"
+                 resourceName="상품"
+               />
               <Button 
                 variant="outline"
                 onClick={handleExportToExcel}

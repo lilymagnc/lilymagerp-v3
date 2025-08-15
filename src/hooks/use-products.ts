@@ -170,17 +170,18 @@ export function useProducts() {
       setLoading(false);
     }
   };
-  const bulkAddProducts = async (data: any[]) => {
+  const bulkAddProducts = async (data: any[], selectedBranch?: string) => {
     setLoading(true);
     let newCount = 0;
-    let updateCount = 0;
+    let deleteCount = 0;
     let errorCount = 0;
     let supplierAddedCount = 0;
     let categoryAddedCount = 0;
     // 새로운 공급업체들을 수집
     const suppliersToAdd = new Set<string>();
     data.forEach(row => {
-        const supplier = String(row.supplier || '').trim();
+        // 엑셀 필드명 매핑 (한글 필드명을 영문 필드명으로 변환)
+        const supplier = String(row.supplier || row.공급업체 || '').trim();
         if (supplier && supplier !== '미지정' && supplier !== '') {
             suppliersToAdd.add(supplier);
         }
@@ -189,8 +190,9 @@ export function useProducts() {
     const mainCategoriesToAdd = new Set<string>();
     const midCategoriesToAdd = new Set<string>();
     data.forEach(row => {
-        const mainCategory = String(row.mainCategory || '').trim();
-        const midCategory = String(row.midCategory || '').trim();
+        // 엑셀 필드명 매핑 (한글 필드명을 영문 필드명으로 변환)
+        const mainCategory = String(row.mainCategory || row.대분류 || '').trim();
+        const midCategory = String(row.midCategory || row.중분류 || '').trim();
         if (mainCategory && mainCategory !== '기타자재') {
             mainCategoriesToAdd.add(mainCategory);
         }
@@ -257,59 +259,78 @@ export function useProducts() {
             console.error("Error adding categories:", error);
         }
     }
-    await Promise.all(data.map(async (row) => {
+    
+    // 선택된 지점의 기존 상품 모두 삭제
+    if (selectedBranch && selectedBranch !== "all") {
       try {
-        if (!row.name) return;
-        const productName = String(row.name);
-        const productBranch = String(row.branch || '');
-        // 같은 이름의 상품이 있는지 확인 (지점 무관)
-        const existingProductQuery = query(
-          collection(db, "products"), 
-          where("name", "==", productName)
+        const existingProductsQuery = query(
+          collection(db, "products"),
+          where("branch", "==", selectedBranch)
         );
-        const existingProductSnapshot = await getDocs(existingProductQuery);
-        let productId: string;
-        if (!existingProductSnapshot.empty) {
-          // 같은 이름의 상품이 있으면 기존 ID 사용
-          productId = existingProductSnapshot.docs[0].data().id;
-        } else {
-          // 같은 이름의 상품이 없으면 새 ID 생성
-          productId = await generateNewId();
-        }
-        const productData = {
-          id: productId, // 기존 ID 또는 새 ID 사용
-          name: productName,
-          mainCategory: String(row.mainCategory || ''),
-          midCategory: String(row.midCategory || ''),
-          price: Number(row.price) || 0,
-          supplier: String(row.supplier || ''),
-          stock: Number(row.stock) || 0,
-          size: String(row.size || ''),
-          color: String(row.color || ''),
-          branch: productBranch,
-          code: String(row.code || ''),
-          category: String(row.category || ''),
-        };
-        // 해당 지점에 같은 ID의 상품이 있는지 확인
-        const branchProductQuery = query(
-          collection(db, "products"), 
-          where("id", "==", productId), 
-          where("branch", "==", productBranch)
-        );
-        const branchProductSnapshot = await getDocs(branchProductQuery);
-        if (!branchProductSnapshot.empty) {
-          // 해당 지점에 같은 ID의 상품이 있으면 업데이트
-          const docRef = branchProductSnapshot.docs[0].ref;
-          await setDoc(docRef, productData, { merge: true });
-          updateCount++;
-        } else {
-          // 해당 지점에 같은 ID의 상품이 없으면 새로 등록
-          const docRef = doc(collection(db, "products"));
-          await setDoc(docRef, { ...productData, createdAt: serverTimestamp() });
-          newCount++;
-        }
+        const existingProductsSnapshot = await getDocs(existingProductsQuery);
+        
+        const deletePromises = existingProductsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+        deleteCount = existingProductsSnapshot.size;
       } catch (error) {
-        console.error("Error processing row:", row, error);
+        console.error("Error deleting existing products:", error);
+        errorCount++;
+      }
+    }
+    
+    await Promise.all(data.map(async (row, index) => {
+      try {
+        // 엑셀 필드명 매핑 (한글 필드명을 영문 필드명으로 변환)
+        const mappedRow = {
+          name: row.name || row.상품명 || '',
+          mainCategory: row.mainCategory || row.대분류 || '',
+          midCategory: row.midCategory || row.중분류 || '',
+          price: row.price || row.가격 || 0,
+          supplier: row.supplier || row.공급업체 || '',
+          stock: row.stock || row.재고 || 0,
+          size: row.size || row.규격 || '',
+          color: row.color || row.색상 || '',
+          branch: row.branch || row.지점 || '',
+          code: row.code || row.코드 || '',
+          category: row.category || row.카테고리 || ''
+        };
+        
+        if (!mappedRow.name) {
+          return;
+        }
+        const productName = String(mappedRow.name);
+        const productBranch = String(mappedRow.branch || '');
+        const productCode = String(mappedRow.code || '');
+        
+        // 상품 데이터 준비 (엑셀의 모든 필드를 완전히 덮어쓰기)
+        const productData = {
+          name: productName,
+          mainCategory: String(mappedRow.mainCategory || ''),
+          midCategory: String(mappedRow.midCategory || ''),
+          price: Number(mappedRow.price) || 0,
+          supplier: String(mappedRow.supplier || ''),
+          stock: Number(mappedRow.stock) || 0,
+          size: String(mappedRow.size || ''),
+          color: String(mappedRow.color || ''),
+          branch: productBranch,
+          code: productCode,
+          category: String(mappedRow.category || ''),
+          updatedAt: serverTimestamp(), // 업데이트 시간 추가
+        };
+        
+        // 모든 상품을 새로 추가 (기존 상품은 이미 삭제됨)
+        const docRef = doc(collection(db, "products"));
+        
+        // 새 상품의 경우 ID 생성
+        const newProductId = await generateNewId();
+        await setDoc(docRef, { 
+          ...productData, 
+          id: newProductId,
+          createdAt: serverTimestamp() 
+        });
+        newCount++;
+      } catch (error) {
+        console.error("Error processing product:", error);
         errorCount++;
       }
     }));
@@ -321,18 +342,30 @@ export function useProducts() {
         description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
       });
     }
-    let description = `성공: 신규 상품 ${newCount}개 추가, ${updateCount}개 업데이트 완료.`;
+    let description = `성공: 기존 상품 ${deleteCount}개 삭제, 신규 상품 ${newCount}개 추가 완료.`;
     if (supplierAddedCount > 0) {
         description += ` 새로운 공급업체 ${supplierAddedCount}개가 거래처 관리에 추가되었습니다.`;
     }
     if (categoryAddedCount > 0) {
         description += ` 새로운 카테고리 ${categoryAddedCount}개가 카테고리 관리에 추가되었습니다.`;
     }
+    if (errorCount > 0) {
+        description += ` (${errorCount}개 항목 처리 중 오류 발생)`;
+    }
+    // 처리 결과만 간단히 로그
+    console.log('엑셀 업로드 완료:', { 
+      삭제된상품: deleteCount,
+      추가된상품: newCount, 
+      오류: errorCount
+    });
     toast({ 
       title: '처리 완료', 
       description
     });
-    await fetchProducts();
+    // 상품 목록 새로고침 (약간의 지연 후)
+    setTimeout(async () => {
+      await fetchProducts();
+    }, 1000);
   };
   const manualUpdateStock = async (productId: string, productName: string, newStock: number, branch: string, userEmail: string) => {
     try {

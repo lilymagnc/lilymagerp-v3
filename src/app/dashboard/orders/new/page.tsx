@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, ChevronDown, ChevronUp, Loader2, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch, initialBranches } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -31,8 +31,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useDiscountSettings } from "@/hooks/use-discount-settings";
 import { Timestamp } from "firebase/firestore";
 import { debounce } from "lodash";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 interface OrderItem extends Product {
   quantity: number;
+  isCustomProduct?: boolean; // 수동 추가 상품 여부
 }
 type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
 type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
@@ -54,6 +56,14 @@ export default function NewOrderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('id');
+  
+  // 수동 상품 추가 관련 상태
+  const [isCustomProductDialogOpen, setIsCustomProductDialogOpen] = useState(false);
+  const [customProductName, setCustomProductName] = useState("");
+  const [customProductPrice, setCustomProductPrice] = useState("");
+  const [customProductQuantity, setCustomProductQuantity] = useState(1);
+  const [customProductMainCategory, setCustomProductMainCategory] = useState("");
+  const [customProductMidCategory, setCustomProductMidCategory] = useState("");
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -163,6 +173,8 @@ export default function NewOrderPage() {
   }, []);
   const branchProducts = useMemo(() => {
     if (!selectedBranch) return [];
+    
+    // 선택한 지점의 상품만 표시 (본사 관리자도 선택한 지점만)
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
   const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory).filter(Boolean))], [branchProducts]);
@@ -171,10 +183,13 @@ export default function NewOrderPage() {
     return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory).filter(Boolean))];
   }, [branchProducts, selectedMainCategory]);
   const filteredProducts = useMemo(() => {
-    return branchProducts.filter(p => 
+    const filtered = branchProducts.filter(p => 
         (!selectedMainCategory || p.mainCategory === selectedMainCategory) &&
         (!selectedMidCategory || p.midCategory === selectedMidCategory)
     );
+    
+    // 가격순 오름차순 정렬
+    return filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
   }, [branchProducts, selectedMainCategory, selectedMidCategory]);
   const todaysOrders = useMemo(() => {
     const today = new Date();
@@ -368,6 +383,16 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const updateItemQuantity = (docId: string, newQuantity: number) => {
     const itemToUpdate = orderItems.find(item => item.docId === docId);
     if (!itemToUpdate) return;
+    
+    // 수동 추가 상품은 재고 제한 없음
+    if (itemToUpdate.isCustomProduct) {
+      if (newQuantity > 0) {
+        setOrderItems(orderItems.map(item => item.docId === docId ? { ...item, quantity: newQuantity } : item));
+      }
+      return;
+    }
+    
+    // 일반 상품은 재고 체크
     if (newQuantity > 0 && newQuantity <= itemToUpdate.stock) {
       setOrderItems(orderItems.map(item => item.docId === docId ? { ...item, quantity: newQuantity } : item));
     } else if (newQuantity > itemToUpdate.stock) {
@@ -376,6 +401,55 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   };
   const removeItem = (docId: string) => {
     setOrderItems(orderItems.filter(item => item.docId !== docId));
+  };
+
+  // 수동 상품 추가 함수
+  const handleAddCustomProduct = () => {
+    if (!customProductName.trim() || !customProductPrice.trim()) {
+      toast({ variant: 'destructive', title: '입력 오류', description: '상품명과 가격을 모두 입력해주세요.' });
+      return;
+    }
+
+    const price = Number(customProductPrice);
+    if (isNaN(price) || price <= 0) {
+      toast({ variant: 'destructive', title: '가격 오류', description: '올바른 가격을 입력해주세요.' });
+      return;
+    }
+
+    if (customProductQuantity <= 0) {
+      toast({ variant: 'destructive', title: '수량 오류', description: '올바른 수량을 입력해주세요.' });
+      return;
+    }
+
+    // 임시 상품 생성 (주문에만 추가, DB에는 저장하지 않음)
+    const customProduct: OrderItem = {
+      id: `custom_${Date.now()}`, // 임시 ID 생성
+      docId: `custom_${Date.now()}`,
+      name: customProductName.trim(),
+      price: price,
+      quantity: customProductQuantity,
+      stock: 999, // 수동 상품은 재고 제한 없음
+      mainCategory: customProductMainCategory || "기타",
+      midCategory: customProductMidCategory || "수동 추가",
+      supplier: "수동 등록",
+      size: "기타",
+      color: "기타",
+      branch: selectedBranch?.name || "",
+      status: "active",
+      isCustomProduct: true, // 수동 추가 상품 표시
+    };
+
+    setOrderItems(prevItems => [...prevItems, customProduct]);
+    
+    // 다이얼로그 초기화 및 닫기
+    setCustomProductName("");
+    setCustomProductPrice("");
+    setCustomProductQuantity(1);
+    setCustomProductMainCategory("");
+    setCustomProductMidCategory("");
+    setIsCustomProductDialogOpen(false);
+    
+    toast({ title: '상품 추가 완료', description: `${customProductName}이(가) 주문에 추가되었습니다.` });
   };
   const handleCompleteOrder = async () => {
     setIsSubmitting(true);
@@ -667,15 +741,32 @@ const debouncedCustomerSearch = useCallback(
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {orderItems.length > 0 ? (
-                                    orderItems.map(item => (
-                                        <TableRow key={item.docId}>
-                                        <TableCell>{item.name}</TableCell>
+                                                                         {orderItems.length > 0 ? (
+                                     orderItems.map(item => (
+                                         <TableRow key={item.docId}>
+                                         <TableCell>
+                                             <div className="flex items-center gap-2">
+                                                 {item.name}
+                                                 {item.isCustomProduct && (
+                                                     <Badge variant="secondary" className="text-xs">
+                                                         수동 추가
+                                                     </Badge>
+                                                 )}
+                                             </div>
+                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.docId, item.quantity - 1)} disabled={item.quantity <= 1}><MinusCircle className="h-4 w-4"/></Button>
                                                 <Input id={`quantity-${item.docId}`} type="number" value={item.quantity} onChange={e => updateItemQuantity(item.docId, parseInt(e.target.value) || 1)} className="h-8 w-12 text-center" />
-                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateItemQuantity(item.docId, item.quantity + 1)} disabled={item.quantity >= item.stock}><PlusCircle className="h-4 w-4"/></Button>
+                                                                                                 <Button 
+                                                   variant="outline" 
+                                                   size="icon" 
+                                                   className="h-6 w-6" 
+                                                   onClick={() => updateItemQuantity(item.docId, item.quantity + 1)} 
+                                                   disabled={!item.isCustomProduct && item.quantity >= item.stock}
+                                                 >
+                                                   <PlusCircle className="h-4 w-4"/>
+                                                 </Button>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">₩{item.price.toLocaleString()}</TableCell>
@@ -730,18 +821,119 @@ const debouncedCustomerSearch = useCallback(
                                 {productsLoading ? (
                                     <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
-                                    <Select onValueChange={handleAddProduct} value="">
-                                        <SelectTrigger id="product-select" className="flex-1">
-                                            <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {filteredProducts.map(p => (
-                                                <SelectItem key={p.docId} value={p.docId} disabled={p.stock === 0}>
-                                                    {p.name} - ₩{p.price.toLocaleString()} (재고: {p.stock})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <>
+                                        <Select onValueChange={handleAddProduct} value="">
+                                            <SelectTrigger id="product-select" className="flex-1">
+                                                <SelectValue placeholder="상품을 선택하여 바로 추가하세요..." />
+                                            </SelectTrigger>
+                                                                                         <SelectContent>
+                                                 {filteredProducts.map(p => (
+                                                     <SelectItem key={p.docId} value={p.docId} disabled={p.stock === 0}>
+                                                         {p.name} - ₩{p.price.toLocaleString()} (재고: {p.stock})
+                                                     </SelectItem>
+                                                 ))}
+                                             </SelectContent>
+                                        </Select>
+                                        <Dialog open={isCustomProductDialogOpen} onOpenChange={setIsCustomProductDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button variant="outline" size="icon">
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>수동 상품 추가</DialogTitle>
+                                                    <DialogDescription>
+                                                        등록되지 않은 상품을 임의 가격으로 주문에 추가합니다.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                                                                 <div className="space-y-4">
+                                                     <div className="space-y-2">
+                                                         <Label htmlFor="custom-product-name">상품명</Label>
+                                                         <Input
+                                                             id="custom-product-name"
+                                                             placeholder="상품명을 입력하세요"
+                                                             value={customProductName}
+                                                             onChange={(e) => setCustomProductName(e.target.value)}
+                                                         />
+                                                     </div>
+                                                     <div className="grid grid-cols-2 gap-4">
+                                                         <div className="space-y-2">
+                                                             <Label htmlFor="custom-product-main-category">대분류</Label>
+                                                             <Select 
+                                                                 value={customProductMainCategory} 
+                                                                 onValueChange={(value) => {
+                                                                     setCustomProductMainCategory(value);
+                                                                     setCustomProductMidCategory(""); // 대분류 변경 시 중분류 초기화
+                                                                 }}
+                                                             >
+                                                                 <SelectTrigger id="custom-product-main-category">
+                                                                     <SelectValue placeholder="대분류 선택" />
+                                                                 </SelectTrigger>
+                                                                                                                                   <SelectContent>
+                                                                      <SelectItem value="기타">기타</SelectItem>
+                                                                      {mainCategories.map(cat => (
+                                                                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                                      ))}
+                                                                  </SelectContent>
+                                                             </Select>
+                                                         </div>
+                                                         <div className="space-y-2">
+                                                             <Label htmlFor="custom-product-mid-category">중분류</Label>
+                                                             <Select 
+                                                                 value={customProductMidCategory} 
+                                                                 onValueChange={setCustomProductMidCategory}
+                                                                 disabled={!customProductMainCategory}
+                                                             >
+                                                                 <SelectTrigger id="custom-product-mid-category">
+                                                                     <SelectValue placeholder="중분류 선택" />
+                                                                 </SelectTrigger>
+                                                                                                                                   <SelectContent>
+                                                                      <SelectItem value="수동 추가">기타</SelectItem>
+                                                                      {customProductMainCategory && branchProducts
+                                                                          .filter(p => p.mainCategory === customProductMainCategory)
+                                                                          .map(p => p.midCategory)
+                                                                          .filter((cat, index, arr) => cat && arr.indexOf(cat) === index)
+                                                                          .map(cat => (
+                                                                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                                          ))}
+                                                                  </SelectContent>
+                                                             </Select>
+                                                         </div>
+                                                     </div>
+                                                     <div className="space-y-2">
+                                                         <Label htmlFor="custom-product-price">가격</Label>
+                                                         <Input
+                                                             id="custom-product-price"
+                                                             type="number"
+                                                             placeholder="가격을 입력하세요"
+                                                             value={customProductPrice}
+                                                             onChange={(e) => setCustomProductPrice(e.target.value)}
+                                                         />
+                                                     </div>
+                                                     <div className="space-y-2">
+                                                         <Label htmlFor="custom-product-quantity">수량</Label>
+                                                         <Input
+                                                             id="custom-product-quantity"
+                                                             type="number"
+                                                             min="1"
+                                                             placeholder="수량을 입력하세요"
+                                                             value={customProductQuantity}
+                                                             onChange={(e) => setCustomProductQuantity(Number(e.target.value))}
+                                                         />
+                                                     </div>
+                                                 </div>
+                                                <DialogFooter>
+                                                    <Button variant="outline" onClick={() => setIsCustomProductDialogOpen(false)}>
+                                                        취소
+                                                    </Button>
+                                                    <Button onClick={handleAddCustomProduct}>
+                                                        추가
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </>
                                 )}
                                 </div>
                             </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ChevronUp, ChevronDown } from "lucide-react";
 import { StockUpdateForm } from "./stock-update-form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProductDetails } from "./product-details";
@@ -50,6 +50,10 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+  
+  // 정렬 상태
+  const [sortField, setSortField] = useState<'name' | 'price' | 'stock' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
 
@@ -74,6 +78,48 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
   const isAllSelected = useMemo(() => {
     return products.length > 0 && Object.keys(selectedRows).length === products.length;
   }, [selectedRows, products]);
+
+  // 정렬 함수
+  const handleSort = (field: 'name' | 'price' | 'stock') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // 정렬된 상품 목록
+  const sortedProducts = useMemo(() => {
+    if (!sortField) return products;
+    
+    return [...products].sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortField) {
+        case 'name':
+          aValue = a.name || '';
+          bValue = b.name || '';
+          break;
+        case 'price':
+          aValue = a.price || 0;
+          bValue = b.price || 0;
+          break;
+        case 'stock':
+          aValue = a.stock || 0;
+          bValue = b.stock || 0;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (sortDirection === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+  }, [products, sortField, sortDirection]);
   const handleEdit = (product: Product) => {
     setIsDetailOpen(false);
     onEdit(product);
@@ -132,20 +178,59 @@ export function ProductTable({ products, onSelectionChange, onEdit, onDelete, se
                     aria-label="모두 선택"
                   />
                 </TableHead>
-                <TableHead>상품명</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort('name')}
+                    className="h-auto p-0 font-medium hover:bg-transparent"
+                  >
+                    상품명
+                    {sortField === 'name' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="ml-1 h-4 w-4" /> : 
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead>바코드</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead className="hidden md:table-cell">카테고리</TableHead>
-                <TableHead className="hidden sm:table-cell">가격</TableHead>
+                <TableHead className="hidden sm:table-cell">
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort('price')}
+                    className="h-auto p-0 font-medium hover:bg-transparent"
+                  >
+                    가격
+                    {sortField === 'price' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="ml-1 h-4 w-4" /> : 
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead className="hidden md:table-cell">소속 지점</TableHead>
-                <TableHead className="text-right">재고</TableHead>
+                <TableHead className="text-right">
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort('stock')}
+                    className="h-auto p-0 font-medium hover:bg-transparent"
+                  >
+                    재고
+                    {sortField === 'stock' && (
+                      sortDirection === 'asc' ? 
+                        <ChevronUp className="ml-1 h-4 w-4" /> : 
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                    )}
+                  </Button>
+                </TableHead>
                 <TableHead>
                   <span className="sr-only">작업</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.length > 0 ? products.map((product, idx) => {
+              {sortedProducts.length > 0 ? sortedProducts.map((product, idx) => {
                 const statusInfo = getStatus(product.status, product.stock);
                 return (
                 <TableRow key={`${product.docId}-${idx}`}>
