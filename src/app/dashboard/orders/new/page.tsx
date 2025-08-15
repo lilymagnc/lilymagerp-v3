@@ -62,8 +62,6 @@ export default function NewOrderPage() {
   const [customProductName, setCustomProductName] = useState("");
   const [customProductPrice, setCustomProductPrice] = useState("");
   const [customProductQuantity, setCustomProductQuantity] = useState(1);
-  const [customProductMainCategory, setCustomProductMainCategory] = useState("");
-  const [customProductMidCategory, setCustomProductMidCategory] = useState("");
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -429,8 +427,8 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       price: price,
       quantity: customProductQuantity,
       stock: 999, // 수동 상품은 재고 제한 없음
-      mainCategory: customProductMainCategory || "기타",
-      midCategory: customProductMidCategory || "수동 추가",
+      mainCategory: "기타",
+      midCategory: "수동 추가",
       supplier: "수동 등록",
       size: "기타",
       color: "기타",
@@ -445,8 +443,6 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCustomProductName("");
     setCustomProductPrice("");
     setCustomProductQuantity(1);
-    setCustomProductMainCategory("");
-    setCustomProductMidCategory("");
     setIsCustomProductDialogOpen(false);
     
     toast({ title: '상품 추가 완료', description: `${customProductName}이(가) 주문에 추가되었습니다.` });
@@ -856,50 +852,6 @@ const debouncedCustomerSearch = useCallback(
                                                              value={customProductName}
                                                              onChange={(e) => setCustomProductName(e.target.value)}
                                                          />
-                                                     </div>
-                                                     <div className="grid grid-cols-2 gap-4">
-                                                         <div className="space-y-2">
-                                                             <Label htmlFor="custom-product-main-category">대분류</Label>
-                                                             <Select 
-                                                                 value={customProductMainCategory} 
-                                                                 onValueChange={(value) => {
-                                                                     setCustomProductMainCategory(value);
-                                                                     setCustomProductMidCategory(""); // 대분류 변경 시 중분류 초기화
-                                                                 }}
-                                                             >
-                                                                 <SelectTrigger id="custom-product-main-category">
-                                                                     <SelectValue placeholder="대분류 선택" />
-                                                                 </SelectTrigger>
-                                                                                                                                   <SelectContent>
-                                                                      <SelectItem value="기타">기타</SelectItem>
-                                                                      {mainCategories.map(cat => (
-                                                                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                                      ))}
-                                                                  </SelectContent>
-                                                             </Select>
-                                                         </div>
-                                                         <div className="space-y-2">
-                                                             <Label htmlFor="custom-product-mid-category">중분류</Label>
-                                                             <Select 
-                                                                 value={customProductMidCategory} 
-                                                                 onValueChange={setCustomProductMidCategory}
-                                                                 disabled={!customProductMainCategory}
-                                                             >
-                                                                 <SelectTrigger id="custom-product-mid-category">
-                                                                     <SelectValue placeholder="중분류 선택" />
-                                                                 </SelectTrigger>
-                                                                                                                                   <SelectContent>
-                                                                      <SelectItem value="수동 추가">기타</SelectItem>
-                                                                      {customProductMainCategory && branchProducts
-                                                                          .filter(p => p.mainCategory === customProductMainCategory)
-                                                                          .map(p => p.midCategory)
-                                                                          .filter((cat, index, arr) => cat && arr.indexOf(cat) === index)
-                                                                          .map(cat => (
-                                                                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                                          ))}
-                                                                  </SelectContent>
-                                                             </Select>
-                                                         </div>
                                                      </div>
                                                      <div className="space-y-2">
                                                          <Label htmlFor="custom-product-price">가격</Label>
