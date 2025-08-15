@@ -22,10 +22,13 @@ import { MessagePrintDialog } from "./components/message-print-dialog";
 import { OrderDetailDialog } from "./components/order-detail-dialog";
 import { OrderEditDialog } from "./components/order-edit-dialog";
 import { ExcelUploadDialog } from "./components/excel-upload-dialog";
-import { Trash2, XCircle } from "lucide-react";
+import { Trash2, XCircle, Calendar as CalendarIcon } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { exportOrdersToExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 export default function OrdersPage() {
   const { orders, loading, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
@@ -35,6 +38,10 @@ export default function OrdersPage() {
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [pageSize, setPageSize] = useState(20);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isMessagePrintDialogOpen, setIsMessagePrintDialogOpen] = useState(false);
   const [selectedOrderForPrint, setSelectedOrderForPrint] = useState<Order | null>(null);
   const [isOrderDetailDialogOpen, setIsOrderDetailDialogOpen] = useState(false);
@@ -172,7 +179,7 @@ export default function OrdersPage() {
     setIsMessagePrintDialogOpen(false);
   };
   const handleExcelDownload = () => {
-    const ordersToExport = filteredOrders.length > 0 ? filteredOrders : orders;
+    const ordersToExport = filteredOrders;
     const filename = selectedBranch !== "all" ? `${selectedBranch}_주문내역` : "전체_주문내역";
     if (ordersToExport.length === 0) {
       toast({
@@ -234,8 +241,40 @@ export default function OrdersPage() {
         String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+    // 날짜 범위 필터링
+    if (startDate || endDate) {
+      filtered = filtered.filter(order => {
+        if (!order.orderDate) return false;
+        const orderDate = (order.orderDate as Timestamp).toDate();
+        const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+        
+        if (startDate && endDate) {
+          const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          return orderDateOnly >= startDateOnly && orderDateOnly <= endDateOnly;
+        } else if (startDate) {
+          const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          return orderDateOnly >= startDateOnly;
+        } else if (endDate) {
+          const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          return orderDateOnly <= endDateOnly;
+        }
+        return true;
+      });
+    }
     return filtered;
-  }, [orders, searchTerm, selectedBranch, isAdmin, userBranch]);
+  }, [orders, searchTerm, selectedBranch, startDate, endDate, isAdmin, userBranch]);
+
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(filteredOrders.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+  // 필터 변경 시 첫 페이지로 이동
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedBranch, startDate, endDate]);
   return (
     <>
       <PageHeader
@@ -303,9 +342,87 @@ export default function OrdersPage() {
                   </Select>
                 </div>
               )}
-              <div className="text-sm text-muted-foreground">
-                총 {filteredOrders.length}건의 주문
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full sm:w-[200px] justify-start text-left font-normal",
+                        !startDate && !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate && endDate ? (
+                        <>
+                          {format(startDate, "yyyy-MM-dd")} ~ {format(endDate, "yyyy-MM-dd")}
+                        </>
+                      ) : startDate ? (
+                        format(startDate, "yyyy-MM-dd") + " 이후"
+                      ) : endDate ? (
+                        format(endDate, "yyyy-MM-dd") + " 이전"
+                      ) : (
+                        "날짜 범위 선택"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <div className="flex gap-2 p-3">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">시작일</label>
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">종료일</label>
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          initialFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 p-3 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setStartDate(undefined);
+                          setEndDate(undefined);
+                        }}
+                      >
+                        초기화
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
+                             <div className="flex items-center gap-2">
+                 <div className="text-sm text-muted-foreground">
+                   총 {filteredOrders.length}건의 주문
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <label htmlFor="page-size" className="text-sm text-muted-foreground">페이지당:</label>
+                   <Select value={String(pageSize)} onValueChange={(value) => {
+                     setPageSize(Number(value));
+                     setCurrentPage(1);
+                   }}>
+                     <SelectTrigger id="page-size" className="w-20">
+                       <SelectValue />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="20">20</SelectItem>
+                       <SelectItem value="50">50</SelectItem>
+                       <SelectItem value="100">100</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+               </div>
           </div>
         <Table>
           <TableHeader>
@@ -334,8 +451,8 @@ export default function OrdersPage() {
                       <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
               ))
-            ) : (
-              filteredOrders.map((order) => {
+                         ) : (
+               paginatedOrders.map((order) => {
                 // 상품명 추출 로직
                 const getProductNames = (order: Order) => {
                   if (order.items && order.items.length > 0) {
@@ -476,10 +593,63 @@ export default function OrdersPage() {
                 );
               })
             )}
-          </TableBody>
-        </Table>
-        </CardContent>
-      </Card>
+                     </TableBody>
+         </Table>
+         
+         {/* 페이지네이션 컨트롤 */}
+         {totalPages > 1 && (
+           <div className="flex items-center justify-between px-2 py-4 border-t">
+             <div className="text-sm text-muted-foreground">
+               {startIndex + 1}-{Math.min(endIndex, filteredOrders.length)} / {filteredOrders.length}건
+             </div>
+             <div className="flex items-center gap-2">
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                 disabled={currentPage === 1}
+               >
+                 이전
+               </Button>
+               <div className="flex items-center gap-1">
+                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                   let pageNum;
+                   if (totalPages <= 5) {
+                     pageNum = i + 1;
+                   } else if (currentPage <= 3) {
+                     pageNum = i + 1;
+                   } else if (currentPage >= totalPages - 2) {
+                     pageNum = totalPages - 4 + i;
+                   } else {
+                     pageNum = currentPage - 2 + i;
+                   }
+                   
+                   return (
+                     <Button
+                       key={pageNum}
+                       variant={currentPage === pageNum ? "default" : "outline"}
+                       size="sm"
+                       onClick={() => setCurrentPage(pageNum)}
+                       className="w-8 h-8 p-0"
+                     >
+                       {pageNum}
+                     </Button>
+                   );
+                 })}
+               </div>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                 disabled={currentPage === totalPages}
+               >
+                 다음
+               </Button>
+             </div>
+           </div>
+         )}
+         </CardContent>
+       </Card>
       {selectedOrderForPrint && (
         <MessagePrintDialog
             isOpen={isMessagePrintDialogOpen}
