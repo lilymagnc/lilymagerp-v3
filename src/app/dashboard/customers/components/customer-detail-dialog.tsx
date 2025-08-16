@@ -387,7 +387,8 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                       <TableRow>
                         <TableHead>주문일</TableHead>
                         <TableHead>주문번호</TableHead>
-                        <TableHead>상품 수</TableHead>
+                        <TableHead>상품명</TableHead>
+                        <TableHead>수량</TableHead>
                         <TableHead>총 금액</TableHead>
                         <TableHead>상태</TableHead>
                         <TableHead>상세보기</TableHead>
@@ -403,7 +404,31 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                             </div>
                           </TableCell>
                           <TableCell className="font-medium">{order.id?.slice(0, 8) || order.orderNumber || '-'}</TableCell>
-                          <TableCell>{order.items?.length || 0}개</TableCell>
+                          <TableCell>
+                            <div className="max-w-[200px]">
+                              {order.items && order.items.length > 0 ? (
+                                <div className="space-y-1">
+                                  {order.items.slice(0, 2).map((item: any, index: number) => (
+                                    <div key={index} className="text-sm">
+                                      <span className="font-medium">{item.name}</span>
+                                      {order.items.length > 2 && index === 1 && (
+                                        <span className="text-muted-foreground ml-1">
+                                          외 {order.items.length - 2}개
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">상품 정보 없음</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {order.items?.reduce((total: number, item: any) => total + (item.quantity || 0), 0) || 0}개
+                            </div>
+                          </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <DollarSign className="h-4 w-4 text-muted-foreground" />

@@ -14,6 +14,7 @@ import { CustomerTable } from "./components/customer-table";
 import { CustomerDetails } from "./components/customer-details";
 import { CustomerDetailDialog } from "./components/customer-detail-dialog";
 import { StatementDialog } from "./components/statement-dialog";
+import { CustomerStatsCards } from "./components/customer-stats-cards";
 import { ImportButton } from "@/components/import-button";
 import { FileUp, Download } from "lucide-react";
 import { useBranches } from "@/hooks/use-branches";
@@ -155,6 +156,13 @@ export default function CustomersPage() {
                     </Button>
                 </div>
             </PageHeader>
+            
+            {/* 고객 통계 카드 */}
+            <CustomerStatsCards 
+                customers={filteredCustomers}
+                selectedBranch={selectedBranch}
+            />
+            
             <Card className="mb-4">
                 <CardContent className="pt-6">
                     <div className="flex flex-col sm:flex-row items-center gap-2">
