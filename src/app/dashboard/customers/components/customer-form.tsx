@@ -43,8 +43,12 @@ const customerSchema = z.object({
   branch: z.string().min(1, "담당 지점을 선택해주세요."),
   grade: z.string().optional(),
   tags: z.string().optional(),
-  birthday: z.date().optional().nullable(),
-  anniversary: z.date().optional().nullable(),
+  birthday: z.string().optional(),
+  weddingAnniversary: z.string().optional(),
+  foundingAnniversary: z.string().optional(),
+  firstVisitDate: z.string().optional(),
+  otherAnniversaryName: z.string().optional(),
+  otherAnniversary: z.string().optional(),
   memo: z.string().optional(),
   // Business fields
   businessNumber: z.string().optional(),
@@ -232,82 +236,110 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 </FormItem>
               )}
             />
+            <Separator className="my-4" />
+            <p className="text-sm font-semibold mb-4">기념일 정보</p>
+            
             <div className="grid grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
                     name="birthday"
                     render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                        <FormLabel>생일</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
+                        <FormItem>
+                            <FormLabel>생일</FormLabel>
                             <FormControl>
-                                <Button
-                                variant={"outline"}
-                                className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                                >
-                                {field.value ? format(field.value, "yyyy년 MM월 dd일", { locale: ko }) : <span>날짜 선택</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
+                                <Input 
+                                    type="date" 
+                                    placeholder="YYYY-MM-DD" 
+                                    {...field} 
+                                />
                             </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                locale={ko}
-                                mode="single"
-                                selected={field.value ?? undefined}
-                                onSelect={field.onChange}
-                                captionLayout="dropdown-buttons"
-                                fromYear={1920}
-                                toYear={new Date().getFullYear()}
-                                classNames={{
-                                  caption_label: 'text-lg font-medium',
-                                  caption_dropdowns: 'flex flex-row-reverse gap-1 text-xs',
-                                  vhidden: 'hidden',
-                                }}
-                             />
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
+                            <FormMessage />
                         </FormItem>
                     )}
                 />
                 <FormField
                     control={form.control}
-                    name="anniversary"
+                    name="weddingAnniversary"
                     render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                        <FormLabel>결혼 기념일</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
+                        <FormItem>
+                            <FormLabel>결혼기념일</FormLabel>
                             <FormControl>
-                                <Button
-                                variant={"outline"}
-                                className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                                >
-                                {field.value ? format(field.value, "yyyy년 MM월 dd일", { locale: ko }) : <span>날짜 선택</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
+                                <Input 
+                                    type="date" 
+                                    placeholder="YYYY-MM-DD" 
+                                    {...field} 
+                                />
                             </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar 
-                                locale={ko}
-                                mode="single" 
-                                selected={field.value ?? undefined}
-                                onSelect={field.onChange}
-                                captionLayout="dropdown-buttons"
-                                fromYear={1950}
-                                toYear={new Date().getFullYear()}
-                                classNames={{
-                                  caption_label: 'text-lg font-medium',
-                                  caption_dropdowns: 'flex flex-row-reverse gap-1 text-xs',
-                                  vhidden: 'hidden',
-                                }}
-                             />
-                            </PopoverContent>
-                        </Popover>
-                        <FormMessage />
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                {customerType === 'company' && (
+                    <FormField
+                        control={form.control}
+                        name="foundingAnniversary"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>창립기념일</FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        type="date" 
+                                        placeholder="YYYY-MM-DD" 
+                                        {...field} 
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
+                <FormField
+                    control={form.control}
+                    name="firstVisitDate"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>첫 방문일</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    type="date" 
+                                    placeholder="YYYY-MM-DD" 
+                                    {...field} 
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="otherAnniversaryName"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>기타 기념일명</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    placeholder="예: 아이 생일, 개업일 등" 
+                                    {...field} 
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="otherAnniversary"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>기타 기념일</FormLabel>
+                            <FormControl>
+                                <Input 
+                                    type="date" 
+                                    placeholder="YYYY-MM-DD" 
+                                    {...field} 
+                                />
+                            </FormControl>
+                            <FormMessage />
                         </FormItem>
                     )}
                 />

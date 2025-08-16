@@ -5,6 +5,17 @@ rules_version = '2';
 //    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // 샘플 앨범 관련 파일들 - 인증된 사용자만
+    match /sample-albums/{albumId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // 배송완료 사진 - 인증된 사용자만
+    match /delivery-photos/{orderId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // 기타 파일들 - 기본적으로 차단
     match /{allPaths=**} {
       allow read, write: if false;
     }

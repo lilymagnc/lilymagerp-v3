@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
@@ -35,11 +35,13 @@ import {
   Type,
   Percent,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Camera
 } from "lucide-react";
 import { useSettings, defaultSettings } from "@/hooks/use-settings";
 import { useDataCleanup } from "@/hooks/use-data-cleanup";
 import BackupManagement from "./components/backup-management";
+import { EmailTemplateEditor } from "@/components/email-template-editor";
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'general';
@@ -92,8 +94,8 @@ export default function SettingsPage() {
       const success = await saveSettings(localSettings);
       if (success) {
         toast({
-          title: '성공',
-          description: '설정이 저장되었습니다.'
+          title: '설정 저장 완료',
+          description: '이메일 템플릿을 포함한 모든 시스템 설정이 저장되었습니다.'
         });
       } else {
         toast({
@@ -171,12 +173,13 @@ export default function SettingsPage() {
         description="시스템의 기본 설정을 관리합니다."
       />
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="general">일반 설정</TabsTrigger>
           <TabsTrigger value="delivery">배송 설정</TabsTrigger>
           <TabsTrigger value="notifications">알림 설정</TabsTrigger>
           <TabsTrigger value="messages">메시지 설정</TabsTrigger>
           <TabsTrigger value="auto-email">자동 이메일</TabsTrigger>
+          <TabsTrigger value="files">파일 관리</TabsTrigger>
           <TabsTrigger value="security">보안 설정</TabsTrigger>
           <TabsTrigger value="discount">할인 설정</TabsTrigger>
           <TabsTrigger value="backup">백업 관리</TabsTrigger>
@@ -554,54 +557,86 @@ export default function SettingsPage() {
                    />
                  </div>
                </div>
-               <div className="space-y-4 mt-6">
-                 <h4 className="font-medium">이메일 템플릿</h4>
-                 <div className="space-y-2">
-                   <Label htmlFor="emailTemplateDeliveryComplete">배송완료 이메일 템플릿</Label>
-                   <textarea
-                     id="emailTemplateDeliveryComplete"
-                     value={localSettings.emailTemplateDeliveryComplete}
-                     onChange={(e) => setLocalSettings(prev => ({ ...prev, emailTemplateDeliveryComplete: e.target.value }))}
-                     className="w-full p-2 border rounded-md h-24"
-                     placeholder="배송완료 이메일 템플릿을 입력하세요"
-                   />
-                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="emailTemplateOrderConfirm">주문확인 이메일 템플릿</Label>
-                   <textarea
-                     id="emailTemplateOrderConfirm"
-                     value={localSettings.emailTemplateOrderConfirm}
-                     onChange={(e) => setLocalSettings(prev => ({ ...prev, emailTemplateOrderConfirm: e.target.value }))}
-                     className="w-full p-2 border rounded-md h-24"
-                     placeholder="주문확인 이메일 템플릿을 입력하세요"
-                   />
-                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="emailTemplateStatusChange">상태변경 이메일 템플릿</Label>
-                   <textarea
-                     id="emailTemplateStatusChange"
-                     value={localSettings.emailTemplateStatusChange}
-                     onChange={(e) => setLocalSettings(prev => ({ ...prev, emailTemplateStatusChange: e.target.value }))}
-                     className="w-full p-2 border rounded-md h-24"
-                     placeholder="상태변경 이메일 템플릿을 입력하세요"
-                   />
-                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="emailTemplateBirthday">생일축하 이메일 템플릿</Label>
-                   <textarea
-                     id="emailTemplateBirthday"
-                     value={localSettings.emailTemplateBirthday}
-                     onChange={(e) => setLocalSettings(prev => ({ ...prev, emailTemplateBirthday: e.target.value }))}
-                     className="w-full p-2 border rounded-md h-24"
-                     placeholder="생일축하 이메일 템플릿을 입력하세요"
-                   />
-                 </div>
-                 <p className="text-xs text-gray-500">
-                   사용 가능한 변수: {'{고객명}'}, {'{주문번호}'}, {'{주문일}'}, {'{배송일}'}, {'{총금액}'}, {'{이전상태}'}, {'{현재상태}'}, {'{회사명}'}
-                 </p>
-               </div>
+                             <div className="space-y-6 mt-6">
+                <h4 className="font-medium">이메일 템플릿</h4>
+                
+                <EmailTemplateEditor
+                  templateName="주문확인"
+                  value={localSettings.emailTemplateOrderConfirm}
+                  onChange={(value) => setLocalSettings(prev => ({ ...prev, emailTemplateOrderConfirm: value }))}
+                  variables={['고객명', '주문번호', '주문일', '총금액', '회사명', '연락처', '이메일']}
+                />
+                
+                <EmailTemplateEditor
+                  templateName="배송완료"
+                  value={localSettings.emailTemplateDeliveryComplete}
+                  onChange={(value) => setLocalSettings(prev => ({ ...prev, emailTemplateDeliveryComplete: value }))}
+                  variables={['고객명', '주문번호', '배송일', '회사명', '연락처', '이메일']}
+                />
+                
+                <EmailTemplateEditor
+                  templateName="상태변경"
+                  value={localSettings.emailTemplateStatusChange}
+                  onChange={(value) => setLocalSettings(prev => ({ ...prev, emailTemplateStatusChange: value }))}
+                  variables={['고객명', '주문번호', '이전상태', '현재상태', '회사명', '연락처', '이메일']}
+                />
+                
+                <EmailTemplateEditor
+                  templateName="생일축하"
+                  value={localSettings.emailTemplateBirthday}
+                  onChange={(value) => setLocalSettings(prev => ({ ...prev, emailTemplateBirthday: value }))}
+                  variables={['고객명', '회사명', '연락처', '이메일']}
+                />
+              </div>
              </CardContent>
            </Card>
+         </TabsContent>
+
+         {/* 파일 관리 설정 탭 */}
+         <TabsContent value="files" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5" />
+                배송완료 사진 관리
+              </CardTitle>
+              <CardDescription>
+                배송완료 사진의 자동 삭제 및 보관 정책을 설정합니다.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>자동 삭제 활성화</Label>
+                  <p className="text-sm text-gray-500">설정된 기간이 지난 배송완료 사진을 자동으로 삭제합니다</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={localSettings.autoDeleteDeliveryPhotos}
+                  onChange={(e) => setLocalSettings(prev => ({ ...prev, autoDeleteDeliveryPhotos: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="deliveryPhotoRetentionDays">보관 기간 (일)</Label>
+                <Input
+                  id="deliveryPhotoRetentionDays"
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={localSettings.deliveryPhotoRetentionDays}
+                  onChange={(e) => setLocalSettings(prev => ({ ...prev, deliveryPhotoRetentionDays: Number(e.target.value) }))}
+                  disabled={!localSettings.autoDeleteDeliveryPhotos}
+                />
+                <p className="text-xs text-gray-500">
+                  {localSettings.autoDeleteDeliveryPhotos 
+                    ? `${localSettings.deliveryPhotoRetentionDays}일 후 자동으로 삭제됩니다.`
+                    : '자동 삭제가 비활성화되어 있습니다.'
+                  }
+                </p>
+              </div>
+            </CardContent>
+          </Card>
          </TabsContent>
          {/* 보안 설정 */}
          <TabsContent value="security" className="space-y-4">

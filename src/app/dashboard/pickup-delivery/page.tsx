@@ -19,6 +19,7 @@ import { Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { OrderDetailDialog } from "./components/order-detail-dialog";
+import { DeliveryPhotoUpload } from "@/components/delivery-photo-upload";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { exportPickupDeliveryToExcel } from "@/lib/excel-export";
@@ -29,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
 export default function PickupDeliveryPage() {
-  const { orders, loading, updateOrderStatus, updateOrder } = useOrders();
+  const { orders, loading, updateOrderStatus, updateOrder, completeDelivery } = useOrders();
   const { branches, loading: branchesLoading, updateBranch } = useBranches();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -449,13 +450,19 @@ export default function PickupDeliveryPage() {
       });
     }
   };
-  const handleCompleteDelivery = async (orderId: string) => {
+  const handleCompleteDelivery = async (orderId: string, completionPhotoUrl?: string) => {
     try {
-      await updateOrderStatus(orderId, 'completed');
-      toast({
-        title: '배송 완료',
-        description: '배송이 완료 처리되었습니다.',
-      });
+      if (completionPhotoUrl) {
+        // 사진이 있는 경우 새로운 completeDelivery 함수 사용
+        await completeDelivery(orderId, completionPhotoUrl, user?.uid);
+      } else {
+        // 기존 방식
+        await updateOrderStatus(orderId, 'completed');
+        toast({
+          title: '배송 완료',
+          description: '배송이 완료 처리되었습니다.',
+        });
+      }
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -464,6 +471,45 @@ export default function PickupDeliveryPage() {
       });
     }
   };
+
+  const handleDeleteDeliveryPhoto = async (orderId: string, photoUrl: string) => {
+    try {
+      // 확인 대화상자
+      if (!confirm('배송완료 사진을 삭제하시겠습니까?')) {
+        return;
+      }
+
+      // Firebase Storage에서 사진 삭제
+      const { deleteFile } = await import('@/lib/firebase-storage');
+      await deleteFile(photoUrl);
+
+      // Firestore에서 completionPhotoUrl 제거
+      const order = orders.find(o => o.id === orderId);
+      if (order && order.deliveryInfo) {
+        const updatedDeliveryInfo = {
+          ...order.deliveryInfo,
+          completionPhotoUrl: null,
+        };
+
+        await updateOrder(orderId, {
+          deliveryInfo: updatedDeliveryInfo
+        });
+
+        toast({
+          title: "사진 삭제 완료",
+          description: "배송완료 사진이 삭제되었습니다."
+        });
+      }
+    } catch (error) {
+      console.error('사진 삭제 실패:', error);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '사진 삭제 중 오류가 발생했습니다.',
+      });
+    }
+  };
+
   const handleUpdateDriverInfo = async () => {
     if (!editingDriverInfo) return;
     try {
@@ -1049,20 +1095,58 @@ export default function PickupDeliveryPage() {
                           <TableCell>₩{order.summary.total.toLocaleString()}</TableCell>
                           <TableCell className="text-center">
                             {order.status === 'processing' && (
-                              <Button
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCompleteDelivery(order.id);
-                                }}
-                                className="bg-blue-600 hover:bg-blue-700"
-                              >
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                배송 완료
-                              </Button>
+                              <div className="space-y-2">
+                                <DeliveryPhotoUpload
+                                  orderId={order.id}
+                                  currentPhotoUrl={order.deliveryInfo?.completionPhotoUrl}
+                                  onPhotoUploaded={(photoUrl) => {
+                                    handleCompleteDelivery(order.id, photoUrl);
+                                  }}
+                                  onPhotoRemoved={() => {
+                                    // 사진 제거 시 처리 로직 (필요시)
+                                  }}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteDelivery(order.id);
+                                  }}
+                                  className="w-full"
+                                >
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  사진 없이 완료
+                                </Button>
+                              </div>
                             )}
                             {order.status === 'completed' && (
-                              <Badge variant="default">완료됨</Badge>
+                              <div className="space-y-2">
+                                <Badge variant="default">완료됨</Badge>
+                                {order.deliveryInfo?.completionPhotoUrl && (
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => window.open(order.deliveryInfo?.completionPhotoUrl, '_blank')}
+                                      className="text-xs"
+                                    >
+                                      📸 완료 사진
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteDeliveryPhoto(order.id, order.deliveryInfo?.completionPhotoUrl || '');
+                                      }}
+                                      className="text-xs text-red-600 hover:text-red-700"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>

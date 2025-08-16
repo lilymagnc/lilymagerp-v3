@@ -34,9 +34,9 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onState
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">고객명/회사명</TableHead>
-              <TableHead className="w-[100px]">유형</TableHead>
-              <TableHead>연락처</TableHead>
+              <TableHead className="w-[150px]">고객명/회사명</TableHead>
+              <TableHead className="w-[80px]">유형</TableHead>
+              <TableHead className="w-[200px]">연락처</TableHead>
               <TableHead className="hidden md:table-cell">등급</TableHead>
               <TableHead className="hidden md:table-cell">태그</TableHead>
               <TableHead className="hidden lg:table-cell">담당지점</TableHead>

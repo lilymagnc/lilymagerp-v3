@@ -116,15 +116,22 @@ export default function CustomersPage() {
             return;
         }
         const dataToExport = filteredCustomers.map(customer => ({
-            'name': customer.name || '',
-            'contact': customer.contact || '',
-            'companyName': customer.companyName || '',
-            'email': customer.email || '',
-            'address': customer.address || '',
-            'grade': customer.grade || '신규',
-            'branch': customer.branch,
-            'memo': customer.memo || '',
-            'createdAt': customer.createdAt ? format(new Date(customer.createdAt), 'yyyy-MM-dd HH:mm') : '',
+            '고객명': customer.name || '',
+            '연락처': customer.contact || '',
+            '회사명': customer.companyName || '',
+            '이메일': customer.email || '',
+            '주소': customer.address || '',
+            '등급': customer.grade || '신규',
+            '지점': customer.branch,
+            '포인트': customer.points || 0,
+            '생일': customer.birthday || '',
+            '결혼기념일': customer.weddingAnniversary || '',
+            '창립기념일': customer.foundingAnniversary || '',
+            '첫방문일': customer.firstVisitDate || '',
+            '기타기념일명': customer.otherAnniversaryName || '',
+            '기타기념일': customer.otherAnniversary || '',
+            '메모': customer.memo || '',
+            '생성일': customer.createdAt ? format(new Date(customer.createdAt), 'yyyy-MM-dd HH:mm') : '',
         }));
         downloadXLSX(dataToExport, "customers");
         toast({

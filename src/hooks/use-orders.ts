@@ -58,6 +58,10 @@ export interface OrderData {
     driverAffiliation?: string;
     driverName?: string;
     driverContact?: string;
+    // 배송완료 사진
+    completionPhotoUrl?: string;
+    completedAt?: Date | Timestamp;
+    completedBy?: string;
   } | null;
   // 배송비 관리 관련 필드
   actualDeliveryCost?: number;
@@ -370,7 +374,87 @@ export function useOrders() {
       setLoading(false);
     }
   };
-  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, updateOrder, cancelOrder, deleteOrder };
+  // 배송완료 처리 (사진 포함)
+  const completeDelivery = async (
+    orderId: string, 
+    completionPhotoUrl?: string,
+    completedBy?: string
+  ) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+      
+      if (!orderDoc.exists()) {
+        throw new Error('주문을 찾을 수 없습니다.');
+      }
+
+      const orderData = orderDoc.data() as Order;
+      
+      // 배송 정보 업데이트
+      const updatedDeliveryInfo = {
+        ...orderData.deliveryInfo,
+        completionPhotoUrl,
+        completedAt: serverTimestamp(),
+        completedBy: completedBy || user?.uid || 'system'
+      };
+
+      await updateDoc(orderRef, {
+        status: 'completed',
+        deliveryInfo: updatedDeliveryInfo,
+        updatedAt: serverTimestamp()
+      });
+
+      // 고객에게 배송완료 이메일 발송 (사진 포함)
+      if (orderData.orderer?.email) {
+        // 시스템 설정 가져오기 (실제로는 useSettings에서 가져와야 함)
+        const settings = {
+          autoEmailDeliveryComplete: true,
+          siteName: '릴리맥 플라워샵',
+          emailTemplateDeliveryComplete: `안녕하세요 {고객명}님!
+
+주문하신 상품이 성공적으로 배송 완료되었습니다.
+
+주문번호: {주문번호}
+배송일: {배송일}
+
+감사합니다.
+{회사명}`
+        };
+
+        // 동적 import를 통해 순환 참조 방지
+        const { sendDeliveryCompleteEmail } = await import('@/lib/email-service');
+        
+        await sendDeliveryCompleteEmail(
+          orderData.orderer.email,
+          orderData.orderer.name,
+          orderId,
+          new Date().toLocaleDateString('ko-KR'),
+          settings as any,
+          completionPhotoUrl
+        );
+      }
+
+      // 주문 목록 새로고침
+      await fetchOrders();
+
+      toast({
+        title: "배송완료 처리됨",
+        description: completionPhotoUrl ? 
+          "배송완료 사진과 함께 고객에게 알림 이메일이 발송되었습니다." :
+          "배송완료 처리가 완료되었습니다."
+      });
+
+    } catch (error) {
+      console.error('배송완료 처리 실패:', error);
+      toast({
+        title: "오류",
+        description: "배송완료 처리 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, updateOrder, cancelOrder, deleteOrder, completeDelivery };
 }
 // 주문자 정보로 고객 등록/업데이트 함수
 const registerCustomerFromOrder = async (orderData: OrderData) => {

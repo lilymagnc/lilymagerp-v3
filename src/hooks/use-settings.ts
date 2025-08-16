@@ -56,6 +56,10 @@ export interface SystemSettings {
   defaultDiscountRate: number;
   maxDiscountRate: number;
   discountReason: string;
+
+  // 배송완료 사진 관리 설정
+  autoDeleteDeliveryPhotos: boolean;
+  deliveryPhotoRetentionDays: number; // 보관 일수
 }
 
 export const defaultSettings: SystemSettings = {
@@ -110,14 +114,71 @@ export const defaultSettings: SystemSettings = {
   autoEmailOrderConfirm: true,
   autoEmailStatusChange: false,
   autoEmailBirthday: true,
-  emailTemplateDeliveryComplete: "안녕하세요 {고객명}님!\n\n주문하신 상품이 성공적으로 배송 완료되었습니다.\n\n주문번호: {주문번호}\n배송일: {배송일}\n\n감사합니다.\n{회사명}",
+  emailTemplateDeliveryComplete: `<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{회사명} - 배송완료 알림</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Noto Sans KR', Arial, sans-serif; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+        .header { background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); padding: 30px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 300; }
+        .content { padding: 40px 30px; }
+        .greeting { font-size: 18px; color: #333; margin-bottom: 20px; }
+        .info-box { background-color: #f8f9fa; border-left: 4px solid #4CAF50; padding: 20px; margin: 20px 0; }
+        .info-row { display: flex; justify-content: space-between; margin: 10px 0; }
+        .info-label { font-weight: bold; color: #555; }
+        .info-value { color: #333; }
+        .photo-section { text-align: center; margin: 30px 0; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 14px; }
+        .success-icon { font-size: 48px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-icon">🚚✅</div>
+            <h1>{회사명}</h1>
+        </div>
+        <div class="content">
+            <div class="greeting">안녕하세요, {고객명}님! 👋</div>
+            <p>주문하신 상품이 <strong>성공적으로 배송 완료</strong>되었습니다.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">주문번호:</span>
+                    <span class="info-value">{주문번호}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">배송완료일:</span>
+                    <span class="info-value">{배송일}</span>
+                </div>
+            </div>
+            
+            <p>소중한 주문에 감사드리며, 앞으로도 최고의 서비스로 보답하겠습니다.</p>
+            
+            <p>추가 문의사항이 있으시면 언제든지 연락해 주세요.</p>
+        </div>
+        <div class="footer">
+            <p><strong>{회사명}</strong></p>
+            <p>이 이메일은 자동으로 발송된 메일입니다.</p>
+        </div>
+    </div>
+</body>
+</html>`,
   emailTemplateOrderConfirm: "안녕하세요 {고객명}님!\n\n주문이 성공적으로 접수되었습니다.\n\n주문번호: {주문번호}\n주문일: {주문일}\n총 금액: {총금액}원\n\n감사합니다.\n{회사명}",
   emailTemplateStatusChange: "안녕하세요 {고객명}님!\n\n주문 상태가 변경되었습니다.\n\n주문번호: {주문번호}\n이전 상태: {이전상태}\n현재 상태: {현재상태}\n\n감사합니다.\n{회사명}",
   emailTemplateBirthday: "안녕하세요 {고객명}님!\n\n생일을 진심으로 축하드립니다! 🎉\n\n특별한 할인 혜택을 드립니다.\n\n감사합니다.\n{회사명}",
   // 할인 설정
   defaultDiscountRate: 0,
   maxDiscountRate: 10,
-  discountReason: "회원 할인"
+  discountReason: "회원 할인",
+
+  // 배송완료 사진 관리 설정
+  autoDeleteDeliveryPhotos: false,
+  deliveryPhotoRetentionDays: 90 // 90일 보관
 };
 
 export function useSettings() {

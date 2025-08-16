@@ -101,3 +101,49 @@ export class FirebaseStorageService {
     return { isValid: true };
   }
 }
+
+// 일반적인 파일 업로드 함수
+export async function uploadFile(file: File, filePath: string): Promise<string> {
+  try {
+    const fileRef = ref(storage, filePath);
+    const snapshot = await uploadBytes(fileRef, file);
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+    return downloadUrl;
+  } catch (error) {
+    console.error('File upload failed:', error);
+    throw new Error('파일 업로드에 실패했습니다.');
+  }
+}
+
+// 일반적인 파일 삭제 함수
+export async function deleteFile(fileUrl: string): Promise<void> {
+  try {
+    // Firebase Storage URL에서 파일 경로 추출
+    let filePath: string;
+    
+    if (fileUrl.includes('firebase')) {
+      // Firebase Storage URL에서 파일 경로 추출
+      const url = new URL(fileUrl);
+      const pathname = url.pathname;
+      // /v0/b/bucket/o/path 형식에서 path 추출
+      const pathMatch = pathname.match(/\/o\/(.+)$/);
+      if (pathMatch) {
+        filePath = decodeURIComponent(pathMatch[1]);
+      } else {
+        throw new Error('Invalid Firebase Storage URL');
+      }
+    } else {
+      // 상대 경로인 경우 그대로 사용
+      filePath = fileUrl;
+    }
+    
+    const fileRef = ref(storage, filePath);
+    await deleteObject(fileRef);
+  } catch (error: any) {
+    // 파일이 존재하지 않는 경우 무시
+    if (error.code !== 'storage/object-not-found') {
+      console.error('File deletion failed:', error);
+      throw new Error('파일 삭제에 실패했습니다.');
+    }
+  }
+}

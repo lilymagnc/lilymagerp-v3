@@ -14,6 +14,13 @@ export interface Customer extends CustomerFormValues {
   points?: number;
   address?: string;
   companyName?: string;
+  // 기념일 정보
+  birthday?: string;
+  weddingAnniversary?: string;
+  foundingAnniversary?: string;
+  firstVisitDate?: string;
+  otherAnniversary?: string;
+  otherAnniversaryName?: string;
   // 지점별 정보 (새로 추가)
   branches?: {
     [branchId: string]: {
@@ -265,51 +272,107 @@ export function useCustomers() {
     let newCount = 0;
     let duplicateCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
+
     await Promise.all(data.map(async (row) => {
       try {
-        if (!row.contact || !row.name) return;
-        const customerData = {
-          name: String(row.name),
-          contact: String(row.contact),
-          companyName: String(row.companyName || ''),
-          address: String(row.address || ''),
-          email: String(row.email || ''),
-          branch: selectedBranch || '',
+        // 필수 필드가 없으면 건너뛰기 (무시)
+        if (!row.name || !row.contact) {
+          skippedCount++;
+          return;
+        }
+
+        // 엑셀 필드 매핑 (한글/영문 필드명 모두 지원)
+        const customerData: any = {
+          name: String(row.name || row.고객명 || '').trim(),
+          contact: String(row.contact || row.연락처 || '').trim(),
+          companyName: String(row.companyName || row.회사명 || '').trim(),
+          address: String(row.address || row.주소 || '').trim(),
+          email: String(row.email || row.이메일 || '').trim(),
+          grade: String(row.grade || row.등급 || '신규').trim(),
+          branch: selectedBranch || String(row.branch || row.지점 || '').trim(),
+          memo: String(row.memo || row.메모 || '').trim(),
+          points: Number(row.points || row.포인트 || 0) || 0,
+          // 기념일 정보
+          birthday: String(row.birthday || row.생일 || '').trim(),
+          weddingAnniversary: String(row.weddingAnniversary || row.결혼기념일 || '').trim(),
+          foundingAnniversary: String(row.foundingAnniversary || row.창립기념일 || '').trim(),
+          firstVisitDate: String(row.firstVisitDate || row.첫방문일 || '').trim(),
+          otherAnniversaryName: String(row.otherAnniversaryName || row.기타기념일명 || '').trim(),
+          otherAnniversary: String(row.otherAnniversary || row.기타기념일 || '').trim(),
           totalSpent: 0,
           orderCount: 0,
-          points: 0,
         };
-        // 중복 체크: 연락처 기준으로만 체크 (전 지점 공유)
-        const contactQuery = query(collection(db, "customers"), where("contact", "==", customerData.contact));
-        const contactSnapshot = await getDocs(contactQuery);
-        const existingCustomers = contactSnapshot.docs.filter(doc => !doc.data().isDeleted);
+
+        // 생성일 처리 (한글 헤더 추가 지원)
+        if (row.createdAt || row.생성일) {
+          customerData.createdAt = new Date(row.createdAt || row.생성일);
+        } else {
+          customerData.createdAt = serverTimestamp();
+        }
+
+        // 빈 문자열 필드들 정리
+        Object.keys(customerData).forEach(key => {
+          if (typeof customerData[key] === 'string' && customerData[key] === '') {
+            delete customerData[key];
+          }
+        });
+
+        // 중복 체크: 이름과 연락처가 모두 같을 경우 중복 처리
+        const duplicateQuery = query(
+          collection(db, "customers"), 
+          where("name", "==", customerData.name),
+          where("contact", "==", customerData.contact)
+        );
+        const duplicateSnapshot = await getDocs(duplicateQuery);
+        const existingCustomers = duplicateSnapshot.docs.filter(doc => !doc.data().isDeleted);
+
         if (existingCustomers.length > 0) {
-          // 기존 고객이면 현재 지점에 등록
+          // 기존 고객이면 정보 업데이트 (포인트 포함)
           const existingCustomer = existingCustomers[0];
-          const gradeFromRow = String((row as any).grade ?? '신규');
-          const notesFromRow = String((row as any).notes ?? '');
-          await updateDoc(doc(db, 'customers', existingCustomer.id), {
-            [`branches.${selectedBranch}`]: {
+          const updateData: any = {};
+          
+          // 새로운 정보가 있으면 업데이트
+          if (customerData.companyName) updateData.companyName = customerData.companyName;
+          if (customerData.address) updateData.address = customerData.address;
+          if (customerData.email) updateData.email = customerData.email;
+          if (customerData.memo) updateData.memo = customerData.memo;
+          if (customerData.points > 0) updateData.points = customerData.points;
+          // 기념일 정보 업데이트
+          if (customerData.birthday) updateData.birthday = customerData.birthday;
+          if (customerData.weddingAnniversary) updateData.weddingAnniversary = customerData.weddingAnniversary;
+          if (customerData.foundingAnniversary) updateData.foundingAnniversary = customerData.foundingAnniversary;
+          if (customerData.firstVisitDate) updateData.firstVisitDate = customerData.firstVisitDate;
+          if (customerData.otherAnniversaryName) updateData.otherAnniversaryName = customerData.otherAnniversaryName;
+          if (customerData.otherAnniversary) updateData.otherAnniversary = customerData.otherAnniversary;
+          
+          // 지점 정보 업데이트
+          if (selectedBranch) {
+            updateData[`branches.${selectedBranch}`] = {
               registeredAt: serverTimestamp(),
-              grade: gradeFromRow,
-              notes: notesFromRow
-            }
-          });
+              grade: customerData.grade,
+              notes: customerData.memo || `엑셀 업로드로 업데이트 - ${new Date().toLocaleDateString()}`
+            };
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await updateDoc(doc(db, 'customers', existingCustomer.id), updateData);
+          }
           duplicateCount++;
         } else {
           // 새 고객 생성
-                   const newCustomerData = {
-           ...customerData,
-           createdAt: serverTimestamp(),
-           branches: {
-             [selectedBranch || '']: {
-               registeredAt: serverTimestamp(),
-               grade: '신규',
-               notes: `엑셀 업로드로 등록 - ${new Date().toLocaleDateString()}`
-             }
-           },
-           primaryBranch: selectedBranch
-         };
+          const newCustomerData = {
+            ...customerData,
+            branches: {
+              [selectedBranch || customerData.branch || '']: {
+                registeredAt: serverTimestamp(),
+                grade: customerData.grade,
+                notes: customerData.memo || `엑셀 업로드로 등록 - ${new Date().toLocaleDateString()}`
+              }
+            },
+            primaryBranch: selectedBranch || customerData.branch
+          };
+
           await addDoc(collection(db, "customers"), newCustomerData);
           newCount++;
         }
@@ -318,7 +381,18 @@ export function useCustomers() {
         errorCount++;
       }
     }));
+
     setLoading(false);
+    
+    // 결과 메시지 구성
+    let description = `신규 고객 ${newCount}명 추가, 기존 고객 ${duplicateCount}명 업데이트`;
+    if (skippedCount > 0) {
+      description += `, ${skippedCount}개 항목 건너뜀 (필수 정보 없음)`;
+    }
+    if (errorCount > 0) {
+      description += `, ${errorCount}개 항목 처리 중 오류 발생`;
+    }
+
     if (errorCount > 0) {
       toast({ 
         variant: 'destructive', 
@@ -326,10 +400,12 @@ export function useCustomers() {
         description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
       });
     }
+
     toast({ 
       title: '처리 완료', 
-      description: `성공: 신규 고객 ${newCount}명 추가, 기존 고객 ${duplicateCount}명 현재 지점 등록.`
+      description
     });
+    
     await fetchCustomers();
   };
   // findCustomersByContact 함수 (기존 호환성 유지)
