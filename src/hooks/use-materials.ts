@@ -557,9 +557,34 @@ export function useMaterials() {
 
             } else {
                 // 해당 지점에 같은 이름의 자재가 없으면 새로 등록
-                const newId = materialData.id || await generateNewId();
+                let newId;
+                
+                // ID 결정: 엑셀에 ID가 있으면 사용, 없으면 자동 생성
+                if (materialData.id && materialData.id.trim()) {
+                    newId = materialData.id.trim();
+                    
+                    // 중복 ID 검증 (같은 지점 내에서)
+                    const duplicateQuery = query(
+                        collection(db, "materials"),
+                        where("id", "==", newId),
+                        where("branch", "==", materialData.branch)
+                    );
+                    const duplicateSnapshot = await getDocs(duplicateQuery);
+                    
+                    if (!duplicateSnapshot.empty) {
+                        console.warn(`중복된 자재 ID (${newId})가 발견되어 자동 생성 ID를 사용합니다.`);
+                        newId = await generateNewId();
+                    }
+                } else {
+                    newId = await generateNewId();
+                }
+                
                 const newDocRef = doc(collection(db, "materials"));
-                await setDoc(newDocRef, { ...materialData, id: newId });
+                await setDoc(newDocRef, { 
+                    ...materialData, 
+                    id: newId,
+                    code: materialData.id || '', // 원본 엑셀 ID도 code 필드에 보존
+                });
                 newCount++;
 
             }

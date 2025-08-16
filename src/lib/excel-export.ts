@@ -327,8 +327,8 @@ export const exportProductsToExcel = async (products: any[], filename: string) =
         '규격': product.size || '',
         '색상': product.color || '',
         '지점': product.branch || '',
-        '코드': product.code || '',
-        '카테고리': product.category || ''
+        '카테고리': product.category || '',
+        '코드': product.id || '' // 상품코드와 동일하게 설정
       };
     });
 

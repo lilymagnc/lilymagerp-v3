@@ -13,6 +13,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Barcode } from "@/components/barcode"
 import { useAuth } from "@/hooks/use-auth"
+
 type Product = {
   id: string;
   name: string;

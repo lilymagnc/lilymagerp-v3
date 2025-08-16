@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/page-header";
 import { ImportButton } from "@/components/import-button";
 import { ProductForm } from "./components/product-form";
 import { ProductTable } from "./components/product-table";
+import { ProductStatsCards } from "./components/product-stats-cards";
 import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog";
 import { ScanLine, Plus, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -89,7 +90,7 @@ export default function ProductsPage() {
   const handleFormSubmit = async (data: any) => {
     try {
       if (editingProduct) {
-        await updateProduct(editingProduct.id, data);
+        await updateProduct(editingProduct.docId, data);
       } else {
         await addProduct(data);
       }
@@ -149,6 +150,13 @@ export default function ProductsPage() {
           바코드 스캔
         </Button>
       </PageHeader>
+
+      {/* 상품 통계 카드 */}
+      <ProductStatsCards 
+        products={filteredProducts} 
+        selectedBranch={selectedBranch}
+        isAdmin={isAdmin}
+      />
 
       <div className="flex flex-col sm:flex-row gap-4">
         <Input

@@ -23,7 +23,7 @@ export interface Product {
 }
 // 초기 샘플 데이터 추가
 const initialProducts: Omit<Product, 'docId' | 'status'>[] = [
-  { id: "P00001", name: "샘플상품지우지마세요", mainCategory: "의류", midCategory: "상의", price: 45000, supplier: "공급업체1", stock: 10, size: "M", color: "White", branch: "릴리맥광화문점" },
+  { id: "P90001", name: "샘플상품지우지마세요", mainCategory: "의류", midCategory: "상의", price: 45000, supplier: "공급업체1", stock: 10, size: "M", color: "White", branch: "릴리맥광화문점" },
 ];
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -34,9 +34,32 @@ export function useProducts() {
     if (stock < 10) return 'low_stock';
     return 'active';
   }
+  // 샘플 상품 ID 업데이트 함수
+  const updateSampleProductId = async () => {
+    try {
+      const sampleQuery = query(
+        collection(db, 'products'),
+        where('name', '==', '샘플상품지우지마세요'),
+        where('id', '==', 'P00001')
+      );
+      const sampleSnapshot = await getDocs(sampleQuery);
+      
+      if (!sampleSnapshot.empty) {
+        const sampleDoc = sampleSnapshot.docs[0];
+        await setDoc(sampleDoc.ref, { id: 'P90001' }, { merge: true });
+      }
+    } catch (error) {
+      console.error('샘플 상품 ID 업데이트 오류:', error);
+    }
+  };
+
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // 샘플 상품 ID 업데이트 (한 번만 실행)
+      await updateSampleProductId();
+      
       const productsCollection = collection(db, 'products');
       const querySnapshot = await getDocs(productsCollection);
       // 자재관리와 동일한 초기화 로직 추가
@@ -260,25 +283,51 @@ export function useProducts() {
         }
     }
     
-    // 선택된 지점의 기존 상품 모두 삭제
-    if (selectedBranch && selectedBranch !== "all") {
+    // 엑셀 데이터에 포함된 지점들의 기존 상품 모두 삭제
+    const branchesInExcel = [...new Set(data.map(row => {
+      const branch = String(row.branch || row.지점 || '').trim();
+      return branch;
+    }).filter(Boolean))];
+
+    if (branchesInExcel.length > 0) {
       try {
-        const existingProductsQuery = query(
-          collection(db, "products"),
-          where("branch", "==", selectedBranch)
-        );
-        const existingProductsSnapshot = await getDocs(existingProductsQuery);
-        
-        const deletePromises = existingProductsSnapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(deletePromises);
-        deleteCount = existingProductsSnapshot.size;
+        for (const branch of branchesInExcel) {
+          const existingProductsQuery = query(
+            collection(db, "products"),
+            where("branch", "==", branch)
+          );
+          const existingProductsSnapshot = await getDocs(existingProductsQuery);
+          
+          const deletePromises = existingProductsSnapshot.docs.map(doc => deleteDoc(doc.ref));
+          await Promise.all(deletePromises);
+          deleteCount += existingProductsSnapshot.size;
+        }
       } catch (error) {
         console.error("Error deleting existing products:", error);
         errorCount++;
       }
     }
     
-    await Promise.all(data.map(async (row, index) => {
+    // 같은 상품명에 같은 ID를 부여하기 위한 매핑 테이블
+    const productNameToIdMap = new Map<string, string>();
+    
+    // 현재 최대 ID 조회하여 자동생성 ID 시작점 설정
+    let currentIdNumber = 0;
+    const maxIdQuery = query(collection(db, "products"), orderBy("id", "desc"), limit(1));
+    const maxIdSnapshot = await getDocs(maxIdQuery);
+    if (!maxIdSnapshot.empty) {
+      const lastId = maxIdSnapshot.docs[0].data().id;
+      if (lastId && lastId.startsWith('P')) {
+        const idNumber = parseInt(lastId.replace('P', ''), 10);
+        if (!isNaN(idNumber)) {
+          currentIdNumber = idNumber;
+        }
+      }
+    }
+
+    // 순차 처리로 변경하여 ID 매핑이 올바르게 동작하도록 함
+    for (let index = 0; index < data.length; index++) {
+      const row = data[index];
       try {
         // 엑셀 필드명 매핑 (한글 필드명을 영문 필드명으로 변환)
         const mappedRow = {
@@ -291,7 +340,7 @@ export function useProducts() {
           size: row.size || row.규격 || '',
           color: row.color || row.색상 || '',
           branch: row.branch || row.지점 || '',
-          code: row.code || row.코드 || '',
+          code: row.code || row.코드 || row.상품코드 || '', // 상품코드 필드 추가
           category: row.category || row.카테고리 || ''
         };
         
@@ -321,11 +370,24 @@ export function useProducts() {
         // 모든 상품을 새로 추가 (기존 상품은 이미 삭제됨)
         const docRef = doc(collection(db, "products"));
         
-        // 새 상품의 경우 ID 생성
-        const newProductId = await generateNewId();
+        // 상품 ID 결정 로직: 엑셀에 코드가 있으면 무조건 그것을 사용 (상품명 중복 무시)
+        let productId;
+        if (productCode && productCode.trim()) {
+          // 1. 엑셀에 코드가 있으면 무조건 사용 (각 행이 독립적으로 처리됨)
+          productId = productCode.trim();
+        } else if (productNameToIdMap.has(productName)) {
+          // 2. 엑셀에 코드가 없고, 같은 상품명이 이미 처리되었으면 기존 ID 재사용
+          productId = productNameToIdMap.get(productName)!;
+        } else {
+          // 3. 엑셀에 코드가 없고, 새로운 상품명이면 새 ID 생성
+          currentIdNumber++;
+          productId = `P${String(currentIdNumber).padStart(5, '0')}`;
+          productNameToIdMap.set(productName, productId);
+        }
+        
         await setDoc(docRef, { 
           ...productData, 
-          id: newProductId,
+          id: productId,
           createdAt: serverTimestamp() 
         });
         newCount++;
@@ -333,7 +395,7 @@ export function useProducts() {
         console.error("Error processing product:", error);
         errorCount++;
       }
-    }));
+    }
     setLoading(false);
     if (errorCount > 0) {
       toast({ 
@@ -352,12 +414,7 @@ export function useProducts() {
     if (errorCount > 0) {
         description += ` (${errorCount}개 항목 처리 중 오류 발생)`;
     }
-    // 처리 결과만 간단히 로그
-    console.log('엑셀 업로드 완료:', { 
-      삭제된상품: deleteCount,
-      추가된상품: newCount, 
-      오류: errorCount
-    });
+    
     toast({ 
       title: '처리 완료', 
       description

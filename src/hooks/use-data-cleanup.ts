@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { collection, getDocs, deleteDoc, doc, writeBatch, query, where } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, writeBatch, query, where, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -26,19 +26,42 @@ export function useDataCleanup() {
       if (snapshot.empty) {
         return 0;
       }
-      const batch = writeBatch(db);
+      // 더 작은 배치 크기로 안전하게 처리
+      const batchSize = 400; // 안전한 배치 크기
+      let batch = writeBatch(db);
       let batchCount = 0;
-      const batchSize = 500; // Firestore 배치 제한
-      for (const docRef of snapshot.docs) {
-        batch.delete(docRef.ref);
-        batchCount++;
-        if (batchCount >= batchSize) {
-          await batch.commit();
+      let totalProcessed = 0;
+
+      for (const docSnapshot of snapshot.docs) {
+        try {
+          batch.delete(docSnapshot.ref);
+          batchCount++;
+          
+          if (batchCount >= batchSize) {
+            await batch.commit();
+            console.log(`${collectionName}: ${batchCount}개 문서 삭제 완료 (총 ${totalProcessed + batchCount}/${snapshot.size})`);
+            
+            // 새로운 배치 생성
+            batch = writeBatch(db);
+            totalProcessed += batchCount;
+            batchCount = 0;
+          }
+        } catch (error) {
+          console.error(`문서 삭제 실패 (${docSnapshot.id}):`, error);
+          // 개별 문서 삭제 실패 시 새 배치로 계속
+          batch = writeBatch(db);
           batchCount = 0;
         }
       }
+      
+      // 남은 배치가 있으면 커밋
       if (batchCount > 0) {
-        await batch.commit();
+        try {
+          await batch.commit();
+          console.log(`${collectionName}: 마지막 ${batchCount}개 문서 삭제 완료`);
+        } catch (error) {
+          console.error(`마지막 배치 커밋 실패:`, error);
+        }
       }
       return snapshot.size;
     } catch (error) {
