@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useEffect } from "react"
 import { useBranches } from "@/hooks/use-branches"
+import { useAuth } from "@/hooks/use-auth"
 import { CalendarIcon } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
@@ -39,7 +40,7 @@ const customerSchema = z.object({
   type: z.enum(["personal", "company"]).default("personal"),
   companyName: z.string().optional(),
   contact: z.string().min(1, "연락처를 입력해주세요."),
-  email: z.string().email("유효한 이메일을 입력해주세요.").optional().or(z.literal('')),
+  email: z.string().optional().or(z.literal('')),
   branch: z.string().min(1, "담당 지점을 선택해주세요."),
   grade: z.string().optional(),
   tags: z.string().optional(),
@@ -56,6 +57,15 @@ const customerSchema = z.object({
   businessType: z.string().optional(),
   businessItem: z.string().optional(),
   businessAddress: z.string().optional(),
+}).refine((data) => {
+  // 기업 고객인 경우 회사명이 필수
+  if (data.type === 'company') {
+    return data.companyName && data.companyName.trim().length > 0;
+  }
+  return true;
+}, {
+  message: "기업 고객의 경우 회사명을 입력해주세요.",
+  path: ["companyName"],
 });
 export type CustomerFormValues = z.infer<typeof customerSchema>
 interface CustomerFormProps {
@@ -73,8 +83,12 @@ const defaultValues: CustomerFormValues = {
   branch: "",
   grade: "신규",
   tags: "",
-  birthday: null,
-  anniversary: null,
+  birthday: "",
+  weddingAnniversary: "",
+  foundingAnniversary: "",
+  firstVisitDate: "",
+  otherAnniversaryName: "",
+  otherAnniversary: "",
   memo: "",
   businessNumber: "",
   ceoName: "",
@@ -84,6 +98,7 @@ const defaultValues: CustomerFormValues = {
 }
 export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: CustomerFormProps) {
   const { branches } = useBranches()
+  const { user } = useAuth()
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
     defaultValues,
@@ -93,18 +108,40 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
       if (customer) {
         form.reset({
           ...customer,
-          birthday: customer.birthday ? new Date(customer.birthday) : null,
-          anniversary: customer.anniversary ? new Date(customer.anniversary) : null,
+          birthday: customer.birthday || "",
+          weddingAnniversary: customer.weddingAnniversary || "",
+          foundingAnniversary: customer.foundingAnniversary || "",
+          firstVisitDate: customer.firstVisitDate || "",
+          otherAnniversary: customer.otherAnniversary || "",
+          otherAnniversaryName: customer.otherAnniversaryName || "",
         });
       } else {
-        form.reset(defaultValues);
+        // 새 고객 추가 시 로그인한 사용자의 지점으로 자동 설정
+        const userBranch = user?.franchise && user.franchise !== '본사' && user.franchise !== '미지정' 
+          ? user.franchise 
+          : "";
+        
+        form.reset({
+          ...defaultValues,
+          branch: userBranch,
+        });
       }
     }
-  }, [customer, form, isOpen]);
+  }, [customer, form, isOpen, user]);
   const handleFormSubmit = (data: CustomerFormValues) => {
     onSubmit(data);
   }
   const customerType = form.watch("type");
+  
+  // 고객유형이 변경될 때 담당자명을 고객명으로 자동 설정
+  useEffect(() => {
+    if (customerType === 'company') {
+      const currentName = form.getValues("name");
+      if (currentName && !form.getValues("companyName")) {
+        form.setValue("companyName", currentName);
+      }
+    }
+  }, [customerType, form]);
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -142,7 +179,7 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{customerType === 'company' ? '담당자명' : '고객명'}</FormLabel>
+                    <FormLabel>{customerType === 'company' ? '담당자명' : '고객명'} *</FormLabel>
                     <FormControl>
                       <Input placeholder="홍길동" {...field} />
                     </FormControl>
@@ -155,7 +192,7 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 name="contact"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>연락처</FormLabel>
+                    <FormLabel>연락처 *</FormLabel>
                     <FormControl>
                       <Input placeholder="010-1234-5678" {...field} />
                     </FormControl>
@@ -169,7 +206,7 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>이메일</FormLabel>
+                  <FormLabel>이메일 (선택사항)</FormLabel>
                   <FormControl>
                     <Input placeholder="customer@example.com" {...field} />
                   </FormControl>
@@ -183,17 +220,28 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                     name="branch"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>담당 지점</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="지점 선택" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {branches.filter(b => b.type !== '본사').map(branch => (
-                                    <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <FormLabel>담당 지점 *</FormLabel>
+                        {user?.role === '본사 관리자' ? (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                  <SelectTrigger><SelectValue placeholder="지점 선택" /></SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                  {branches.filter(b => b.type !== '본사').map(branch => (
+                                      <SelectItem key={branch.id} value={branch.name}>{branch.name}</SelectItem>
+                                  ))}
+                              </SelectContent>
+                          </Select>
+                        ) : (
+                          <FormControl>
+                              <Input 
+                                  value={field.value} 
+                                  readOnly 
+                                  className="bg-gray-50"
+                                  placeholder="자동 설정됨"
+                              />
+                          </FormControl>
+                        )}
                         <FormMessage />
                     </FormItem>
                     )}
@@ -349,13 +397,13 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 <Separator className="my-6" />
                 <p className="text-sm font-semibold">사업자 정보 (세금계산서 발행용)</p>
                 <Separator />
-                <FormField control={form.control} name="companyName" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>회사명</FormLabel>
-                      <FormControl><Input placeholder="꽃길 주식회사" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                )}/>
+                                 <FormField control={form.control} name="companyName" render={({ field }) => (
+                     <FormItem>
+                       <FormLabel>회사명 *</FormLabel>
+                       <FormControl><Input placeholder="꽃길 주식회사" {...field} /></FormControl>
+                       <FormMessage />
+                     </FormItem>
+                 )}/>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="businessNumber" render={({ field }) => (
                       <FormItem>

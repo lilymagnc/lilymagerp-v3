@@ -23,8 +23,10 @@ export function CustomerStatsCards({ customers, selectedBranch }: CustomerStatsC
       const branches = customer.branches || {};
       const primaryBranch = customer.primaryBranch || customer.branch;
       
-      // 고객이 등록된 모든 지점 처리
-      const customerBranches = Object.keys(branches).length > 0 ? Object.keys(branches) : [primaryBranch].filter(Boolean);
+      // 고객이 등록된 모든 지점 처리 ("all" 제외)
+      const customerBranches = Object.keys(branches).length > 0 
+        ? Object.keys(branches).filter(branch => branch !== "all" && branch !== "")
+        : [primaryBranch].filter(branch => branch && branch !== "all" && branch !== "");
       
       customerBranches.forEach(branchName => {
         if (!stats[branchName]) {
@@ -71,7 +73,10 @@ export function CustomerStatsCards({ customers, selectedBranch }: CustomerStatsC
           return dateB.getTime() - dateA.getTime();
         });
         
-        const lastOrderBranch = customerOrders[0]?.branchName || customer.primaryBranch || customer.branch || '정보 없음';
+        const lastOrderBranch = customerOrders[0]?.branchName || 
+          (customer.primaryBranch && customer.primaryBranch !== "all" ? customer.primaryBranch : "") || 
+          (customer.branch && customer.branch !== "all" ? customer.branch : "") || 
+          '정보 없음';
         const totalOrderAmount = customerOrders.reduce((total, order) => total + (order.summary?.total || 0), 0);
         
         return {

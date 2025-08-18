@@ -138,12 +138,16 @@ export function useBranches() {
   const fetchBranches = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('Fetching branches...');
       const branchesCollection = collection(db, 'branches');
       const querySnapshot = await getDocs(branchesCollection);
+      console.log('Query snapshot size:', querySnapshot.size);
+      
       if (querySnapshot.size <= 1) {
           const initDocRef = doc(branchesCollection, '_initialized');
           const initDoc = await getDoc(initDocRef);
           if (!initDoc.exists()) {
+            console.log('Initializing branches data...');
             const batch = writeBatch(db);
             initialBranches.forEach(branchData => {
               const docRef = doc(collection(db, "branches"));
@@ -160,6 +164,7 @@ export function useBranches() {
                 if (b.type === '본사') return 1;
                 return a.name.localeCompare(b.name);
             });
+            console.log('Branches data after seeding:', branchesData);
             setBranches(branchesData);
             return;
           }
@@ -172,6 +177,7 @@ export function useBranches() {
         if (b.type === '본사') return 1;
         return a.name.localeCompare(b.name);
       });
+      console.log('Branches data loaded:', branchesData);
       setBranches(branchesData);
     } catch (error) {
       console.error("Error fetching branches: ", error);

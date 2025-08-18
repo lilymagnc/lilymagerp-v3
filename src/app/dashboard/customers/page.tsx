@@ -48,7 +48,7 @@ export default function CustomersPage() {
                 customer.branch === userBranch || 
                 (customer.branches && customer.branches[userBranch])
             );
-        } else if (selectedBranch !== "all") {
+        } else if (selectedBranch && selectedBranch !== "all") {
             // 본사 관리자는 선택한 지점에 등록된 고객만 보기
             filtered = filtered.filter(customer => 
                 customer.branch === selectedBranch || 
@@ -104,7 +104,18 @@ export default function CustomersPage() {
         await deleteCustomer(id);
     };
     const handleImport = async (data: any[]) => {
-      await bulkAddCustomers(data, selectedBranch);
+      // 엑셀 업로드 시 올바른 지점 정보 결정
+      let importBranch: string | undefined;
+      
+      if (isHeadOfficeAdmin) {
+        // 본사 관리자는 선택된 지점 사용 (all이 아닌 경우)
+        importBranch = selectedBranch !== "all" ? selectedBranch : undefined;
+      } else {
+        // 가맹점 관리자/직원은 자신의 지점 사용
+        importBranch = userBranch;
+      }
+      
+      await bulkAddCustomers(data, importBranch);
     };
     const handleExport = () => {
         if (filteredCustomers.length === 0) {
@@ -117,8 +128,9 @@ export default function CustomersPage() {
         }
         const dataToExport = filteredCustomers.map(customer => ({
             '고객명': customer.name || '',
-            '연락처': customer.contact || '',
+            '고객유형': customer.type === 'company' ? '기업' : '개인',
             '회사명': customer.companyName || '',
+            '연락처': customer.contact || '',
             '이메일': customer.email || '',
             '주소': customer.address || '',
             '등급': customer.grade || '신규',

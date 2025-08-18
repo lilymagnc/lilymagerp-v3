@@ -66,11 +66,13 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onState
                   <TableCell className="hidden lg:table-cell">
                     <div className="flex flex-col gap-1">
                       <span className="text-sm font-medium">
-                        {customer.primaryBranch || customer.branch || '-'}
+                        {(customer.primaryBranch && customer.primaryBranch !== "all" ? customer.primaryBranch : "") || 
+                         (customer.branch && customer.branch !== "all" ? customer.branch : "") || 
+                         '-'}
                       </span>
-                      {customer.branches && Object.keys(customer.branches).length > 1 && (
+                      {customer.branches && Object.keys(customer.branches).filter(branch => branch !== "all" && branch !== "").length > 1 && (
                         <span className="text-xs text-muted-foreground">
-                          {Object.keys(customer.branches).length}개 지점
+                          {Object.keys(customer.branches).filter(branch => branch !== "all" && branch !== "").length}개 지점
                         </span>
                       )}
                     </div>

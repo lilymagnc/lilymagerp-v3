@@ -276,8 +276,20 @@ export function useCustomers() {
 
     await Promise.all(data.map(async (row) => {
       try {
-        // 필수 필드가 없으면 건너뛰기 (무시)
-        if (!row.name || !row.contact) {
+        // 필수 필드 검증 - 한글/영문 헤더 모두 지원
+        const hasName = row.name || row.고객명;
+        const hasContact = row.contact || row.연락처;
+        
+        console.log('엑셀 행 처리:', { 
+          row, 
+          hasName, 
+          hasContact, 
+          name: row.name || row.고객명, 
+          contact: row.contact || row.연락처 
+        });
+        
+        if (!hasName || !hasContact) {
+          console.log('필수 필드 누락으로 건너뜀:', { hasName, hasContact });
           skippedCount++;
           return;
         }
@@ -290,9 +302,10 @@ export function useCustomers() {
           address: String(row.address || row.주소 || '').trim(),
           email: String(row.email || row.이메일 || '').trim(),
           grade: String(row.grade || row.등급 || '신규').trim(),
-          branch: selectedBranch || String(row.branch || row.지점 || '').trim(),
           memo: String(row.memo || row.메모 || '').trim(),
           points: Number(row.points || row.포인트 || 0) || 0,
+          // 고객유형 처리
+          type: (row.type || row.고객유형 || 'personal') === '기업' || (row.type || row.고객유형 || 'personal') === 'company' ? 'company' : 'personal',
           // 기념일 정보
           birthday: String(row.birthday || row.생일 || '').trim(),
           weddingAnniversary: String(row.weddingAnniversary || row.결혼기념일 || '').trim(),
@@ -303,6 +316,37 @@ export function useCustomers() {
           totalSpent: 0,
           orderCount: 0,
         };
+
+        // 지점 처리 로직
+        const excelBranch = String(row.branch || row.지점 || '').trim();
+        let finalBranch = excelBranch;
+        
+        // 엑셀에 지점 정보가 없으면 selectedBranch 사용 (단, "all"이 아닌 경우만)
+        if (!finalBranch && selectedBranch && selectedBranch !== "all") {
+          finalBranch = selectedBranch;
+        }
+        
+        // 지점 정보가 여전히 없으면 건너뛰기
+        if (!finalBranch) {
+          console.log('지점 정보 없음으로 건너뜀:', { 
+            excelBranch, 
+            selectedBranch, 
+            rowBranch: row.branch,
+            row지점: row.지점
+          });
+          skippedCount++;
+          return;
+        }
+        
+        console.log('지점 처리:', { 
+          excelBranch, 
+          selectedBranch, 
+          finalBranch,
+          rowBranch: row.branch,
+          row지점: row.지점
+        });
+        
+        customerData.branch = finalBranch;
 
         // 생성일 처리 (한글 헤더 추가 지원)
         if (row.createdAt || row.생성일) {
@@ -327,12 +371,19 @@ export function useCustomers() {
         const duplicateSnapshot = await getDocs(duplicateQuery);
         const existingCustomers = duplicateSnapshot.docs.filter(doc => !doc.data().isDeleted);
 
+        console.log('중복 검사 결과:', { 
+          customerName: customerData.name, 
+          customerContact: customerData.contact, 
+          existingCount: existingCustomers.length 
+        });
+
         if (existingCustomers.length > 0) {
           // 기존 고객이면 정보 업데이트 (포인트 포함)
           const existingCustomer = existingCustomers[0];
           const updateData: any = {};
           
           // 새로운 정보가 있으면 업데이트
+          if (customerData.type) updateData.type = customerData.type;
           if (customerData.companyName) updateData.companyName = customerData.companyName;
           if (customerData.address) updateData.address = customerData.address;
           if (customerData.email) updateData.email = customerData.email;
@@ -347,8 +398,8 @@ export function useCustomers() {
           if (customerData.otherAnniversary) updateData.otherAnniversary = customerData.otherAnniversary;
           
           // 지점 정보 업데이트
-          if (selectedBranch) {
-            updateData[`branches.${selectedBranch}`] = {
+          if (customerData.branch) {
+            updateData[`branches.${customerData.branch}`] = {
               registeredAt: serverTimestamp(),
               grade: customerData.grade,
               notes: customerData.memo || `엑셀 업로드로 업데이트 - ${new Date().toLocaleDateString()}`
@@ -357,6 +408,7 @@ export function useCustomers() {
 
           if (Object.keys(updateData).length > 0) {
             await updateDoc(doc(db, 'customers', existingCustomer.id), updateData);
+            console.log('기존 고객 업데이트 완료:', existingCustomer.id);
           }
           duplicateCount++;
         } else {
@@ -364,16 +416,17 @@ export function useCustomers() {
           const newCustomerData = {
             ...customerData,
             branches: {
-              [selectedBranch || customerData.branch || '']: {
+              [customerData.branch || '']: {
                 registeredAt: serverTimestamp(),
                 grade: customerData.grade,
                 notes: customerData.memo || `엑셀 업로드로 등록 - ${new Date().toLocaleDateString()}`
               }
             },
-            primaryBranch: selectedBranch || customerData.branch
+            primaryBranch: customerData.branch
           };
 
-          await addDoc(collection(db, "customers"), newCustomerData);
+          const docRef = await addDoc(collection(db, "customers"), newCustomerData);
+          console.log('새 고객 생성 완료:', docRef.id, customerData.name);
           newCount++;
         }
       } catch (error) {
@@ -387,7 +440,7 @@ export function useCustomers() {
     // 결과 메시지 구성
     let description = `신규 고객 ${newCount}명 추가, 기존 고객 ${duplicateCount}명 업데이트`;
     if (skippedCount > 0) {
-      description += `, ${skippedCount}개 항목 건너뜀 (필수 정보 없음)`;
+      description += `, ${skippedCount}개 항목 건너뜀 (이름, 연락처 또는 지점 정보 없음)`;
     }
     if (errorCount > 0) {
       description += `, ${errorCount}개 항목 처리 중 오류 발생`;
@@ -481,6 +534,8 @@ export function useCustomers() {
       return 0;
     }
   }, [findCustomerByContact]);
+
+
   return { 
     customers, 
     loading, 

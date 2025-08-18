@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,8 @@ import {
   DollarSign,
   TrendingUp,
   ShoppingCart,
-  Building
+  Building,
+  FileSpreadsheet
 } from 'lucide-react';
 import { ExpenseInputForm } from './components/expense-input-form';
 import { FixedCostTemplate } from './components/fixed-cost-template';
@@ -33,12 +34,61 @@ export default function SimpleExpensesPage() {
   const [activeTab, setActiveTab] = useState('charts');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('current');
+  const [isMounted, setIsMounted] = useState(false);
+  const [renderKey, setRenderKey] = useState(0);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const { expenses, fetchExpenses, calculateStats } = useSimpleExpenses();
   const { user } = useAuth();
-  const { branches } = useBranches();
+  const { branches, loading: branchesLoading } = useBranches();
+  
+  // 엑셀 템플릿 다운로드 함수
+  const handleDownloadTemplate = () => {
+    const template = [
+      {
+        '날짜': '2024-12-06',
+        '지점명': '강남점',
+        '구매처': 'ABC상사',
+        '카테고리': '자재',
+        '세부분류': '원단',
+        '품목명': '면원단',
+        '수량': 10,
+        '단가': 5000,
+        '금액': 50000,
+        '비고': ''
+      }
+    ];
+
+    // XLSX 라이브러리 동적 import
+    import('xlsx').then((XLSX) => {
+      const ws = XLSX.utils.json_to_sheet(template);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '간편지출템플릿');
+      
+      // 컬럼 너비 설정
+      ws['!cols'] = [
+        { width: 12 }, // 날짜
+        { width: 10 }, // 지점명
+        { width: 15 }, // 구매처
+        { width: 10 }, // 카테고리
+        { width: 12 }, // 세부분류
+        { width: 20 }, // 품목명
+        { width: 8 },  // 수량
+        { width: 10 }, // 단가
+        { width: 12 }, // 금액
+        { width: 15 }  // 비고
+      ];
+
+      XLSX.writeFile(wb, '간편지출_템플릿.xlsx');
+    });
+  };
   // 관리자 여부 확인 (user?.role 직접 사용)
   const isAdmin = user?.role === '본사 관리자';
   const isHQManager = user?.role === '본사 관리자';
+  
+  // 본사관리자 권한 확인
+  const isHeadOfficeAdmin = user?.role === '본사 관리자';
   // 데이터 업데이트 함수
   const updateEmptyBranchIds = async () => {
     try {
@@ -95,23 +145,71 @@ export default function SimpleExpensesPage() {
     fetchExpenses();
   };
   // 지점 변경 처리
-  const handleBranchChange = (branchId: string) => {
-    setSelectedBranchId(branchId);
-    if (branchId === 'all') {
-      fetchExpenses(); // 전체 데이터 로드
-    } else {
-      // 본사 지점을 선택한 경우 본사 데이터만 로드
-      const selectedBranch = branches.find(b => b.id === branchId);
-      if (selectedBranch?.type === '본사') {
-        fetchExpenses({ branchId }); // 본사 지점 선택 시 본사 데이터만
-      } else {
-        fetchExpenses({ branchId }); // 일반 지점 선택 시 해당 지점만
-      }
+  const handleBranchChange = useCallback((branchId: string) => {
+    if (!isMounted || isUpdating) return;
+    
+    // 이전 작업들 정리
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-  };
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // 새로운 AbortController 생성
+    abortControllerRef.current = new AbortController();
+    
+    // 업데이트 상태 설정
+    setIsUpdating(true);
+    
+    // 상태 업데이트를 안전하게 처리
+    setSelectedBranchId(branchId);
+    setRenderKey(prev => prev + 1);
+    
+    // 데이터 로딩을 지연시켜 DOM 업데이트 충돌 방지
+    timeoutRef.current = setTimeout(() => {
+      if (!isMounted || abortControllerRef.current?.signal.aborted) return;
+      
+      try {
+        if (branchId === 'all') {
+          fetchExpenses(); // 전체 데이터 로드
+        } else {
+          // 본사 지점을 선택한 경우 본사 데이터만 로드
+          const selectedBranch = branches.find(b => b.id === branchId);
+          if (selectedBranch?.type === '본사') {
+            fetchExpenses({ branchId }); // 본사 지점 선택 시 본사 데이터만
+          } else {
+            fetchExpenses({ branchId }); // 일반 지점 선택 시 해당 지점만
+          }
+        }
+      } catch (error) {
+        if (!abortControllerRef.current?.signal.aborted) {
+          console.error('지점 변경 중 오류:', error);
+        }
+      } finally {
+        if (!abortControllerRef.current?.signal.aborted) {
+          setIsUpdating(false);
+        }
+        timeoutRef.current = null;
+      }
+    }, 200);
+  }, [isMounted, isUpdating, branches, fetchExpenses]);
   // 현재 선택된 지점 정보
-  const currentBranchId = selectedBranchId === 'all' ? '' : selectedBranchId;
-  const currentBranch = branches.find(b => b.id === currentBranchId);
+  let currentBranchId = selectedBranchId === 'all' ? '' : selectedBranchId;
+  let currentBranch = branches.find(b => b.id === currentBranchId);
+  
+  // 본사관리자인 경우 특별 처리
+  if (isHeadOfficeAdmin && selectedBranchId === 'all') {
+    // 본사관리자가 '전체'를 선택한 경우, 본사 지점을 기본값으로 설정
+    const headOfficeBranch = branches.find(b => b.type === '본사');
+    if (headOfficeBranch) {
+      currentBranchId = headOfficeBranch.id;
+      currentBranch = headOfficeBranch;
+    }
+  }
+  
+
   // 필터링된 지출 데이터
   const filteredExpenses = useMemo(() => {
     if (selectedBranchId === 'all') {
@@ -180,8 +278,27 @@ export default function SimpleExpensesPage() {
     }
   }, [selectedMonth, availableMonths]);
 
+  // 컴포넌트 마운트 상태 관리
+  useEffect(() => {
+    setIsMounted(true);
+    setRenderKey(prev => prev + 1);
+    return () => {
+      setIsMounted(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   // 초기 데이터 로드
   useEffect(() => {
+    if (!isMounted) return;
+    
     if (!isAdmin && user?.franchise) {
       // 일반 사용자는 자신의 지점만
       const userBranch = branches.find(b => b.name === user.franchise);
@@ -198,21 +315,8 @@ export default function SimpleExpensesPage() {
       // 기본적으로 전체 데이터 로드
       fetchExpenses();
     }
-  }, [user, branches, isAdmin, fetchExpenses]);
-  // 관리자일 때 초기 로딩 시 전체 데이터 강제 로드
-  useEffect(() => {
-    if (isAdmin && branches.length > 0) {
-      // 관리자는 항상 전체 데이터를 먼저 로드
-      fetchExpenses();
-    }
-  }, [isAdmin, branches.length, fetchExpenses]);
-  // 본사 관리 탭이 활성화되면 모든 지점 데이터 로드
-  useEffect(() => {
-    if (activeTab === 'headquarters' && isAdmin) {
-      // 본사 관리 탭에서는 모든 지점 데이터를 로드하지 않고
-      // ExpenseList 컴포넌트에서 처리하도록 함
-    }
-  }, [activeTab, isAdmin]);
+  }, [user, branches, isAdmin, fetchExpenses, isMounted]);
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* 헤더 */}
@@ -227,31 +331,41 @@ export default function SimpleExpensesPage() {
         <div className="flex items-center gap-2">
           {/* 월 선택 드롭다운 */}
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <Select 
+            key={`month-select-${selectedMonth}-${renderKey}-${isMounted}`}
+            value={selectedMonth} 
+            onValueChange={setSelectedMonth}
+            disabled={isUpdating || !isMounted}
+          >
             <SelectTrigger className="w-[150px] text-foreground">
               <SelectValue placeholder="월 선택" />
             </SelectTrigger>
-                         <SelectContent>
-               <SelectItem value="all">전체 기간</SelectItem>
-               {availableMonths.map(monthKey => {
-                 const [year, month] = monthKey.split('-');
-                 const monthLabel = `${year}년 ${parseInt(month)}월`;
-                 return (
-                   <SelectItem key={monthKey} value={monthKey}>
-                     {monthLabel}
-                   </SelectItem>
-                 );
-               })}
-             </SelectContent>
+            <SelectContent>
+              <SelectItem value="all">전체 기간</SelectItem>
+              {availableMonths.map(monthKey => {
+                const [year, month] = monthKey.split('-');
+                const monthLabel = `${year}년 ${parseInt(month)}월`;
+                return (
+                  <SelectItem key={monthKey} value={monthKey}>
+                    {monthLabel}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
           </Select>
           
           {/* 지점 선택 드롭다운 (관리자만) */}
-          {isAdmin && (
+          {isAdmin && isMounted && (
             <>
               <Building className="h-4 w-4 text-muted-foreground" />
-              <Select value={selectedBranchId} onValueChange={handleBranchChange}>
+              <Select 
+                key={`branch-select-${selectedBranchId}-${renderKey}-${isMounted}`}
+                value={selectedBranchId} 
+                onValueChange={handleBranchChange} 
+                disabled={branchesLoading || isUpdating || !isMounted}
+              >
                 <SelectTrigger className="w-[200px] text-foreground">
-                  <SelectValue placeholder="지점 선택" />
+                  <SelectValue placeholder={branchesLoading ? "지점 데이터 로딩 중..." : "지점 선택"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">전체</SelectItem>
@@ -273,70 +387,126 @@ export default function SimpleExpensesPage() {
       </div>
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">오늘 지출</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(todayTotal)}</div>
-            <p className="text-xs text-muted-foreground">
-              {todayExpenses.length}건
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">이번 달 지출</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(thisMonthStats.totalAmount)}</div>
-            <p className="text-xs text-muted-foreground">
-              {thisMonthExpenses.length}건
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">주요 분류</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {thisMonthStats.categoryBreakdown.length > 0 ? (
-              <div>
-                <div className="text-2xl font-bold">
-                  {SIMPLE_EXPENSE_CATEGORY_LABELS[thisMonthStats.categoryBreakdown[0].category]}
+        {branchesLoading ? (
+          // 로딩 중일 때 스켈레톤 표시
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">오늘 지출</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {thisMonthStats.categoryBreakdown[0].percentage.toFixed(1)}%
-                </p>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">데이터 없음</div>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">주요 구매처</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {thisMonthStats.topSuppliers.length > 0 ? (
-              <div>
-                <div className="text-2xl font-bold truncate">
-                  {thisMonthStats.topSuppliers[0].name}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">이번 달 지출</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">주요 분류</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">주요 구매처</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">오늘 지출</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(todayTotal)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(thisMonthStats.topSuppliers[0].amount)}
+                  {todayExpenses.length}건
                 </p>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">데이터 없음</div>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">이번 달 지출</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(thisMonthStats.totalAmount)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {thisMonthExpenses.length}건
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">주요 분류</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {thisMonthStats.categoryBreakdown.length > 0 ? (
+                  <div>
+                    <div className="text-2xl font-bold">
+                      {SIMPLE_EXPENSE_CATEGORY_LABELS[thisMonthStats.categoryBreakdown[0].category]}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {thisMonthStats.categoryBreakdown[0].percentage.toFixed(1)}%
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">데이터 없음</div>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">주요 구매처</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                {thisMonthStats.topSuppliers.length > 0 ? (
+                  <div>
+                    <div className="text-2xl font-bold truncate">
+                      {thisMonthStats.topSuppliers[0].name}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(thisMonthStats.topSuppliers[0].amount)}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">데이터 없음</div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
       {/* 이번 달 카테고리별 요약 */}
       {thisMonthStats.categoryBreakdown.length > 0 && (
@@ -367,7 +537,8 @@ export default function SimpleExpensesPage() {
         </Card>
       )}
              {/* 메인 탭 */}
-       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+       {isMounted && (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4" key={`tabs-${renderKey}-${isMounted}`}>
          <TabsList className="grid w-full grid-cols-5">
            <TabsTrigger value="input" className="flex items-center gap-2">
              <Plus className="h-4 w-4" />
@@ -393,26 +564,78 @@ export default function SimpleExpensesPage() {
            )}
          </TabsList>
         <TabsContent value="input">
-          <ExpenseInputForm 
-            onSuccess={handleSuccess}
-            continueMode={true}
-            selectedBranchId={currentBranchId}
-            selectedBranchName={currentBranch?.name || ''}
-          />
+          {branchesLoading ? (
+            <Card className="w-full max-w-2xl mx-auto">
+              <CardContent className="flex items-center justify-center p-8">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">지점 데이터를 불러오는 중입니다...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {/* 엑셀 업로드 안내 카드 */}
+              <Card className="w-full max-w-2xl mx-auto">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                    엑셀 대량 업로드
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    대량의 지출 데이터를 엑셀 파일로 한 번에 입력할 수 있습니다.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-blue-800 mb-1">간편한 대량 입력</h4>
+                      <p className="text-sm text-blue-600">
+                        • 엑셀 템플릿 다운로드 후 데이터 입력<br/>
+                        • 신규 구매처, 자재, 상품 자동 등록<br/>
+                        • 지점별 데이터 자동 분류 및 재고 업데이트
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleDownloadTemplate}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-2 inline" />
+                        템플릿 다운로드
+                      </button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 기존 지출 입력 폼 */}
+              <ExpenseInputForm 
+                key={`expense-form-${renderKey}-${currentBranchId}`}
+                onSuccess={handleSuccess}
+                continueMode={true}
+                selectedBranchId={currentBranchId}
+                selectedBranchName={currentBranch?.name || ''}
+              />
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="fixed">
           <FixedCostTemplate 
+            key={`fixed-cost-${renderKey}`}
             onSuccess={handleSuccess} 
           />
         </TabsContent>
                  <TabsContent value="list">
            <ExpenseList 
+             key={`expense-list-${renderKey}-${selectedBranchId}`}
              refreshTrigger={refreshTrigger} 
              selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
            />
          </TabsContent>
          <TabsContent value="charts">
            <ExpenseCharts 
+             key={`expense-charts-${renderKey}-${selectedBranchId}-${selectedMonth}`}
              expenses={filteredExpenses}
              currentBranchName={currentBranch?.name || ''}
              selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
@@ -428,7 +651,8 @@ export default function SimpleExpensesPage() {
              />
            </TabsContent>
          )}
-      </Tabs>
+        </Tabs>
+      )}
     </div>
   );
 }
