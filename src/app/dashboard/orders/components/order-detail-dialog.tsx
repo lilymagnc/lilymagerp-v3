@@ -161,13 +161,13 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                   </div>
                   <p className="text-sm text-muted-foreground">{order.orderer.contact}</p>
                 </div>
-                {order.orderer.companyName && (
+                {order.orderer.company && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Building className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">회사명</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{order.orderer.companyName}</p>
+                    <p className="text-sm text-muted-foreground">{order.orderer.company}</p>
                   </div>
                 )}
                 {order.orderer.email && (
@@ -197,48 +197,68 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                     <Package className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">수령 방법</span>
                   </div>
-                  {getDeliveryMethodBadge(order.delivery?.method || 'pickup')}
+                  {getDeliveryMethodBadge(order.receiptType === 'delivery_reservation' ? 'delivery' : 'pickup')}
                 </div>
-                {order.delivery?.pickupDate && (
+                {(order.pickupInfo || order.deliveryInfo) && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm font-medium">픽업/배송일시</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {order.delivery.pickupDate 
-                        ? format((order.delivery.pickupDate as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')
+                      {order.pickupInfo?.date && order.pickupInfo?.time 
+                        ? `${order.pickupInfo.date} ${order.pickupInfo.time}`
+                        : order.deliveryInfo?.date && order.deliveryInfo?.time
+                        ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}`
                         : '-'
                       }
                     </p>
                   </div>
                 )}
-                {order.delivery?.recipient && (
+                {order.pickupInfo && (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">픽업자명</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{order.pickupInfo.pickerName}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">픽업자 연락처</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{order.pickupInfo.pickerContact}</p>
+                    </div>
+                  </>
+                )}
+                {order.deliveryInfo && (
                   <>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">수령인명</span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{order.delivery.recipient.name}</p>
+                      <p className="text-sm text-muted-foreground">{order.deliveryInfo.recipientName}</p>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Phone className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">수령인 연락처</span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{order.delivery.recipient.contact}</p>
+                      <p className="text-sm text-muted-foreground">{order.deliveryInfo.recipientContact}</p>
                     </div>
+                    {order.deliveryInfo.address && (
+                      <div className="space-y-2 md:col-span-2">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">배송 주소</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{order.deliveryInfo.address}</p>
+                      </div>
+                    )}
                   </>
-                )}
-                {order.delivery?.address && (
-                  <div className="space-y-2 md:col-span-2">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">배송 주소</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{order.delivery.address}</p>
-                  </div>
                 )}
               </div>
             </CardContent>
@@ -290,32 +310,43 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                     </div>
                     {getMessageTypeBadge(order.message.type)}
                   </div>
-                  {order.message.sender && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">보내는 분</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{order.message.sender}</p>
-                    </div>
-                  )}
                 </div>
+                {/* 메시지 내용에서 보내는 사람 분리 */}
                 {order.message.content && (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">메시지 내용</span>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm whitespace-pre-wrap">{order.message.content}</p>
-                    </div>
-                  </div>
+                  (() => {
+                    const messageParts = order.message.content.split('\n---\n');
+                    const messageContent = messageParts[0];
+                    const senderName = messageParts.length > 1 ? messageParts[1] : null;
+                    
+                    return (
+                      <>
+                        {senderName && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm font-medium">보내는 분</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{senderName}</p>
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">메시지 내용</span>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <p className="text-sm whitespace-pre-wrap">{messageContent}</p>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()
                 )}
               </CardContent>
             </Card>
           )}
           {/* 특별 요청사항 */}
-          {order.specialRequests && order.specialRequests.trim() && (
+          {order.request && order.request.trim() && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -326,7 +357,7 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
               <CardContent>
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
                   <p className="text-sm whitespace-pre-wrap text-amber-800">
-                    {order.specialRequests}
+                    {order.request}
                   </p>
                 </div>
               </CardContent>
