@@ -11,6 +11,8 @@ interface OrderItemForm {
   name: string;
   quantity: number;
   price: number;
+  source?: 'excel_upload' | 'manual'; // 출처 표시
+  originalData?: string; // 원본 데이터 보존
 }
 export interface OrderData {
   branchId: string;
@@ -75,6 +77,7 @@ export interface OrderData {
     content: string;
   };
   request: string;
+  source?: 'excel_upload' | 'manual'; // 출처 표시
 }
 export interface Order extends Omit<OrderData, 'orderDate'> {
   id: string;
@@ -131,7 +134,7 @@ export function useOrders() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
-  const addOrder = async (orderData: OrderData) => {
+  const addOrder = async (orderData: OrderData): Promise<string | null> => {
     setLoading(true);
     try {
       // Ensure orderDate is a JS Date object before proceeding
@@ -144,6 +147,11 @@ export function useOrders() {
       };
       // 주문 추가
       const orderDocRef = await addDoc(collection(db, 'orders'), orderPayload);
+      
+      // 엑셀 업로드 주문인지 확인
+      const isExcelUpload = orderData.source === 'excel_upload' || 
+                           orderData.items.some(item => item.source === 'excel_upload');
+      
       // 고객 등록/업데이트 로직 (포인트 차감 포함)
       if (orderData.registerCustomer && !orderData.isAnonymous) {
         await registerCustomerFromOrder(orderData);
@@ -151,58 +159,93 @@ export function useOrders() {
         // 고객 등록을 하지 않지만 기존 고객이 포인트를 사용한 경우에만 별도 차감
         await deductCustomerPoints(orderData.orderer.id, orderData.summary.pointsUsed);
       }
+      
       // 수령자 정보 별도 저장 (배송 예약인 경우)
       if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
         await saveRecipientInfo(orderData.deliveryInfo, orderData.branchName, orderDocRef.id);
       }
+      
       const historyBatch = writeBatch(db);
-      for (const item of orderData.items) {
-        if (!item.id || item.quantity <= 0) continue;
-        await runTransaction(db, async (transaction) => {
-          const productQuery = query(
-            collection(db, "products"),
-            where("id", "==", item.id),
-            where("branch", "==", orderData.branchName)
-          );
-          const productSnapshot = await getDocs(productQuery);
-          if (productSnapshot.empty) {
-            throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${orderData.branchName}' 지점에서 찾을 수 없습니다.`);
-          }
-          const productDocRef = productSnapshot.docs[0].ref;
-          const productDoc = await transaction.get(productDocRef);
-          if (!productDoc.exists()) {
-            throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
-          }
-          const currentStock = productDoc.data().stock || 0;
-          const newStock = currentStock - item.quantity;
-          if (newStock < 0) {
-            throw new Error(`재고 부족: '${item.name}'의 재고가 부족하여 주문을 완료할 수 없습니다. (현재 재고: ${currentStock})`);
-          }
-          transaction.update(productDocRef, { stock: newStock });
+      
+      // 엑셀 업로드 주문인 경우 재고 차감 제외
+      if (isExcelUpload) {
+        // 엑셀 업로드 주문은 재고 차감 없이 히스토리만 기록
+        for (const item of orderData.items) {
+          if (!item.id || item.quantity <= 0) continue;
+          
           const historyDocRef = doc(collection(db, "stockHistory"));
           historyBatch.set(historyDocRef, {
             date: Timestamp.fromDate(orderDate),
-            type: "out",
-            itemType: "product",
+            type: "excel_upload",
+            itemType: "excel_product",
             itemId: item.id,
             itemName: item.name,
             quantity: item.quantity,
-            fromStock: currentStock,
-            toStock: newStock,
-            resultingStock: newStock,
             branch: orderData.branchName,
-            operator: user?.email || "Unknown User",
+            operator: user?.email || "Excel Upload",
             price: item.price,
             totalAmount: item.price * item.quantity,
+            note: "엑셀 업로드 주문 - 재고 차감 없음"
           });
-        });
+        }
+      } else {
+        // 일반 주문은 기존 재고 차감 로직 사용
+        for (const item of orderData.items) {
+          if (!item.id || item.quantity <= 0) continue;
+          await runTransaction(db, async (transaction) => {
+            const productQuery = query(
+              collection(db, "products"),
+              where("id", "==", item.id),
+              where("branch", "==", orderData.branchName)
+            );
+            const productSnapshot = await getDocs(productQuery);
+            if (productSnapshot.empty) {
+              throw new Error(`주문 처리 오류: 상품 '${item.name}'을(를) '${orderData.branchName}' 지점에서 찾을 수 없습니다.`);
+            }
+            const productDocRef = productSnapshot.docs[0].ref;
+            const productDoc = await transaction.get(productDocRef);
+            if (!productDoc.exists()) {
+              throw new Error(`상품 문서를 찾을 수 없습니다: ${item.name}`);
+            }
+            const currentStock = productDoc.data().stock || 0;
+            const newStock = currentStock - item.quantity;
+            if (newStock < 0) {
+              throw new Error(`재고 부족: '${item.name}'의 재고가 부족하여 주문을 완료할 수 없습니다. (현재 재고: ${currentStock})`);
+            }
+            transaction.update(productDocRef, { stock: newStock });
+            const historyDocRef = doc(collection(db, "stockHistory"));
+            historyBatch.set(historyDocRef, {
+              date: Timestamp.fromDate(orderDate),
+              type: "out",
+              itemType: "product",
+              itemId: item.id,
+              itemName: item.name,
+              quantity: item.quantity,
+              fromStock: currentStock,
+              toStock: newStock,
+              resultingStock: newStock,
+              branch: orderData.branchName,
+              operator: user?.email || "Unknown User",
+              price: item.price,
+              totalAmount: item.price * item.quantity,
+            });
+          });
+        }
       }
+      
       await historyBatch.commit();
+      
+      const successMessage = isExcelUpload 
+        ? '엑셀 업로드 주문이 추가되었습니다. (재고 차감 없음)'
+        : '새 주문이 추가되고 재고가 업데이트되었습니다.';
+        
       toast({
         title: '성공',
-        description: '새 주문이 추가되고 재고가 업데이트되었습니다.',
+        description: successMessage,
       });
+      
       await fetchOrders();
+      return orderDocRef.id; // 주문 ID 반환
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -210,6 +253,7 @@ export function useOrders() {
         description: '주문 추가 중 오류가 발생했습니다.',
         duration: 5000,
       });
+      return null; // 오류 시 null 반환
     } finally {
       setLoading(false);
     }

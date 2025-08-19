@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useOrders } from "@/hooks/use-orders";
 import { useBranches } from "@/hooks/use-branches";
-import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, XCircle, Download } from "lucide-react";
+import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, XCircle, Download, Trash2, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Timestamp } from "firebase/firestore";
 
@@ -45,6 +45,7 @@ interface UploadResult {
   duplicate: number;
   error: number;
   errors: string[];
+  uploadedOrderIds: string[]; // 업로드된 주문 ID들 저장
 }
 
 export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogProps) {
@@ -52,8 +53,9 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
-  const { addOrder } = useOrders();
+  const { addOrder, deleteOrder } = useOrders();
   const { branches } = useBranches();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,8 +104,8 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
           messageContent: row[18] || '',
           specialRequests: row[19] || '',
         };
-        // 필수 필드 검증
-        if (order.ordererName && order.branchName) {
+        // 필수 필드 검증 (지점명만 있으면 됨)
+        if (order.branchName) {
           orders.push(order);
         }
       } catch (error) {
@@ -120,13 +122,29 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       throw new Error(`지점을 찾을 수 없습니다: ${excelData.branchName}`);
     }
 
-    // 주문 상품 파싱
-    const orderItems = excelData.orderItems.split(',').map(item => ({
-      id: `temp_${Date.now()}_${Math.random()}`, // 임시 ID 생성
+    // 주문 상품 파싱 - 등록되지 않은 상품명도 허용
+    const orderItems = excelData.orderItems.split(',').map((item, index) => ({
+      id: `excel_${Date.now()}_${index}`, // 엑셀 업로드용 ID
       name: item.trim(),
       price: excelData.itemPrice,
-      quantity: 1
+      quantity: 1,
+      source: 'excel_upload', // 출처 표시
+      originalData: item.trim() // 원본 데이터 보존
     }));
+
+    // 날짜 처리 - 날짜만 입력된 경우 시간 추가
+    let orderDate = new Date(excelData.orderDate);
+    if (isNaN(orderDate.getTime())) {
+      // 날짜 파싱 실패 시 현재 시간으로 설정
+      orderDate = new Date();
+    }
+    
+    // 시간이 없는 경우 기본 시간 설정 (09:00)
+    if (excelData.orderDate && !excelData.orderDate.includes(':')) {
+      const dateOnly = new Date(excelData.orderDate);
+      dateOnly.setHours(9, 0, 0, 0);
+      orderDate = dateOnly;
+    }
 
     // 수령 방법에 따른 정보 설정
     const isDelivery = excelData.deliveryMethod === 'delivery';
@@ -135,17 +153,17 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
     // 픽업 정보 설정
     const pickupInfo = !isDelivery ? {
       date: excelData.pickupDate ? new Date(excelData.pickupDate).toISOString().split('T')[0] : '',
-      time: excelData.pickupDate ? new Date(excelData.pickupDate).toTimeString().split(' ')[0] : '',
-      pickerName: excelData.recipientName || excelData.ordererName,
-      pickerContact: excelData.recipientContact || excelData.ordererContact
+      time: excelData.pickupDate ? new Date(excelData.pickupDate).toTimeString().split(' ')[0] : '09:00:00',
+      pickerName: excelData.recipientName || excelData.ordererName || '고객',
+      pickerContact: excelData.recipientContact || excelData.ordererContact || ''
     } : null;
 
     // 배송 정보 설정
     const deliveryInfo = isDelivery ? {
       date: excelData.pickupDate ? new Date(excelData.pickupDate).toISOString().split('T')[0] : '',
-      time: excelData.pickupDate ? new Date(excelData.pickupDate).toTimeString().split(' ')[0] : '',
-      recipientName: excelData.recipientName || excelData.ordererName,
-      recipientContact: excelData.recipientContact || excelData.ordererContact,
+      time: excelData.pickupDate ? new Date(excelData.pickupDate).toTimeString().split(' ')[0] : '09:00:00',
+      recipientName: excelData.recipientName || excelData.ordererName || '고객',
+      recipientContact: excelData.recipientContact || excelData.ordererContact || '',
       address: excelData.deliveryAddress || '',
       district: ''
     } : null;
@@ -182,7 +200,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
     const order = {
       branchId: branch.id,
       branchName: excelData.branchName,
-      orderDate: new Date(excelData.orderDate),
+      orderDate: orderDate,
       status: (orderStatusMap[excelData.orderStatus] || 'processing') as 'processing' | 'completed' | 'canceled',
       items: orderItems,
       summary: {
@@ -195,13 +213,13 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
         total: excelData.totalAmount
       },
       orderer: {
-        name: excelData.ordererName,
-        contact: excelData.ordererContact,
+        name: excelData.ordererName || '고객',
+        contact: excelData.ordererContact || '',
         company: '',
-        email: excelData.ordererEmail
+        email: excelData.ordererEmail || ''
       },
-      isAnonymous: false,
-      registerCustomer: true,
+      isAnonymous: !excelData.ordererName || excelData.ordererName === '고객' || excelData.ordererName === '현금고객',
+      registerCustomer: false, // 엑셀 업로드는 고객 등록 안함
       orderType: "store" as const,
       receiptType: receiptType as any,
       payment: {
@@ -217,7 +235,8 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
         type: "card" as const,
         content: ""
       },
-      request: excelData.specialRequests || ''
+      request: excelData.specialRequests || '',
+      source: 'excel_upload' // 출처 표시
     };
 
     return order;
@@ -244,20 +263,25 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
         success: 0,
         duplicate: 0,
         error: 0,
-        errors: []
+        errors: [],
+        uploadedOrderIds: []
       };
-      // 중복 체크 및 업로드
+      // 업로드 (중복 체크 완화)
       for (let i = 0; i < excelOrders.length; i++) {
         const excelOrder = excelOrders[i];
         try {
-          // 중복 체크 (주문자명 + 연락처 + 주문일시로 판단)
+          // 기존 데이터 업로드용이므로 중복 체크 완화
           const isDuplicate = await checkDuplicateOrder(excelOrder);
-                     if (isDuplicate) {
-             result.duplicate++;
-           } else {
-             await addOrder(convertToOrderFormat(excelOrder));
-             result.success++;
-           }
+          if (isDuplicate) {
+            result.duplicate++;
+          } else {
+            const orderData = convertToOrderFormat(excelOrder);
+            const orderId = await addOrder(orderData);
+            if (orderId) {
+              result.uploadedOrderIds.push(orderId);
+            }
+            result.success++;
+          }
         } catch (error) {
           result.error++;
           result.errors.push(`행 ${i + 2}: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
@@ -280,6 +304,55 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       setUploading(false);
     }
   };
+
+  // 일괄 삭제 기능
+  const handleBulkDelete = async () => {
+    if (!uploadResult || uploadResult.uploadedOrderIds.length === 0) {
+      toast({
+        title: "삭제할 주문 없음",
+        description: "업로드된 주문이 없습니다.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `업로드된 ${uploadResult.uploadedOrderIds.length}개의 주문을 모두 삭제하시겠습니까?\n` +
+      "이 작업은 되돌릴 수 없습니다."
+    );
+
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      let deletedCount = 0;
+      for (const orderId of uploadResult.uploadedOrderIds) {
+        try {
+          await deleteOrder(orderId);
+          deletedCount++;
+        } catch (error) {
+          console.error(`주문 삭제 실패: ${orderId}`, error);
+        }
+      }
+      
+      toast({
+        title: "일괄 삭제 완료",
+        description: `${deletedCount}개의 주문이 삭제되었습니다.`,
+      });
+      
+      // 결과 초기화
+      setUploadResult(null);
+    } catch (error) {
+      toast({
+        title: "삭제 실패",
+        description: "일괄 삭제 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const readExcelFile = (file: File): Promise<any[][]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -299,9 +372,10 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       reader.readAsArrayBuffer(file);
     });
   };
+
   const checkDuplicateOrder = async (order: ExcelOrderData): Promise<boolean> => {
     try {
-      // 주문자명 + 연락처 + 주문일시로 중복 체크
+      // 기존 데이터 업로드용 중복 체크 (완화된 기준)
       const { collection, query, where, getDocs } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
       
@@ -310,16 +384,15 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       const startOfDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
       const endOfDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate(), 23, 59, 59);
       
-      // 기존 주문 검색
+      // 기존 주문 검색 (지점명 + 날짜 + 상품명 + 금액으로 중복 체크)
       const q = query(
         collection(db, 'orders'),
-        where('orderer.name', '==', order.ordererName),
-        where('orderer.contact', '==', order.ordererContact)
+        where('branchName', '==', order.branchName)
       );
       
       const querySnapshot = await getDocs(q);
       
-      // 같은 날짜에 같은 주문자명과 연락처로 주문한 내역이 있는지 확인
+      // 같은 날짜에 같은 상품과 금액으로 주문한 내역이 있는지 확인
       for (const doc of querySnapshot.docs) {
         const existingOrder = doc.data();
         if (existingOrder.orderDate) {
@@ -329,7 +402,13 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
           
           // 같은 날짜인지 확인
           if (existingDate >= startOfDay && existingDate <= endOfDay) {
-            return true; // 중복 발견
+            // 상품명과 금액도 비교
+            const existingItems = existingOrder.items?.map((item: any) => item.name).join(',') || '';
+            const existingTotal = existingOrder.summary?.total || 0;
+            
+            if (existingItems === order.orderItems && existingTotal === order.totalAmount) {
+              return true; // 중복 발견
+            }
           }
         }
       }
@@ -339,17 +418,20 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       return false; // 오류 발생 시 중복이 아닌 것으로 처리
     }
   };
+
   const downloadTemplate = () => {
     const template = [
       // === 기본 정보 (업로드/다운로드 공통) ===
       ['주문일시', '지점명', '주문상품', '상품금액', '배송비', '결제수단', '총금액', '주문상태', '결제상태', '주문자명', '주문자연락처', '주문자이메일', '수령방법', '픽업/배송일시', '수령인명', '수령인연락처', '배송주소', '메세지타입', '메세지내용', '요청사항'],
-      ['2024-01-15 14:30', '강남점', '장미 10송이', '50000', '3000', '카드', '53000', 'processing', 'pending', '김철수', '010-1234-5678', 'kim@example.com', 'pickup', '2024-01-16 15:00', '', '', '', 'card', '생일 축하해요!', '']
+      ['2024-01-15', '강남점', '장미 10송이', '50000', '3000', '카드', '53000', 'processing', 'pending', '김철수', '010-1234-5678', 'kim@example.com', 'pickup', '2024-01-16', '', '', '', 'card', '생일 축하해요!', ''],
+      ['2024-01-15', '강남점', '튤립 5송이', '30000', '0', '현금', '30000', 'completed', 'completed', '고객', '', '', 'pickup', '2024-01-15', '', '', '', 'none', '', '']
     ];
     const ws = XLSX.utils.aoa_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "주문템플릿");
     XLSX.writeFile(wb, "주문_업로드_템플릿.xlsx");
   };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -359,7 +441,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
             엑셀 주문 일괄 업로드
           </DialogTitle>
           <DialogDescription>
-            엑셀 파일을 통해 주문을 일괄 업로드합니다.
+            엑셀 파일을 통해 주문을 일괄 업로드합니다. 기존 매장 데이터 업로드에 최적화되어 있습니다.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6">
@@ -376,7 +458,12 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
               <p className="text-xs text-muted-foreground mt-2">
                 템플릿을 다운로드하여 데이터를 입력한 후 업로드하세요. 
                 <br />
-                <span className="text-blue-600 font-medium">💡 팁:</span> 다운로드한 엑셀 파일을 수정하여 다시 업로드할 수 있습니다!
+                <span className="text-blue-600 font-medium">💡 팁:</span> 
+                • 날짜만 입력해도 됩니다 (시간은 자동으로 09:00으로 설정)
+                <br />
+                • 등록되지 않은 상품명도 입력 가능합니다
+                <br />
+                • 주문자명이 없으면 "고객"으로 자동 설정됩니다
               </p>
             </CardContent>
           </Card>
@@ -451,6 +538,33 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
                           <li key={index}>{error}</li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+                  {/* 일괄 삭제 버튼 */}
+                  {uploadResult.uploadedOrderIds.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <Button
+                        onClick={handleBulkDelete}
+                        variant="destructive"
+                        size="sm"
+                        disabled={deleting}
+                        className="w-full"
+                      >
+                        {deleting ? (
+                          <>
+                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                            삭제 중...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            업로드된 주문 일괄 삭제 ({uploadResult.uploadedOrderIds.length}개)
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        ⚠️ 잘못 업로드된 경우에만 사용하세요. 이 작업은 되돌릴 수 없습니다.
+                      </p>
                     </div>
                   )}
                 </div>
