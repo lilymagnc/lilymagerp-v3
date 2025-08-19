@@ -145,8 +145,16 @@ export function useOrders() {
         ...orderData,
         orderDate: Timestamp.fromDate(orderDate),
       };
+      // 매장픽업(즉시) 주문인지 확인
+      const isImmediatePickup = orderData.receiptType === 'store_pickup';
+      
+      // 매장픽업(즉시) 주문인 경우 자동으로 완료 상태로 설정
+      const finalOrderPayload = isImmediatePickup 
+        ? { ...orderPayload, status: 'completed' as const }
+        : orderPayload;
+      
       // 주문 추가
-      const orderDocRef = await addDoc(collection(db, 'orders'), orderPayload);
+      const orderDocRef = await addDoc(collection(db, 'orders'), finalOrderPayload);
       
       // 엑셀 업로드 주문인지 확인
       const isExcelUpload = orderData.source === 'excel_upload' || 
@@ -235,9 +243,14 @@ export function useOrders() {
       
       await historyBatch.commit();
       
-      const successMessage = isExcelUpload 
-        ? '엑셀 업로드 주문이 추가되었습니다. (재고 차감 없음)'
-        : '새 주문이 추가되고 재고가 업데이트되었습니다.';
+      let successMessage = '';
+      if (isExcelUpload) {
+        successMessage = '엑셀 업로드 주문이 추가되었습니다. (재고 차감 없음)';
+      } else if (isImmediatePickup) {
+        successMessage = '매장픽업(즉시) 주문이 완료 상태로 추가되었습니다.';
+      } else {
+        successMessage = '새 주문이 추가되고 재고가 업데이트되었습니다.';
+      }
         
       toast({
         title: '성공',

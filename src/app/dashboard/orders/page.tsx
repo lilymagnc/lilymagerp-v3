@@ -731,8 +731,9 @@ export default function OrdersPage() {
                   <TableRow 
                     key={order.id} 
                     className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => handleOrderRowClick(order)}
                   >
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -749,10 +750,7 @@ export default function OrdersPage() {
                         )}
                       </Button>
                     </TableCell>
-                    <TableCell 
-                      className="font-medium"
-                      onClick={() => handleOrderRowClick(order)}
-                    >
+                    <TableCell className="font-medium">
                       {order.id.slice(0, 8)}...
                     </TableCell>
                   <TableCell>{order.orderer.name}</TableCell>
