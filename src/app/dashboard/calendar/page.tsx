@@ -8,14 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useBranches } from "@/hooks/use-branches";
 import { useOrders } from "@/hooks/use-orders";
-import { Calendar, CalendarDays, Truck, Package, Users, Bell, Plus, Filter } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO } from "date-fns";
+import { useCustomers } from "@/hooks/use-customers";
+import { Calendar, CalendarDays, Truck, Package, Users, Bell, Plus, Filter, CreditCard } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO, setDate } from "date-fns";
 import { ko } from "date-fns/locale";
 import { EventDialog } from "./components/event-dialog";
 
 interface CalendarEvent {
   id: string;
-  type: 'delivery' | 'material' | 'employee' | 'notice';
+  type: 'delivery' | 'material' | 'employee' | 'notice' | 'payment';
   title: string;
   description?: string;
   startDate: Date;
@@ -31,6 +32,7 @@ export default function CalendarPage() {
   const { user } = useAuth();
   const { branches } = useBranches();
   const { orders } = useOrders();
+  const { customers } = useCustomers();
   
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -71,7 +73,8 @@ export default function CalendarPage() {
     { value: 'delivery', label: '배송/픽업', icon: Truck, color: 'bg-blue-500' },
     { value: 'material', label: '자재요청', icon: Package, color: 'bg-orange-500' },
     { value: 'employee', label: '직원스케줄', icon: Users, color: 'bg-green-500' },
-    { value: 'notice', label: '공지/알림', icon: Bell, color: 'bg-red-500' }
+    { value: 'notice', label: '공지/알림', icon: Bell, color: 'bg-red-500' },
+    { value: 'payment', label: '월결제일', icon: CreditCard, color: 'bg-purple-500' }
   ];
 
   // 현재 월의 날짜들 계산
@@ -121,7 +124,7 @@ export default function CalendarPage() {
           description: `상품: ${order.items?.map(item => item.name).join(', ')}`,
           startDate: pickupDate,
           branchName: order.branchName,
-          status: order.status === 'completed' ? 'completed' : 'pending',
+          status: (order.status as string) === 'completed' ? 'completed' : 'pending',
           relatedId: order.id,
           color: 'bg-blue-500',
           isAllDay: false
@@ -144,7 +147,7 @@ export default function CalendarPage() {
           description: `주소: ${order.deliveryInfo.address}`,
           startDate: deliveryDate,
           branchName: order.branchName,
-          status: order.status === 'completed' ? 'completed' : 'pending',
+          status: (order.status as string) === 'completed' ? 'completed' : 'pending',
           relatedId: order.id,
           color: 'bg-green-500',
           isAllDay: false
@@ -155,9 +158,51 @@ export default function CalendarPage() {
     return pickupDeliveryEvents;
   }, [orders]);
 
+  // 고객의 월결제일 데이터를 캘린더 이벤트로 변환
+  const convertCustomersToEvents = useMemo(() => {
+    const paymentEvents: CalendarEvent[] = [];
+
+    customers.forEach(customer => {
+      // 기업고객이고 월결제일이 설정된 경우에만 처리
+      if (customer.type === 'company' && customer.monthlyPaymentDay && customer.monthlyPaymentDay.trim()) {
+        const paymentDay = parseInt(customer.monthlyPaymentDay);
+        
+        // 현재 월의 결제일 계산
+        const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), paymentDay);
+        
+        // 다음 월의 결제일도 계산 (월말에 가까운 날짜의 경우)
+        const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, paymentDay);
+        
+        // 이전 월의 결제일도 계산 (월초에 가까운 날짜의 경우)
+        const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, paymentDay);
+        
+        // 3개월치 결제일을 모두 추가
+        [prevMonth, currentMonth, nextMonth].forEach(date => {
+          // 유효한 날짜인지 확인 (예: 31일이 없는 월의 경우)
+          if (date.getDate() === paymentDay) {
+            paymentEvents.push({
+              id: `payment_${customer.id}_${date.getTime()}`,
+              type: 'payment',
+              title: `${customer.companyName || customer.name} 월결제일`,
+              description: `담당자: ${customer.name} (${customer.contact})`,
+              startDate: date,
+              branchName: customer.branch,
+              status: 'pending',
+              relatedId: customer.id,
+              color: 'bg-purple-500',
+              isAllDay: true
+            });
+          }
+        });
+      }
+    });
+
+    return paymentEvents;
+  }, [customers, currentDate]);
+
   // 필터링된 이벤트 (수동 추가 이벤트 + 픽업/배송 예약 이벤트)
   const filteredEvents = useMemo(() => {
-    const allEvents = [...events, ...convertOrdersToEvents];
+    const allEvents = [...events, ...convertOrdersToEvents, ...convertCustomersToEvents];
     
     return allEvents.filter(event => {
       // 공지/알림은 모든 지점에서 볼 수 있음
@@ -181,7 +226,7 @@ export default function CalendarPage() {
       
       return true;
     });
-  }, [events, convertOrdersToEvents, selectedBranch, selectedEventType]);
+  }, [events, convertOrdersToEvents, convertCustomersToEvents, selectedBranch, selectedEventType]);
 
   // 특정 날짜의 이벤트들
   const getEventsForDate = (date: Date) => {

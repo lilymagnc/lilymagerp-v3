@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, FileText } from "lucide-react";
+import { MoreHorizontal, FileText, AlertTriangle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Customer } from "@/hooks/use-customers";
 interface CustomerTableProps {
@@ -40,6 +40,7 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onState
               <TableHead className="hidden md:table-cell">등급</TableHead>
               <TableHead className="hidden md:table-cell">태그</TableHead>
               <TableHead className="hidden lg:table-cell">담당지점</TableHead>
+              <TableHead className="hidden xl:table-cell">월결제일</TableHead>
               <TableHead className="text-right">작업</TableHead>
             </TableRow>
           </TableHeader>
@@ -48,7 +49,14 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onState
               customers.map((customer) => (
                 <TableRow key={customer.id} onClick={() => onRowClick(customer)} className="cursor-pointer">
                   <TableCell>
-                    <div className="font-medium">{customer.name}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {customer.name}
+                                             {customer.type === 'company' && customer.specialNotes && customer.specialNotes.trim() && (
+                         <div title="특이사항 있음">
+                           <AlertTriangle className="h-4 w-4 text-orange-500" />
+                         </div>
+                       )}
+                    </div>
                     {customer.type === 'company' && <div className="text-xs text-muted-foreground">{customer.companyName}</div>}
                   </TableCell>
                   <TableCell>
@@ -77,6 +85,11 @@ export function CustomerTable({ customers, onEdit, onDelete, onRowClick, onState
                       )}
                     </div>
                   </TableCell>
+                                     <TableCell className="hidden xl:table-cell">
+                     <span className="text-sm">
+                       {customer.type === 'company' && customer.monthlyPaymentDay ? `${customer.monthlyPaymentDay}일` : '-'}
+                     </span>
+                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                      <AlertDialog>
                       <DropdownMenu>

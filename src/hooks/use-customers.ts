@@ -21,6 +21,9 @@ export interface Customer extends CustomerFormValues {
   firstVisitDate?: string;
   otherAnniversary?: string;
   otherAnniversaryName?: string;
+  // 특이사항 및 월결제일 정보
+  specialNotes?: string;
+  monthlyPaymentDay?: string;
   // 지점별 정보 (새로 추가)
   branches?: {
     [branchId: string]: {

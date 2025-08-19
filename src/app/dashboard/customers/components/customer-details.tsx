@@ -140,6 +140,23 @@ export function CustomerDetails({ isOpen, onOpenChange, onEdit, customer }: Cust
                     <p className="text-sm text-muted-foreground pt-1">메모</p>
                     <p className="col-span-2 text-sm whitespace-pre-wrap">{customer.memo || "-"}</p>
                 </div>
+                
+                {customer.type === 'company' && (
+                  <>
+                    <Separator />
+                    <div className="grid grid-cols-3 items-center gap-4">
+                        <p className="text-sm text-muted-foreground">월결제일</p>
+                        <p className="col-span-2 text-sm">
+                            {customer.monthlyPaymentDay ? `${customer.monthlyPaymentDay}일` : "-"}
+                        </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 items-start gap-4">
+                        <p className="text-sm text-muted-foreground pt-1">특이사항</p>
+                        <p className="col-span-2 text-sm whitespace-pre-wrap">{customer.specialNotes || "-"}</p>
+                    </div>
+                  </>
+                )}
             </div>
              <Separator />
               <div>

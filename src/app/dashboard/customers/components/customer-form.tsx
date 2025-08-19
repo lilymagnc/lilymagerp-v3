@@ -51,6 +51,9 @@ const customerSchema = z.object({
   otherAnniversaryName: z.string().optional(),
   otherAnniversary: z.string().optional(),
   memo: z.string().optional(),
+  // 특이사항 및 월결제일 필드 추가
+  specialNotes: z.string().optional(),
+  monthlyPaymentDay: z.string().optional(),
   // Business fields
   businessNumber: z.string().optional(),
   ceoName: z.string().optional(),
@@ -90,6 +93,8 @@ const defaultValues: CustomerFormValues = {
   otherAnniversaryName: "",
   otherAnniversary: "",
   memo: "",
+  specialNotes: "",
+  monthlyPaymentDay: "",
   businessNumber: "",
   ceoName: "",
   businessType: "",
@@ -114,6 +119,8 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
           firstVisitDate: customer.firstVisitDate || "",
           otherAnniversary: customer.otherAnniversary || "",
           otherAnniversaryName: customer.otherAnniversaryName || "",
+          specialNotes: customer.specialNotes || "",
+          monthlyPaymentDay: customer.monthlyPaymentDay || "",
         });
       } else {
         // 새 고객 추가 시 로그인한 사용자의 지점으로 자동 설정
@@ -452,12 +459,60 @@ export function CustomerForm({ isOpen, onOpenChange, onSubmit, customer }: Custo
                 <FormItem>
                   <FormLabel>메모</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="고객 관련 특이사항 기록" {...field} rows={4} />
+                    <Textarea placeholder="고객 관련 메모 기록" {...field} rows={3} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            
+            {customerType === 'company' && (
+              <>
+                <Separator className="my-6" />
+                <p className="text-sm font-semibold">결제 및 특이사항</p>
+                <Separator />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="monthlyPaymentDay"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>월결제일</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            placeholder="1-31" 
+                            min="1" 
+                            max="31"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="specialNotes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>특이사항</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="고객 관련 특이사항, 주의사항, 선호사항 등을 기록해주세요" 
+                          {...field} 
+                          rows={4} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
             <DialogFooter className="pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="secondary">취소</Button>

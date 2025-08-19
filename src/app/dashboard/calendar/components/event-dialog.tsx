@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 
 interface CalendarEvent {
   id: string;
-  type: 'delivery' | 'material' | 'employee' | 'notice';
+  type: 'delivery' | 'material' | 'employee' | 'notice' | 'payment';
   title: string;
   description?: string;
   startDate: Date;
@@ -64,7 +64,8 @@ export function EventDialog({
     { value: 'delivery', label: '배송/픽업', color: 'bg-blue-500' },
     { value: 'material', label: '자재요청', color: 'bg-orange-500' },
     { value: 'employee', label: '직원스케줄', color: 'bg-green-500' },
-    { value: 'notice', label: '공지/알림', color: 'bg-red-500' }
+    { value: 'notice', label: '공지/알림', color: 'bg-red-500' },
+    { value: 'payment', label: '월결제일', color: 'bg-purple-500' }
   ];
 
   // 이벤트 타입 변경 시 지점 자동 설정
