@@ -38,6 +38,8 @@ export default function OrdersPage() {
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState("all");
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [pageSize, setPageSize] = useState(20);
@@ -308,6 +310,21 @@ export default function OrdersPage() {
         String(order.id ?? '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+    // 주문 상태 필터링
+    if (selectedOrderStatus !== "all") {
+      filtered = filtered.filter(order => order.status === selectedOrderStatus);
+    }
+    // 결제 상태 필터링
+    if (selectedPaymentStatus !== "all") {
+      filtered = filtered.filter(order => {
+        if (selectedPaymentStatus === "completed") {
+          return order.payment?.status === "completed";
+        } else if (selectedPaymentStatus === "pending") {
+          return order.payment?.status === "pending";
+        }
+        return true;
+      });
+    }
     // 날짜 범위 필터링
     if (startDate || endDate) {
       filtered = filtered.filter(order => {
@@ -330,7 +347,7 @@ export default function OrdersPage() {
       });
     }
     return filtered;
-  }, [orders, searchTerm, selectedBranch, startDate, endDate, isAdmin, userBranch]);
+  }, [orders, searchTerm, selectedBranch, selectedOrderStatus, selectedPaymentStatus, startDate, endDate, isAdmin, userBranch]);
 
   // 통계 계산
   const orderStats = useMemo(() => {
@@ -382,7 +399,7 @@ export default function OrdersPage() {
   // 필터 변경 시 첫 페이지로 이동
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedBranch, startDate, endDate]);
+  }, [searchTerm, selectedBranch, selectedOrderStatus, selectedPaymentStatus, startDate, endDate]);
   return (
     <>
       <PageHeader
@@ -559,6 +576,33 @@ export default function OrdersPage() {
                   </Select>
                 </div>
               )}
+              <div>
+                <label htmlFor="order-status-select" className="sr-only">주문 상태 선택</label>
+                <Select value={selectedOrderStatus} onValueChange={setSelectedOrderStatus}>
+                    <SelectTrigger id="order-status-select" name="order-status-select" className="w-full sm:w-[140px]">
+                        <SelectValue placeholder="주문 상태" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">전체 상태</SelectItem>
+                        <SelectItem value="processing">처리중</SelectItem>
+                        <SelectItem value="completed">완료</SelectItem>
+                        <SelectItem value="canceled">취소</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label htmlFor="payment-status-select" className="sr-only">결제 상태 선택</label>
+                <Select value={selectedPaymentStatus} onValueChange={setSelectedPaymentStatus}>
+                    <SelectTrigger id="payment-status-select" name="payment-status-select" className="w-full sm:w-[140px]">
+                        <SelectValue placeholder="결제 상태" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">전체 결제</SelectItem>
+                        <SelectItem value="completed">완결</SelectItem>
+                        <SelectItem value="pending">미결</SelectItem>
+                    </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
