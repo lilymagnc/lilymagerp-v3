@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart, CheckSquare, Square } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -51,6 +51,11 @@ export default function OrdersPage() {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isOrderEditDialogOpen, setIsOrderEditDialogOpen] = useState(false);
   const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
+  
+  // 일괄 삭제 관련 상태
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
@@ -99,6 +104,69 @@ export default function OrdersPage() {
       }
     }
   }, [searchParams, orders, router]);
+
+  // 일괄 삭제 관련 함수들
+  const handleSelectOrder = (orderId: string) => {
+    const newSelectedIds = new Set(selectedOrderIds);
+    if (newSelectedIds.has(orderId)) {
+      newSelectedIds.delete(orderId);
+    } else {
+      newSelectedIds.add(orderId);
+    }
+    setSelectedOrderIds(newSelectedIds);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedOrderIds.size === paginatedOrders.length) {
+      // 모든 항목이 선택된 경우 전체 해제
+      setSelectedOrderIds(new Set());
+    } else {
+      // 모든 항목 선택
+      const allIds = new Set(paginatedOrders.map(order => order.id));
+      setSelectedOrderIds(allIds);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedOrderIds.size === 0) {
+      toast({
+        title: "선택된 주문 없음",
+        description: "삭제할 주문을 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      let deletedCount = 0;
+      for (const orderId of selectedOrderIds) {
+        try {
+          await deleteOrder(orderId);
+          deletedCount++;
+        } catch (error) {
+          console.error(`주문 삭제 실패: ${orderId}`, error);
+        }
+      }
+      
+      toast({
+        title: "일괄 삭제 완료",
+        description: `${deletedCount}개의 주문이 삭제되었습니다.`,
+      });
+      
+      // 선택 초기화
+      setSelectedOrderIds(new Set());
+      setIsBulkDeleteDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "삭제 실패",
+        description: "일괄 삭제 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
   const handlePrint = (orderId: string) => {
     router.push(`/dashboard/orders/print-preview/${orderId}`);
   };
@@ -574,9 +642,56 @@ export default function OrdersPage() {
                  </div>
                </div>
           </div>
+
+          {/* 일괄 삭제 액션 바 */}
+          {selectedOrderIds.size > 0 && (
+            <Card className="border-orange-200 bg-orange-50 mb-4">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-orange-800">
+                      {selectedOrderIds.size}개 주문 선택됨
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedOrderIds(new Set())}
+                    >
+                      선택 해제
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setIsBulkDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      선택된 주문 삭제
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSelectAll}
+                  className="h-6 w-6 p-0"
+                >
+                  {selectedOrderIds.size === paginatedOrders.length && paginatedOrders.length > 0 ? (
+                    <CheckSquare className="h-4 w-4" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                </Button>
+              </TableHead>
               <TableHead>주문 ID</TableHead>
               <TableHead>주문자</TableHead>
               <TableHead>상품명</TableHead>
@@ -616,9 +731,30 @@ export default function OrdersPage() {
                   <TableRow 
                     key={order.id} 
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleOrderRowClick(order)}
                   >
-                  <TableCell className="font-medium">{order.id.slice(0, 8)}...</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectOrder(order.id);
+                        }}
+                        className="h-6 w-6 p-0"
+                      >
+                        {selectedOrderIds.has(order.id) ? (
+                          <CheckSquare className="h-4 w-4" />
+                        ) : (
+                          <Square className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                    <TableCell 
+                      className="font-medium"
+                      onClick={() => handleOrderRowClick(order)}
+                    >
+                      {order.id.slice(0, 8)}...
+                    </TableCell>
                   <TableCell>{order.orderer.name}</TableCell>
                   <TableCell className="max-w-xs">
                     <div className="truncate" title={getProductNames(order)}>
@@ -879,6 +1015,31 @@ export default function OrdersPage() {
                className="bg-red-600 hover:bg-red-700"
              >
                삭제
+             </AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+       </AlertDialog>
+
+       {/* 일괄 삭제 다이얼로그 */}
+       <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle>일괄 삭제</AlertDialogTitle>
+             <AlertDialogDescription>
+               선택된 {selectedOrderIds.size}개의 주문을 모두 삭제하시겠습니까? 
+               <br />
+               <br />
+               이 작업은 되돌릴 수 없습니다.
+             </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter>
+             <AlertDialogCancel disabled={isBulkDeleting}>취소</AlertDialogCancel>
+             <AlertDialogAction 
+               onClick={handleBulkDelete}
+               disabled={isBulkDeleting}
+               className="bg-red-600 hover:bg-red-700"
+             >
+               {isBulkDeleting ? "삭제 중..." : "삭제"}
              </AlertDialogAction>
            </AlertDialogFooter>
          </AlertDialogContent>
