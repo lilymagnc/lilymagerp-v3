@@ -1016,9 +1016,9 @@ export default function DashboardPage() {
             </div>
           ) : (
             // 가맹점/지점 직원용: 자신의 지점 매출 표시
-            <p className="text-sm" style={{ color: payload[0].color }}>
-              매출: {formatCurrency(payload[0].value)}
-            </p>
+          <p className="text-sm" style={{ color: payload[0].color }}>
+            매출: {formatCurrency(payload[0].value)}
+          </p>
           )}
         </div>
       );
@@ -1087,24 +1087,34 @@ export default function DashboardPage() {
       {isAdmin && (
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-700">지점 선택:</label>
-              <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="지점을 선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="전체">전체 지점</SelectItem>
-                  {availableBranches.map((branch) => (
-                    <SelectItem key={branch.name} value={branch.name}>
-                      {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-gray-500">
-                {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <label className="text-sm font-medium text-gray-700">지점 선택:</label>
+                <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="지점을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="전체">전체 지점</SelectItem>
+                    {availableBranches.map((branch) => (
+                      <SelectItem key={branch.name} value={branch.name}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-gray-500">
+                  {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
+                </span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.location.href = '/dashboard/calendar'}
+              >
+                <CalendarDays className="h-4 w-4 mr-2" />
+                일정관리
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1185,28 +1195,28 @@ export default function DashboardPage() {
 
       {/* 차트 섹션 - 그리드 레이아웃으로 변경 */}
       <div className="grid gap-6 lg:grid-cols-2">
-                 {/* 일별 매출 현황 */}
-         <Card>
-           <CardHeader>
-             <div className="flex items-center justify-between">
-               <div>
-                 <CardTitle className="flex items-center gap-2">
-                   <Calendar className="h-5 w-5 text-blue-600" />
-                   {isAdmin 
+        {/* 일별 매출 현황 */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  {isAdmin 
                      ? (currentFilteredBranch ? `${currentFilteredBranch} 일별 매출` : '일별 지점별 매출 현황')
-                     : `${userBranch} 일별 매출`
-                   }
-                 </CardTitle>
-                 <p className="text-sm text-gray-600">
+                    : `${userBranch} 일별 매출`
+                  }
+                </CardTitle>
+                <p className="text-sm text-gray-600">
                    {isAdmin && !currentFilteredBranch 
                      ? '선택된 기간 지점별 매출 비율' 
                      : '선택된 기간 매출 트렌드'
                    }
-                 </p>
-               </div>
-               <div className="flex items-center gap-2">
-                 <Input
-                   type="date"
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
                    value={dailyStartDate}
                    onChange={(e) => handleDailyDateChange(e.target.value, dailyEndDate)}
                    className="w-32"
@@ -1217,19 +1227,19 @@ export default function DashboardPage() {
                    value={dailyEndDate}
                    onChange={(e) => handleDailyDateChange(dailyStartDate, e.target.value)}
                    className="w-32"
-                 />
-               </div>
-             </div>
-           </CardHeader>
+                />
+              </div>
+            </div>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               {isAdmin ? (
                 // 본사 관리자용: 지점별 매출 비율 차트
-                <BarChart data={dailySales}>
-                  <CartesianGrid strokeDasharray="3 3" />
+              <BarChart data={dailySales}>
+                <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" fontSize={12} />
-                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
+                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
                   {availableBranches.map((branch, index) => (
                     <Bar 
                       key={branch.name} 
@@ -1239,7 +1249,7 @@ export default function DashboardPage() {
                       fill={getBranchColor(index)}
                     />
                   ))}
-                </BarChart>
+              </BarChart>
               ) : (
                 // 가맹점/지점 직원용: 자신의 지점 매출 차트
                 <BarChart data={dailySales}>
@@ -1254,27 +1264,27 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-                 {/* 주간 매출 현황 */}
-         <Card>
-           <CardHeader>
-             <div className="flex items-center justify-between">
-               <div>
-                 <CardTitle className="flex items-center gap-2">
-                   <CalendarDays className="h-5 w-5 text-green-600" />
-                   {isAdmin 
+        {/* 주간 매출 현황 */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5 text-green-600" />
+                  {isAdmin 
                      ? (currentFilteredBranch ? `${currentFilteredBranch} 주간 매출` : '주간 지점별 매출 현황')
-                     : `${userBranch} 주간 매출`
-                   }
-                 </CardTitle>
-                 <p className="text-sm text-gray-600">
+                    : `${userBranch} 주간 매출`
+                  }
+                </CardTitle>
+                <p className="text-sm text-gray-600">
                    {isAdmin && !currentFilteredBranch 
                      ? '선택된 기간 지점별 매출 비율' 
                      : '선택된 기간 매출 트렌드'
                    }
-                 </p>
-               </div>
-               <div className="flex items-center gap-2">
-                 <Input
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
                    type="date"
                    value={weeklyStartDate}
                    onChange={(e) => handleWeeklyDateChange(e.target.value, weeklyEndDate)}
@@ -1286,19 +1296,19 @@ export default function DashboardPage() {
                    value={weeklyEndDate}
                    onChange={(e) => handleWeeklyDateChange(weeklyStartDate, e.target.value)}
                    className="w-32"
-                 />
-               </div>
-             </div>
-           </CardHeader>
+                />
+              </div>
+            </div>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
               {isAdmin ? (
                 // 본사 관리자용: 지점별 매출 비율 차트
-                <BarChart data={weeklySales}>
-                  <CartesianGrid strokeDasharray="3 3" />
+              <BarChart data={weeklySales}>
+                <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="week" fontSize={12} />
-                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                  <Tooltip content={<CustomTooltip />} />
+                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
                   {availableBranches.map((branch, index) => (
                     <Bar 
                       key={branch.name} 
@@ -1308,7 +1318,7 @@ export default function DashboardPage() {
                       fill={getBranchColor(index)}
                     />
                   ))}
-                </BarChart>
+              </BarChart>
               ) : (
                 // 가맹점/지점 직원용: 자신의 지점 매출 차트
                 <BarChart data={weeklySales}>
@@ -1324,27 +1334,27 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-             {/* 월별 매출 현황 */}
-       <Card>
-         <CardHeader>
-           <div className="flex items-center justify-between">
-             <div>
-               <CardTitle className="flex items-center gap-2">
-                 <Building className="h-5 w-5 text-purple-600" />
-                 {isAdmin 
+      {/* 월별 매출 현황 */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5 text-purple-600" />
+                {isAdmin 
                    ? (currentFilteredBranch ? `${currentFilteredBranch} 월별 매출` : '월별 지점별 매출 현황')
-                   : `${userBranch} 월별 매출`
-                 }
-               </CardTitle>
-               <p className="text-sm text-gray-600">
+                  : `${userBranch} 월별 매출`
+                }
+              </CardTitle>
+              <p className="text-sm text-gray-600">
                  {isAdmin && !currentFilteredBranch 
                    ? '선택된 기간 지점별 매출 비율' 
                    : '선택된 기간 매출 트렌드'
                  }
-               </p>
-             </div>
-             <div className="flex items-center gap-2">
-               <Input
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
                  type="date"
                  value={monthlyStartDate}
                  onChange={(e) => handleMonthlyDateChange(e.target.value, monthlyEndDate)}
@@ -1356,19 +1366,19 @@ export default function DashboardPage() {
                  value={monthlyEndDate}
                  onChange={(e) => handleMonthlyDateChange(monthlyStartDate, e.target.value)}
                  className="w-32"
-               />
-             </div>
-           </div>
-         </CardHeader>
+              />
+            </div>
+          </div>
+        </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={250}>
             {isAdmin ? (
               // 본사 관리자용: 지점별 매출 비율 차트
-              <BarChart data={monthlySales}>
-                <CartesianGrid strokeDasharray="3 3" />
+            <BarChart data={monthlySales}>
+              <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" fontSize={12} />
-                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                <Tooltip content={<CustomTooltip />} />
+              <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+              <Tooltip content={<CustomTooltip />} />
                 {availableBranches.map((branch, index) => (
                   <Bar 
                     key={branch.name} 
@@ -1378,7 +1388,7 @@ export default function DashboardPage() {
                     fill={getBranchColor(index)}
                   />
                 ))}
-              </BarChart>
+            </BarChart>
             ) : (
               // 가맹점/지점 직원용: 자신의 지점 매출 차트
               <BarChart data={monthlySales}>
