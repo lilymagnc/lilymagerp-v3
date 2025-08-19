@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -117,7 +117,7 @@ export default function OrdersPage() {
       setIsCancelDialogOpen(false);
       setSelectedOrderForAction(null);
     } catch (error) {
-      console.error('주문 취소 오류:', error);
+      // 주문 취소 오류는 조용히 처리
     }
   };
   // 주문 삭제 처리
@@ -127,7 +127,7 @@ export default function OrdersPage() {
       setIsDeleteDialogOpen(false);
       setSelectedOrderForAction(null);
     } catch (error) {
-      console.error('주문 삭제 오류:', error);
+      // 주문 삭제 오류는 조용히 처리
     }
   };
   // 취소 다이얼로그 열기
@@ -196,10 +196,9 @@ export default function OrdersPage() {
         description: `${ordersToExport.length}건의 주문 내역이 다운로드되었습니다.`,
       });
     } catch (error) {
-      console.error('다운로드 오류:', error);
       toast({
         title: "다운로드 실패",
-        description: error.message || "엑셀 파일 다운로드 중 오류가 발생했습니다.",
+        description: "엑셀 파일 다운로드 중 오류가 발생했습니다.",
         variant: "destructive",
       });
     }
@@ -265,6 +264,47 @@ export default function OrdersPage() {
     return filtered;
   }, [orders, searchTerm, selectedBranch, startDate, endDate, isAdmin, userBranch]);
 
+  // 통계 계산
+  const orderStats = useMemo(() => {
+    const totalOrders = filteredOrders.length;
+    const totalAmount = filteredOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+    
+    // 오늘 주문
+    const today = new Date();
+    const todayOrders = filteredOrders.filter(order => {
+      if (!order.orderDate) return false;
+      const orderDate = (order.orderDate as Timestamp).toDate();
+      return orderDate.toDateString() === today.toDateString();
+    });
+    const todayAmount = todayOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+
+    // 이번 달 주문
+    const thisMonthOrders = filteredOrders.filter(order => {
+      if (!order.orderDate) return false;
+      const orderDate = (order.orderDate as Timestamp).toDate();
+      return orderDate.getMonth() === today.getMonth() && 
+             orderDate.getFullYear() === today.getFullYear();
+    });
+    const thisMonthAmount = thisMonthOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+
+    // 주문 상태별 통계
+    const statusStats = filteredOrders.reduce((acc, order) => {
+      const status = order.status || 'pending';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalOrders,
+      totalAmount,
+      todayOrders: todayOrders.length,
+      todayAmount,
+      thisMonthOrders: thisMonthOrders.length,
+      thisMonthAmount,
+      statusStats
+    };
+  }, [filteredOrders]);
+
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredOrders.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -298,6 +338,115 @@ export default function OrdersPage() {
           </Button>
         </div>
       </PageHeader>
+      
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-6">
+        {loading ? (
+          // 로딩 중일 때 스켈레톤 표시
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">총 주문</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">총 매출</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">오늘 주문</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">이번 달 주문</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">총 주문</CardTitle>
+                <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{orderStats.totalOrders.toLocaleString()}건</div>
+                <p className="text-xs text-muted-foreground">
+                  필터링된 주문 수
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">총 매출</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">₩{orderStats.totalAmount.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                  필터링된 총 매출
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">오늘 주문</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{orderStats.todayOrders}건</div>
+                <p className="text-xs text-muted-foreground">
+                  ₩{orderStats.todayAmount.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">이번 달 주문</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{orderStats.thisMonthOrders}건</div>
+                <p className="text-xs text-muted-foreground">
+                  ₩{orderStats.thisMonthAmount.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+      
       <Card>
         <CardHeader>
             <CardTitle>주문 내역</CardTitle>
@@ -402,9 +551,10 @@ export default function OrdersPage() {
                   </PopoverContent>
                 </Popover>
               </div>
-                             <div className="flex items-center gap-2">
-                 <div className="text-sm text-muted-foreground">
-                   총 {filteredOrders.length}건의 주문
+              <div className="flex items-center gap-2">
+                 <div className="text-sm text-muted-foreground flex items-center gap-2">
+                   <span>총 {filteredOrders.length}건</span>
+                   <span>총 ₩{orderStats.totalAmount.toLocaleString()}</span>
                  </div>
                  <div className="flex items-center gap-2">
                    <label htmlFor="page-size" className="text-sm text-muted-foreground">페이지당:</label>

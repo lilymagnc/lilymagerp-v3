@@ -162,7 +162,7 @@ export function ExpenseInputForm({
   const { materials } = useMaterials();
   const { products } = useProducts();
   const { branches, loading: branchesLoading } = useBranches();
-
+  
   // 중복 데이터 체크 함수
   const checkDuplicateData = useCallback(async (processedData: any[]) => {
     try {
@@ -344,9 +344,9 @@ export function ExpenseInputForm({
       safeSetState(setSupplierOpen, true);
     } else {
       // 닫을 때는 즉시 상태 변경
-      safeSetState(setSupplierOpen, false);
-      safeSetState(setIsDirectInput, false);
-      safeSetState(setSupplierSearchValue, '');
+          safeSetState(setSupplierOpen, false);
+          safeSetState(setIsDirectInput, false);
+          safeSetState(setSupplierSearchValue, '');
     }
   }, [safeSetState]);
 
@@ -358,17 +358,17 @@ export function ExpenseInputForm({
     form.setValue('supplier', supplierName);
 
     // 즉시 상태 변경
-    safeSetState(setSupplierOpen, false);
-    safeSetState(setSupplierSearchValue, '');
-    safeSetState(setIsDirectInput, false);
+        safeSetState(setSupplierOpen, false);
+        safeSetState(setSupplierSearchValue, '');
+        safeSetState(setIsDirectInput, false);
   }, [form, safeSetState]);
 
   // 직접 입력 모드 활성화 개선
   const handleDirectInput = useCallback(() => {
     if (!isMountedRef.current) return;
 
-    safeSetState(setIsDirectInput, true);
-    safeSetState(setSupplierOpen, false);
+        safeSetState(setIsDirectInput, true);
+        safeSetState(setSupplierOpen, false);
   }, [safeSetState]);
 
   // 직접 입력 구매처 저장
@@ -771,11 +771,11 @@ export function ExpenseInputForm({
         onSuccess?.();
       }
     } catch (error) {
-      toast({
-        title: "오류",
-        description: "지출 등록 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
+        toast({
+          title: "오류",
+          description: "지출 등록 중 오류가 발생했습니다.",
+          variant: "destructive",
+        });
     } finally {
       if (isMountedRef.current) {
         safeSetState(setIsSubmitting, false);
@@ -912,11 +912,11 @@ export function ExpenseInputForm({
                           </p>
                         </div>
                       ) : (
-                                                 <div className="relative">
-                           <Popover
-                             open={supplierOpen}
-                             onOpenChange={handlePopoverOpenChange}
-                           >
+                        <div className="relative">
+                          <Popover
+                            open={supplierOpen}
+                            onOpenChange={handlePopoverOpenChange}
+                          >
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
@@ -1043,8 +1043,8 @@ export function ExpenseInputForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>분류</FormLabel>
-                                             <Select
-                         onValueChange={(value) => {
+                      <Select
+                        onValueChange={(value) => {
                           if (isMountedRef.current) {
                             setTimeout(() => {
                               if (isMountedRef.current) {
@@ -1085,8 +1085,8 @@ export function ExpenseInputForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>세부 분류</FormLabel>
-                                                 <Select
-                           onValueChange={(value) => {
+                        <Select
+                          onValueChange={(value) => {
                             if (isMountedRef.current) {
                               setTimeout(() => {
                                 if (isMountedRef.current) {

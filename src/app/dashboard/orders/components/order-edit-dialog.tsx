@@ -286,7 +286,6 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
       
       onOpenChange(false);
     } catch (error) {
-      console.error('주문 수정 오류:', error);
       toast({
         title: "오류",
         description: "주문 수정 중 오류가 발생했습니다.",

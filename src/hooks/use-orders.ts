@@ -123,22 +123,7 @@ export function useOrders() {
       });
       setOrders(ordersData);
     } catch (error) {
-      console.error("Error fetching orders: ", error);
-      
-      // 더 구체적인 오류 메시지
-      let errorMessage = '주문 정보를 불러오는 중 오류가 발생했습니다.';
-      if (error instanceof Error) {
-        if (error.message.includes('timeout')) {
-          errorMessage = '네트워크 연결이 불안정합니다. 잠시 후 다시 시도해주세요.';
-        } else if (error.message.includes('permission')) {
-          errorMessage = '권한이 없습니다. 로그인 상태를 확인해주세요.';
-        } else if (error.message.includes('400') || error.message.includes('Bad Request')) {
-          errorMessage = 'Firebase 연결에 문제가 있습니다. 페이지를 새로고침해주세요.';
-        }
-      }
-      
-      // 오류가 발생해도 토스트를 표시하지 않고 조용히 처리
-      console.warn('Orders fetch failed, will retry:', errorMessage);
+      // 주문 정보 로딩 오류는 조용히 처리
     } finally {
       setLoading(false);
     }
@@ -219,11 +204,10 @@ export function useOrders() {
       });
       await fetchOrders();
     } catch (error) {
-      console.error("Error adding order and updating stock: ", error);
       toast({
         variant: 'destructive',
         title: '주문 처리 오류',
-        description: error instanceof Error ? error.message : '주문 추가 중 오류가 발생했습니다.',
+        description: '주문 추가 중 오류가 발생했습니다.',
         duration: 5000,
       });
     } finally {
@@ -240,7 +224,6 @@ export function useOrders() {
         });
         await fetchOrders();
     } catch (error) {
-        console.error("Error updating order status:", error);
         toast({
             variant: 'destructive',
             title: '오류',
@@ -258,7 +241,6 @@ export function useOrders() {
         });
         await fetchOrders();
     } catch (error) {
-        console.error("Error updating payment status:", error);
         toast({
             variant: 'destructive',
             title: '오류',
@@ -274,7 +256,6 @@ export function useOrders() {
       toast({ title: "성공", description: "주문 정보가 수정되었습니다." });
       await fetchOrders();
     } catch (error) {
-      console.error("Error updating order:", error);
       toast({ variant: 'destructive', title: '오류', description: '주문 수정 중 오류가 발생했습니다.' });
     } finally {
       setLoading(false);
@@ -326,7 +307,6 @@ export function useOrders() {
       });
       await fetchOrders(); // 목록 새로고침
     } catch (error) {
-      console.error("Error canceling order: ", error);
       toast({
         variant: "destructive",
         title: "주문 취소 실패",
@@ -364,7 +344,6 @@ export function useOrders() {
       });
       await fetchOrders(); // 목록 새로고침
     } catch (error) {
-      console.error("Error deleting order: ", error);
       toast({
         variant: "destructive",
         title: "주문 삭제 실패",
@@ -445,7 +424,6 @@ export function useOrders() {
       });
 
     } catch (error) {
-      console.error('배송완료 처리 실패:', error);
       toast({
         title: "오류",
         description: "배송완료 처리 중 오류가 발생했습니다.",
@@ -524,7 +502,6 @@ const registerCustomerFromOrder = async (orderData: OrderData) => {
       await addDoc(collection(db, 'customers'), newCustomerData);
     }
   } catch (error) {
-    console.error('고객 등록 중 오류:', error);
     // 고객 등록 실패해도 주문은 계속 진행
   }
 };
@@ -542,7 +519,6 @@ const deductCustomerPoints = async (customerId: string, pointsToDeduct: number) 
       }, { merge: true });
     }
   } catch (error) {
-    console.error('포인트 차감 중 오류:', error);
     // 포인트 차감 실패해도 주문은 계속 진행
   }
 };
@@ -560,7 +536,6 @@ const refundCustomerPoints = async (customerId: string, pointsToRefund: number) 
       }, { merge: true });
     }
   } catch (error) {
-    console.error('포인트 환불 중 오류:', error);
     // 포인트 환불 실패해도 주문 취소는 계속 진행
   }
 };
@@ -605,7 +580,6 @@ const saveRecipientInfo = async (deliveryInfo: any, branchName: string, orderId:
       await addDoc(collection(db, 'recipients'), recipientData);
     }
   } catch (error) {
-    console.error('수령자 정보 저장 중 오류:', error);
     // 수령자 저장 실패해도 주문은 계속 진행
   }
 };
@@ -638,7 +612,6 @@ const updateRecipientInfoOnOrderDelete = async (deliveryInfo: any, branchName: s
       }
     }
   } catch (error) {
-    console.error('수령자 정보 업데이트 중 오류:', error);
     // 수령자 업데이트 실패해도 주문 삭제는 계속 진행
   }
 };

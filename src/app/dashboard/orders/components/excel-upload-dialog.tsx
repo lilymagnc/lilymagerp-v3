@@ -107,7 +107,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
           orders.push(order);
         }
       } catch (error) {
-        console.error(`Row ${i + 1} 파싱 오류:`, error);
+        // 파싱 오류는 조용히 처리
       }
     }
     return orders;
@@ -336,7 +336,6 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       
       return false; // 중복 없음
     } catch (error) {
-      console.error('중복 체크 오류:', error);
       return false; // 오류 발생 시 중복이 아닌 것으로 처리
     }
   };
