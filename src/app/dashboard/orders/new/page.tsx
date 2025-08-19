@@ -1293,7 +1293,7 @@ const debouncedCustomerSearch = useCallback(
                               <Input 
                                   id="message-sender" 
                                   name="message-sender"
-                                  placeholder="보내는 사람 이름을 입력하세요" 
+                                  placeholder="보내는 사람 이름을 입력하세요 (예: - 홍길동 -)" 
                                   className="mt-2" 
                                   value={messageSender} 
                                   onChange={e => setMessageSender(e.target.value)} 

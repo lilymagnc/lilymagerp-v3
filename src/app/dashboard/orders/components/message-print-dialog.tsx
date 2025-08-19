@@ -79,7 +79,7 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
   // 메시지 내용에서 보내는 사람 분리
   const messageParts = (order.message?.content || "").split('\n---\n');
   const defaultMessageContent = messageParts.length > 1 ? messageParts[0] : (order.message?.content || "");
-  const defaultSenderName = messageParts.length > 1 ? messageParts[1] : (order.orderer.name || "");
+  const defaultSenderName = messageParts.length > 1 ? messageParts[1] : "";
   const [messageContent, setMessageContent] = useState(getInitialValue('messageContent', defaultMessageContent));
   const [senderName, setSenderName] = useState(getInitialValue('senderName', defaultSenderName));
   const [isEditing, setIsEditing] = useState(false);
@@ -150,15 +150,15 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                   </div>
                   <div>
                     <Label htmlFor="sender-name">보내는 사람</Label>
-                                         <Input
-                       id="sender-name"
-                       name="sender-name"
-                       value={senderName}
-                       onChange={(e) => setSenderName(e.target.value)}
-                       placeholder="보내는 사람 이름"
-                       className="mt-1"
-                       autoComplete="off"
-                     />
+                                                               <Input
+                        id="sender-name"
+                        name="sender-name"
+                        value={senderName}
+                        onChange={(e) => setSenderName(e.target.value)}
+                        placeholder="보내는 사람 이름 (예: - 홍길동 -)"
+                        className="mt-1"
+                        autoComplete="off"
+                      />
                   </div>
                 </div>
               ) : (
@@ -333,12 +333,14 @@ export function MessagePrintDialog({ isOpen, onOpenChange, onSubmit, order }: Me
                 >
                   {messageContent || "메시지 내용이 없습니다."}
                 </div>
-                <div 
-                  className="absolute bottom-2 left-1/2 transform -translate-x-1/2"
-                  style={senderPreviewStyle}
-                >
-                  - {senderName} -
-                </div>
+                {senderName && (
+                  <div 
+                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2"
+                    style={senderPreviewStyle}
+                  >
+                    {senderName}
+                  </div>
+                )}
               </div>
             </div>
             {/* 전체 라벨 그리드 미리보기 */}

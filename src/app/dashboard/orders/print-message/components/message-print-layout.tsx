@@ -44,7 +44,7 @@ export function MessagePrintLayout({
 
   // 편집된 메시지 내용 또는 원본 메시지 사용
   let finalMessageContent = messageContent || order.message?.content || "";
-  let finalSenderName = senderName || order.orderer.name || "";
+  let finalSenderName = senderName || "";
 
   // 원본 메시지에서 보내는 사람 분리 (--- 구분자 사용)
   if (!messageContent && order.message?.content) {
@@ -190,13 +190,15 @@ export function MessagePrintLayout({
                   >
                     {labelData.content}
                   </div>
-                  <div 
-                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2"
-                    style={senderFontStyle}
-                    aria-label={`보내는 사람: ${labelData.senderName}`}
-                  >
-                    - {labelData.senderName} -
-                  </div>
+                                     {labelData.senderName && (
+                     <div 
+                       className="absolute bottom-2 left-1/2 transform -translate-x-1/2"
+                       style={senderFontStyle}
+                       aria-label={`보내는 사람: ${labelData.senderName}`}
+                     >
+                       {labelData.senderName}
+                     </div>
+                   )}
                 </>
               ) : (
                 null // 빈 라벨일 경우 아무것도 렌더링하지 않음
