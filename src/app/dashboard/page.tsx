@@ -43,6 +43,33 @@ interface BranchSalesData {
   color: string;
 }
 
+// 14일간 차트 데이터 타입
+interface DailySalesData {
+  date: string;
+  sales?: number; // 가맹점/지점 직원용
+  totalSales?: number; // 본사 관리자용
+  branchSales?: { [branchName: string]: number }; // 본사 관리자용
+  [key: string]: any; // 지점별 매출을 동적 속성으로 추가
+}
+
+// 8주간 차트 데이터 타입
+interface WeeklySalesData {
+  week: string;
+  sales?: number; // 가맹점/지점 직원용
+  totalSales?: number; // 본사 관리자용
+  branchSales?: { [branchName: string]: number }; // 본사 관리자용
+  [key: string]: any; // 지점별 매출을 동적 속성으로 추가
+}
+
+// 12개월간 차트 데이터 타입
+interface MonthlySalesData {
+  month: string;
+  sales?: number; // 가맹점/지점 직원용
+  totalSales?: number; // 본사 관리자용
+  branchSales?: { [branchName: string]: number }; // 본사 관리자용
+  [key: string]: any; // 지점별 매출을 동적 속성으로 추가
+}
+
 export default function DashboardPage() {
   const { branches } = useBranches();
   const { user } = useAuth();
@@ -82,9 +109,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   
   // 차트별 데이터 상태
-  const [dailySales, setDailySales] = useState<BranchSalesData[]>([]);
-  const [weeklySales, setWeeklySales] = useState<BranchSalesData[]>([]);
-  const [monthlySales, setMonthlySales] = useState<BranchSalesData[]>([]);
+  const [dailySales, setDailySales] = useState<DailySalesData[]>([]);
+  const [weeklySales, setWeeklySales] = useState<WeeklySalesData[]>([]);
+  const [monthlySales, setMonthlySales] = useState<MonthlySalesData[]>([]);
   
   // 검색 날짜 상태
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -100,7 +127,142 @@ export default function DashboardPage() {
     return branchColors[index % branchColors.length];
   };
 
-  // 실제 파이어스토어 데이터로 일별 매출 생성 (필터링 적용) - 단순화된 쿼리
+  // 본사 관리자용: 14일간 지점별 매출 비율 차트 데이터 생성
+  const generateAdminDailySales = async () => {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 13); // 14일간
+      
+      // 14일간 주문 데이터 조회
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("orderDate", ">=", Timestamp.fromDate(startDate)),
+        where("orderDate", "<=", Timestamp.fromDate(endDate))
+      );
+      
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // 날짜별로 데이터 그룹화
+      const salesByDate: { [key: string]: { [branchName: string]: number } } = {};
+      
+      // 14일간 날짜 초기화
+      for (let i = 0; i < 14; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateKey = format(date, 'yyyy-MM-dd');
+        salesByDate[dateKey] = {};
+        
+        // 각 지점별 매출 초기화
+        availableBranches.forEach(branch => {
+          salesByDate[dateKey][branch.name] = 0;
+        });
+      }
+      
+      // 주문 데이터로 매출 계산
+      allOrders.forEach((order: any) => {
+        const orderDate = order.orderDate;
+        if (!orderDate) return;
+        
+        let orderDateObj;
+        if (orderDate.toDate) {
+          orderDateObj = orderDate.toDate();
+        } else {
+          orderDateObj = new Date(orderDate);
+        }
+        
+        const dateKey = format(orderDateObj, 'yyyy-MM-dd');
+        const branchName = order.branchName || '지점 미지정';
+        const total = order.summary?.total || order.total || 0;
+        
+        if (salesByDate[dateKey] && salesByDate[dateKey].hasOwnProperty(branchName)) {
+          salesByDate[dateKey][branchName] += total;
+        }
+      });
+      
+      // 차트 데이터 형식으로 변환
+      return Object.entries(salesByDate).map(([date, branchSales]) => {
+        const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
+        
+        return {
+          date: format(parseISO(date), 'M/d'),
+          totalSales,
+          branchSales,
+          ...branchSales // 각 지점별 매출을 개별 속성으로 추가
+        };
+      });
+    } catch (error) {
+      console.error("Error generating admin daily sales:", error);
+      return [];
+    }
+  };
+
+  // 가맹점/지점 직원용: 14일간 자신의 지점 매출 차트 데이터 생성
+  const generateBranchDailySales = async () => {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 13); // 14일간
+      
+      // 14일간 주문 데이터 조회 (자신의 지점만)
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("orderDate", ">=", Timestamp.fromDate(startDate)),
+        where("orderDate", "<=", Timestamp.fromDate(endDate))
+      );
+      
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // 자신의 지점 주문만 필터링
+      const userBranchOrders = allOrders.filter((order: any) => 
+        order.branchName === userBranch
+      );
+      
+      // 날짜별로 매출 계산
+      const salesByDate: { [key: string]: number } = {};
+      
+      // 14일간 날짜 초기화
+      for (let i = 0; i < 14; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        const dateKey = format(date, 'yyyy-MM-dd');
+        salesByDate[dateKey] = 0;
+      }
+      
+      // 주문 데이터로 매출 계산
+      userBranchOrders.forEach((order: any) => {
+        const orderDate = order.orderDate;
+        if (!orderDate) return;
+        
+        let orderDateObj;
+        if (orderDate.toDate) {
+          orderDateObj = orderDate.toDate();
+        } else {
+          orderDateObj = new Date(orderDate);
+        }
+        
+        const dateKey = format(orderDateObj, 'yyyy-MM-dd');
+        const total = order.summary?.total || order.total || 0;
+        
+        if (salesByDate[dateKey] !== undefined) {
+          salesByDate[dateKey] += total;
+        }
+      });
+      
+      // 차트 데이터 형식으로 변환
+      return Object.entries(salesByDate).map(([date, sales]) => ({
+        date: format(parseISO(date), 'M/d'),
+        sales
+      }));
+    } catch (error) {
+      console.error("Error generating branch daily sales:", error);
+      return [];
+    }
+  };
+
+  // 기존 함수는 유지 (다른 차트에서 사용)
   const generateRealDailySales = async (date: string) => {
     try {
       const selectedDateObj = parseISO(date);
@@ -149,7 +311,142 @@ export default function DashboardPage() {
     }
   };
 
-  // 실제 파이어스토어 데이터로 주간 매출 생성 (필터링 적용) - 단순화된 쿼리
+  // 본사 관리자용: 8주간 지점별 매출 비율 차트 데이터 생성
+  const generateAdminWeeklySales = async () => {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 56); // 8주간 (8 * 7 = 56일)
+      
+      // 8주간 주문 데이터 조회
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("orderDate", ">=", Timestamp.fromDate(startDate)),
+        where("orderDate", "<=", Timestamp.fromDate(endDate))
+      );
+      
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // 주별로 데이터 그룹화
+      const salesByWeek: { [key: string]: { [branchName: string]: number } } = {};
+      
+      // 8주간 주차 초기화
+      for (let i = 0; i < 8; i++) {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(startDate.getDate() + (i * 7));
+        const weekKey = format(weekStart, 'yyyy-\'W\'ww');
+        salesByWeek[weekKey] = {};
+        
+        // 각 지점별 매출 초기화
+        availableBranches.forEach(branch => {
+          salesByWeek[weekKey][branch.name] = 0;
+        });
+      }
+      
+      // 주문 데이터로 매출 계산
+      allOrders.forEach((order: any) => {
+        const orderDate = order.orderDate;
+        if (!orderDate) return;
+        
+        let orderDateObj;
+        if (orderDate.toDate) {
+          orderDateObj = orderDate.toDate();
+        } else {
+          orderDateObj = new Date(orderDate);
+        }
+        
+        const weekKey = format(orderDateObj, 'yyyy-\'W\'ww');
+        const branchName = order.branchName || '지점 미지정';
+        const total = order.summary?.total || order.total || 0;
+        
+        if (salesByWeek[weekKey] && salesByWeek[weekKey].hasOwnProperty(branchName)) {
+          salesByWeek[weekKey][branchName] += total;
+        }
+      });
+      
+      // 차트 데이터 형식으로 변환
+      return Object.entries(salesByWeek).map(([week, branchSales]) => {
+        const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
+        
+        return {
+          week: week.replace('W', '주차 '),
+          totalSales,
+          branchSales,
+          ...branchSales // 각 지점별 매출을 개별 속성으로 추가
+        };
+      });
+    } catch (error) {
+      console.error("Error generating admin weekly sales:", error);
+      return [];
+    }
+  };
+
+  // 가맹점/지점 직원용: 8주간 자신의 지점 매출 차트 데이터 생성
+  const generateBranchWeeklySales = async () => {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 56); // 8주간 (8 * 7 = 56일)
+      
+      // 8주간 주문 데이터 조회 (자신의 지점만)
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("orderDate", ">=", Timestamp.fromDate(startDate)),
+        where("orderDate", "<=", Timestamp.fromDate(endDate))
+      );
+      
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // 자신의 지점 주문만 필터링
+      const userBranchOrders = allOrders.filter((order: any) => 
+        order.branchName === userBranch
+      );
+      
+      // 주별로 매출 계산
+      const salesByWeek: { [key: string]: number } = {};
+      
+      // 8주간 주차 초기화
+      for (let i = 0; i < 8; i++) {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(startDate.getDate() + (i * 7));
+        const weekKey = format(weekStart, 'yyyy-\'W\'ww');
+        salesByWeek[weekKey] = 0;
+      }
+      
+      // 주문 데이터로 매출 계산
+      userBranchOrders.forEach((order: any) => {
+        const orderDate = order.orderDate;
+        if (!orderDate) return;
+        
+        let orderDateObj;
+        if (orderDate.toDate) {
+          orderDateObj = orderDate.toDate();
+        } else {
+          orderDateObj = new Date(orderDate);
+        }
+        
+        const weekKey = format(orderDateObj, 'yyyy-\'W\'ww');
+        const total = order.summary?.total || order.total || 0;
+        
+        if (salesByWeek[weekKey] !== undefined) {
+          salesByWeek[weekKey] += total;
+        }
+      });
+      
+      // 차트 데이터 형식으로 변환
+      return Object.entries(salesByWeek).map(([week, sales]) => ({
+        week: week.replace('W', '주차 '),
+        sales
+      }));
+    } catch (error) {
+      console.error("Error generating branch weekly sales:", error);
+      return [];
+    }
+  };
+
+  // 기존 함수는 유지 (다른 차트에서 사용)
   const generateRealWeeklySales = async (weekString: string) => {
     try {
       const [year, week] = weekString.split('-W');
@@ -197,7 +494,144 @@ export default function DashboardPage() {
     }
   };
 
-  // 실제 파이어스토어 데이터로 월별 매출 생성 (필터링 적용) - 단순화된 쿼리
+  // 본사 관리자용: 12개월간 지점별 매출 비율 차트 데이터 생성
+  const generateAdminMonthlySales = async () => {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(endDate.getMonth() - 11); // 12개월간
+      startDate.setDate(1); // 월 첫째 날로 설정
+      
+      // 12개월간 주문 데이터 조회
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("orderDate", ">=", Timestamp.fromDate(startDate)),
+        where("orderDate", "<=", Timestamp.fromDate(endDate))
+      );
+      
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // 월별로 데이터 그룹화
+      const salesByMonth: { [key: string]: { [branchName: string]: number } } = {};
+      
+      // 12개월간 월 초기화
+      for (let i = 0; i < 12; i++) {
+        const monthDate = new Date(startDate);
+        monthDate.setMonth(startDate.getMonth() + i);
+        const monthKey = format(monthDate, 'yyyy-MM');
+        salesByMonth[monthKey] = {};
+        
+        // 각 지점별 매출 초기화
+        availableBranches.forEach(branch => {
+          salesByMonth[monthKey][branch.name] = 0;
+        });
+      }
+      
+      // 주문 데이터로 매출 계산
+      allOrders.forEach((order: any) => {
+        const orderDate = order.orderDate;
+        if (!orderDate) return;
+        
+        let orderDateObj;
+        if (orderDate.toDate) {
+          orderDateObj = orderDate.toDate();
+        } else {
+          orderDateObj = new Date(orderDate);
+        }
+        
+        const monthKey = format(orderDateObj, 'yyyy-MM');
+        const branchName = order.branchName || '지점 미지정';
+        const total = order.summary?.total || order.total || 0;
+        
+        if (salesByMonth[monthKey] && salesByMonth[monthKey].hasOwnProperty(branchName)) {
+          salesByMonth[monthKey][branchName] += total;
+        }
+      });
+      
+      // 차트 데이터 형식으로 변환
+      return Object.entries(salesByMonth).map(([month, branchSales]) => {
+        const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
+        
+        return {
+          month: format(parseISO(month + '-01'), 'M월'),
+          totalSales,
+          branchSales,
+          ...branchSales // 각 지점별 매출을 개별 속성으로 추가
+        };
+      });
+    } catch (error) {
+      console.error("Error generating admin monthly sales:", error);
+      return [];
+    }
+  };
+
+  // 가맹점/지점 직원용: 12개월간 자신의 지점 매출 차트 데이터 생성
+  const generateBranchMonthlySales = async () => {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(endDate.getMonth() - 11); // 12개월간
+      startDate.setDate(1); // 월 첫째 날로 설정
+      
+      // 12개월간 주문 데이터 조회 (자신의 지점만)
+      const ordersQuery = query(
+        collection(db, "orders"),
+        where("orderDate", ">=", Timestamp.fromDate(startDate)),
+        where("orderDate", "<=", Timestamp.fromDate(endDate))
+      );
+      
+      const ordersSnapshot = await getDocs(ordersQuery);
+      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // 자신의 지점 주문만 필터링
+      const userBranchOrders = allOrders.filter((order: any) => 
+        order.branchName === userBranch
+      );
+      
+      // 월별로 매출 계산
+      const salesByMonth: { [key: string]: number } = {};
+      
+      // 12개월간 월 초기화
+      for (let i = 0; i < 12; i++) {
+        const monthDate = new Date(startDate);
+        monthDate.setMonth(startDate.getMonth() + i);
+        const monthKey = format(monthDate, 'yyyy-MM');
+        salesByMonth[monthKey] = 0;
+      }
+      
+      // 주문 데이터로 매출 계산
+      userBranchOrders.forEach((order: any) => {
+        const orderDate = order.orderDate;
+        if (!orderDate) return;
+        
+        let orderDateObj;
+        if (orderDate.toDate) {
+          orderDateObj = orderDate.toDate();
+        } else {
+          orderDateObj = new Date(orderDate);
+        }
+        
+        const monthKey = format(orderDateObj, 'yyyy-MM');
+        const total = order.summary?.total || order.total || 0;
+        
+        if (salesByMonth[monthKey] !== undefined) {
+          salesByMonth[monthKey] += total;
+        }
+      });
+      
+      // 차트 데이터 형식으로 변환
+      return Object.entries(salesByMonth).map(([month, sales]) => ({
+        month: format(parseISO(month + '-01'), 'M월'),
+        sales
+      }));
+    } catch (error) {
+      console.error("Error generating branch monthly sales:", error);
+      return [];
+    }
+  };
+
+  // 기존 함수는 유지 (다른 차트에서 사용)
   const generateRealMonthlySales = async (monthString: string) => {
     try {
       const [year, month] = monthString.split('-');
@@ -245,23 +679,21 @@ export default function DashboardPage() {
     }
   };
 
-  // 날짜 변경 핸들러
+  // 날짜 변경 핸들러 (기존 일별 차트용)
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
-    const salesData = await generateRealDailySales(date);
-    setDailySales(salesData);
+    // 기존 일별 차트는 주간/월간 차트에서만 사용
+    // 일별 차트는 14일간 고정으로 변경됨
   };
 
   const handleWeekChange = async (week: string) => {
     setSelectedWeek(week);
-    const salesData = await generateRealWeeklySales(week);
-    setWeeklySales(salesData);
+    // 주간 차트는 8주간 고정으로 변경됨
   };
 
   const handleMonthChange = async (month: string) => {
     setSelectedMonth(month);
-    const salesData = await generateRealMonthlySales(month);
-    setMonthlySales(salesData);
+    // 월별 차트는 12개월간 고정으로 변경됨
   };
 
   // 지점 필터링 변경 핸들러
@@ -269,12 +701,29 @@ export default function DashboardPage() {
     setSelectedBranchFilter(branch);
     // 필터링 변경 시 차트 데이터도 업데이트
     try {
-      const dailyData = await generateRealDailySales(selectedDate);
-      const weeklyData = await generateRealWeeklySales(selectedWeek);
-      const monthlyData = await generateRealMonthlySales(selectedMonth);
-      setDailySales(dailyData);
-      setWeeklySales(weeklyData);
-      setMonthlySales(monthlyData);
+      if (isAdmin) {
+        // 본사 관리자: 14일간 지점별 매출 비율
+        const adminDailyData = await generateAdminDailySales();
+        setDailySales(adminDailyData);
+      } else {
+        // 가맹점/지점 직원: 14일간 자신의 지점 매출
+        const branchDailyData = await generateBranchDailySales();
+        setDailySales(branchDailyData);
+      }
+      
+      if (isAdmin) {
+        // 본사 관리자: 8주간/12개월간 지점별 매출 비율
+        const adminWeeklyData = await generateAdminWeeklySales();
+        const adminMonthlyData = await generateAdminMonthlySales();
+        setWeeklySales(adminWeeklyData);
+        setMonthlySales(adminMonthlyData);
+      } else {
+        // 가맹점/지점 직원: 8주간/12개월간 자신의 지점 매출
+        const branchWeeklyData = await generateBranchWeeklySales();
+        const branchMonthlyData = await generateBranchMonthlySales();
+        setWeeklySales(branchWeeklyData);
+        setMonthlySales(branchMonthlyData);
+      }
     } catch (error) {
       console.error("Error updating chart data after branch filter change:", error);
     }
@@ -411,13 +860,31 @@ export default function DashboardPage() {
     if (branches.length > 0 && user) {
       fetchDashboardData().then(async () => {
         try {
-          // 초기 차트 데이터 생성 (실제 데이터)
-          const dailyData = await generateRealDailySales(selectedDate);
-          const weeklyData = await generateRealWeeklySales(selectedWeek);
-          const monthlyData = await generateRealMonthlySales(selectedMonth);
-          setDailySales(dailyData);
-          setWeeklySales(weeklyData);
-          setMonthlySales(monthlyData);
+          // 권한별 차트 데이터 생성
+          if (isAdmin) {
+            // 본사 관리자: 14일간 지점별 매출 비율
+            const adminDailyData = await generateAdminDailySales();
+            setDailySales(adminDailyData);
+          } else {
+            // 가맹점/지점 직원: 14일간 자신의 지점 매출
+            const branchDailyData = await generateBranchDailySales();
+            setDailySales(branchDailyData);
+          }
+          
+          // 권한별 주간/월간 차트 데이터 생성
+          if (isAdmin) {
+            // 본사 관리자: 8주간/12개월간 지점별 매출 비율
+            const adminWeeklyData = await generateAdminWeeklySales();
+            const adminMonthlyData = await generateAdminMonthlySales();
+            setWeeklySales(adminWeeklyData);
+            setMonthlySales(adminMonthlyData);
+          } else {
+            // 가맹점/지점 직원: 8주간/12개월간 자신의 지점 매출
+            const branchWeeklyData = await generateBranchWeeklySales();
+            const branchMonthlyData = await generateBranchMonthlySales();
+            setWeeklySales(branchWeeklyData);
+            setMonthlySales(branchMonthlyData);
+          }
         } catch (error) {
           console.error("차트 데이터 생성 오류:", error);
         }
@@ -456,9 +923,21 @@ export default function DashboardPage() {
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
           <p className="font-medium mb-2">{label}</p>
-          <p className="text-sm" style={{ color: payload[0].color }}>
-            매출: {formatCurrency(payload[0].value)}
-          </p>
+          {isAdmin ? (
+            // 본사 관리자용: 지점별 매출 표시
+            <div>
+              {payload.map((entry: any, index: number) => (
+                <p key={index} className="text-sm" style={{ color: entry.color }}>
+                  {entry.name}: {formatCurrency(entry.value)}
+                </p>
+              ))}
+            </div>
+          ) : (
+            // 가맹점/지점 직원용: 자신의 지점 매출 표시
+            <p className="text-sm" style={{ color: payload[0].color }}>
+              매출: {formatCurrency(payload[0].value)}
+            </p>
+          )}
         </div>
       );
     }
@@ -632,38 +1111,48 @@ export default function DashboardPage() {
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-blue-600" />
                   {isAdmin 
-                    ? (currentFilteredBranch ? `${currentFilteredBranch} 일별 매출` : '일별 매출 현황')
-                    : `${userBranch} 일별 매출`
+                    ? (currentFilteredBranch ? `${currentFilteredBranch} 14일간 매출` : '14일간 지점별 매출 현황')
+                    : `${userBranch} 14일간 매출`
                   }
                 </CardTitle>
                 <p className="text-sm text-gray-600">
-                  {format(new Date(selectedDate), 'yyyy년 M월 d일', { locale: ko })} 
-                  {isAdmin && !currentFilteredBranch ? ' 매장별 매출' : ' 매출'}
+                  {isAdmin && !currentFilteredBranch 
+                    ? '최근 14일간 지점별 매출 비율' 
+                    : '최근 14일간 매출 트렌드'
+                  }
                 </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  className="w-40"
-                />
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={dailySales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="branch" fontSize={12} />
-                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="sales" radius={[4, 4, 0, 0]}>
-                  {dailySales.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+              {isAdmin ? (
+                // 본사 관리자용: 지점별 매출 비율 차트
+                <BarChart data={dailySales}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" fontSize={12} />
+                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                  <Tooltip content={<CustomTooltip />} />
+                  {availableBranches.map((branch, index) => (
+                    <Bar 
+                      key={branch.name} 
+                      dataKey={branch.name} 
+                      stackId="a" 
+                      radius={[4, 4, 0, 0]}
+                      fill={getBranchColor(index)}
+                    />
                   ))}
-                </Bar>
-              </BarChart>
+                </BarChart>
+              ) : (
+                // 가맹점/지점 직원용: 자신의 지점 매출 차트
+                <BarChart data={dailySales}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" fontSize={12} />
+                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#3B82F6" />
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -676,37 +1165,48 @@ export default function DashboardPage() {
                 <CardTitle className="flex items-center gap-2">
                   <CalendarDays className="h-5 w-5 text-green-600" />
                   {isAdmin 
-                    ? (currentFilteredBranch ? `${currentFilteredBranch} 주간 매출` : '주간 매출 현황')
-                    : `${userBranch} 주간 매출`
+                    ? (currentFilteredBranch ? `${currentFilteredBranch} 8주간 매출` : '8주간 지점별 매출 현황')
+                    : `${userBranch} 8주간 매출`
                   }
                 </CardTitle>
                 <p className="text-sm text-gray-600">
-                  {isAdmin && !currentFilteredBranch ? '선택된 주간의 매장별 매출' : '선택된 주간의 매출'}
+                  {isAdmin && !currentFilteredBranch 
+                    ? '최근 8주간 지점별 매출 비율' 
+                    : '최근 8주간 매출 트렌드'
+                  }
                 </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="week"
-                  value={selectedWeek}
-                  onChange={(e) => handleWeekChange(e.target.value)}
-                  className="w-40"
-                />
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={weeklySales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="branch" fontSize={12} />
-                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="sales" radius={[4, 4, 0, 0]}>
-                  {weeklySales.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+              {isAdmin ? (
+                // 본사 관리자용: 지점별 매출 비율 차트
+                <BarChart data={weeklySales}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="week" fontSize={12} />
+                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                  <Tooltip content={<CustomTooltip />} />
+                  {availableBranches.map((branch, index) => (
+                    <Bar 
+                      key={branch.name} 
+                      dataKey={branch.name} 
+                      stackId="a" 
+                      radius={[4, 4, 0, 0]}
+                      fill={getBranchColor(index)}
+                    />
                   ))}
-                </Bar>
-              </BarChart>
+                </BarChart>
+              ) : (
+                // 가맹점/지점 직원용: 자신의 지점 매출 차트
+                <BarChart data={weeklySales}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="week" fontSize={12} />
+                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#10B981" />
+                </BarChart>
+              )}
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -720,38 +1220,48 @@ export default function DashboardPage() {
               <CardTitle className="flex items-center gap-2">
                 <Building className="h-5 w-5 text-purple-600" />
                 {isAdmin 
-                  ? (currentFilteredBranch ? `${currentFilteredBranch} 월별 매출` : '월별 매출 현황')
-                  : `${userBranch} 월별 매출`
+                  ? (currentFilteredBranch ? `${currentFilteredBranch} 12개월간 매출` : '12개월간 지점별 매출 현황')
+                  : `${userBranch} 12개월간 매출`
                 }
               </CardTitle>
               <p className="text-sm text-gray-600">
-                {format(new Date(selectedMonth + '-01'), 'yyyy년 M월', { locale: ko })} 
-                {isAdmin && !currentFilteredBranch ? ' 매장별 매출' : ' 매출'}
+                {isAdmin && !currentFilteredBranch 
+                  ? '최근 12개월간 지점별 매출 비율' 
+                  : '최근 12개월간 매출 트렌드'
+                }
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => handleMonthChange(e.target.value)}
-                className="w-40"
-              />
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={monthlySales}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="branch" fontSize={12} />
-              <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="sales" radius={[4, 4, 0, 0]}>
-                {monthlySales.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+            {isAdmin ? (
+              // 본사 관리자용: 지점별 매출 비율 차트
+              <BarChart data={monthlySales}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" fontSize={12} />
+                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
+                {availableBranches.map((branch, index) => (
+                  <Bar 
+                    key={branch.name} 
+                    dataKey={branch.name} 
+                    stackId="a" 
+                    radius={[4, 4, 0, 0]}
+                    fill={getBranchColor(index)}
+                  />
                 ))}
-              </Bar>
-            </BarChart>
+              </BarChart>
+            ) : (
+              // 가맹점/지점 직원용: 자신의 지점 매출 차트
+              <BarChart data={monthlySales}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" fontSize={12} />
+                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#8B5CF6" />
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </CardContent>
       </Card>

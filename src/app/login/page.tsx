@@ -22,7 +22,21 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // Firebase Auth가 초기화되었는지 확인
+    if (!auth) {
+      console.error('Firebase Auth is not initialized');
+      toast({
+        variant: 'destructive',
+        title: '로그인 실패',
+        description: 'Firebase가 초기화되지 않았습니다. 페이지를 새로고침해주세요.',
+      });
+      setLoading(false);
+      return;
+    }
+    
     try {
+      console.log('Attempting login with:', { email, authInitialized: !!auth });
       await signInWithEmailAndPassword(auth, email, password);
       // 로그인 성공 시 lastLogin 업데이트
       try {
@@ -36,10 +50,39 @@ export default function LoginPage() {
       }
       router.push('/dashboard');
     } catch (error: any) {
+      console.error('Login error details:', error);
+      let errorMessage = '로그인에 실패했습니다.';
+      
+      // Firebase Auth 오류 코드에 따른 메시지
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/user-not-found':
+            errorMessage = '등록되지 않은 이메일입니다.';
+            break;
+          case 'auth/wrong-password':
+            errorMessage = '비밀번호가 올바르지 않습니다.';
+            break;
+          case 'auth/invalid-email':
+            errorMessage = '올바르지 않은 이메일 형식입니다.';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = '비활성화된 계정입니다.';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = '네트워크 연결을 확인해주세요.';
+            break;
+          default:
+            errorMessage = `로그인 오류: ${error.message}`;
+        }
+      }
+      
       toast({
         variant: 'destructive',
         title: '로그인 실패',
-        description: error.message,
+        description: errorMessage,
       });
     } finally {
       setLoading(false);

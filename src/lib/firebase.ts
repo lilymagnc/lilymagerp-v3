@@ -26,15 +26,19 @@ const initializeFirebase = () => {
     // 앱이 이미 초기화되었는지 확인
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
+      console.log('Firebase app initialized successfully');
     } else {
       app = getApp();
+      console.log('Using existing Firebase app');
     }
 
     // Auth 초기화
     auth = getAuth(app);
+    console.log('Firebase Auth initialized');
 
     // Storage 초기화
     storage = getStorage(app);
+    console.log('Firebase Storage initialized');
 
     // Firestore 초기화 - 더 안정적인 설정
     try {
@@ -43,9 +47,11 @@ const initializeFirebase = () => {
         cacheSizeBytes: 50 * 1024 * 1024, // 캐시 크기 증가 (50MB)
         ignoreUndefinedProperties: true, // undefined 속성 무시
       });
+      console.log('Firestore initialized with custom settings');
     } catch (error) {
       console.warn('Firestore initialization failed, falling back to default:', error);
       db = getFirestore(app);
+      console.log('Firestore initialized with default settings');
     }
 
     // 개발 환경에서 에뮬레이터 연결 (선택사항)
@@ -53,7 +59,6 @@ const initializeFirebase = () => {
       // 에뮬레이터가 실행 중인지 확인 후 연결
       // connectFirestoreEmulator(db, 'localhost', 8080);
     }
-
 
     return { app, auth, db, storage };
 
@@ -63,16 +68,21 @@ const initializeFirebase = () => {
   }
 };
 
-// 초기화 실행
-try {
-  const firebaseInstance = initializeFirebase();
-  app = firebaseInstance.app;
-  auth = firebaseInstance.auth;
-  db = firebaseInstance.db;
-  storage = firebaseInstance.storage;
-} catch (error) {
-  console.error('Failed to initialize Firebase:', error);
-  // 오류가 발생해도 앱이 계속 실행되도록 함
+// 초기화 실행 - 서버사이드 렌더링 고려
+let firebaseInstance: any = null;
+
+if (typeof window !== 'undefined') {
+  // 클라이언트 사이드에서만 초기화
+  try {
+    firebaseInstance = initializeFirebase();
+    app = firebaseInstance.app;
+    auth = firebaseInstance.auth;
+    db = firebaseInstance.db;
+    storage = firebaseInstance.storage;
+  } catch (error) {
+    console.error('Failed to initialize Firebase:', error);
+    // 오류가 발생해도 앱이 계속 실행되도록 함
+  }
 }
 
 export { app, auth, db, storage };
