@@ -27,7 +27,8 @@ import {
   Receipt,
   X,
   CheckSquare,
-  Square
+  Square,
+  Edit
 } from 'lucide-react';
 import { useSimpleExpenses } from '@/hooks/use-simple-expenses';
 import { useBranches } from '@/hooks/use-branches';
@@ -41,6 +42,7 @@ import {
   getCategoryColor
 } from '@/types/simple-expense';
 import { exportToExcel } from '@/lib/excel-export';
+import { ExpenseDetailDialog } from './expense-detail-dialog';
 
 interface ExpenseListProps {
   refreshTrigger?: number;
@@ -62,6 +64,8 @@ export function ExpenseList({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedExpense, setSelectedExpense] = useState<any>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   const { fetchExpenses, deleteExpense } = useSimpleExpenses();
   const { branches } = useBranches();
@@ -244,6 +248,18 @@ export function ExpenseList({
         ? prev.filter(id => id !== expenseId)
         : [...prev, expenseId]
     );
+  };
+
+  // 상세보기/수정 다이얼로그 열기
+  const handleViewExpense = (expense: any) => {
+    setSelectedExpense(expense);
+    setIsDetailDialogOpen(true);
+  };
+
+  // 지출 수정 완료 후 처리
+  const handleExpenseUpdated = (expenseId: string, data: any) => {
+    // 목록 새로고침
+    loadExpenses();
   };
 
   // 일괄 삭제
@@ -478,192 +494,193 @@ export function ExpenseList({
   const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   return (
+    <>
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
-            {isHeadquarters ? '통합 지출 내역' : '지출 내역'}
+              {isHeadquarters ? '통합 지출 내역' : '지출 내역'}
             </CardTitle>
-          <Button onClick={handleExportExcel} disabled={isLoading}>
-            <Download className="h-4 w-4 mr-2" />
-            엑셀 다운로드
+            <Button onClick={handleExportExcel} disabled={isLoading}>
+              <Download className="h-4 w-4 mr-2" />
+              엑셀 다운로드
             </Button>
           </div>
         </CardHeader>
-      <CardContent className="space-y-4">
-        {/* 필터 */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
-          <div className="space-y-2">
-            <Label>검색</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                  placeholder="품목명, 구매처, 지점 검색..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => setSearchTerm('')}
-                disabled={!searchTerm}
-                title="검색 초기화"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            </div>
-
-          <div className="space-y-2">
-            <Label>분류</Label>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="전체 분류" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 분류</SelectItem>
-                {Object.entries(SIMPLE_EXPENSE_CATEGORY_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>시작일</Label>
-            <Input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>종료일</Label>
-            <Input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-            />
-          </div>
-          </div>
-
-        {/* 본사 관리자용 지점 필터 */}
-        {isHeadquarters && isHeadquartersAdmin && (
-          <div className="space-y-2">
-            <Label>지점 선택</Label>
-            <div className="flex flex-wrap gap-2">
-              {branches.filter(b => b.type !== '본사').map(branch => (
-                <Button
-                  key={branch.id}
-                  variant={selectedBranches.includes(branch.id) ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setSelectedBranches(prev => 
-                      prev.includes(branch.id)
-                        ? prev.filter(id => id !== branch.id)
-                        : [...prev, branch.id]
-                    );
-                  }}
-                >
-                  <Building className="h-4 w-4 mr-2" />
-                  {branch.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 통계 및 일괄삭제 */}
-        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                총 {filteredExpenses.length}건
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                총 {formatCurrency(totalAmount)}
-              </span>
-            </div>
-            {selectedExpenses.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {selectedExpenses.length}개 선택됨
-                </Badge>
-              </div>
-            )}
-          </div>
-          {selectedExpenses.length > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  삭제 중...
+        <CardContent className="space-y-4">
+          {/* 필터 */}
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label>검색</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="품목명, 구매처, 지점 검색..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
                 </div>
-              ) : (
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setSearchTerm('')}
+                  disabled={!searchTerm}
+                  title="검색 초기화"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>분류</Label>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="전체 분류" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 분류</SelectItem>
+                  {Object.entries(SIMPLE_EXPENSE_CATEGORY_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>시작일</Label>
+              <Input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>종료일</Label>
+              <Input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          {/* 본사 관리자용 지점 필터 */}
+          {isHeadquarters && isHeadquartersAdmin && (
+            <div className="space-y-2">
+              <Label>지점 선택</Label>
+              <div className="flex flex-wrap gap-2">
+                {branches.filter(b => b.type !== '본사').map(branch => (
+                  <Button
+                    key={branch.id}
+                    variant={selectedBranches.includes(branch.id) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setSelectedBranches(prev => 
+                        prev.includes(branch.id)
+                          ? prev.filter(id => id !== branch.id)
+                          : [...prev, branch.id]
+                      );
+                    }}
+                  >
+                    <Building className="h-4 w-4 mr-2" />
+                    {branch.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 통계 및 일괄삭제 */}
+          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  총 {filteredExpenses.length}건
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  총 {formatCurrency(totalAmount)}
+                </span>
+              </div>
+              {selectedExpenses.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <Trash2 className="h-4 w-4" />
-                  선택 삭제 ({selectedExpenses.length}개)
+                  <Badge variant="secondary">
+                    {selectedExpenses.length}개 선택됨
+                  </Badge>
                 </div>
               )}
-            </Button>
-          )}
-        </div>
+            </div>
+            {selectedExpenses.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    삭제 중...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    선택 삭제 ({selectedExpenses.length}개)
+                  </div>
+                )}
+              </Button>
+            )}
+          </div>
 
-        {/* 테이블 */}
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleSelectAll}
-                        className="h-6 w-6 p-0"
-                      >
-                        {selectedExpenses.length === filteredExpenses.length && filteredExpenses.length > 0 ? (
-                          <CheckSquare className="h-4 w-4" />
-                        ) : (
-                          <Square className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TableHead>
-                    {isHeadquarters && <TableHead>지점</TableHead>}
-                    <TableHead>날짜</TableHead>
-                    <TableHead>구매처</TableHead>
-                    <TableHead>분류</TableHead>
-                    <TableHead>품목명</TableHead>
-                    <TableHead className="text-center">수량</TableHead>
-                    <TableHead className="text-center">단가</TableHead>
-                    <TableHead className="text-right">금액</TableHead>
-                    <TableHead>작업</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-              {filteredExpenses.length === 0 ? (
+          {/* 테이블 */}
+          <div className="border rounded-lg">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={isHeadquarters ? 10 : 9} className="text-center py-8">
-                    {isLoading ? '로딩 중...' : '지출 내역이 없습니다.'}
-                  </TableCell>
+                  <TableHead className="w-12">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSelectAll}
+                      className="h-6 w-6 p-0"
+                    >
+                      {selectedExpenses.length === filteredExpenses.length && filteredExpenses.length > 0 ? (
+                        <CheckSquare className="h-4 w-4" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TableHead>
+                  {isHeadquarters && <TableHead>지점</TableHead>}
+                  <TableHead>날짜</TableHead>
+                  <TableHead>구매처</TableHead>
+                  <TableHead>분류</TableHead>
+                  <TableHead>품목명</TableHead>
+                  <TableHead className="text-center">수량</TableHead>
+                  <TableHead className="text-center">단가</TableHead>
+                  <TableHead className="text-right">금액</TableHead>
+                  <TableHead>작업</TableHead>
                 </TableRow>
-              ) : (
-                filteredExpenses.map((expense) => (
+              </TableHeader>
+              <TableBody>
+                {filteredExpenses.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={isHeadquarters ? 10 : 9} className="text-center py-8">
+                      {isLoading ? '로딩 중...' : '지출 내역이 없습니다.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredExpenses.map((expense) => (
                     <TableRow key={expense.id}>
                       <TableCell>
                         <Button
@@ -686,54 +703,72 @@ export function ExpenseList({
                           </Badge>
                         </TableCell>
                       )}
-                    <TableCell>
-                      {expense.date?.toDate().toLocaleDateString() || '-'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-[200px] truncate" title={expense.supplier}>
-                        {expense.supplier}
-                      </div>
+                      <TableCell>
+                        {expense.date?.toDate().toLocaleDateString() || '-'}
                       </TableCell>
                       <TableCell>
-                      <Badge 
-                        variant="outline"
-                        className={`border-${getCategoryColor(expense.category)}-500`}
-                      >
+                        <div className="max-w-[200px] truncate" title={expense.supplier}>
+                          {expense.supplier}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline"
+                          className={`border-${getCategoryColor(expense.category)}-500`}
+                        >
                           {SIMPLE_EXPENSE_CATEGORY_LABELS[expense.category]}
                         </Badge>
                       </TableCell>
-                    <TableCell>
-                      <div className="max-w-[200px] truncate" title={expense.description}>
-                        {expense.description}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {expense.quantity || 1}
+                      <TableCell>
+                        <div className="max-w-[200px] truncate" title={expense.description}>
+                          {expense.description}
+                        </div>
                       </TableCell>
-                    <TableCell className="text-center">
-                      {expense.unitPrice ? formatCurrency(expense.unitPrice) : '-'}
+                      <TableCell className="text-center">
+                        {expense.quantity || 1}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {expense.unitPrice ? formatCurrency(expense.unitPrice) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(expense.amount)}
                       </TableCell>
                       <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(expense.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                      </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewExpense(expense)}
+                            title="상세보기/수정"
+                          >
+                            <Eye className="h-4 w-4 text-blue-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(expense.id)}
+                            title="삭제"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                ))
-              )}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      {/* 상세보기/수정 다이얼로그 */}
+      <ExpenseDetailDialog
+        isOpen={isDetailDialogOpen}
+        onOpenChange={setIsDetailDialogOpen}
+        expense={selectedExpense}
+        onSave={handleExpenseUpdated}
+      />
+    </>
   );
 }
