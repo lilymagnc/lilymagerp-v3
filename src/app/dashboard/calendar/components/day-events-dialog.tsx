@@ -46,7 +46,7 @@ const getStatusBadge = (status: string) => {
   }
 };
 
-export function DayEventsDialog({
+function DayEventsDialogComponent({
   isOpen,
   onOpenChange,
   date,
@@ -55,19 +55,28 @@ export function DayEventsDialog({
 }: DayEventsDialogProps) {
   if (!date) return null;
 
-  const sortedEvents = [...events].sort((a, b) => {
-    // 완료된 이벤트는 뒤로
-    if (a.status === 'completed' && b.status !== 'completed') return 1;
-    if (a.status !== 'completed' && b.status === 'completed') return -1;
-    
-    // 시간순 정렬 (시간이 있는 경우)
-    const timeA = a.startDate instanceof Date ? a.startDate.getTime() : new Date(a.startDate).getTime();
-    const timeB = b.startDate instanceof Date ? b.startDate.getTime() : new Date(b.startDate).getTime();
-    return timeA - timeB;
-  });
+  const sortedEvents = React.useMemo(() => {
+    return [...events].sort((a, b) => {
+      // 완료된 이벤트는 뒤로
+      if (a.status === 'completed' && b.status !== 'completed') return 1;
+      if (a.status !== 'completed' && b.status === 'completed') return -1;
+      
+      // 시간순 정렬 (시간이 있는 경우)
+      const timeA = a.startDate instanceof Date ? a.startDate.getTime() : new Date(a.startDate).getTime();
+      const timeB = b.startDate instanceof Date ? b.startDate.getTime() : new Date(b.startDate).getTime();
+      return timeA - timeB;
+    });
+  }, [events]);
 
-  const pendingEvents = sortedEvents.filter(event => event.status === 'pending');
-  const completedEvents = sortedEvents.filter(event => event.status === 'completed');
+  const pendingEvents = React.useMemo(() => 
+    sortedEvents.filter(event => event.status === 'pending'), 
+    [sortedEvents]
+  );
+  
+  const completedEvents = React.useMemo(() => 
+    sortedEvents.filter(event => event.status === 'completed'), 
+    [sortedEvents]
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -201,3 +210,5 @@ export function DayEventsDialog({
     </Dialog>
   );
 }
+
+export const DayEventsDialog = React.memo(DayEventsDialogComponent);
