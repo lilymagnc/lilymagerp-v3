@@ -171,8 +171,7 @@ export default function DashboardPage() {
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
-      console.log(`[DEBUG] 조회된 주문 수: ${allOrders.length}`);
-      console.log(`[DEBUG] 조회 기간: ${startOfDay.toISOString()} ~ ${endOfDay.toISOString()}`);
+
       
       // 날짜별로 데이터 그룹화
       const salesByDate: { [key: string]: { [branchName: string]: number } } = {};
@@ -195,7 +194,6 @@ export default function DashboardPage() {
       allOrders.forEach((order: any) => {
         const orderDate = order.orderDate;
         if (!orderDate) {
-          console.log(`[DEBUG] 주문 ${order.id}에 orderDate가 없음`);
           return;
         }
         
@@ -210,7 +208,7 @@ export default function DashboardPage() {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
         
-        console.log(`[DEBUG] 주문 ${order.id}: ${dateKey}, ${branchName}, ${total}`);
+
         
         if (salesByDate[dateKey] && salesByDate[dateKey].hasOwnProperty(branchName)) {
           salesByDate[dateKey][branchName] += total;
@@ -269,7 +267,7 @@ export default function DashboardPage() {
         order.branchName === userBranch
       );
       
-      console.log(`[DEBUG] ${userBranch} 지점 주문 수: ${userBranchOrders.length}`);
+
       
       // 날짜별로 매출 계산
       const salesByDate: { [key: string]: number } = {};
@@ -390,7 +388,7 @@ export default function DashboardPage() {
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
-      console.log(`[DEBUG] 주간 차트 조회된 주문 수: ${allOrders.length}`);
+
       
       // 주별로 데이터 그룹화
       const salesByWeek: { [key: string]: { [branchName: string]: number } } = {};
@@ -482,7 +480,7 @@ export default function DashboardPage() {
         order.branchName === userBranch
       );
       
-      console.log(`[DEBUG] ${userBranch} 지점 주간 주문 수: ${userBranchOrders.length}`);
+
       
       // 주별로 매출 계산
       const salesByWeek: { [key: string]: number } = {};
@@ -603,7 +601,7 @@ export default function DashboardPage() {
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
-      console.log(`[DEBUG] 월간 차트 조회된 주문 수: ${allOrders.length}`);
+
       
       // 월별로 데이터 그룹화
       const salesByMonth: { [key: string]: { [branchName: string]: number } } = {};
@@ -696,7 +694,7 @@ export default function DashboardPage() {
         order.branchName === userBranch
       );
       
-      console.log(`[DEBUG] ${userBranch} 지점 월간 주문 수: ${userBranchOrders.length}`);
+
       
       // 월별로 매출 계산
       const salesByMonth: { [key: string]: number } = {};
@@ -856,7 +854,7 @@ export default function DashboardPage() {
 
   // 지점 필터링 변경 핸들러
   const handleBranchFilterChange = async (branch: string) => {
-    console.log(`[DEBUG] 지점 필터 변경: ${selectedBranchFilter} -> ${branch}`);
+    
     setSelectedBranchFilter(branch);
     // 필터링 변경 시 차트 데이터도 업데이트
     try {
@@ -864,12 +862,12 @@ export default function DashboardPage() {
         // 본사 관리자: 선택된 기간 지점별 매출 비율
         const adminDailyData = await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
         setDailySales(adminDailyData);
-        console.log(`[DEBUG] 지점 필터 변경 후 일별 차트 데이터:`, adminDailyData);
+
       } else {
         // 가맹점/지점 직원: 선택된 기간 자신의 지점 매출
         const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
         setDailySales(branchDailyData);
-        console.log(`[DEBUG] 지점 필터 변경 후 일별 차트 데이터:`, branchDailyData);
+
       }
       
       if (isAdmin) {
@@ -906,8 +904,7 @@ export default function DashboardPage() {
     async function fetchDashboardData() {
       setLoading(true);
       try {
-        console.log(`[DEBUG] 대시보드 데이터 로딩 시작 - 사용자: ${user?.email}, 권한: ${user?.role}, 지점: ${userBranch}`);
-        console.log(`[DEBUG] 현재 필터링된 지점: ${currentFilteredBranch}`);
+
         
         // 주문 데이터 가져오기 (필터링 적용) - 단순화된 쿼리
         let ordersQuery = collection(db, "orders");
@@ -915,14 +912,14 @@ export default function DashboardPage() {
         const ordersSnapshot = await getDocs(ordersQuery);
         const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
         
-        console.log(`[DEBUG] 전체 주문 수: ${allOrders.length}`);
+
         
         // 클라이언트 사이드에서 필터링
         const orders = currentFilteredBranch 
           ? allOrders.filter(order => order.branchName === currentFilteredBranch)
           : allOrders;
         
-        console.log(`[DEBUG] 필터링된 주문 수: ${orders.length}`);
+
 
         // 최근 주문 (실제 데이터) - 단순화된 쿼리
         let recentOrdersQuery = query(
@@ -999,7 +996,7 @@ export default function DashboardPage() {
           return orderDateObj >= currentWeekStart && orderDateObj <= currentWeekEnd;
         }).length;
 
-        console.log(`[DEBUG] 주간 주문 계산 - 시작: ${currentWeekStart.toISOString()}, 종료: ${currentWeekEnd.toISOString()}, 건수: ${weeklyOrders}`);
+
 
         // 고객 수 (필터링 적용) - 단순화된 쿼리
         let customersQuery = collection(db, "customers");
@@ -1020,7 +1017,7 @@ export default function DashboardPage() {
           pendingOrders
         };
         
-        console.log(`[DEBUG] 통계 데이터:`, statsData);
+
         setStats(statsData);
         
       } catch (error) {
@@ -1041,18 +1038,18 @@ export default function DashboardPage() {
     if (branches.length > 0 && user) {
       fetchDashboardData().then(async () => {
         try {
-          console.log(`[DEBUG] 차트 데이터 생성 시작`);
+
           // 권한별 차트 데이터 생성
           if (isAdmin) {
             // 본사 관리자: 선택된 기간 지점별 매출 비율
             const adminDailyData = await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
             setDailySales(adminDailyData);
-            console.log(`[DEBUG] 본사 관리자 일별 차트 데이터:`, adminDailyData);
+
           } else {
             // 가맹점/지점 직원: 선택된 기간 자신의 지점 매출
             const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
             setDailySales(branchDailyData);
-            console.log(`[DEBUG] 지점 직원 일별 차트 데이터:`, branchDailyData);
+
           }
           
           // 권한별 주간/월간 차트 데이터 생성

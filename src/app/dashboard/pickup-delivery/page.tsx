@@ -114,7 +114,6 @@ export default function PickupDeliveryPage() {
         };
         
         await addPartner(partnerData);
-        console.log('새로운 배송업체 거래처 등록 완료:', driverAffiliation);
       }
     } catch (error) {
       console.error('거래처 자동 등록 오류:', error);
@@ -167,8 +166,6 @@ export default function PickupDeliveryPage() {
       };
 
       await addExpense(expenseData, orderBranch.id, orderBranch.name);
-      
-      console.log('배송비 자동 지출 생성 완료:', expenseData);
     } catch (error) {
       console.error('배송비 자동 지출 생성 오류:', error);
       // 오류가 발생해도 주문 업데이트는 계속 진행

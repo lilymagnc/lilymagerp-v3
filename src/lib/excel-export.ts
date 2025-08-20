@@ -5,6 +5,24 @@ import { SimpleExpense } from '@/types/simple-expense';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
+// Product 인터페이스 정의
+interface Product {
+  id: string;
+  docId: string;
+  name: string;
+  mainCategory: string;
+  midCategory: string;
+  price: number;
+  supplier: string;
+  stock: number;
+  size: string;
+  color: string;
+  branch: string;
+  code?: string;
+  category?: string;
+  status: string;
+}
+
 // 단일 체크리스트를 엑셀로 내보내기
 export const exportSingleChecklist = (
   checklist: ChecklistRecord, 
@@ -641,6 +659,73 @@ export const exportToExcel = (expenses: SimpleExpense[], startDate?: string, end
   const fileName = startDate && endDate 
     ? `간편지출_${startDate}_${endDate}.xlsx`
     : `간편지출_${today}.xlsx`;
+
+  // 파일 다운로드
+  const excelBuffer = XLSX.write(workbook, { 
+    bookType: 'xlsx', 
+    type: 'array' 
+  });
+  const blob = new Blob([excelBuffer], { 
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  });
+  saveAs(blob, fileName);
+};
+
+// 상품 내보내기 함수
+export const exportProductsToExcel = (products: Product[], startDate?: string, endDate?: string) => {
+  // 헤더 정의
+  const headers = [
+    '상품코드', '상품명', '대분류', '중분류', '가격', '공급업체', '재고', '사이즈', '색상', '지점', '상태'
+  ];
+
+  // 데이터 변환
+  const data = products.map(product => {
+    const statusText = product.status === 'active' ? '활성' : 
+                      product.status === 'low_stock' ? '재고부족' : 
+                      product.status === 'out_of_stock' ? '품절' : product.status;
+
+    return [
+      product.code || product.id || '-',
+      product.name || '-',
+      product.mainCategory || '-',
+      product.midCategory || '-',
+      product.price?.toLocaleString() || '0',
+      product.supplier || '-',
+      product.stock?.toString() || '0',
+      product.size || '-',
+      product.color || '-',
+      product.branch || '-',
+      statusText
+    ];
+  });
+
+  // 워크북 생성
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+
+  // 열 너비 설정
+  worksheet['!cols'] = [
+    { width: 15 }, // 상품코드
+    { width: 30 }, // 상품명
+    { width: 15 }, // 대분류
+    { width: 15 }, // 중분류
+    { width: 12 }, // 가격
+    { width: 20 }, // 공급업체
+    { width: 10 }, // 재고
+    { width: 10 }, // 사이즈
+    { width: 12 }, // 색상
+    { width: 20 }, // 지점
+    { width: 12 }  // 상태
+  ];
+
+  // 시트 이름 설정
+  XLSX.utils.book_append_sheet(workbook, worksheet, '상품목록');
+
+  // 파일명 생성
+  const today = format(new Date(), 'yyyy-MM-dd', { locale: ko });
+  const fileName = startDate && endDate 
+    ? `상품목록_${startDate}_${endDate}.xlsx`
+    : `상품목록_${today}.xlsx`;
 
   // 파일 다운로드
   const excelBuffer = XLSX.write(workbook, { 
