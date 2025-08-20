@@ -289,6 +289,9 @@ export default function NewOrderPage() {
         setScheduleTime(getInitialTime());
       }
     } else if (receiptType === 'delivery_reservation') {
+      // 배송일 경우 주문자 정보를 수령자 정보에 자동 입력
+      setRecipientName(ordererName);
+      setRecipientContact(ordererContact);
       // 배송일 경우 기본값을 자동계산으로 설정
       setDeliveryFeeType("auto");
     }
