@@ -257,8 +257,7 @@ export function useMaterialRequests() {
     try {
       const q = query(
         collection(db, 'materialRequests'),
-        where('branchId', '==', branchId),
-        orderBy('createdAt', 'desc')
+        where('branchId', '==', branchId)
       );
       const querySnapshot = await getDocs(q, { source: 'server' });
       const requests = querySnapshot.docs.map(doc => {
@@ -270,7 +269,12 @@ export function useMaterialRequests() {
           updatedAt: data.updatedAt?.toDate(),
         } as MaterialRequest;
       });
-      return requests;
+      // 클라이언트 사이드에서 정렬
+      return requests.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
     } catch (error) {
       console.error('branchId로 요청 조회 오류:', error);
       throw error;
@@ -281,8 +285,7 @@ export function useMaterialRequests() {
     try {
       setLoading(true);
       const q = query(
-        collection(db, 'materialRequests'),
-        orderBy('createdAt', 'desc')
+        collection(db, 'materialRequests')
       );
       const querySnapshot = await getDocs(q);
       const requestsData = querySnapshot.docs.map(doc => {
@@ -294,13 +297,19 @@ export function useMaterialRequests() {
           updatedAt: data.updatedAt?.toDate(), // Timestamp를 Date 객체로 변환
         } as MaterialRequest;
       });
+      // 클라이언트 사이드에서 정렬
+      const sortedRequests = requestsData.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
       // 상태 업데이트
-      setRequests(requestsData);
+      setRequests(sortedRequests);
       // 통계 계산
-      const totalRequests = requestsData.length;
-      const pendingRequests = requestsData.filter(r => ['submitted', 'reviewing', 'purchasing'].includes(r.status)).length;
-      const completedRequests = requestsData.filter(r => r.status === 'completed').length;
-      const totalCost = requestsData.reduce((sum, request) => 
+      const totalRequests = sortedRequests.length;
+      const pendingRequests = sortedRequests.filter(r => ['submitted', 'reviewing', 'purchasing'].includes(r.status)).length;
+      const completedRequests = sortedRequests.filter(r => r.status === 'completed').length;
+      const totalCost = sortedRequests.reduce((sum, request) => 
         sum + request.requestedItems.reduce((itemSum, item) => 
           itemSum + (item.requestedQuantity * item.estimatedPrice), 0
         ), 0
@@ -312,7 +321,7 @@ export function useMaterialRequests() {
         totalCost,
         averageProcessingTime: 0 // 계산 로직 필요
       });
-      return requestsData;
+      return sortedRequests;
     } catch (error) {
       console.error('전체 요청 조회 오류:', error);
       throw error;
@@ -350,11 +359,10 @@ export function useMaterialRequests() {
     try {
       const q = query(
         collection(db, 'materialRequests'),
-        where('status', '==', status),
-        orderBy('createdAt', 'desc')
+        where('status', '==', status)
       );
       const querySnapshot = await getDocs(q, { source: 'server' }); // source: 'server' 추가
-      return querySnapshot.docs.map(doc => {
+      const requests = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -362,6 +370,12 @@ export function useMaterialRequests() {
           createdAt: data.createdAt?.toDate(), // Timestamp를 Date 객체로 변환
           updatedAt: data.updatedAt?.toDate(), // Timestamp를 Date 객체로 변환
         } as MaterialRequest;
+      });
+      // 클라이언트 사이드에서 정렬
+      return requests.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
       });
     } catch (error) {
       console.error('상태별 요청 조회 오류:', error);

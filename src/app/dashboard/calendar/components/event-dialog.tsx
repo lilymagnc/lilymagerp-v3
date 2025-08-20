@@ -183,6 +183,13 @@ export function EventDialog({
     }
   };
 
+  // 자재요청 페이지로 이동
+  const handleGoToMaterialRequest = () => {
+    if (event?.relatedId) {
+      window.location.href = '/dashboard/material-request';
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -211,6 +218,27 @@ export function EventDialog({
                >
                  <ExternalLink className="h-4 w-4 mr-2" />
                  픽업/배송관리로 이동
+               </Button>
+             </div>
+           </div>
+         )}
+
+         {/* 자재요청 이벤트인 경우 이동 버튼 표시 */}
+         {event?.relatedId && event.type === 'material' && (
+           <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm font-medium text-orange-800">자재요청</p>
+                 <p className="text-xs text-orange-600">이 일정은 자재요청 시스템에서 자동 생성되었습니다. 수정/삭제는 자재요청 관리에서 해주세요.</p>
+               </div>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={handleGoToMaterialRequest}
+                 className="text-orange-600 border-orange-300 hover:bg-orange-100"
+               >
+                 <ExternalLink className="h-4 w-4 mr-2" />
+                 자재요청 관리로 이동
                </Button>
              </div>
            </div>

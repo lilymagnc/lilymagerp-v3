@@ -10,6 +10,7 @@ import { useBranches } from "@/hooks/use-branches";
 import { useOrders } from "@/hooks/use-orders";
 import { useCustomers } from "@/hooks/use-customers";
 import { useCalendar, CalendarEvent } from "@/hooks/use-calendar";
+import { useMaterialRequests } from "@/hooks/use-material-requests";
 import { Calendar, CalendarDays, Truck, Package, Users, Bell, Plus, Filter, CreditCard } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO, setDate } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -21,6 +22,7 @@ export default function CalendarPage() {
   const { branches } = useBranches();
   const { orders } = useOrders();
   const { customers } = useCustomers();
+  const { requests: materialRequests } = useMaterialRequests();
   const { events, loading, createEvent, updateEvent, deleteEvent } = useCalendar();
   
   // 사용자 권한에 따른 지점 필터링
@@ -221,9 +223,45 @@ export default function CalendarPage() {
     return paymentEvents;
   }, [customers, currentDate, isAdmin, userBranch]);
 
-  // 필터링된 이벤트 (수동 추가 이벤트 + 픽업/배송 예약 이벤트)
+  // 자재요청 데이터를 캘린더 이벤트로 변환
+  const convertMaterialRequestsToEvents = useMemo(() => {
+    const materialEvents: CalendarEvent[] = [];
+
+    materialRequests.forEach(request => {
+      // 관리자가 아닌 경우 해당 지점의 요청만 처리
+      if (!isAdmin && request.branchName !== userBranch) {
+        return;
+      }
+
+      // 요청 생성일을 기준으로 이벤트 생성
+      const requestDate = request.createdAt instanceof Date ? request.createdAt : 
+        (request.createdAt && typeof request.createdAt === 'object' && 'toDate' in request.createdAt) ? 
+        request.createdAt.toDate() : new Date();
+      
+      materialEvents.push({
+        id: `material_${request.id}`,
+        type: 'material',
+        title: `[자재요청] ${request.branchName}`,
+        description: `${request.requestNumber} - ${request.requestedItems.map(item => item.materialName).join(', ')}`,
+        startDate: requestDate,
+        endDate: requestDate, // 단일 날짜 이벤트
+        branchName: request.branchName,
+        status: request.status === 'completed' ? 'completed' : 'pending',
+        relatedId: request.id, // 자재요청 ID 연결
+        color: request.status === 'completed' ? 'bg-gray-400' : 'bg-orange-500',
+        isAllDay: true,
+        createdAt: requestDate,
+        updatedAt: requestDate,
+        createdBy: 'system'
+      });
+    });
+
+    return materialEvents;
+  }, [materialRequests, isAdmin, userBranch]);
+
+  // 필터링된 이벤트 (수동 추가 이벤트 + 픽업/배송 예약 이벤트 + 자재요청 이벤트)
   const filteredEvents = useMemo(() => {
-    const allEvents = [...events, ...convertOrdersToEvents, ...convertCustomersToEvents];
+    const allEvents = [...events, ...convertOrdersToEvents, ...convertCustomersToEvents, ...convertMaterialRequestsToEvents];
     
     return allEvents.filter(event => {
       // 공지/알림 필터링 로직
@@ -271,7 +309,7 @@ export default function CalendarPage() {
       
       return true;
     });
-  }, [events, convertOrdersToEvents, convertCustomersToEvents, selectedBranch, selectedEventType, isAdmin, userBranch]);
+  }, [events, convertOrdersToEvents, convertCustomersToEvents, convertMaterialRequestsToEvents, selectedBranch, selectedEventType, isAdmin, userBranch]);
 
   // 특정 날짜의 이벤트들
   const getEventsForDate = (date: Date) => {
