@@ -44,6 +44,15 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
     
+    // 일정 관리 컬렉션 규칙
+    match /calendarEvents/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && 
+        (resource.data.createdBy == request.auth.uid || 
+         get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role == '본사 관리자');
+    }
+    
     // 기타 컬렉션들에 대한 기본 규칙
     match /{document=**} {
       allow read, write: if isAuthenticated();

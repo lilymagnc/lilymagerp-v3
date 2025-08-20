@@ -63,7 +63,10 @@ export function PointHistoryDialog({ isOpen, onOpenChange, customerId, customerN
       })) as PointHistory[]
       setPointHistory(history)
     } catch (error) {
-      console.error('포인트 이력 조회 오류:', error)
+      // 개발 환경에서만 콘솔에 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.error('포인트 이력 조회 오류:', error);
+      }
     } finally {
       setLoading(false)
     }

@@ -9,30 +9,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { useBranches } from "@/hooks/use-branches";
 import { useOrders } from "@/hooks/use-orders";
 import { useCustomers } from "@/hooks/use-customers";
+import { useCalendar, CalendarEvent } from "@/hooks/use-calendar";
 import { Calendar, CalendarDays, Truck, Package, Users, Bell, Plus, Filter, CreditCard } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO, setDate } from "date-fns";
 import { ko } from "date-fns/locale";
 import { EventDialog } from "./components/event-dialog";
-
-interface CalendarEvent {
-  id: string;
-  type: 'delivery' | 'material' | 'employee' | 'notice' | 'payment';
-  title: string;
-  description?: string;
-  startDate: Date;
-  endDate?: Date;
-  branchName: string;
-  status: 'pending' | 'completed' | 'cancelled';
-  relatedId?: string;
-  color: string;
-  isAllDay?: boolean;
-}
 
 export default function CalendarPage() {
   const { user } = useAuth();
   const { branches } = useBranches();
   const { orders } = useOrders();
   const { customers } = useCustomers();
+  const { events, loading, createEvent, updateEvent, deleteEvent } = useCalendar();
   
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -42,8 +30,6 @@ export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedBranch, setSelectedBranch] = useState<string>('전체');
   const [selectedEventType, setSelectedEventType] = useState<string>('전체');
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
@@ -66,6 +52,14 @@ export default function CalendarPage() {
       }));
     }
   }, [branches, isAdmin, userBranch]);
+
+  // 사용자 권한에 따른 기본 지점 설정
+  useEffect(() => {
+    if (!isAdmin && userBranch) {
+      // 관리자가 아닌 경우 해당 지점으로 자동 설정
+      setSelectedBranch(userBranch);
+    }
+  }, [isAdmin, userBranch]);
 
   // 이벤트 타입별 설정
   const eventTypes = [
@@ -108,6 +102,11 @@ export default function CalendarPage() {
     const pickupDeliveryEvents: CalendarEvent[] = [];
     
     orders.forEach(order => {
+      // 관리자가 아닌 경우 해당 지점의 주문만 처리
+      if (!isAdmin && order.branchName !== userBranch) {
+        return;
+      }
+      
       // 픽업 예약 처리
       if (order.pickupInfo && order.status === 'processing') {
         const pickupDate = parseISO(order.pickupInfo.date);
@@ -156,13 +155,18 @@ export default function CalendarPage() {
     });
     
     return pickupDeliveryEvents;
-  }, [orders]);
+  }, [orders, isAdmin, userBranch]);
 
   // 고객의 월결제일 데이터를 캘린더 이벤트로 변환
   const convertCustomersToEvents = useMemo(() => {
     const paymentEvents: CalendarEvent[] = [];
 
     customers.forEach(customer => {
+      // 관리자가 아닌 경우 해당 지점의 고객만 처리
+      if (!isAdmin && customer.branch !== userBranch) {
+        return;
+      }
+      
       // 기업고객이고 월결제일이 설정된 경우에만 처리
       if (customer.type === 'company' && customer.monthlyPaymentDay && customer.monthlyPaymentDay.trim()) {
         const paymentDay = parseInt(customer.monthlyPaymentDay);
@@ -198,7 +202,7 @@ export default function CalendarPage() {
     });
 
     return paymentEvents;
-  }, [customers, currentDate]);
+  }, [customers, currentDate, isAdmin, userBranch]);
 
   // 필터링된 이벤트 (수동 추가 이벤트 + 픽업/배송 예약 이벤트)
   const filteredEvents = useMemo(() => {
@@ -219,6 +223,11 @@ export default function CalendarPage() {
         return false;
       }
       
+      // 관리자가 아닌 경우 해당 지점의 데이터만 표시
+      if (!isAdmin && event.branchName !== userBranch) {
+        return false;
+      }
+      
       // 이벤트 타입 필터링
       if (selectedEventType !== '전체' && event.type !== selectedEventType) {
         return false;
@@ -226,7 +235,7 @@ export default function CalendarPage() {
       
       return true;
     });
-  }, [events, convertOrdersToEvents, convertCustomersToEvents, selectedBranch, selectedEventType]);
+  }, [events, convertOrdersToEvents, convertCustomersToEvents, selectedBranch, selectedEventType, isAdmin, userBranch]);
 
   // 특정 날짜의 이벤트들
   const getEventsForDate = (date: Date) => {
@@ -235,50 +244,7 @@ export default function CalendarPage() {
     );
   };
 
-  // 샘플 데이터 로드 (실제로는 Firebase에서 가져올 예정)
-  useEffect(() => {
-    const loadSampleEvents = () => {
-      const sampleEvents: CalendarEvent[] = [
-        {
-          id: '1',
-          type: 'material',
-          title: '자재요청',
-          description: '화분 20개 요청',
-          startDate: new Date(2024, 0, 16, 10, 0),
-          branchName: '서초점',
-          status: 'pending',
-          color: 'bg-orange-500'
-        },
-        {
-          id: '2',
-          type: 'employee',
-          title: '김철수 근무',
-          description: '오전 9시 - 오후 6시',
-          startDate: new Date(2024, 0, 17, 9, 0),
-          endDate: new Date(2024, 0, 17, 18, 0),
-          branchName: '강남점',
-          status: 'pending',
-          color: 'bg-green-500'
-        },
-        {
-          id: '3',
-          type: 'notice',
-          title: '월간 회의',
-          description: '본사 회의실',
-          startDate: new Date(2024, 0, 20, 14, 0),
-          branchName: '본사',
-          status: 'pending',
-          color: 'bg-red-500'
-        }
-      ];
-      
-      setEvents(sampleEvents);
-      setLoading(false);
-    };
 
-    // 1초 후 샘플 데이터 로드 (실제로는 Firebase 쿼리)
-    setTimeout(loadSampleEvents, 1000);
-  }, []);
 
   // 새 일정 추가
   const handleAddEvent = () => {
@@ -295,25 +261,36 @@ export default function CalendarPage() {
   // 일정 저장
   const handleSaveEvent = (eventData: Omit<CalendarEvent, 'id'>) => {
     if (selectedEvent) {
+      // 자동 생성된 이벤트는 수정할 수 없음
+      if (selectedEvent.relatedId) {
+        console.warn('자동 생성된 이벤트는 수정할 수 없습니다:', selectedEvent.id);
+        return;
+      }
       // 기존 일정 수정
-      setEvents(prev => prev.map(event => 
-        event.id === selectedEvent.id 
-          ? { ...eventData, id: event.id }
-          : event
-      ));
+      updateEvent(selectedEvent.id, eventData);
     } else {
       // 새 일정 추가
-      const newEvent: CalendarEvent = {
-        ...eventData,
-        id: Date.now().toString()
-      };
-      setEvents(prev => [...prev, newEvent]);
+      createEvent(eventData);
     }
   };
 
   // 일정 삭제
-  const handleDeleteEvent = (id: string) => {
-    setEvents(prev => prev.filter(event => event.id !== id));
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      // 자동 생성된 이벤트는 삭제할 수 없음
+      const eventToDelete = events.find(e => e.id === id);
+      if (eventToDelete?.relatedId) {
+        console.warn('자동 생성된 이벤트는 삭제할 수 없습니다:', id);
+        return;
+      }
+      
+      await deleteEvent(id);
+      // 삭제 후 다이얼로그 닫기 및 선택된 이벤트 초기화
+      setIsEventDialogOpen(false);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error('일정 삭제 중 오류 발생:', error);
+    }
   };
 
   if (loading) {
@@ -375,12 +352,16 @@ export default function CalendarPage() {
             {/* 지점 선택 */}
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">지점:</label>
-              <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <Select 
+                value={selectedBranch} 
+                onValueChange={setSelectedBranch}
+                disabled={!isAdmin} // 관리자가 아닌 경우 비활성화
+              >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="전체">전체</SelectItem>
+                  {isAdmin && <SelectItem value="전체">전체</SelectItem>}
                   {availableBranches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.name}>
                       {branch.name}
@@ -388,6 +369,11 @@ export default function CalendarPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {!isAdmin && (
+                <span className="text-xs text-gray-500">
+                  ({userBranch} 지점만 표시)
+                </span>
+              )}
             </div>
 
             {/* 이벤트 타입 선택 */}

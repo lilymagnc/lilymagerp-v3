@@ -1,9 +1,10 @@
 
 "use client";
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
-import { Building, DollarSign, Package, Users, TrendingUp, Calendar, CalendarDays, ShoppingCart } from "lucide-react";
+import { Building, DollarSign, Package, Users, TrendingUp, Calendar, CalendarDays, ShoppingCart, CheckSquare } from "lucide-react";
 import { collection, getDocs, query, orderBy, limit, where, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -72,6 +73,7 @@ interface MonthlySalesData {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { branches } = useBranches();
   const { user } = useAuth();
   
@@ -1183,39 +1185,58 @@ export default function DashboardPage() {
         description={getDashboardDescription()}
       />
       
+      {/* 메뉴바 */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+                             <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                 onClick={() => router.push('/dashboard/calendar')}
+               >
+                 <CalendarDays className="h-4 w-4 mr-2" />
+                 일정관리
+               </Button>
+               <Button 
+                 variant="outline" 
+                 size="sm" 
+                 className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                 onClick={() => router.push('/dashboard/checklist')}
+               >
+                 <CheckSquare className="h-4 w-4 mr-2" />
+                 체크리스트
+               </Button>
+              {/* 향후 다른 메뉴 버튼들을 여기에 추가할 수 있습니다 */}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
       {/* 본사 관리자용 지점 필터링 드롭다운 */}
       {isAdmin && (
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <label className="text-sm font-medium text-gray-700">지점 선택:</label>
-                <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="지점을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="전체">전체 지점</SelectItem>
-                    {availableBranches.map((branch) => (
-                      <SelectItem key={branch.name} value={branch.name}>
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span className="text-sm text-gray-500">
-                  {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
-                </span>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => window.location.href = '/dashboard/calendar'}
-              >
-                <CalendarDays className="h-4 w-4 mr-2" />
-                일정관리
-              </Button>
-            </div>
+                         <div className="flex items-center gap-4">
+               <label className="text-sm font-medium text-gray-700">지점 선택:</label>
+               <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
+                 <SelectTrigger className="w-48">
+                   <SelectValue placeholder="지점을 선택하세요" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="전체">전체 지점</SelectItem>
+                   {availableBranches.map((branch) => (
+                     <SelectItem key={branch.name} value={branch.name}>
+                       {branch.name}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+               <span className="text-sm text-gray-500">
+                 {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
+               </span>
+             </div>
           </CardContent>
         </Card>
       )}

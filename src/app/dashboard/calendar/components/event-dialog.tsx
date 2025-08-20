@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,20 +14,7 @@ import { CalendarIcon, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-
-interface CalendarEvent {
-  id: string;
-  type: 'delivery' | 'material' | 'employee' | 'notice' | 'payment';
-  title: string;
-  description?: string;
-  startDate: Date;
-  endDate?: Date;
-  branchName: string;
-  status: 'pending' | 'completed' | 'cancelled';
-  relatedId?: string;
-  color: string;
-  isAllDay?: boolean;
-}
+import { CalendarEvent } from '@/hooks/use-calendar';
 
 interface EventDialogProps {
   isOpen: boolean;
@@ -110,6 +98,12 @@ export function EventDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // 자동 생성된 이벤트는 수정할 수 없음
+    if (event?.relatedId) {
+      alert('자동 생성된 픽업/배송 예약은 수정할 수 없습니다. 주문 관리에서 수정해주세요.');
+      return;
+    }
+    
     const eventData: Omit<CalendarEvent, 'id'> = {
       type: formData.type,
       title: formData.title,
@@ -127,10 +121,21 @@ export function EventDialog({
   };
 
   // 삭제 처리
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (event && onDelete) {
-      onDelete(event.id);
-      onOpenChange(false);
+      // 자동 생성된 이벤트는 삭제할 수 없음
+      if (event.relatedId) {
+        alert('자동 생성된 픽업/배송 예약은 삭제할 수 없습니다. 주문 관리에서 처리해주세요.');
+        return;
+      }
+      
+      try {
+        await onDelete(event.id);
+        // 삭제 후 다이얼로그 닫기
+        onOpenChange(false);
+      } catch (error) {
+        console.error('삭제 중 오류 발생:', error);
+      }
     }
   };
 
@@ -153,28 +158,28 @@ export function EventDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* 픽업/배송 예약 이벤트인 경우 이동 버튼 표시 */}
-        {event?.relatedId && event.type === 'delivery' && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-800">픽업/배송 예약</p>
-                <p className="text-xs text-blue-600">이 일정은 주문 시스템에서 자동 생성되었습니다.</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGoToPickupDelivery}
-                className="text-blue-600 border-blue-300 hover:bg-blue-100"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                픽업/배송관리로 이동
-              </Button>
-            </div>
-          </div>
-        )}
+                 {/* 픽업/배송 예약 이벤트인 경우 이동 버튼 표시 */}
+         {event?.relatedId && event.type === 'delivery' && (
+           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+             <div className="flex items-center justify-between">
+               <div>
+                 <p className="text-sm font-medium text-blue-800">픽업/배송 예약</p>
+                 <p className="text-xs text-blue-600">이 일정은 주문 시스템에서 자동 생성되었습니다. 수정/삭제는 주문 관리에서 해주세요.</p>
+               </div>
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={handleGoToPickupDelivery}
+                 className="text-blue-600 border-blue-300 hover:bg-blue-100"
+               >
+                 <ExternalLink className="h-4 w-4 mr-2" />
+                 픽업/배송관리로 이동
+               </Button>
+             </div>
+           </div>
+         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" id="event-form">
           {/* 이벤트 타입 */}
           <div className="space-y-2">
             <Label htmlFor="type">이벤트 유형</Label>
@@ -332,24 +337,61 @@ export function EventDialog({
             </Select>
           </div>
 
-          <DialogFooter>
-            {isEditing && onDelete && (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-              >
-                삭제
-              </Button>
-            )}
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              취소
-            </Button>
-            <Button type="submit">
-              {isEditing ? '수정' : '추가'}
-            </Button>
-          </DialogFooter>
+                     <DialogFooter>
+             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+               취소
+             </Button>
+             <Button 
+               type="submit" 
+               disabled={isEditing && event?.relatedId}
+               title={isEditing && event?.relatedId ? "자동 생성된 이벤트는 수정할 수 없습니다" : ""}
+             >
+               {isEditing ? '수정' : '추가'}
+             </Button>
+           </DialogFooter>
         </form>
+        
+                 {/* 삭제 버튼을 폼 밖으로 분리 */}
+         {isEditing && onDelete && !event?.relatedId && (
+           <div className="mt-4 pt-4 border-t">
+             <AlertDialog>
+               <AlertDialogTrigger asChild>
+                 <Button
+                   type="button"
+                   variant="destructive"
+                   className="w-full cursor-pointer"
+                   onClick={(e) => {
+                     e.preventDefault();
+                     e.stopPropagation();
+                   }}
+                 >
+                   삭제
+                 </Button>
+               </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>일정 삭제</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    정말로 이 일정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>취소</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      await handleDelete();
+                    }}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    삭제
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -48,10 +48,14 @@ export default function DashboardLayout({
         '/dashboard/customers',            // 고객관리
         '/dashboard/partners',             // 거래처관리
         '/dashboard/sample-albums',        // 샘플앨범
-        '/dashboard/barcode-scanner'       // 바코드 스캐너
+        '/dashboard/barcode-scanner',      // 바코드 스캐너
+        '/dashboard/checklist'             // 체크리스트
       ];
       // 허용된 페이지가 아닌 경우에만 주문접수 페이지로 리다이렉트
-      if (!allowedPages.includes(currentPath)) {
+             const isAllowedPage = allowedPages.includes(currentPath) || 
+                          currentPath.startsWith('/dashboard/checklist/') ||
+                          currentPath === '/dashboard/checklist/template';
+      if (!isAllowedPage) {
         router.push('/dashboard/orders/new');
       }
     }

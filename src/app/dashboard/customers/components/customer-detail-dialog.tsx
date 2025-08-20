@@ -22,16 +22,11 @@ import { Eye, Package, Calendar, DollarSign, Download, Coins, History } from "lu
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 // 안전한 날짜 포맷팅 함수
-const formatSafeDate = (dateValue: any): string => {
+const formatSafeDate = (dateValue: any) => {
   try {
-    if (!dateValue) return '-';
     // 문자열인 경우
     if (typeof dateValue === 'string') {
       return format(new Date(dateValue), 'yyyy년 MM월 dd일 HH:mm', { locale: ko });
-    }
-    // Firebase Timestamp인 경우
-    if (dateValue && typeof dateValue.toDate === 'function') {
-      return format(dateValue.toDate(), 'yyyy년 MM월 dd일 HH:mm', { locale: ko });
     }
     // Date 객체인 경우
     if (dateValue instanceof Date) {
@@ -39,7 +34,10 @@ const formatSafeDate = (dateValue: any): string => {
     }
     return '-';
   } catch (error) {
-    console.error('Date formatting error:', error, dateValue);
+    // 개발 환경에서만 콘솔에 출력
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Date formatting error:', error, dateValue);
+    }
     return '-';
   }
 };
@@ -78,7 +76,10 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
         }
       }
     } catch (error) {
-      console.error('Error fetching customer data:', error);
+      // 개발 환경에서만 콘솔에 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching customer data:', error);
+      }
     }
   };
 
