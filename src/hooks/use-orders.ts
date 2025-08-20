@@ -275,6 +275,33 @@ export function useOrders() {
     try {
         const orderRef = doc(db, 'orders', orderId);
         await updateDoc(orderRef, { status: newStatus });
+        
+        // 주문이 완료되면 해당하는 캘린더 이벤트 상태를 'completed'로 변경
+        if (newStatus === 'completed') {
+          try {
+            const calendarEventsRef = collection(db, 'calendarEvents');
+            const calendarQuery = query(
+              calendarEventsRef,
+              where('relatedId', '==', orderId)
+            );
+            const calendarSnapshot = await getDocs(calendarQuery);
+            
+            // 관련된 캘린더 이벤트 상태를 'completed'로 변경
+            const updatePromises = calendarSnapshot.docs.map(doc => 
+              updateDoc(doc.ref, { 
+                status: 'completed',
+                updatedAt: Timestamp.now()
+              })
+            );
+            await Promise.all(updatePromises);
+            
+            console.log(`${calendarSnapshot.docs.length}개의 캘린더 이벤트가 완료 상태로 변경되었습니다.`);
+          } catch (calendarError) {
+            console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
+            // 캘린더 이벤트 상태 변경 실패는 주문 상태 변경을 막지 않음
+          }
+        }
+        
         toast({
             title: '상태 변경 성공',
             description: `주문 상태가 '${newStatus}'(으)로 변경되었습니다.`,
@@ -468,6 +495,30 @@ export function useOrders() {
           settings as any,
           completionPhotoUrl
         );
+      }
+
+      // 주문이 완료되면 해당하는 캘린더 이벤트 상태를 'completed'로 변경
+      try {
+        const calendarEventsRef = collection(db, 'calendarEvents');
+        const calendarQuery = query(
+          calendarEventsRef,
+          where('relatedId', '==', orderId)
+        );
+        const calendarSnapshot = await getDocs(calendarQuery);
+        
+        // 관련된 캘린더 이벤트 상태를 'completed'로 변경
+        const updatePromises = calendarSnapshot.docs.map(doc => 
+          updateDoc(doc.ref, { 
+            status: 'completed',
+            updatedAt: Timestamp.now()
+          })
+        );
+        await Promise.all(updatePromises);
+        
+        console.log(`${calendarSnapshot.docs.length}개의 캘린더 이벤트가 완료 상태로 변경되었습니다.`);
+      } catch (calendarError) {
+        console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
+        // 캘린더 이벤트 상태 변경 실패는 배송완료 처리를 막지 않음
       }
 
       // 주문 목록 새로고침

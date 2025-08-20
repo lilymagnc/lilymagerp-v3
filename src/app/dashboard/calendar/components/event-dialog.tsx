@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ interface EventDialogProps {
   branches: Array<{ id: string; name: string; type: string }>;
   onSave: (event: Omit<CalendarEvent, 'id'>) => void;
   onDelete?: (id: string) => void;
+  currentUser?: { role?: string; franchise?: string };
 }
 
 export function EventDialog({
@@ -31,9 +32,38 @@ export function EventDialog({
   event,
   branches,
   onSave,
-  onDelete
+  onDelete,
+  currentUser
 }: EventDialogProps) {
   const isEditing = !!event;
+  
+  // 권한 확인 로직
+  const canEdit = useMemo(() => {
+    if (!currentUser || !currentUser.role) return false;
+    
+    // 본사 관리자는 모든 이벤트 수정/삭제 가능
+    if (currentUser.role === '본사 관리자') return true;
+    
+    // 지점 사용자는 자신의 지점 이벤트만 수정/삭제 가능
+    if (event && event.branchName === currentUser.franchise) return true;
+    
+    return false;
+  }, [currentUser, event]);
+  
+  const canDelete = useMemo(() => {
+    if (!currentUser || !currentUser.role || !event) return false;
+    
+    // 자동 생성된 이벤트는 삭제 불가
+    if (event.relatedId) return false;
+    
+    // 본사 관리자는 모든 이벤트 삭제 가능
+    if (currentUser.role === '본사 관리자') return true;
+    
+    // 지점 사용자는 자신의 지점 이벤트만 삭제 가능
+    if (event.branchName === currentUser.franchise) return true;
+    
+    return false;
+  }, [currentUser, event]);
   
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -62,7 +92,8 @@ export function EventDialog({
     setFormData(prev => ({
       ...prev,
       type: newType,
-      branchName: newType === 'notice' ? '본사' : (branches[0]?.name || '')
+      // 공지/알림의 경우 현재 사용자의 지점으로 설정 (본사 관리자는 '본사'로 설정)
+      branchName: newType === 'notice' ? (branches.find(b => b.name === '본사') ? '본사' : branches[0]?.name || '') : (branches[0]?.name || '')
     }));
   };
 
@@ -104,16 +135,22 @@ export function EventDialog({
       return;
     }
     
+    // 종료날짜가 설정되지 않은 경우 시작날짜와 동일하게 설정
+    const endDate = formData.endDate || formData.startDate;
+    
     const eventData: Omit<CalendarEvent, 'id'> = {
       type: formData.type,
       title: formData.title,
       description: formData.description,
       startDate: formData.startDate,
-      endDate: formData.endDate,
+      endDate: endDate,
       branchName: formData.branchName,
       status: formData.status,
       color: eventTypes.find(t => t.value === formData.type)?.color || 'bg-gray-500',
-      isAllDay: formData.isAllDay
+      isAllDay: formData.isAllDay,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      createdBy: 'user'
     };
 
     onSave(eventData);
@@ -279,31 +316,48 @@ export function EventDialog({
                 />
               </PopoverContent>
             </Popover>
+            {formData.type === 'employee' && (
+              <p className="text-xs text-blue-600">
+                💡 직원스케줄의 경우 시작날짜부터 종료날짜까지 모든 날짜에 일정이 표시됩니다.
+              </p>
+            )}
+            <p className="text-xs text-gray-500">
+              종료날짜를 설정하지 않으면 시작날짜와 동일한 날짜로 설정됩니다.
+            </p>
           </div>
 
           {/* 지점 */}
           <div className="space-y-2">
-            <Label htmlFor="branch">지점</Label>
+            <Label htmlFor="branch">
+              {formData.type === 'notice' ? '공지 대상' : '지점'}
+            </Label>
             <Select
               value={formData.branchName}
               onValueChange={(value) => setFormData(prev => ({ ...prev, branchName: value }))}
             >
               <SelectTrigger>
-                <SelectValue placeholder={formData.type === 'notice' ? "본사 (전체 공지)" : "지점을 선택하세요"} />
+                <SelectValue placeholder={formData.type === 'notice' ? "공지 대상을 선택하세요" : "지점을 선택하세요"} />
               </SelectTrigger>
               <SelectContent>
-                {formData.type === 'notice' && (
-                  <SelectItem value="본사">본사 (전체 공지)</SelectItem>
-                )}
                 {branches.map((branch) => (
                   <SelectItem key={branch.id} value={branch.name}>
-                    {branch.name}
+                    {formData.type === 'notice' && branch.name === '본사' 
+                      ? '📢 본사 (전체 지점 공지)' 
+                      : formData.type === 'notice' && branch.name !== '본사'
+                      ? `📌 ${branch.name} (지점 공지)`
+                      : branch.name
+                    }
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {formData.type === 'notice' && (
-              <p className="text-xs text-gray-500">공지/알림은 모든 지점에서 확인할 수 있습니다.</p>
+              <p className="text-xs text-gray-500">
+                {formData.branchName === '본사' 
+                  ? '전체 지점에서 확인할 수 있는 공지입니다.' 
+                  : `${formData.branchName} 지점에서만 확인할 수 있는 공지입니다.`
+                }
+              </p>
             )}
           </div>
 
@@ -343,8 +397,14 @@ export function EventDialog({
              </Button>
              <Button 
                type="submit" 
-               disabled={isEditing && event?.relatedId}
-               title={isEditing && event?.relatedId ? "자동 생성된 이벤트는 수정할 수 없습니다" : ""}
+               disabled={isEditing && (!canEdit || event?.relatedId)}
+               title={
+                 isEditing && event?.relatedId 
+                   ? "자동 생성된 이벤트는 수정할 수 없습니다" 
+                   : isEditing && !canEdit
+                   ? "수정 권한이 없습니다"
+                   : ""
+               }
              >
                {isEditing ? '수정' : '추가'}
              </Button>
@@ -352,7 +412,7 @@ export function EventDialog({
         </form>
         
                  {/* 삭제 버튼을 폼 밖으로 분리 */}
-         {isEditing && onDelete && !event?.relatedId && (
+         {isEditing && onDelete && canDelete && (
            <div className="mt-4 pt-4 border-t">
              <AlertDialog>
                <AlertDialogTrigger asChild>
@@ -360,10 +420,6 @@ export function EventDialog({
                    type="button"
                    variant="destructive"
                    className="w-full cursor-pointer"
-                   onClick={(e) => {
-                     e.preventDefault();
-                     e.stopPropagation();
-                   }}
                  >
                    삭제
                  </Button>
@@ -377,16 +433,14 @@ export function EventDialog({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>취소</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      await handleDelete();
-                    }}
-                    className="bg-destructive hover:bg-destructive/90"
-                  >
-                    삭제
-                  </AlertDialogAction>
+                                     <AlertDialogAction
+                     onClick={async () => {
+                       await handleDelete();
+                     }}
+                     className="bg-destructive hover:bg-destructive/90"
+                   >
+                     삭제
+                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

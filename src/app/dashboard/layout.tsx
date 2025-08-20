@@ -49,7 +49,8 @@ export default function DashboardLayout({
         '/dashboard/partners',             // 거래처관리
         '/dashboard/sample-albums',        // 샘플앨범
         '/dashboard/barcode-scanner',      // 바코드 스캐너
-        '/dashboard/checklist'             // 체크리스트
+        '/dashboard/checklist',            // 체크리스트
+        '/dashboard/calendar'              // 일정관리
       ];
       // 허용된 페이지가 아닌 경우에만 주문접수 페이지로 리다이렉트
              const isAllowedPage = allowedPages.includes(currentPath) || 

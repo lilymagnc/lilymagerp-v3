@@ -14,6 +14,7 @@ import { Calendar, CalendarDays, Truck, Package, Users, Bell, Plus, Filter, Cred
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, parseISO, setDate } from "date-fns";
 import { ko } from "date-fns/locale";
 import { EventDialog } from "./components/event-dialog";
+import { DayEventsDialog } from "./components/day-events-dialog";
 
 export default function CalendarPage() {
   const { user } = useAuth();
@@ -32,13 +33,20 @@ export default function CalendarPage() {
   const [selectedEventType, setSelectedEventType] = useState<string>('전체');
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isDayEventsDialogOpen, setIsDayEventsDialogOpen] = useState(false);
 
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
+      // 본사가 이미 branches에 포함되어 있는지 확인
+      const hasHeadquarters = branches.some(b => b.name === '본사');
+      
       return [
-        { id: '본사', name: '본사', type: '본사' },
-        ...branches.filter(b => b.type !== '본사' && b.name).map(b => ({
+        // 본사가 없으면 추가
+        ...(hasHeadquarters ? [] : [{ id: '본사', name: '본사', type: '본사' }]),
+        // 기존 지점들 필터링 (중복 제거)
+        ...branches.filter(b => b.name && b.name !== '본사').map(b => ({
           id: b.id,
           name: b.name || '',
           type: b.type
@@ -107,8 +115,8 @@ export default function CalendarPage() {
         return;
       }
       
-      // 픽업 예약 처리
-      if (order.pickupInfo && order.status === 'processing') {
+             // 픽업 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
+       if (order.pickupInfo && order.receiptType === 'pickup_reservation' && (order.status === 'processing' || order.status === 'completed')) {
         const pickupDate = parseISO(order.pickupInfo.date);
         const pickupTime = order.pickupInfo.time;
         
@@ -125,13 +133,16 @@ export default function CalendarPage() {
           branchName: order.branchName,
           status: (order.status as string) === 'completed' ? 'completed' : 'pending',
           relatedId: order.id,
-          color: 'bg-blue-500',
-          isAllDay: false
+          color: (order.status as string) === 'completed' ? 'bg-gray-400' : 'bg-blue-500',
+          isAllDay: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: 'system'
         });
       }
       
-      // 배송 예약 처리
-      if (order.deliveryInfo && order.status === 'processing') {
+             // 배송 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
+       if (order.deliveryInfo && order.receiptType === 'delivery_reservation' && (order.status === 'processing' || order.status === 'completed')) {
         const deliveryDate = parseISO(order.deliveryInfo.date);
         const deliveryTime = order.deliveryInfo.time;
         
@@ -148,8 +159,11 @@ export default function CalendarPage() {
           branchName: order.branchName,
           status: (order.status as string) === 'completed' ? 'completed' : 'pending',
           relatedId: order.id,
-          color: 'bg-green-500',
-          isAllDay: false
+          color: (order.status as string) === 'completed' ? 'bg-gray-400' : 'bg-green-500',
+          isAllDay: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          createdBy: 'system'
         });
       }
     });
@@ -184,18 +198,21 @@ export default function CalendarPage() {
         [prevMonth, currentMonth, nextMonth].forEach(date => {
           // 유효한 날짜인지 확인 (예: 31일이 없는 월의 경우)
           if (date.getDate() === paymentDay) {
-            paymentEvents.push({
-              id: `payment_${customer.id}_${date.getTime()}`,
-              type: 'payment',
-              title: `${customer.companyName || customer.name} 월결제일`,
-              description: `담당자: ${customer.name} (${customer.contact})`,
-              startDate: date,
-              branchName: customer.branch,
-              status: 'pending',
-              relatedId: customer.id,
-              color: 'bg-purple-500',
-              isAllDay: true
-            });
+                         paymentEvents.push({
+               id: `payment_${customer.id}_${date.getTime()}`,
+               type: 'payment',
+               title: `${customer.companyName || customer.name} 월결제일`,
+               description: `담당자: ${customer.name} (${customer.contact})`,
+               startDate: date,
+               branchName: customer.branch,
+               status: 'pending',
+               relatedId: customer.id,
+               color: 'bg-purple-500',
+               isAllDay: true,
+               createdAt: new Date(),
+               updatedAt: new Date(),
+               createdBy: 'system'
+             });
           }
         });
       }
@@ -209,16 +226,35 @@ export default function CalendarPage() {
     const allEvents = [...events, ...convertOrdersToEvents, ...convertCustomersToEvents];
     
     return allEvents.filter(event => {
-      // 공지/알림은 모든 지점에서 볼 수 있음
+      // 공지/알림 필터링 로직
       if (event.type === 'notice') {
-        // 이벤트 타입 필터링만 적용
-        if (selectedEventType !== '전체' && event.type !== selectedEventType) {
-          return false;
+        // 본사 공지/알림은 모든 지점에서 볼 수 있음
+        if (event.branchName === '본사') {
+          if (selectedEventType !== '전체' && event.type !== selectedEventType) {
+            return false;
+          }
+          return true;
         }
-        return true;
+        // 지점별 공지/알림은 해당 지점에서만 볼 수 있음
+        else {
+          // 관리자가 아닌 경우 해당 지점의 공지만 표시
+          if (!isAdmin && event.branchName !== userBranch) {
+            return false;
+          }
+          // 지점 필터링
+          if (selectedBranch !== '전체' && event.branchName !== selectedBranch) {
+            return false;
+          }
+          // 이벤트 타입 필터링
+          if (selectedEventType !== '전체' && event.type !== selectedEventType) {
+            return false;
+          }
+          return true;
+        }
       }
       
-      // 지점 필터링 (공지/알림 제외)
+      // 일반 이벤트 필터링
+      // 지점 필터링
       if (selectedBranch !== '전체' && event.branchName !== selectedBranch) {
         return false;
       }
@@ -239,9 +275,13 @@ export default function CalendarPage() {
 
   // 특정 날짜의 이벤트들
   const getEventsForDate = (date: Date) => {
-    return filteredEvents.filter(event => 
-      isSameDay(new Date(event.startDate), date)
-    );
+    return filteredEvents.filter(event => {
+      const startDate = new Date(event.startDate);
+      const endDate = event.endDate ? new Date(event.endDate) : startDate;
+      
+      // 시작날짜와 종료날짜 사이의 모든 날짜에 이벤트 표시
+      return date >= startDate && date <= endDate;
+    });
   };
 
 
@@ -256,6 +296,12 @@ export default function CalendarPage() {
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
     setIsEventDialogOpen(true);
+  };
+
+  // 날짜 클릭
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    setIsDayEventsDialogOpen(true);
   };
 
   // 일정 저장
@@ -376,24 +422,27 @@ export default function CalendarPage() {
               )}
             </div>
 
-            {/* 이벤트 타입 선택 */}
+            {/* 이벤트 타입 선택 (버튼으로 변경) */}
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">유형:</label>
-              <Select value={selectedEventType} onValueChange={setSelectedEventType}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {eventTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${type.color}`}></div>
-                        {type.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-1">
+                {eventTypes.map((type) => (
+                  <Button
+                    key={type.value}
+                    variant={selectedEventType === type.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedEventType(type.value)}
+                    className={`text-xs px-2 py-1 h-auto ${
+                      selectedEventType === type.value 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${type.color} mr-1`}></div>
+                    {type.label}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -437,12 +486,13 @@ export default function CalendarPage() {
               const isCurrentDay = isToday(day);
 
               return (
-                <div
-                  key={index}
-                  className={`min-h-[120px] p-2 border rounded-lg ${
-                    isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                  } ${isCurrentDay ? 'ring-2 ring-blue-500' : ''}`}
-                >
+                                 <div
+                   key={index}
+                   className={`min-h-[120px] p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
+                     isCurrentMonth ? 'bg-white' : 'bg-gray-50'
+                   } ${isCurrentDay ? 'ring-2 ring-blue-500' : ''}`}
+                   onClick={() => handleDateClick(day)}
+                 >
                   <div className={`text-sm font-medium mb-1 ${
                     isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
                   } ${isCurrentDay ? 'text-blue-600' : ''}`}>
@@ -451,14 +501,27 @@ export default function CalendarPage() {
                   
                   {/* 이벤트 목록 */}
                   <div className="space-y-1">
-                    {dayEvents.slice(0, 3).map((event) => (
-                      <div
-                        key={event.id}
-                        className={`text-xs p-1 rounded cursor-pointer text-white ${event.color}`}
-                        onClick={() => handleEventClick(event)}
-                        title={event.title}
-                      >
-                        <div className="truncate">{event.title}</div>
+                                         {dayEvents.slice(0, 3).map((event) => (
+                       <div
+                         key={event.id}
+                         className={`text-xs p-1 rounded cursor-pointer text-white ${event.color} ${
+                           event.type === 'notice' && event.branchName === '본사' 
+                             ? 'ring-2 ring-yellow-300 font-bold' 
+                             : event.type === 'notice' 
+                             ? 'ring-1 ring-gray-300' 
+                             : ''
+                         }`}
+                         onClick={(e) => {
+                           e.stopPropagation(); // 날짜 클릭 이벤트 전파 방지
+                           handleEventClick(event);
+                         }}
+                         title={`${event.title}${event.type === 'notice' ? ` (${event.branchName})` : ''}`}
+                       >
+                        <div className="truncate">
+                          {event.type === 'notice' && event.branchName === '본사' && '📢 '}
+                          {event.type === 'notice' && event.branchName !== '본사' && '📌 '}
+                          {event.title}
+                        </div>
                       </div>
                     ))}
                     {dayEvents.length > 3 && (
@@ -499,15 +562,25 @@ export default function CalendarPage() {
         })}
       </div>
 
-      {/* 일정 다이얼로그 */}
-      <EventDialog
-        isOpen={isEventDialogOpen}
-        onOpenChange={setIsEventDialogOpen}
-        event={selectedEvent}
-        branches={availableBranches}
-        onSave={handleSaveEvent}
-        onDelete={handleDeleteEvent}
-      />
+             {/* 일정 다이얼로그 */}
+       <EventDialog
+         isOpen={isEventDialogOpen}
+         onOpenChange={setIsEventDialogOpen}
+         event={selectedEvent}
+         branches={availableBranches}
+         onSave={handleSaveEvent}
+         onDelete={handleDeleteEvent}
+         currentUser={user}
+       />
+
+       {/* 날짜별 일정 다이얼로그 */}
+       <DayEventsDialog
+         isOpen={isDayEventsDialogOpen}
+         onOpenChange={setIsDayEventsDialogOpen}
+         date={selectedDate}
+         events={selectedDate ? getEventsForDate(selectedDate) : []}
+         onEventClick={handleEventClick}
+       />
     </div>
   );
 }
