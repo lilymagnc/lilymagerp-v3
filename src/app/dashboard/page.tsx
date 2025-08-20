@@ -1108,19 +1108,27 @@ export default function DashboardPage() {
         <div className="bg-white p-3 border rounded-lg shadow-lg">
           <p className="font-medium mb-2">{label}</p>
           {isAdmin ? (
-            // 본사 관리자용: 지점별 매출 표시
+            // 본사 관리자용: 지점별 매출 + 총액 표시
             <div>
               {payload.map((entry: any, index: number) => (
                 <p key={index} className="text-sm" style={{ color: entry.color }}>
                   {entry.name}: {formatCurrency(entry.value)}
                 </p>
               ))}
+              {/* 총액 계산 및 표시 */}
+              {payload.length > 1 && (
+                <div className="border-t pt-2 mt-2">
+                  <p className="text-sm font-semibold text-gray-800">
+                    총액: {formatCurrency(payload.reduce((sum: number, entry: any) => sum + entry.value, 0))}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             // 가맹점/지점 직원용: 자신의 지점 매출 표시
-          <p className="text-sm" style={{ color: payload[0].color }}>
-            매출: {formatCurrency(payload[0].value)}
-          </p>
+            <p className="text-sm" style={{ color: payload[0].color }}>
+              매출: {formatCurrency(payload[0].value)}
+            </p>
           )}
         </div>
       );
