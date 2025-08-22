@@ -218,7 +218,7 @@ export default function NewDailyChecklistPage() {
     <div className="space-y-8">
       <PageHeader 
         title="새 일일 체크리스트" 
-        description="오늘의 업무를 체크하세요." 
+        description={`${userRole?.branchName || user?.franchise || '지점명 없음'} - 오늘의 업무를 체크하세요.`}
       />
 
       {/* 담당자 정보 */}

@@ -35,6 +35,7 @@ export interface ChecklistRecord {
   id: string;
   templateId: string;
   branchId: string;
+  branchName: string; // 지점 이름
   date: string; // "2025-01-20"
   week: string; // "2025-W03"
   month: string; // "2025-01"

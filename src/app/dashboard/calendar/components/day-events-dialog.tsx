@@ -7,6 +7,7 @@ import { CalendarEvent } from '@/hooks/use-calendar';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Clock, MapPin, User, Package, Bell, CreditCard, Users, Truck, Calendar } from 'lucide-react';
+import { isHoliday, holidayColors } from '@/lib/holidays';
 
 interface DayEventsDialogProps {
   isOpen: boolean;
@@ -55,6 +56,8 @@ function DayEventsDialogComponent({
 }: DayEventsDialogProps) {
   if (!date) return null;
 
+  const holiday = isHoliday(date);
+
   const sortedEvents = React.useMemo(() => {
     return [...events].sort((a, b) => {
       // 완료된 이벤트는 뒤로
@@ -92,6 +95,27 @@ function DayEventsDialogComponent({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* 공휴일 정보 */}
+          {holiday && (
+            <div className="p-4 border rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50">
+              <div className="flex items-center gap-3">
+                <div className={`w-4 h-4 rounded-full ${holidayColors[holiday.type]}`}></div>
+                <div>
+                  <h3 className="font-semibold text-lg text-orange-800">
+                    🎉 {holiday.name}
+                  </h3>
+                  {holiday.description && (
+                    <p className="text-sm text-orange-600">{holiday.description}</p>
+                  )}
+                  <p className="text-xs text-orange-500 mt-1">
+                    {holiday.type === 'fixed' ? '고정 공휴일' : 
+                     holiday.type === 'lunar' ? '음력 공휴일' : '대체공휴일'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 대기 중인 일정 */}
           {pendingEvents.length > 0 && (
             <div>

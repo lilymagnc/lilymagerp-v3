@@ -16,6 +16,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isTod
 import { ko } from "date-fns/locale";
 import { EventDialog } from "./components/event-dialog";
 import { DayEventsDialog } from "./components/day-events-dialog";
+import { isHoliday, holidayColors } from "@/lib/holidays";
 
 export default function CalendarPage() {
   const { user } = useAuth();
@@ -84,7 +85,15 @@ export default function CalendarPage() {
   // 현재 월의 날짜들 계산
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  
+  // 캘린더 그리드를 위한 날짜들 계산 (이전 달의 마지막 날짜들 + 현재 달 + 다음 달의 첫 날짜들)
+  const startOfWeek = new Date(monthStart);
+  startOfWeek.setDate(monthStart.getDate() - monthStart.getDay()); // 일요일부터 시작
+  
+  const endOfWeek = new Date(monthEnd);
+  endOfWeek.setDate(monthEnd.getDate() + (6 - monthEnd.getDay())); // 토요일까지
+  
+  const monthDays = eachDayOfInterval({ start: startOfWeek, end: endOfWeek });
 
   // 캘린더 네비게이션
   const goToPreviousMonth = () => {
@@ -111,14 +120,30 @@ export default function CalendarPage() {
   const convertOrdersToEvents = useMemo(() => {
     const pickupDeliveryEvents: CalendarEvent[] = [];
     
+    console.log('🔍 배송/픽업 데이터 확인:', {
+      totalOrders: orders.length,
+      orders: orders.map(order => ({
+        id: order.id,
+        branchName: order.branchName,
+        receiptType: order.receiptType,
+        status: order.status,
+        hasPickupInfo: !!order.pickupInfo,
+        hasDeliveryInfo: !!order.deliveryInfo,
+        pickupInfo: order.pickupInfo,
+        deliveryInfo: order.deliveryInfo
+      }))
+    });
+    
     orders.forEach(order => {
       // 관리자가 아닌 경우 해당 지점의 주문만 처리
       if (!isAdmin && order.branchName !== userBranch) {
+        console.log(`🚫 지점 필터링: ${order.branchName} !== ${userBranch}`);
         return;
       }
       
-             // 픽업 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
-       if (order.pickupInfo && order.receiptType === 'pickup_reservation' && (order.status === 'processing' || order.status === 'completed')) {
+      // 픽업 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
+      if (order.pickupInfo && order.receiptType === 'pickup_reservation' && (order.status === 'processing' || order.status === 'completed')) {
+        console.log(`✅ 픽업 예약 발견:`, order.pickupInfo);
         const pickupDate = parseISO(order.pickupInfo.date);
         const pickupTime = order.pickupInfo.time;
         
@@ -143,8 +168,9 @@ export default function CalendarPage() {
         });
       }
       
-             // 배송 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
-       if (order.deliveryInfo && order.receiptType === 'delivery_reservation' && (order.status === 'processing' || order.status === 'completed')) {
+      // 배송 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
+      if (order.deliveryInfo && order.receiptType === 'delivery_reservation' && (order.status === 'processing' || order.status === 'completed')) {
+        console.log(`✅ 배송 예약 발견:`, order.deliveryInfo);
         const deliveryDate = parseISO(order.deliveryInfo.date);
         const deliveryTime = order.deliveryInfo.time;
         
@@ -170,6 +196,7 @@ export default function CalendarPage() {
       }
     });
     
+    console.log(`📅 변환된 배송/픽업 이벤트:`, pickupDeliveryEvents);
     return pickupDeliveryEvents;
   }, [orders, isAdmin, userBranch]);
 
@@ -263,7 +290,15 @@ export default function CalendarPage() {
   const filteredEvents = useMemo(() => {
     const allEvents = [...events, ...convertOrdersToEvents, ...convertCustomersToEvents, ...convertMaterialRequestsToEvents];
     
-    return allEvents.filter(event => {
+    console.log('🔍 전체 이벤트 확인:', {
+      manualEvents: events.length,
+      deliveryEvents: convertOrdersToEvents.length,
+      customerEvents: convertCustomersToEvents.length,
+      materialEvents: convertMaterialRequestsToEvents.length,
+      totalEvents: allEvents.length
+    });
+    
+    const filtered = allEvents.filter(event => {
       // 공지/알림 필터링 로직
       if (event.type === 'notice') {
         // 본사 공지/알림은 모든 지점에서 볼 수 있음
@@ -309,17 +344,45 @@ export default function CalendarPage() {
       
       return true;
     });
+    
+    console.log('📊 필터링된 이벤트:', {
+      filteredCount: filtered.length,
+      deliveryEvents: filtered.filter(e => e.type === 'delivery').length,
+      selectedBranch,
+      selectedEventType,
+      isAdmin,
+      userBranch
+    });
+    
+    return filtered;
   }, [events, convertOrdersToEvents, convertCustomersToEvents, convertMaterialRequestsToEvents, selectedBranch, selectedEventType, isAdmin, userBranch]);
 
   // 특정 날짜의 이벤트들
   const getEventsForDate = (date: Date) => {
-    return filteredEvents.filter(event => {
+    const eventsForDate = filteredEvents.filter(event => {
       const startDate = new Date(event.startDate);
       const endDate = event.endDate ? new Date(event.endDate) : startDate;
       
+      // 날짜만 비교 (시간 제외)
+      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      
       // 시작날짜와 종료날짜 사이의 모든 날짜에 이벤트 표시
-      return date >= startDate && date <= endDate;
+      return dateOnly >= startDateOnly && dateOnly <= endDateOnly;
     });
+
+    // 디버깅: 특정 날짜에 이벤트가 있는지 확인
+    if (eventsForDate.length > 0) {
+      console.log(`📅 ${format(date, 'yyyy-MM-dd')} 날짜의 이벤트:`, eventsForDate.map(e => ({
+        title: e.title,
+        type: e.type,
+        startDate: format(new Date(e.startDate), 'yyyy-MM-dd HH:mm'),
+        endDate: e.endDate ? format(new Date(e.endDate), 'yyyy-MM-dd HH:mm') : '없음'
+      })));
+    }
+
+    return eventsForDate;
   };
 
 
@@ -509,37 +572,62 @@ export default function CalendarPage() {
         <CardContent>
           {/* 요일 헤더 */}
           <div className="grid grid-cols-7 gap-1 mb-2">
-            {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
-              <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+            {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
+              <div 
+                key={day} 
+                className={`p-2 text-center text-sm font-medium ${
+                  index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-gray-500'
+                }`}
+              >
                 {day}
               </div>
             ))}
           </div>
 
-          {/* 캘린더 그리드 */}
-          <div className="grid grid-cols-7 gap-1">
-            {monthDays.map((day, index) => {
-              const dayEvents = getEventsForDate(day);
-              const isCurrentMonth = isSameMonth(day, currentDate);
-              const isCurrentDay = isToday(day);
+                                 {/* 캘린더 그리드 */}
+            <div className="grid grid-cols-7 gap-1">
+              {monthDays.map((day, index) => {
+                const dayEvents = getEventsForDate(day);
+                const isCurrentMonth = isSameMonth(day, currentDate);
+                const isCurrentDay = isToday(day);
+                const dayOfWeek = day.getDay(); // 0: 일요일, 1: 월요일, ..., 6: 토요일
+                const holiday = isHoliday(day);
 
-              return (
-                                 <div
+                // 디버깅: 현재 월의 날짜에만 이벤트 수 로깅
+                if (isCurrentMonth && dayEvents.length > 0) {
+                  console.log(`🗓️ ${format(day, 'yyyy-MM-dd')} (${isCurrentMonth ? '현재월' : '다른월'}) - 이벤트 ${dayEvents.length}개:`, dayEvents.map(e => e.title));
+                }
+
+                return (
+                 <div
                    key={index}
                    className={`min-h-[120px] p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors ${
                      isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                   } ${isCurrentDay ? 'ring-2 ring-blue-500' : ''}`}
+                   } ${isCurrentDay ? 'ring-2 ring-blue-500' : ''} ${
+                     dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : ''
+                   }`}
                    onClick={() => handleDateClick(day)}
                  >
-                  <div className={`text-sm font-medium mb-1 ${
-                    isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
-                  } ${isCurrentDay ? 'text-blue-600' : ''}`}>
-                    {format(day, 'd')}
-                  </div>
-                  
-                  {/* 이벤트 목록 */}
-                  <div className="space-y-1">
-                                         {dayEvents.slice(0, 3).map((event) => (
+                   <div className={`text-sm font-medium mb-1 ${
+                     isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                   } ${isCurrentDay ? 'text-blue-600' : ''} ${
+                     dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : ''
+                   }`}>
+                     {format(day, 'd')}
+                   </div>
+                   
+                   {/* 공휴일 표시 */}
+                   {holiday && (
+                     <div className={`text-xs p-1 rounded text-white ${holidayColors[holiday.type]} mb-1`}>
+                       <div className="truncate">
+                         🎉 {holiday.name}
+                       </div>
+                     </div>
+                   )}
+                   
+                   {/* 이벤트 목록 */}
+                   <div className="space-y-1">
+                     {dayEvents.slice(0, holiday ? 2 : 3).map((event) => (
                        <div
                          key={event.id}
                          className={`text-xs p-1 rounded cursor-pointer text-white ${event.color} ${
@@ -555,50 +643,96 @@ export default function CalendarPage() {
                          }}
                          title={`${event.title}${event.type === 'notice' ? ` (${event.branchName})` : ''}`}
                        >
-                        <div className="truncate">
-                          {event.type === 'notice' && event.branchName === '본사' && '📢 '}
-                          {event.type === 'notice' && event.branchName !== '본사' && '📌 '}
-                          {event.title}
-                        </div>
-                      </div>
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <div className="text-xs text-gray-500 text-center">
-                        +{dayEvents.length - 3}개 더
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                         <div className="truncate">
+                           {event.type === 'notice' && event.branchName === '본사' && '📢 '}
+                           {event.type === 'notice' && event.branchName !== '본사' && '📌 '}
+                           {event.title}
+                         </div>
+                       </div>
+                     ))}
+                     {dayEvents.length > (holiday ? 2 : 3) && (
+                       <div className="text-xs text-gray-500 text-center">
+                         +{dayEvents.length - (holiday ? 2 : 3)}개 더
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               );
+             })}
+           </div>
         </CardContent>
       </Card>
 
-      {/* 이벤트 타입별 통계 */}
-      <div className="grid gap-4 md:grid-cols-4">
-        {eventTypes.slice(1).map((type) => {
-          const typeEvents = filteredEvents.filter(event => event.type === type.value);
-          const pendingEvents = typeEvents.filter(event => event.status === 'pending');
-          
-          return (
-            <Card key={type.value}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${type.color}`}></div>
-                  {type.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{typeEvents.length}</div>
-                <p className="text-xs text-gray-500">
-                  대기: {pendingEvents.length}건
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+             {/* 이벤트 타입별 통계 */}
+       <div className="grid gap-4 md:grid-cols-4">
+         {eventTypes.slice(1).map((type) => {
+           const typeEvents = filteredEvents.filter(event => event.type === type.value);
+           const pendingEvents = typeEvents.filter(event => event.status === 'pending');
+           
+           return (
+             <Card key={type.value}>
+               <CardHeader className="pb-2">
+                 <CardTitle className="text-sm flex items-center gap-2">
+                   <div className={`w-3 h-3 rounded-full ${type.color}`}></div>
+                   {type.label}
+                 </CardTitle>
+               </CardHeader>
+               <CardContent>
+                 <div className="text-2xl font-bold">{typeEvents.length}</div>
+                 <p className="text-xs text-gray-500">
+                   대기: {pendingEvents.length}건
+                 </p>
+               </CardContent>
+             </Card>
+           );
+         })}
+       </div>
+
+       {/* 공휴일 정보 */}
+       <Card>
+         <CardHeader>
+           <CardTitle className="text-lg flex items-center gap-2">
+             🎉 공휴일 정보
+           </CardTitle>
+         </CardHeader>
+         <CardContent>
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div className="space-y-2">
+               <h4 className="font-medium text-sm">고정 공휴일</h4>
+               <div className="space-y-1">
+                 <div className="flex items-center gap-2 text-xs">
+                   <div className={`w-3 h-3 rounded-full ${holidayColors.fixed}`}></div>
+                   <span>신정, 삼일절, 어린이날, 현충일, 광복절, 개천절, 한글날, 크리스마스</span>
+                 </div>
+               </div>
+             </div>
+             <div className="space-y-2">
+               <h4 className="font-medium text-sm">음력 공휴일</h4>
+               <div className="space-y-1">
+                 <div className="flex items-center gap-2 text-xs">
+                   <div className={`w-3 h-3 rounded-full ${holidayColors.lunar}`}></div>
+                   <span>설날, 추석, 부처님 오신 날</span>
+                 </div>
+               </div>
+             </div>
+             <div className="space-y-2">
+               <h4 className="font-medium text-sm">대체공휴일</h4>
+               <div className="space-y-1">
+                 <div className="flex items-center gap-2 text-xs">
+                   <div className={`w-3 h-3 rounded-full ${holidayColors.substitute}`}></div>
+                   <span>공휴일이 주말과 겹칠 때 대체 공휴일</span>
+                 </div>
+               </div>
+             </div>
+           </div>
+           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+             <p className="text-xs text-blue-700">
+               💡 <strong>참고:</strong> 음력 공휴일과 대체공휴일은 2024-2028년 데이터가 포함되어 있습니다. 
+               다른 연도는 고정 공휴일만 표시됩니다.
+             </p>
+           </div>
+         </CardContent>
+       </Card>
 
              {/* 일정 다이얼로그 */}
        <EventDialog

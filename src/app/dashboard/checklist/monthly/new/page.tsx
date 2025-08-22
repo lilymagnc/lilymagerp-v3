@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useChecklist } from "@/hooks/use-checklist";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserRole } from "@/hooks/use-user-role";
 import { ChecklistTemplate, ChecklistItem, ChecklistItemRecord } from "@/types/checklist";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -31,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function NewMonthlyChecklistPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { userRole } = useUserRole();
   const { getTemplate, createChecklist, toggleItem, addWorker } = useChecklist();
   const { toast } = useToast();
   
@@ -58,7 +60,17 @@ export default function NewMonthlyChecklistPage() {
     const loadTemplate = async () => {
       try {
         setLoading(true);
-        const templateData = await getTemplate(user?.franchise || '');
+        const branchId = userRole?.branchId || user?.franchise || '';
+        if (!branchId) {
+          toast({
+            title: "오류",
+            description: "지점 정보를 찾을 수 없습니다.",
+            variant: "destructive",
+          });
+          router.push('/dashboard/checklist');
+          return;
+        }
+        const templateData = await getTemplate(branchId);
         if (templateData) {
           setTemplate(templateData);
           
@@ -206,7 +218,7 @@ export default function NewMonthlyChecklistPage() {
     <div className="space-y-8">
       <PageHeader 
         title="새 월간 체크리스트" 
-        description="이번 달 업무를 체크하세요." 
+        description={`${userRole?.branchName || user?.franchise || '지점명 없음'} - 이번 달 업무를 체크하세요.`}
       />
 
       {/* 담당자 정보 */}

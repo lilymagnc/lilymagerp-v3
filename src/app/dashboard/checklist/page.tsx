@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  TrendingUp
+  TrendingUp,
+  GripVertical
 } from "lucide-react";
 import { useChecklist } from "@/hooks/use-checklist";
 import { useAuth } from "@/hooks/use-auth";
@@ -311,42 +312,43 @@ export default function ChecklistPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex gap-2">
               <Button 
                 onClick={() => router.push('/dashboard/checklist/daily/new')}
                 className="bg-blue-600 hover:bg-blue-700"
               >
-                <Calendar className="h-4 w-4 mr-2" />
-                새 일일 체크리스트
+                <Plus className="h-4 w-4 mr-2" />
+                일일 체크리스트
               </Button>
               <Button 
                 onClick={() => router.push('/dashboard/checklist/weekly/new')}
-                className="bg-green-600 hover:bg-green-700"
+                variant="outline"
               >
-                <CalendarDays className="h-4 w-4 mr-2" />
-                새 주간 체크리스트
+                <Plus className="h-4 w-4 mr-2" />
+                주간 체크리스트
               </Button>
               <Button 
                 onClick={() => router.push('/dashboard/checklist/monthly/new')}
-                className="bg-purple-600 hover:bg-purple-700"
+                variant="outline"
               >
-                <Building className="h-4 w-4 mr-2" />
-                새 월간 체크리스트
+                <Plus className="h-4 w-4 mr-2" />
+                월간 체크리스트
               </Button>
-                             <Button 
-                 variant="outline"
-                 onClick={() => router.push('/dashboard/checklist/history')}
-               >
-                 <Clock className="h-4 w-4 mr-2" />
-                 히스토리 보기
-               </Button>
-               <Button 
-                 variant="outline"
-                 onClick={() => router.push('/dashboard/checklist/template')}
-               >
-                 <CheckSquare className="h-4 w-4 mr-2" />
-                 템플릿 관리
-               </Button>
+              <Button 
+                onClick={() => router.push('/dashboard/checklist/template')}
+                variant="outline"
+                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+              >
+                <GripVertical className="h-4 w-4 mr-2" />
+                템플릿 편집
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => router.push('/dashboard/checklist/history')}
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                히스토리 보기
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -373,6 +375,7 @@ export default function ChecklistPage() {
                           {format(new Date(checklist.date), 'yyyy년 M월 d일 (E)', { locale: ko })} 체크리스트
                         </p>
                         <p className="text-sm text-gray-600">
+                          지점: {checklist.branchName || '지점명 없음'} | 
                           담당자: {checklist.responsiblePerson} | 
                           오픈: {checklist.openWorker} | 
                           마감: {checklist.closeWorker}
@@ -415,6 +418,7 @@ export default function ChecklistPage() {
     );
   }, [loading, stats, workers, recentChecklists, router]); // 불필요한 의존성 제거
 
+  // 삭제 관련 함수들
   // 지점 필터 렌더링을 메모이제이션
   const branchFilter = useMemo(() => {
     if (!isHQManager() || branches.length === 0) return null;

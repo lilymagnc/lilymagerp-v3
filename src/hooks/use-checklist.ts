@@ -173,6 +173,7 @@ export const useChecklist = () => {
       const checklist: Omit<ChecklistRecord, 'id'> = {
         templateId,
         branchId,
+        branchName: userRole?.branchName || user?.franchise || '',
         date,
         week,
         month,
@@ -219,7 +220,7 @@ export const useChecklist = () => {
       let q;
       
       // 본사 관리자는 모든 체크리스트를 볼 수 있음
-      if (isHQManager()) {
+      if (isHQManager() || user?.role === '본사 관리자') {
         q = query(collection(db, 'checklists'));
       } else {
         // 지점 사용자는 자신의 지점 체크리스트만 볼 수 있음
@@ -439,7 +440,7 @@ export const useChecklist = () => {
       let q;
       
       // 본사 관리자는 모든 체크리스트를 볼 수 있음
-      if (isHQManager()) {
+      if (isHQManager() || user?.role === '본사 관리자') {
         q = query(collection(db, 'checklists'));
       } else {
         // 지점 사용자는 자신의 지점 체크리스트만 볼 수 있음

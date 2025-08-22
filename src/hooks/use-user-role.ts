@@ -212,7 +212,7 @@ export function useUserRole() {
     return permissions.some(permission => userRole.permissions.includes(permission));
   };
   const isHQManager = (): boolean => {
-    return userRole?.role === 'hq_manager' && userRole.isActive;
+    return (userRole?.role === 'hq_manager' && userRole.isActive) || user?.role === '본사 관리자';
   };
   const isBranchUser = (): boolean => {
     return userRole?.role === 'branch_user' && userRole.isActive;
@@ -226,7 +226,7 @@ export function useUserRole() {
   
   // 본사 관리자 권한 확인 (hq_manager 또는 admin)
   const isHeadOfficeAdmin = (): boolean => {
-    return (userRole?.role === 'hq_manager' || userRole?.role === 'admin') && userRole.isActive;
+    return ((userRole?.role === 'hq_manager' || userRole?.role === 'admin') && userRole.isActive) || user?.role === '본사 관리자';
   };
   // 컴포넌트 마운트 시 사용자 역할 조회
   useEffect(() => {
