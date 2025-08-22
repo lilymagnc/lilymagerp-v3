@@ -6,7 +6,7 @@ import { useAuth } from './use-auth';
 
 export interface CalendarEvent {
   id: string;
-  type: 'delivery' | 'material' | 'employee' | 'notice' | 'payment';
+  type: 'delivery' | 'pickup' | 'material' | 'employee' | 'notice' | 'payment';
   title: string;
   description?: string;
   startDate: Date;

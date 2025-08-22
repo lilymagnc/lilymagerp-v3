@@ -81,11 +81,12 @@ export function EventDialog({
 
   // 이벤트 타입별 설정
   const eventTypes = [
-    { value: 'delivery', label: '배송/픽업', color: 'bg-blue-500' },
+    { value: 'delivery', label: '배송', color: 'bg-blue-500' },
+    { value: 'pickup', label: '픽업', color: 'bg-green-500' },
     { value: 'material', label: '자재요청', color: 'bg-orange-500' },
-    { value: 'employee', label: '직원스케줄', color: 'bg-green-500' },
+    { value: 'employee', label: '직원스케줄', color: 'bg-purple-500' },
     { value: 'notice', label: '공지/알림', color: 'bg-red-500' },
-    { value: 'payment', label: '월결제일', color: 'bg-purple-500' }
+    { value: 'payment', label: '월결제일', color: 'bg-yellow-500' }
   ];
 
   // 이벤트 타입 변경 시 지점 자동 설정

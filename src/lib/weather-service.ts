@@ -1,6 +1,7 @@
 // 날씨 정보를 가져오는 서비스
 export interface WeatherInfo {
-  temperature: number;
+  minTemperature: number;
+  maxTemperature: number;
   description: string;
   icon: string;
 }
@@ -11,11 +12,14 @@ const SEOUL_COORDS = {
   lon: 126.9780
 };
 
-export async function getWeatherInfo(): Promise<WeatherInfo | null> {
+export async function getWeatherInfo(latitude?: number, longitude?: number): Promise<WeatherInfo | null> {
+  const lat = latitude || SEOUL_COORDS.lat;
+  const lon = longitude || SEOUL_COORDS.lon;
+
   try {
-    // OpenMeteo API 사용 (완전 무료, API 키 불필요)
+    // OpenMeteo API를 사용하여 최저/최고 기온 요청
     const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${SEOUL_COORDS.lat}&longitude=${SEOUL_COORDS.lon}&current=temperature_2m,weather_code&timezone=Asia/Tokyo`
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=Asia/Tokyo&forecast_days=1`
     );
 
     if (!response.ok) {
@@ -24,20 +28,21 @@ export async function getWeatherInfo(): Promise<WeatherInfo | null> {
 
     const data = await response.json();
     
-    // WMO 날씨 코드를 설명으로 변환
-    const weatherDescription = getWeatherDescription(data.current.weather_code);
-    const weatherIcon = getWeatherIconFromCode(data.current.weather_code);
+    const daily = data.daily;
+    const weatherDescription = getWeatherDescription(daily.weather_code[0]);
+    const weatherIcon = getWeatherIconFromCode(daily.weather_code[0]);
     
     return {
-      temperature: Math.round(data.current.temperature_2m),
+      maxTemperature: Math.round(daily.temperature_2m_max[0]),
+      minTemperature: Math.round(daily.temperature_2m_min[0]),
       description: weatherDescription,
       icon: weatherIcon
     };
   } catch (error) {
     console.error('날씨 정보 가져오기 실패:', error);
-    // 에러 발생 시에도 기본 날씨 정보 반환
     return {
-      temperature: 22,
+      minTemperature: 18,
+      maxTemperature: 26,
       description: '맑음',
       icon: '01d'
     };
@@ -119,25 +124,26 @@ function getWeatherIconFromCode(code: number): string {
 // 날씨 아이콘을 이모지로 변환하는 함수
 export function getWeatherEmoji(icon: string): string {
   const weatherMap: { [key: string]: string } = {
-    '01d': '☀️', // 맑음
-    '01n': '🌙', // 맑음 (밤)
-    '02d': '⛅', // 구름 조금
-    '02n': '☁️', // 구름 조금 (밤)
-    '03d': '☁️', // 구름 많음
-    '03n': '☁️', // 구름 많음 (밤)
-    '04d': '☁️', // 흐림
-    '04n': '☁️', // 흐림 (밤)
-    '09d': '🌧️', // 소나기
-    '09n': '🌧️', // 소나기 (밤)
-    '10d': '🌦️', // 비
-    '10n': '🌧️', // 비 (밤)
-    '11d': '⛈️', // 천둥번개
-    '11n': '⛈️', // 천둥번개 (밤)
-    '13d': '🌨️', // 눈
-    '13n': '🌨️', // 눈 (밤)
-    '50d': '🌫️', // 안개
-    '50n': '🌫️', // 안개 (밤)
+    '01d': '☀️',
+    '01n': '🌙',
+    '02d': '⛅️',
+    '02n': '☁️',
+    '03d': '☁️',
+    '03n': '☁️',
+    '04d': '☁️',
+    '04n': '☁️',
+    '09d': '🌧️',
+    '09n': '🌧️',
+    '10d': '🌦️',
+    '10n': '🌧️',
+    '11d': '⛈️',
+    '11n': '⛈️',
+    '13d': '🌨️',
+    '13n': '🌨️',
+    '50d': '🌫️',
+    '50n': '🌫️',
   };
   
   return weatherMap[icon] || '🌤️';
 }
+

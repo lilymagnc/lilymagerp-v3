@@ -15,9 +15,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
 import { useCalendar } from "@/hooks/use-calendar";
+import { useOrders } from "@/hooks/use-orders";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isToday } from "date-fns";
 import { ko } from "date-fns/locale";
 import { getWeatherInfo, getWeatherEmoji, WeatherInfo } from "@/lib/weather-service";
+import BulletinBoard from '@/components/dashboard/bulletin-board';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -79,6 +81,7 @@ export default function DashboardPage() {
   const { branches } = useBranches();
   const { user } = useAuth();
   const { events: calendarEvents } = useCalendar();
+  const { orders } = useOrders();
   
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -141,13 +144,73 @@ export default function DashboardPage() {
   // 날씨 정보 상태
   const [weatherInfo, setWeatherInfo] = useState<WeatherInfo | null>(null);
   
-  // 오늘과 내일의 일정 데이터
+  // 주문 데이터를 캘린더 이벤트로 변환 (일정관리와 동일한 로직)
+  const convertOrdersToEvents = useMemo(() => {
+    const pickupDeliveryEvents: any[] = [];
+    
+    orders.forEach(order => {
+      // 관리자가 아닌 경우 해당 지점의 주문만 처리
+      if (!isAdmin && order.branchName !== userBranch) {
+        return;
+      }
+      
+      // 픽업 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
+      if (order.pickupInfo && order.receiptType === 'pickup_reservation' && (order.status === 'processing' || order.status === 'completed')) {
+        // date와 time 필드를 조합하여 날짜 객체 생성
+        const pickupDateStr = order.pickupInfo.date;
+        const pickupTimeStr = order.pickupInfo.time;
+        if (pickupDateStr && pickupTimeStr) {
+          const pickupDate = new Date(`${pickupDateStr}T${pickupTimeStr}`);
+          if (!isNaN(pickupDate.getTime())) {
+            pickupDeliveryEvents.push({
+              id: `pickup-${order.id}`,
+              title: `픽업: ${order.orderer?.name || '고객'} (${order.branchName})`,
+              startDate: pickupDate,
+              endDate: pickupDate,
+              type: 'pickup',
+              orderId: order.id,
+              branchName: order.branchName,
+              customerName: order.orderer?.name || '고객'
+            });
+          }
+        }
+      }
+      
+      // 배송 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
+      if (order.deliveryInfo && order.receiptType === 'delivery_reservation' && (order.status === 'processing' || order.status === 'completed')) {
+        // date와 time 필드를 조합하여 날짜 객체 생성
+        const deliveryDateStr = order.deliveryInfo.date;
+        const deliveryTimeStr = order.deliveryInfo.time;
+        if (deliveryDateStr && deliveryTimeStr) {
+          const deliveryDate = new Date(`${deliveryDateStr}T${deliveryTimeStr}`);
+          if (!isNaN(deliveryDate.getTime())) {
+            pickupDeliveryEvents.push({
+              id: `delivery-${order.id}`,
+              title: `배송: ${order.orderer?.name || '고객'} (${order.branchName})`,
+              startDate: deliveryDate,
+              endDate: deliveryDate,
+              type: 'delivery',
+              orderId: order.id,
+              branchName: order.branchName,
+              customerName: order.orderer?.name || '고객'
+            });
+          }
+        }
+      }
+    });
+    
+    return pickupDeliveryEvents;
+  }, [orders, isAdmin, userBranch]);
+
+  // 오늘과 내일의 일정 데이터 (수동 일정 + 배송/픽업 이벤트)
   const todayAndTomorrowEvents = useMemo(() => {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    return calendarEvents.filter(event => {
+    const allEvents = [...calendarEvents, ...convertOrdersToEvents];
+    
+    return allEvents.filter(event => {
       const eventDate = new Date(event.startDate);
       const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
       const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -156,7 +219,7 @@ export default function DashboardPage() {
       return eventDateOnly.getTime() === todayOnly.getTime() || 
              eventDateOnly.getTime() === tomorrowOnly.getTime();
     }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-  }, [calendarEvents]);
+  }, [calendarEvents, convertOrdersToEvents]);
   
   // 매장별 색상 정의
   const branchColors = [
@@ -995,10 +1058,10 @@ export default function DashboardPage() {
           };
         });
         
-        // 클라이언트 사이드에서 필터링
-        const recentOrdersData = currentFilteredBranch 
-          ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 5)
-          : allRecentOrders.slice(0, 5);
+                 // 클라이언트 사이드에서 필터링
+         const recentOrdersData = currentFilteredBranch 
+           ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 3)
+           : allRecentOrders.slice(0, 3);
           
         setRecentOrders(recentOrdersData);
 
@@ -1203,12 +1266,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-4 max-h-screen overflow-y-auto">
         <PageHeader 
           title={getDashboardTitle()} 
           description={getDashboardDescription()} 
         />
-        <div className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
@@ -1226,112 +1289,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 max-h-screen overflow-y-auto">
       <PageHeader
         title={getDashboardTitle()}
         description={getDashboardDescription()}
       />
+      <BulletinBoard />
       
-      {/* 전광판 스타일 안내띠 */}
-      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white overflow-hidden border-0 shadow-lg">
-        <CardContent className="p-0">
-          <div className="flex items-center bg-black bg-opacity-20 px-4 py-3">
-            <div className="flex-1 overflow-hidden">
-              <div className="flex animate-scroll whitespace-nowrap">
-                {/* 날짜 정보 */}
-                <span className="inline-flex items-center gap-2 mr-8">
-                  <span className="text-yellow-300 font-medium">
-                    📅 {format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })}
-                  </span>
-                </span>
-                
-                {/* 날씨 정보 */}
-                {weatherInfo && (
-                  <span className="inline-flex items-center gap-2 mr-8">
-                    <span className="text-yellow-300 font-medium">
-                      {getWeatherEmoji(weatherInfo.icon)} {weatherInfo.temperature}°C {weatherInfo.description}
-                    </span>
-                  </span>
-                )}
-                
-                {/* 일정 정보 */}
-                {todayAndTomorrowEvents.length > 0 ? (
-                  todayAndTomorrowEvents.map((event, index) => {
-                    const eventDate = new Date(event.startDate);
-                    const today = new Date();
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    
-                    const isToday = eventDate.toDateString() === today.toDateString();
-                    const isTomorrow = eventDate.toDateString() === tomorrow.toDateString();
-                    
-                    return (
-                      <span key={event.id} className="inline-flex items-center gap-2 mr-8">
-                        <span className="text-yellow-300 font-medium">
-                          {isToday ? '오늘' : '내일'} {format(eventDate, 'HH:mm')}
-                        </span>
-                        <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm">
-                          {event.title}
-                        </span>
-                        <span className="text-yellow-300">|</span>
-                      </span>
-                    );
-                  })
-                ) : (
-                  <span className="text-yellow-200 text-lg mr-8">
-                    🎉 오늘과 내일은 특별한 일정이 없습니다! 좋은 하루 되세요! 🎉
-                  </span>
-                )}
-                
-                {/* 반복을 위해 전체 내용을 한 번 더 추가 */}
-                <span className="inline-flex items-center gap-2 mr-8">
-                  <span className="text-yellow-300 font-medium">
-                    📅 {format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })}
-                  </span>
-                </span>
-                
-                {weatherInfo && (
-                  <span className="inline-flex items-center gap-2 mr-8">
-                    <span className="text-yellow-300 font-medium">
-                      {getWeatherEmoji(weatherInfo.icon)} {weatherInfo.temperature}°C {weatherInfo.description}
-                    </span>
-                  </span>
-                )}
-                
-                {todayAndTomorrowEvents.length > 0 ? (
-                  todayAndTomorrowEvents.map((event, index) => {
-                    const eventDate = new Date(event.startDate);
-                    const today = new Date();
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    
-                    const isToday = eventDate.toDateString() === today.toDateString();
-                    const isTomorrow = eventDate.toDateString() === tomorrow.toDateString();
-                    
-                    return (
-                      <span key={`repeat-${event.id}`} className="inline-flex items-center gap-2 mr-8">
-                        <span className="text-yellow-300 font-medium">
-                          {isToday ? '오늘' : '내일'} {format(eventDate, 'HH:mm')}
-                        </span>
-                        <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm">
-                          {event.title}
-                        </span>
-                        <span className="text-yellow-300">|</span>
-                      </span>
-                    );
-                  })
-                ) : (
-                  <span className="text-yellow-200 text-lg mr-8">
-                    🎉 오늘과 내일은 특별한 일정이 없습니다! 좋은 하루 되세요! 🎉
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* 메뉴바 */}
+
+        
+       {/* 메뉴바 */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
@@ -1363,32 +1330,32 @@ export default function DashboardPage() {
       {/* 본사 관리자용 지점 필터링 드롭다운 */}
       {isAdmin && (
         <Card>
-          <CardContent className="pt-6">
-                         <div className="flex items-center gap-4">
-               <label className="text-sm font-medium text-gray-700">지점 선택:</label>
-               <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
-                 <SelectTrigger className="w-48">
-                   <SelectValue placeholder="지점을 선택하세요" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="전체">전체 지점</SelectItem>
-                   {availableBranches.map((branch) => (
-                     <SelectItem key={branch.name} value={branch.name}>
-                       {branch.name}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-               <span className="text-sm text-gray-500">
-                 {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
-               </span>
-             </div>
-          </CardContent>
+                     <CardContent className="pt-6">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <label className="text-sm font-medium text-gray-700">지점 선택:</label>
+                <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="지점을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="전체">전체 지점</SelectItem>
+                    {availableBranches.map((branch) => (
+                      <SelectItem key={branch.name} value={branch.name}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-gray-500">
+                  {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
+                </span>
+              </div>
+           </CardContent>
         </Card>
       )}
       
       {/* 상단 통계 카드 */}
-      <div className="grid gap-6 xl:grid-cols-2 2xl:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
@@ -1461,48 +1428,48 @@ export default function DashboardPage() {
       </div>
 
       {/* 차트 섹션 - 그리드 레이아웃으로 변경 */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
         {/* 일별 매출 현황 */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  {isAdmin 
-                     ? (currentFilteredBranch ? `${currentFilteredBranch} 일별 매출` : '일별 지점별 매출 현황')
-                    : `${userBranch} 일별 매출`
-                  }
-                </CardTitle>
-                <p className="text-sm text-gray-600">
-                   {isAdmin && !currentFilteredBranch 
-                     ? '선택된 기간 지점별 매출 비율' 
-                     : '선택된 기간 매출 트렌드'
+                     <CardHeader>
+             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+               <div>
+                 <CardTitle className="flex items-center gap-2">
+                   <Calendar className="h-5 w-5 text-blue-600" />
+                   {isAdmin 
+                      ? (currentFilteredBranch ? `${currentFilteredBranch} 일별 매출` : '일별 지점별 매출 현황')
+                     : `${userBranch} 일별 매출`
                    }
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                   value={dailyStartDate}
-                   onChange={(e) => handleDailyDateChange(e.target.value, dailyEndDate)}
-                   className="w-32"
-                 />
-                 <span className="text-sm text-gray-500">~</span>
+                 </CardTitle>
+                 <p className="text-sm text-gray-600">
+                    {isAdmin && !currentFilteredBranch 
+                      ? '선택된 기간 지점별 매출 비율' 
+                      : '선택된 기간 매출 트렌드'
+                    }
+                 </p>
+               </div>
+               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                  <Input
                    type="date"
-                   value={dailyEndDate}
-                   onChange={(e) => handleDailyDateChange(dailyStartDate, e.target.value)}
-                   className="w-32"
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              {isAdmin ? (
-                // 본사 관리자용: 지점별 매출 비율 차트
-              <BarChart data={dailySales}>
+                    value={dailyStartDate}
+                    onChange={(e) => handleDailyDateChange(e.target.value, dailyEndDate)}
+                    className="w-full sm:w-32"
+                  />
+                  <span className="text-sm text-gray-500">~</span>
+                  <Input
+                    type="date"
+                    value={dailyEndDate}
+                    onChange={(e) => handleDailyDateChange(dailyStartDate, e.target.value)}
+                    className="w-full sm:w-32"
+                 />
+               </div>
+             </div>
+           </CardHeader>
+                     <CardContent>
+             <ResponsiveContainer width="100%" height={200}>
+               {isAdmin ? (
+                 // 본사 관리자용: 지점별 매출 비율 차트
+               <BarChart data={dailySales}>
                 <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" fontSize={12} />
                 <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
@@ -1533,45 +1500,45 @@ export default function DashboardPage() {
 
         {/* 주간 매출 현황 */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-green-600" />
-                  {isAdmin 
-                     ? (currentFilteredBranch ? `${currentFilteredBranch} 주간 매출` : '주간 지점별 매출 현황')
-                    : `${userBranch} 주간 매출`
-                  }
-                </CardTitle>
-                <p className="text-sm text-gray-600">
-                   {isAdmin && !currentFilteredBranch 
-                     ? '선택된 기간 지점별 매출 비율' 
-                     : '선택된 기간 매출 트렌드'
+                     <CardHeader>
+             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+               <div>
+                 <CardTitle className="flex items-center gap-2">
+                   <CalendarDays className="h-5 w-5 text-green-600" />
+                   {isAdmin 
+                      ? (currentFilteredBranch ? `${currentFilteredBranch} 주간 매출` : '주간 지점별 매출 현황')
+                     : `${userBranch} 주간 매출`
                    }
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                   type="date"
-                   value={weeklyStartDate}
-                   onChange={(e) => handleWeeklyDateChange(e.target.value, weeklyEndDate)}
-                   className="w-32"
-                 />
-                 <span className="text-sm text-gray-500">~</span>
+                 </CardTitle>
+                 <p className="text-sm text-gray-600">
+                    {isAdmin && !currentFilteredBranch 
+                      ? '선택된 기간 지점별 매출 비율' 
+                      : '선택된 기간 매출 트렌드'
+                    }
+                 </p>
+               </div>
+               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                  <Input
-                   type="date"
-                   value={weeklyEndDate}
-                   onChange={(e) => handleWeeklyDateChange(weeklyStartDate, e.target.value)}
-                   className="w-32"
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              {isAdmin ? (
-                // 본사 관리자용: 지점별 매출 비율 차트
-              <BarChart data={weeklySales}>
+                    type="date"
+                    value={weeklyStartDate}
+                    onChange={(e) => handleWeeklyDateChange(e.target.value, weeklyEndDate)}
+                    className="w-full sm:w-32"
+                  />
+                  <span className="text-sm text-gray-500">~</span>
+                  <Input
+                    type="date"
+                    value={weeklyEndDate}
+                    onChange={(e) => handleWeeklyDateChange(weeklyStartDate, e.target.value)}
+                    className="w-full sm:w-32"
+                 />
+               </div>
+             </div>
+           </CardHeader>
+                     <CardContent>
+             <ResponsiveContainer width="100%" height={200}>
+               {isAdmin ? (
+                 // 본사 관리자용: 지점별 매출 비율 차트
+               <BarChart data={weeklySales}>
                 <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="week" fontSize={12} />
                 <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
@@ -1603,45 +1570,45 @@ export default function DashboardPage() {
 
       {/* 월별 매출 현황 */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5 text-purple-600" />
-                {isAdmin 
-                   ? (currentFilteredBranch ? `${currentFilteredBranch} 월별 매출` : '월별 지점별 매출 현황')
-                  : `${userBranch} 월별 매출`
-                }
-              </CardTitle>
-              <p className="text-sm text-gray-600">
-                 {isAdmin && !currentFilteredBranch 
-                   ? '선택된 기간 지점별 매출 비율' 
-                   : '선택된 기간 매출 트렌드'
+                 <CardHeader>
+           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+             <div>
+               <CardTitle className="flex items-center gap-2">
+                 <Building className="h-5 w-5 text-purple-600" />
+                 {isAdmin 
+                    ? (currentFilteredBranch ? `${currentFilteredBranch} 월별 매출` : '월별 지점별 매출 현황')
+                   : `${userBranch} 월별 매출`
                  }
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                 type="date"
-                 value={monthlyStartDate}
-                 onChange={(e) => handleMonthlyDateChange(e.target.value, monthlyEndDate)}
-                 className="w-32"
-               />
-               <span className="text-sm text-gray-500">~</span>
+               </CardTitle>
+               <p className="text-sm text-gray-600">
+                  {isAdmin && !currentFilteredBranch 
+                    ? '선택된 기간 지점별 매출 비율' 
+                    : '선택된 기간 매출 트렌드'
+                  }
+               </p>
+             </div>
+             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                <Input
-                 type="date"
-                 value={monthlyEndDate}
-                 onChange={(e) => handleMonthlyDateChange(monthlyStartDate, e.target.value)}
-                 className="w-32"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={250}>
-            {isAdmin ? (
-              // 본사 관리자용: 지점별 매출 비율 차트
-            <BarChart data={monthlySales}>
+                  type="date"
+                  value={monthlyStartDate}
+                  onChange={(e) => handleMonthlyDateChange(e.target.value, monthlyEndDate)}
+                  className="w-full sm:w-32"
+                />
+                <span className="text-sm text-gray-500">~</span>
+                <Input
+                  type="date"
+                  value={monthlyEndDate}
+                  onChange={(e) => handleMonthlyDateChange(monthlyStartDate, e.target.value)}
+                  className="w-full sm:w-32"
+               />
+             </div>
+           </div>
+         </CardHeader>
+                 <CardContent>
+           <ResponsiveContainer width="100%" height={200}>
+             {isAdmin ? (
+               // 본사 관리자용: 지점별 매출 비율 차트
+             <BarChart data={monthlySales}>
               <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" fontSize={12} />
               <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />

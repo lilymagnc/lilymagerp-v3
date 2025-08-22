@@ -68,11 +68,12 @@ export default function CalendarPage() {
   // 이벤트 타입별 설정
   const eventTypes = [
     { value: '전체', label: '전체', icon: CalendarDays, color: 'bg-gray-500' },
-    { value: 'delivery', label: '배송/픽업', icon: Truck, color: 'bg-blue-500' },
+    { value: 'delivery', label: '배송', icon: Truck, color: 'bg-blue-500' },
+    { value: 'pickup', label: '픽업', icon: Package, color: 'bg-green-500' },
     { value: 'material', label: '자재요청', icon: Package, color: 'bg-orange-500' },
-    { value: 'employee', label: '직원스케줄', icon: Users, color: 'bg-green-500' },
+    { value: 'employee', label: '직원스케줄', icon: Users, color: 'bg-purple-500' },
     { value: 'notice', label: '공지/알림', icon: Bell, color: 'bg-red-500' },
-    { value: 'payment', label: '월결제일', icon: CreditCard, color: 'bg-purple-500' }
+    { value: 'payment', label: '월결제일', icon: CreditCard, color: 'bg-yellow-500' }
   ];
 
   // 현재 월의 날짜들 계산
@@ -113,30 +114,14 @@ export default function CalendarPage() {
   const convertOrdersToEvents = useMemo(() => {
     const pickupDeliveryEvents: CalendarEvent[] = [];
     
-    console.log('🔍 배송/픽업 데이터 확인:', {
-      totalOrders: orders.length,
-      orders: orders.map(order => ({
-        id: order.id,
-        branchName: order.branchName,
-        receiptType: order.receiptType,
-        status: order.status,
-        hasPickupInfo: !!order.pickupInfo,
-        hasDeliveryInfo: !!order.deliveryInfo,
-        pickupInfo: order.pickupInfo,
-        deliveryInfo: order.deliveryInfo
-      }))
-    });
-    
     orders.forEach(order => {
       // 관리자가 아닌 경우 해당 지점의 주문만 처리
       if (!isAdmin && order.branchName !== userBranch) {
-        console.log(`🚫 지점 필터링: ${order.branchName} !== ${userBranch}`);
         return;
       }
       
       // 픽업 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
       if (order.pickupInfo && order.receiptType === 'pickup_reservation' && (order.status === 'processing' || order.status === 'completed')) {
-        console.log(`✅ 픽업 예약 발견:`, order.pickupInfo);
         const pickupDate = parseISO(order.pickupInfo.date);
         const pickupTime = order.pickupInfo.time;
         
@@ -146,14 +131,14 @@ export default function CalendarPage() {
         
         pickupDeliveryEvents.push({
           id: `pickup_${order.id}`,
-          type: 'delivery',
+          type: 'pickup',
           title: `[픽업] ${order.orderer.name}`,
           description: `상품: ${order.items?.map(item => item.name).join(', ')}`,
           startDate: pickupDate,
           branchName: order.branchName,
           status: (order.status as string) === 'completed' ? 'completed' : 'pending',
           relatedId: order.id,
-          color: (order.status as string) === 'completed' ? 'bg-gray-400' : 'bg-blue-500',
+          color: (order.status as string) === 'completed' ? 'bg-gray-400' : 'bg-green-500',
           isAllDay: false,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -163,7 +148,6 @@ export default function CalendarPage() {
       
       // 배송 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
       if (order.deliveryInfo && order.receiptType === 'delivery_reservation' && (order.status === 'processing' || order.status === 'completed')) {
-        console.log(`✅ 배송 예약 발견:`, order.deliveryInfo);
         const deliveryDate = parseISO(order.deliveryInfo.date);
         const deliveryTime = order.deliveryInfo.time;
         
@@ -189,7 +173,6 @@ export default function CalendarPage() {
       }
     });
     
-    console.log(`📅 변환된 배송/픽업 이벤트:`, pickupDeliveryEvents);
     return pickupDeliveryEvents;
   }, [orders, isAdmin, userBranch]);
 
@@ -283,14 +266,6 @@ export default function CalendarPage() {
   const filteredEvents = useMemo(() => {
     const allEvents = [...events, ...convertOrdersToEvents, ...convertCustomersToEvents, ...convertMaterialRequestsToEvents];
     
-    console.log('🔍 전체 이벤트 확인:', {
-      manualEvents: events.length,
-      deliveryEvents: convertOrdersToEvents.length,
-      customerEvents: convertCustomersToEvents.length,
-      materialEvents: convertMaterialRequestsToEvents.length,
-      totalEvents: allEvents.length
-    });
-    
     const filtered = allEvents.filter(event => {
       // 공지/알림 필터링 로직
       if (event.type === 'notice') {
@@ -338,15 +313,6 @@ export default function CalendarPage() {
       return true;
     });
     
-    console.log('📊 필터링된 이벤트:', {
-      filteredCount: filtered.length,
-      deliveryEvents: filtered.filter(e => e.type === 'delivery').length,
-      selectedBranch,
-      selectedEventType,
-      isAdmin,
-      userBranch
-    });
-    
     return filtered;
   }, [events, convertOrdersToEvents, convertCustomersToEvents, convertMaterialRequestsToEvents, selectedBranch, selectedEventType, isAdmin, userBranch]);
 
@@ -364,16 +330,6 @@ export default function CalendarPage() {
       // 시작날짜와 종료날짜 사이의 모든 날짜에 이벤트 표시
       return dateOnly >= startDateOnly && dateOnly <= endDateOnly;
     });
-
-    // 디버깅: 특정 날짜에 이벤트가 있는지 확인
-    if (eventsForDate.length > 0) {
-      console.log(`📅 ${format(date, 'yyyy-MM-dd')} 날짜의 이벤트:`, eventsForDate.map(e => ({
-        title: e.title,
-        type: e.type,
-        startDate: format(new Date(e.startDate), 'yyyy-MM-dd HH:mm'),
-        endDate: e.endDate ? format(new Date(e.endDate), 'yyyy-MM-dd HH:mm') : '없음'
-      })));
-    }
 
     return eventsForDate;
   };
@@ -599,10 +555,7 @@ export default function CalendarPage() {
                 const dayOfWeek = day.getDay(); // 0: 일요일, 1: 월요일, ..., 6: 토요일
                 const holiday = isHoliday(day);
 
-                // 디버깅: 현재 월의 날짜에만 이벤트 수 로깅
-                if (isCurrentMonth && dayEvents.length > 0) {
-                  console.log(`🗓️ ${format(day, 'yyyy-MM-dd')} (${isCurrentMonth ? '현재월' : '다른월'}) - 이벤트 ${dayEvents.length}개:`, dayEvents.map(e => e.title));
-                }
+
 
                 return (
                  <div
