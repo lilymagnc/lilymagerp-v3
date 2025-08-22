@@ -72,6 +72,8 @@ export function EventDialog({
     description: '',
     startDate: new Date(),
     endDate: undefined as Date | undefined,
+    startTime: '',
+    endTime: '',
     branchName: '',
     status: 'pending' as CalendarEvent['status'],
     isAllDay: false
@@ -100,12 +102,17 @@ export function EventDialog({
   // 이벤트 편집 시 폼 데이터 초기화
   useEffect(() => {
     if (event) {
+      const startDate = new Date(event.startDate);
+      const endDate = event.endDate ? new Date(event.endDate) : undefined;
+      
       setFormData({
         type: event.type,
         title: event.title,
         description: event.description || '',
-        startDate: new Date(event.startDate),
-        endDate: event.endDate ? new Date(event.endDate) : undefined,
+        startDate: startDate,
+        endDate: endDate,
+        startTime: event.startDate ? format(startDate, 'HH:mm') : '',
+        endTime: event.endDate ? format(endDate!, 'HH:mm') : '',
         branchName: event.branchName,
         status: event.status,
         isAllDay: event.isAllDay || false
@@ -118,6 +125,8 @@ export function EventDialog({
         description: '',
         startDate: new Date(),
         endDate: undefined,
+        startTime: '',
+        endTime: '',
         branchName: branches[0]?.name || '',
         status: 'pending',
         isAllDay: false
@@ -138,12 +147,26 @@ export function EventDialog({
     // 종료날짜가 설정되지 않은 경우 시작날짜와 동일하게 설정
     const endDate = formData.endDate || formData.startDate;
     
+    // 시간 정보를 날짜에 적용
+    let startDateWithTime = new Date(formData.startDate);
+    let endDateWithTime = new Date(endDate);
+    
+    if (formData.startTime) {
+      const [hours, minutes] = formData.startTime.split(':').map(Number);
+      startDateWithTime.setHours(hours, minutes, 0, 0);
+    }
+    
+    if (formData.endTime) {
+      const [hours, minutes] = formData.endTime.split(':').map(Number);
+      endDateWithTime.setHours(hours, minutes, 0, 0);
+    }
+    
     const eventData: Omit<CalendarEvent, 'id'> = {
       type: formData.type,
       title: formData.title,
       description: formData.description,
-      startDate: formData.startDate,
-      endDate: endDate,
+      startDate: startDateWithTime,
+      endDate: endDateWithTime,
       branchName: formData.branchName,
       status: formData.status,
       color: eventTypes.find(t => t.value === formData.type)?.color || 'bg-gray-500',
@@ -191,8 +214,8 @@ export function EventDialog({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+         <Dialog open={isOpen} onOpenChange={onOpenChange}>
+       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? '일정 수정' : '새 일정 추가'}
@@ -353,6 +376,41 @@ export function EventDialog({
               종료날짜를 설정하지 않으면 시작날짜와 동일한 날짜로 설정됩니다.
             </p>
           </div>
+
+          {/* 시간 입력 필드 (직원스케줄과 공지/알림에만 표시) */}
+          {(formData.type === 'employee' || formData.type === 'notice') && (
+            <>
+              {/* 시작 시간 */}
+              <div className="space-y-2">
+                <Label htmlFor="startTime">시작 시간</Label>
+                <Input
+                  id="startTime"
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+                  placeholder="시작 시간을 선택하세요"
+                />
+                <p className="text-xs text-gray-500">
+                  시간을 설정하지 않으면 종일 일정으로 표시됩니다.
+                </p>
+              </div>
+
+              {/* 종료 시간 */}
+              <div className="space-y-2">
+                <Label htmlFor="endTime">종료 시간</Label>
+                <Input
+                  id="endTime"
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+                  placeholder="종료 시간을 선택하세요"
+                />
+                <p className="text-xs text-gray-500">
+                  종료 시간을 설정하지 않으면 시작 시간과 동일하게 설정됩니다.
+                </p>
+              </div>
+            </>
+          )}
 
           {/* 지점 */}
           <div className="space-y-2">

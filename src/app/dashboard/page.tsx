@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCalendar } from "@/hooks/use-calendar";
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isToday } from "date-fns";
 import { ko } from "date-fns/locale";
+import { getWeatherInfo, getWeatherEmoji, WeatherInfo } from "@/lib/weather-service";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -136,6 +137,9 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedWeek, setSelectedWeek] = useState(format(new Date(), 'yyyy-\'W\'ww'));
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  
+  // 날씨 정보 상태
+  const [weatherInfo, setWeatherInfo] = useState<WeatherInfo | null>(null);
   
   // 오늘과 내일의 일정 데이터
   const todayAndTomorrowEvents = useMemo(() => {
@@ -919,6 +923,25 @@ export default function DashboardPage() {
     setOrderDetailDialogOpen(false);
   };
 
+  // 날씨 정보 가져오기
+  useEffect(() => {
+    async function fetchWeatherData() {
+      try {
+        const weather = await getWeatherInfo();
+        setWeatherInfo(weather);
+      } catch (error) {
+        console.error('날씨 정보 가져오기 실패:', error);
+      }
+    }
+    
+    fetchWeatherData();
+    
+    // 30분마다 날씨 정보 업데이트
+    const weatherInterval = setInterval(fetchWeatherData, 30 * 60 * 1000);
+    
+    return () => clearInterval(weatherInterval);
+  }, []);
+
   useEffect(() => {
     async function fetchDashboardData() {
       setLoading(true);
@@ -1213,14 +1236,27 @@ export default function DashboardPage() {
       <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white overflow-hidden border-0 shadow-lg">
         <CardContent className="p-0">
           <div className="flex items-center bg-black bg-opacity-20 px-4 py-3">
-            <div className="flex items-center gap-2 mr-4 flex-shrink-0">
-              <Calendar className="h-5 w-5 text-yellow-300" />
-              <span className="font-semibold text-lg">📅 오늘 & 내일 일정</span>
-            </div>
             <div className="flex-1 overflow-hidden">
-              {todayAndTomorrowEvents.length > 0 ? (
-                <div className="flex animate-scroll whitespace-nowrap">
-                  {todayAndTomorrowEvents.map((event, index) => {
+              <div className="flex animate-scroll whitespace-nowrap">
+                {/* 날짜 정보 */}
+                <span className="inline-flex items-center gap-2 mr-8">
+                  <span className="text-yellow-300 font-medium">
+                    📅 {format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })}
+                  </span>
+                </span>
+                
+                {/* 날씨 정보 */}
+                {weatherInfo && (
+                  <span className="inline-flex items-center gap-2 mr-8">
+                    <span className="text-yellow-300 font-medium">
+                      {getWeatherEmoji(weatherInfo.icon)} {weatherInfo.temperature}°C {weatherInfo.description}
+                    </span>
+                  </span>
+                )}
+                
+                {/* 일정 정보 */}
+                {todayAndTomorrowEvents.length > 0 ? (
+                  todayAndTomorrowEvents.map((event, index) => {
                     const eventDate = new Date(event.startDate);
                     const today = new Date();
                     const tomorrow = new Date(today);
@@ -1237,14 +1273,33 @@ export default function DashboardPage() {
                         <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm">
                           {event.title}
                         </span>
-                        {index < todayAndTomorrowEvents.length - 1 && (
-                          <span className="text-yellow-300">|</span>
-                        )}
+                        <span className="text-yellow-300">|</span>
                       </span>
                     );
-                  })}
-                  {/* 반복을 위해 일정을 한 번 더 추가 */}
-                  {todayAndTomorrowEvents.map((event, index) => {
+                  })
+                ) : (
+                  <span className="text-yellow-200 text-lg mr-8">
+                    🎉 오늘과 내일은 특별한 일정이 없습니다! 좋은 하루 되세요! 🎉
+                  </span>
+                )}
+                
+                {/* 반복을 위해 전체 내용을 한 번 더 추가 */}
+                <span className="inline-flex items-center gap-2 mr-8">
+                  <span className="text-yellow-300 font-medium">
+                    📅 {format(new Date(), 'yyyy년 M월 d일 (E)', { locale: ko })}
+                  </span>
+                </span>
+                
+                {weatherInfo && (
+                  <span className="inline-flex items-center gap-2 mr-8">
+                    <span className="text-yellow-300 font-medium">
+                      {getWeatherEmoji(weatherInfo.icon)} {weatherInfo.temperature}°C {weatherInfo.description}
+                    </span>
+                  </span>
+                )}
+                
+                {todayAndTomorrowEvents.length > 0 ? (
+                  todayAndTomorrowEvents.map((event, index) => {
                     const eventDate = new Date(event.startDate);
                     const today = new Date();
                     const tomorrow = new Date(today);
@@ -1261,20 +1316,16 @@ export default function DashboardPage() {
                         <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm">
                           {event.title}
                         </span>
-                        {index < todayAndTomorrowEvents.length - 1 && (
-                          <span className="text-yellow-300">|</span>
-                        )}
+                        <span className="text-yellow-300">|</span>
                       </span>
                     );
-                  })}
-                </div>
-              ) : (
-                <div className="flex items-center justify-center py-2">
-                  <span className="text-yellow-200 text-lg">
+                  })
+                ) : (
+                  <span className="text-yellow-200 text-lg mr-8">
                     🎉 오늘과 내일은 특별한 일정이 없습니다! 좋은 하루 되세요! 🎉
                   </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

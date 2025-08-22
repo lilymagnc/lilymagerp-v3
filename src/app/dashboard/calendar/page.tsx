@@ -669,76 +669,32 @@ export default function CalendarPage() {
         </CardContent>
       </Card>
 
-             {/* 이벤트 타입별 통계 */}
-       <div className="grid gap-4 md:grid-cols-4">
-         {eventTypes.slice(1).map((type) => {
-           const typeEvents = filteredEvents.filter(event => event.type === type.value);
-           const pendingEvents = typeEvents.filter(event => event.status === 'pending');
-           
-           return (
-             <Card key={type.value}>
-               <CardHeader className="pb-2">
-                 <CardTitle className="text-sm flex items-center gap-2">
-                   <div className={`w-3 h-3 rounded-full ${type.color}`}></div>
-                   {type.label}
-                 </CardTitle>
-               </CardHeader>
-               <CardContent>
-                 <div className="text-2xl font-bold">{typeEvents.length}</div>
-                 <p className="text-xs text-gray-500">
-                   대기: {pendingEvents.length}건
-                 </p>
-               </CardContent>
-             </Card>
-           );
-         })}
-       </div>
+                           {/* 이벤트 타입별 통계 */}
+        <div className="grid gap-4 grid-cols-5">
+          {eventTypes.slice(1).map((type) => {
+            const typeEvents = filteredEvents.filter(event => event.type === type.value);
+            const pendingEvents = typeEvents.filter(event => event.status === 'pending');
+            
+            return (
+              <Card key={type.value}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${type.color}`}></div>
+                    {type.label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{typeEvents.length}</div>
+                  <p className="text-xs text-gray-500">
+                    대기: {pendingEvents.length}건
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
 
-       {/* 공휴일 정보 */}
-       <Card>
-         <CardHeader>
-           <CardTitle className="text-lg flex items-center gap-2">
-             🎉 공휴일 정보
-           </CardTitle>
-         </CardHeader>
-         <CardContent>
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             <div className="space-y-2">
-               <h4 className="font-medium text-sm">고정 공휴일</h4>
-               <div className="space-y-1">
-                 <div className="flex items-center gap-2 text-xs">
-                   <div className={`w-3 h-3 rounded-full ${holidayColors.fixed}`}></div>
-                   <span>신정, 삼일절, 어린이날, 현충일, 광복절, 개천절, 한글날, 크리스마스</span>
-                 </div>
-               </div>
-             </div>
-             <div className="space-y-2">
-               <h4 className="font-medium text-sm">음력 공휴일</h4>
-               <div className="space-y-1">
-                 <div className="flex items-center gap-2 text-xs">
-                   <div className={`w-3 h-3 rounded-full ${holidayColors.lunar}`}></div>
-                   <span>설날, 추석, 부처님 오신 날</span>
-                 </div>
-               </div>
-             </div>
-             <div className="space-y-2">
-               <h4 className="font-medium text-sm">대체공휴일</h4>
-               <div className="space-y-1">
-                 <div className="flex items-center gap-2 text-xs">
-                   <div className={`w-3 h-3 rounded-full ${holidayColors.substitute}`}></div>
-                   <span>공휴일이 주말과 겹칠 때 대체 공휴일</span>
-                 </div>
-               </div>
-             </div>
-           </div>
-           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-             <p className="text-xs text-blue-700">
-               💡 <strong>참고:</strong> 음력 공휴일과 대체공휴일은 2024-2028년 데이터가 포함되어 있습니다. 
-               다른 연도는 고정 공휴일만 표시됩니다.
-             </p>
-           </div>
-         </CardContent>
-       </Card>
+       
 
              {/* 일정 다이얼로그 */}
        <EventDialog
