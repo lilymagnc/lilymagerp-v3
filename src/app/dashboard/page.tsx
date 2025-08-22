@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { useCalendar } from "@/hooks/use-calendar";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isToday } from "date-fns";
 import { ko } from "date-fns/locale";
 
 interface DashboardStats {
@@ -76,6 +77,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { branches } = useBranches();
   const { user } = useAuth();
+  const { events: calendarEvents } = useCalendar();
   
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
@@ -134,6 +136,23 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedWeek, setSelectedWeek] = useState(format(new Date(), 'yyyy-\'W\'ww'));
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  
+  // 오늘과 내일의 일정 데이터
+  const todayAndTomorrowEvents = useMemo(() => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    return calendarEvents.filter(event => {
+      const eventDate = new Date(event.startDate);
+      const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+      
+      return eventDateOnly.getTime() === todayOnly.getTime() || 
+             eventDateOnly.getTime() === tomorrowOnly.getTime();
+    }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  }, [calendarEvents]);
   
   // 매장별 색상 정의
   const branchColors = [
@@ -1189,6 +1208,77 @@ export default function DashboardPage() {
         title={getDashboardTitle()}
         description={getDashboardDescription()}
       />
+      
+      {/* 전광판 스타일 안내띠 */}
+      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white overflow-hidden border-0 shadow-lg">
+        <CardContent className="p-0">
+          <div className="flex items-center bg-black bg-opacity-20 px-4 py-3">
+            <div className="flex items-center gap-2 mr-4 flex-shrink-0">
+              <Calendar className="h-5 w-5 text-yellow-300" />
+              <span className="font-semibold text-lg">📅 오늘 & 내일 일정</span>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {todayAndTomorrowEvents.length > 0 ? (
+                <div className="flex animate-scroll whitespace-nowrap">
+                  {todayAndTomorrowEvents.map((event, index) => {
+                    const eventDate = new Date(event.startDate);
+                    const today = new Date();
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    
+                    const isToday = eventDate.toDateString() === today.toDateString();
+                    const isTomorrow = eventDate.toDateString() === tomorrow.toDateString();
+                    
+                    return (
+                      <span key={event.id} className="inline-flex items-center gap-2 mr-8">
+                        <span className="text-yellow-300 font-medium">
+                          {isToday ? '오늘' : '내일'} {format(eventDate, 'HH:mm')}
+                        </span>
+                        <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm">
+                          {event.title}
+                        </span>
+                        {index < todayAndTomorrowEvents.length - 1 && (
+                          <span className="text-yellow-300">|</span>
+                        )}
+                      </span>
+                    );
+                  })}
+                  {/* 반복을 위해 일정을 한 번 더 추가 */}
+                  {todayAndTomorrowEvents.map((event, index) => {
+                    const eventDate = new Date(event.startDate);
+                    const today = new Date();
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    
+                    const isToday = eventDate.toDateString() === today.toDateString();
+                    const isTomorrow = eventDate.toDateString() === tomorrow.toDateString();
+                    
+                    return (
+                      <span key={`repeat-${event.id}`} className="inline-flex items-center gap-2 mr-8">
+                        <span className="text-yellow-300 font-medium">
+                          {isToday ? '오늘' : '내일'} {format(eventDate, 'HH:mm')}
+                        </span>
+                        <span className="bg-white bg-opacity-20 px-2 py-1 rounded text-sm">
+                          {event.title}
+                        </span>
+                        {index < todayAndTomorrowEvents.length - 1 && (
+                          <span className="text-yellow-300">|</span>
+                        )}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center py-2">
+                  <span className="text-yellow-200 text-lg">
+                    🎉 오늘과 내일은 특별한 일정이 없습니다! 좋은 하루 되세요! 🎉
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       {/* 메뉴바 */}
       <Card>
