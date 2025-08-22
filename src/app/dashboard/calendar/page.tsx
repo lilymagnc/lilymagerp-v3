@@ -42,19 +42,12 @@ export default function CalendarPage() {
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
-      // 본사가 이미 branches에 포함되어 있는지 확인
-      const hasHeadquarters = branches.some(b => b.name === '본사');
-      
-      return [
-        // 본사가 없으면 추가
-        ...(hasHeadquarters ? [] : [{ id: '본사', name: '본사', type: '본사' }]),
-        // 기존 지점들 필터링 (중복 제거)
-        ...branches.filter(b => b.name && b.name !== '본사').map(b => ({
-          id: b.id,
-          name: b.name || '',
-          type: b.type
-        }))
-      ];
+      // 모든 지점을 그대로 사용 (중복 제거 로직 제거)
+      return branches.map(b => ({
+        id: b.id,
+        name: b.name || '',
+        type: b.type
+      }));
     } else {
       return branches.filter(branch => branch.name === userBranch).map(b => ({
         id: b.id,
@@ -509,9 +502,22 @@ export default function CalendarPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {isAdmin && <SelectItem value="전체">전체</SelectItem>}
-                  {availableBranches.map((branch) => (
+                  {/* 본사 타입 지점들을 먼저 표시 */}
+                  {availableBranches.filter(branch => branch.type === '본사').map((branch) => (
                     <SelectItem key={branch.id} value={branch.name}>
-                      {branch.name}
+                      🏢 {branch.name} (본사)
+                    </SelectItem>
+                  ))}
+                  {/* 구분선 */}
+                  {availableBranches.some(b => b.type === '본사') && availableBranches.some(b => b.type !== '본사') && (
+                    <SelectItem value="separator_branches" disabled className="text-gray-400">
+                      ────────────────
+                    </SelectItem>
+                  )}
+                  {/* 일반 지점들 표시 */}
+                  {availableBranches.filter(branch => branch.type !== '본사').map((branch) => (
+                    <SelectItem key={branch.id} value={branch.name}>
+                      🏪 {branch.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
