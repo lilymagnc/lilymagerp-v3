@@ -88,7 +88,16 @@ const BulletinBoard = () => {
           const endDate = event.endDate ? startOfDay(event.endDate) : startDate;
           const hasStarted = isEqual(today, startDate) || isAfter(today, startDate);
           const hasNotEnded = isEqual(today, endDate) || isBefore(today, endDate);
-          return hasStarted && hasNotEnded;
+          
+          // 공지 대상 필터링
+          if (user?.role === '본사 관리자') {
+            // 본사 관리자는 모든 공지를 볼 수 있음
+            return hasStarted && hasNotEnded;
+          } else {
+            // 지점 사용자는 전체 공지와 자신의 지점 공지만 볼 수 있음
+            return hasStarted && hasNotEnded && 
+                   (event.branchName === '전체' || event.branchName === user?.franchise);
+          }
         })
         .map(event => `📢 ${event.title}`);
 

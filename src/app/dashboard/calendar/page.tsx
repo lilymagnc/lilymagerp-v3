@@ -269,8 +269,24 @@ export default function CalendarPage() {
     const filtered = allEvents.filter(event => {
       // 공지/알림 필터링 로직
       if (event.type === 'notice') {
-        // 본사 공지/알림은 모든 지점에서 볼 수 있음
-        if (event.branchName === '본사') {
+        // 전체 지점 공지/알림은 모든 지점에서 볼 수 있음
+        if (event.branchName === '전체') {
+          if (selectedEventType !== '전체' && event.type !== selectedEventType) {
+            return false;
+          }
+          return true;
+        }
+        // 본사 공지/알림은 본사에서만 볼 수 있음
+        else if (event.branchName === '본사') {
+          // 관리자가 아닌 경우 본사 공지는 보지 않음
+          if (!isAdmin) {
+            return false;
+          }
+          // 지점 필터링 (본사 선택된 경우에만)
+          if (selectedBranch !== '전체' && selectedBranch !== '본사') {
+            return false;
+          }
+          // 이벤트 타입 필터링
           if (selectedEventType !== '전체' && event.type !== selectedEventType) {
             return false;
           }
@@ -445,45 +461,51 @@ export default function CalendarPage() {
               <span className="text-sm font-medium text-gray-700">필터:</span>
             </div>
             
-            {/* 지점 선택 */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">지점:</label>
-              <Select 
-                value={selectedBranch} 
-                onValueChange={setSelectedBranch}
-                disabled={!isAdmin} // 관리자가 아닌 경우 비활성화
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {isAdmin && <SelectItem value="전체">전체</SelectItem>}
-                  {/* 본사 타입 지점들을 먼저 표시 */}
-                  {availableBranches.filter(branch => branch.type === '본사').map((branch) => (
-                    <SelectItem key={branch.id} value={branch.name}>
-                      🏢 {branch.name} (본사)
-                    </SelectItem>
-                  ))}
-                  {/* 구분선 */}
-                  {availableBranches.some(b => b.type === '본사') && availableBranches.some(b => b.type !== '본사') && (
-                    <SelectItem value="separator_branches" disabled className="text-gray-400">
-                      ────────────────
-                    </SelectItem>
-                  )}
-                  {/* 일반 지점들 표시 */}
-                  {availableBranches.filter(branch => branch.type !== '본사').map((branch) => (
-                    <SelectItem key={branch.id} value={branch.name}>
-                      🏪 {branch.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!isAdmin && (
-                <span className="text-xs text-gray-500">
-                  ({userBranch} 지점만 표시)
-                </span>
-              )}
-            </div>
+                         {/* 지점 선택 - 본사 관리자만 표시 */}
+             {isAdmin && (
+               <div className="flex items-center gap-2">
+                 <label className="text-sm text-gray-600">지점:</label>
+                 <Select 
+                   value={selectedBranch} 
+                   onValueChange={setSelectedBranch}
+                 >
+                   <SelectTrigger className="w-32">
+                     <SelectValue />
+                   </SelectTrigger>
+                   <SelectContent>
+                     <SelectItem value="전체">전체</SelectItem>
+                     {/* 본사 타입 지점들을 먼저 표시 */}
+                     {availableBranches.filter(branch => branch.type === '본사').map((branch) => (
+                       <SelectItem key={branch.id} value={branch.name}>
+                         🏢 {branch.name} (본사)
+                       </SelectItem>
+                     ))}
+                     {/* 구분선 */}
+                     {availableBranches.some(b => b.type === '본사') && availableBranches.some(b => b.type !== '본사') && (
+                       <SelectItem value="separator_branches" disabled className="text-gray-400">
+                         ────────────────
+                       </SelectItem>
+                     )}
+                     {/* 일반 지점들 표시 */}
+                     {availableBranches.filter(branch => branch.type !== '본사').map((branch) => (
+                       <SelectItem key={branch.id} value={branch.name}>
+                         🏪 {branch.name}
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
+             )}
+             
+             {/* 지점 사용자용 표시 */}
+             {!isAdmin && (
+               <div className="flex items-center gap-2">
+                 <label className="text-sm text-gray-600">지점:</label>
+                 <span className="text-sm font-medium text-blue-600">
+                   {userBranch}
+                 </span>
+               </div>
+             )}
 
             {/* 이벤트 타입 선택 (버튼으로 변경) */}
             <div className="flex items-center gap-2">

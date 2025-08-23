@@ -45,7 +45,9 @@ export function EventDialog({
     if (currentUser.role === '본사 관리자') return true;
     
     // 지점 사용자는 자신의 지점 이벤트만 수정/삭제 가능
-    if (event && event.branchName === currentUser.franchise) return true;
+    // 본사관리자가 작성한 전체 공지나 본사 공지는 수정 불가
+    if (event && event.branchName === currentUser.franchise && 
+        event.branchName !== '전체' && event.branchName !== '본사') return true;
     
     return false;
   }, [currentUser, event]);
@@ -60,7 +62,9 @@ export function EventDialog({
     if (currentUser.role === '본사 관리자') return true;
     
     // 지점 사용자는 자신의 지점 이벤트만 삭제 가능
-    if (event.branchName === currentUser.franchise) return true;
+    // 본사관리자가 작성한 전체 공지나 본사 공지는 삭제 불가
+    if (event.branchName === currentUser.franchise && 
+        event.branchName !== '전체' && event.branchName !== '본사') return true;
     
     return false;
   }, [currentUser, event]);
@@ -95,8 +99,10 @@ export function EventDialog({
     setFormData(prev => ({
       ...prev,
       type: newType,
-      // 공지/알림의 경우 현재 사용자의 지점으로 설정 (본사 관리자는 '본사'로 설정)
-      branchName: newType === 'notice' ? (branches.find(b => b.name === '본사') ? '본사' : branches[0]?.name || '') : (branches[0]?.name || '')
+      // 공지/알림의 경우 사용자 권한에 따라 설정
+      branchName: newType === 'notice' 
+        ? (currentUser?.role === '본사 관리자' ? '전체' : currentUser?.franchise || '')
+        : (currentUser?.role === '본사 관리자' ? branches[0]?.name || '' : currentUser?.franchise || '')
     }));
   };
 
@@ -120,6 +126,10 @@ export function EventDialog({
       });
     } else {
       // 새 이벤트 생성 시 기본값 설정
+      const defaultBranch = currentUser?.role === '본사 관리자' 
+        ? branches[0]?.name || '' 
+        : currentUser?.franchise || '';
+      
       setFormData({
         type: 'delivery',
         title: '',
@@ -128,7 +138,7 @@ export function EventDialog({
         endDate: undefined,
         startTime: '',
         endTime: '',
-        branchName: branches[0]?.name || '',
+        branchName: defaultBranch,
         status: 'pending',
         isAllDay: false
       });
@@ -426,22 +436,43 @@ export function EventDialog({
                 <SelectValue placeholder={formData.type === 'notice' ? "공지 대상을 선택하세요" : "지점을 선택하세요"} />
               </SelectTrigger>
               <SelectContent>
-                {branches.map((branch) => (
-                  <SelectItem key={branch.id} value={branch.name}>
-                    {formData.type === 'notice' && branch.name === '본사' 
-                      ? '📢 본사 (전체 지점 공지)' 
-                      : formData.type === 'notice' && branch.name !== '본사'
-                      ? `📌 ${branch.name} (지점 공지)`
-                      : branch.name
-                    }
-                  </SelectItem>
-                ))}
+                {/* 본사 관리자만 전체 지점과 본사 공지 선택 가능 */}
+                {currentUser?.role === '본사 관리자' && (
+                  <>
+                    <SelectItem value="전체">
+                      📢 전체 지점 (본사 및 모든 지점 공지)
+                    </SelectItem>
+                    <SelectItem value="separator" disabled className="text-gray-400">
+                      ────────────────
+                    </SelectItem>
+                    <SelectItem value="본사">
+                      🏢 본사 (본사만의 공지)
+                    </SelectItem>
+                    <SelectItem value="separator2" disabled className="text-gray-400">
+                      ────────────────
+                    </SelectItem>
+                  </>
+                )}
+                {/* 개별 지점 공지 - 본사 관리자는 모든 지점, 지점 사용자는 자신의 지점만 */}
+                {branches
+                  .filter(branch => branch.type !== '본사')
+                  .filter(branch => 
+                    currentUser?.role === '본사 관리자' || 
+                    branch.name === currentUser?.franchise
+                  )
+                  .map((branch) => (
+                    <SelectItem key={branch.id} value={branch.name}>
+                      📌 {branch.name} (지점 공지)
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             {formData.type === 'notice' && (
               <p className="text-xs text-gray-500">
-                {formData.branchName === '본사' 
-                  ? '전체 지점에서 확인할 수 있는 공지입니다.' 
+                {formData.branchName === '전체' 
+                  ? '본사 및 모든 지점에서 확인할 수 있는 공지입니다.' 
+                  : formData.branchName === '본사'
+                  ? '본사에서만 확인할 수 있는 공지입니다.'
                   : `${formData.branchName} 지점에서만 확인할 수 있는 공지입니다.`
                 }
               </p>

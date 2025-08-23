@@ -12,8 +12,7 @@ import {
   DollarSign,
   TrendingUp,
   ShoppingCart,
-  Building,
-  FileSpreadsheet
+  Building
 } from 'lucide-react';
 import { ExpenseInputForm } from './components/expense-input-form';
 import { FixedCostTemplate } from './components/fixed-cost-template';
@@ -43,46 +42,7 @@ export default function SimpleExpensesPage() {
   const { user } = useAuth();
   const { branches, loading: branchesLoading } = useBranches();
   
-  // 엑셀 템플릿 다운로드 함수
-  const handleDownloadTemplate = () => {
-    const template = [
-      {
-        '날짜': '2024-12-06',
-        '지점명': '강남점',
-        '구매처': 'ABC상사',
-        '카테고리': '자재',
-        '세부분류': '원단',
-        '품목명': '면원단',
-        '수량': 10,
-        '단가': 5000,
-        '금액': 50000,
-        '비고': ''
-      }
-    ];
 
-    // XLSX 라이브러리 동적 import
-    import('xlsx').then((XLSX) => {
-      const ws = XLSX.utils.json_to_sheet(template);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, '간편지출템플릿');
-      
-      // 컬럼 너비 설정
-      ws['!cols'] = [
-        { width: 12 }, // 날짜
-        { width: 10 }, // 지점명
-        { width: 15 }, // 구매처
-        { width: 10 }, // 카테고리
-        { width: 12 }, // 세부분류
-        { width: 20 }, // 품목명
-        { width: 8 },  // 수량
-        { width: 10 }, // 단가
-        { width: 12 }, // 금액
-        { width: 15 }  // 비고
-      ];
-
-      XLSX.writeFile(wb, '간편지출_템플릿.xlsx');
-    });
-  };
   // 관리자 여부 확인 (user?.role 직접 사용)
   const isAdmin = user?.role === '본사 관리자';
   const isHQManager = user?.role === '본사 관리자';
@@ -574,50 +534,13 @@ export default function SimpleExpensesPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
-              {/* 엑셀 업로드 안내 카드 */}
-              <Card className="w-full max-w-2xl mx-auto">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileSpreadsheet className="h-5 w-5 text-blue-600" />
-                    엑셀 대량 업로드
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    대량의 지출 데이터를 엑셀 파일로 한 번에 입력할 수 있습니다.
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-blue-800 mb-1">간편한 대량 입력</h4>
-                      <p className="text-sm text-blue-600">
-                        • 엑셀 템플릿 다운로드 후 데이터 입력<br/>
-                        • 신규 구매처, 자재, 상품 자동 등록<br/>
-                        • 지점별 데이터 자동 분류 및 재고 업데이트
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleDownloadTemplate}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                      >
-                        <FileSpreadsheet className="h-4 w-4 mr-2 inline" />
-                        템플릿 다운로드
-                      </button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 기존 지출 입력 폼 */}
-              <ExpenseInputForm 
-                key={`expense-form-${renderKey}-${currentBranchId}`}
-                onSuccess={handleSuccess}
-                continueMode={true}
-                selectedBranchId={currentBranchId}
-                selectedBranchName={currentBranch?.name || ''}
-              />
-            </div>
+            <ExpenseInputForm 
+              key={`expense-form-${renderKey}-${currentBranchId}`}
+              onSuccess={handleSuccess}
+              continueMode={true}
+              selectedBranchId={currentBranchId}
+              selectedBranchName={currentBranch?.name || ''}
+            />
           )}
         </TabsContent>
         <TabsContent value="fixed">

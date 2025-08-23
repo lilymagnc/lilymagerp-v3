@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -807,11 +807,21 @@ export function ExpenseInputForm({
     }
   }, [form, safeSetState]);
 
-  // 검색된 거래처 필터링
-  const filteredPartners = partners.filter(partner =>
-    String(partner.name ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase()) ||
-    String(partner.type ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase())
-  );
+  // 검색된 거래처 필터링 및 정렬
+  const filteredPartners = useMemo(() => {
+    const filtered = partners.filter(partner =>
+      String(partner.name ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase()) ||
+      String(partner.type ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase()) ||
+      String(partner.contactPerson ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase())
+    );
+    
+    // 구매처명 오름차순으로 정렬
+    return filtered.sort((a, b) => {
+      const nameA = String(a.name ?? '').toLowerCase();
+      const nameB = String(b.name ?? '').toLowerCase();
+      return nameA.localeCompare(nameB, 'ko');
+    });
+  }, [partners, supplierSearchValue]);
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -955,7 +965,7 @@ export function ExpenseInputForm({
                                 <div className="flex items-center border-b px-3 py-2">
                                   <Building2 className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                                   <CommandInput
-                                    placeholder="거래처명 또는 유형으로 검색..."
+                                    placeholder="구매처명, 유형, 담당자명으로 검색..."
                                     value={supplierSearchValue}
                                     onValueChange={handleSupplierSearch}
                                     className="border-0 focus:ring-0"
@@ -966,6 +976,9 @@ export function ExpenseInputForm({
                                     <Building2 className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
                                     <p className="text-sm text-muted-foreground mb-2">
                                       "{supplierSearchValue}" 검색 결과가 없습니다.
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mb-3">
+                                      구매처명, 유형, 담당자명으로 검색해보세요.
                                     </p>
                                     <Button
                                       type="button"
@@ -1007,9 +1020,12 @@ export function ExpenseInputForm({
                                           </Badge>
                                         </div>
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span>{partner.contactPerson || '연락처 없음'}</span>
-                                          {partner.phone && (
-                                            <span>• {partner.phone}</span>
+                                          <span>{partner.contactPerson || '담당자 없음'}</span>
+                                          {partner.contact && (
+                                            <span>• {partner.contact}</span>
+                                          )}
+                                          {partner.email && (
+                                            <span>• {partner.email}</span>
                                           )}
                                         </div>
                                       </div>

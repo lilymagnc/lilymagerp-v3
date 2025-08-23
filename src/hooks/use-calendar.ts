@@ -54,10 +54,10 @@ export function useCalendar() {
         // 관리자는 모든 일정을 볼 수 있음
         q = query(eventsRef, orderBy('startDate', 'desc'));
       } else {
-        // 일반 사용자는 자신의 지점 일정과 공지사항만 볼 수 있음
+        // 일반 사용자는 자신의 지점 일정과 전체 공지사항만 볼 수 있음
         q = query(
           eventsRef,
-          where('branchName', 'in', [user.franchise, '본사']),
+          where('branchName', 'in', [user.franchise, '전체']),
           orderBy('startDate', 'desc')
         );
       }
