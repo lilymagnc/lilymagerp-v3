@@ -21,6 +21,7 @@ import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserRole } from "@/hooks/use-user-role";
+import Link from "next/link";
 import { 
   Settings, 
   Building, 
@@ -36,7 +37,8 @@ import {
   Percent,
   Trash2,
   AlertTriangle,
-  Camera
+  Camera,
+  BookOpen
 } from "lucide-react";
 import { useSettings, defaultSettings } from "@/hooks/use-settings";
 import { useDataCleanup } from "@/hooks/use-data-cleanup";
@@ -168,10 +170,18 @@ export default function SettingsPage() {
   }
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="시스템 설정"
-        description="시스템의 기본 설정을 관리합니다."
-      />
+      <div className="flex justify-between items-center">
+        <PageHeader
+          title="시스템 설정"
+          description="시스템의 기본 설정을 관리합니다."
+        />
+        <Link href="/dashboard/manual" passHref>
+          <Button variant="outline">
+            <BookOpen className="h-4 w-4 mr-2" />
+            사용자 매뉴얼 보기
+          </Button>
+        </Link>
+      </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="general">일반 설정</TabsTrigger>
