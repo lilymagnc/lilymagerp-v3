@@ -716,6 +716,7 @@ export default function CalendarPage() {
          onOpenChange={setIsNoticeViewDialogOpen}
          event={selectedEvent}
          onEdit={handleNoticeEdit}
+         currentUser={user}
        />
     </div>
   );

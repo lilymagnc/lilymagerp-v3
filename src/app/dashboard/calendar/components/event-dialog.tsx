@@ -45,10 +45,18 @@ export function EventDialog({
     // 본사 관리자는 모든 이벤트 수정/삭제 가능
     if (currentUser.role === '본사 관리자') return true;
     
-    // 지점 사용자는 자신의 지점 이벤트만 수정/삭제 가능
-    // 본사관리자가 작성한 전체 공지나 본사 공지는 수정 불가
-    if (event && event.branchName === currentUser.franchise && 
-        event.branchName !== '전체' && event.branchName !== '본사') return true;
+    // 지점 관리자는 자신의 지점 이벤트만 수정 가능
+    if (currentUser.role === '지점 관리자') {
+      if (!event) return true; // 새 이벤트 생성은 가능
+      
+      // 본사관리자가 작성한 공지/알림은 수정 불가
+      if (event.type === 'notice' && (event.branchName === '전체' || event.branchName === '본사')) {
+        return false;
+      }
+      
+      // 자신의 지점 이벤트만 수정 가능
+      return event.branchName === currentUser.franchise;
+    }
     
     return false;
   }, [currentUser, event]);
@@ -62,10 +70,16 @@ export function EventDialog({
     // 본사 관리자는 모든 이벤트 삭제 가능
     if (currentUser.role === '본사 관리자') return true;
     
-    // 지점 사용자는 자신의 지점 이벤트만 삭제 가능
-    // 본사관리자가 작성한 전체 공지나 본사 공지는 삭제 불가
-    if (event.branchName === currentUser.franchise && 
-        event.branchName !== '전체' && event.branchName !== '본사') return true;
+    // 지점 관리자는 자신의 지점 이벤트만 삭제 가능
+    if (currentUser.role === '지점 관리자') {
+      // 본사관리자가 작성한 공지/알림은 삭제 불가
+      if (event.type === 'notice' && (event.branchName === '전체' || event.branchName === '본사')) {
+        return false;
+      }
+      
+      // 자신의 지점 이벤트만 삭제 가능
+      return event.branchName === currentUser.franchise;
+    }
     
     return false;
   }, [currentUser, event]);
@@ -544,6 +558,18 @@ export function EventDialog({
                {isEditing ? '수정' : '추가'}
              </Button>
            </DialogFooter>
+           
+           {/* 권한 안내 메시지 */}
+           {isEditing && !canEdit && (
+             <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+               <p className="text-sm text-yellow-800">
+                 {event?.type === 'notice' && (event?.branchName === '전체' || event?.branchName === '본사')
+                   ? "본사 관리자가 작성한 공지는 본사 관리자만 수정할 수 있습니다."
+                   : "이 일정을 수정할 권한이 없습니다."
+                 }
+               </p>
+             </div>
+           )}
         </form>
         
                  {/* 삭제 버튼을 폼 밖으로 분리 */}

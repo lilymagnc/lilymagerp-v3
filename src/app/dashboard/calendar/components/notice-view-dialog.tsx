@@ -13,15 +13,38 @@ interface NoticeViewDialogProps {
   onOpenChange: (open: boolean) => void;
   event: CalendarEvent | null;
   onEdit?: () => void;
+  currentUser?: { role?: string; franchise?: string };
 }
 
 export function NoticeViewDialog({
   isOpen,
   onOpenChange,
   event,
-  onEdit
+  onEdit,
+  currentUser
 }: NoticeViewDialogProps) {
   if (!event || event.type !== 'notice') return null;
+
+  // 권한 확인 로직
+  const canEdit = React.useMemo(() => {
+    if (!currentUser || !currentUser.role) return false;
+    
+    // 본사 관리자는 모든 공지 수정 가능
+    if (currentUser.role === '본사 관리자') return true;
+    
+    // 지점 관리자는 자신의 지점 공지만 수정 가능
+    if (currentUser.role === '지점 관리자') {
+      // 본사관리자가 작성한 전체 공지나 본사 공지는 수정 불가
+      if (event.branchName === '전체' || event.branchName === '본사') {
+        return false;
+      }
+      
+      // 자신의 지점 공지만 수정 가능
+      return event.branchName === currentUser.franchise;
+    }
+    
+    return false;
+  }, [currentUser, event]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -89,16 +112,16 @@ export function NoticeViewDialog({
               </Badge>
             </div>
             
-            <div className="flex gap-2">
-              {onEdit && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={onEdit}
-                >
-                  수정
-                </Button>
-              )}
+                         <div className="flex gap-2">
+               {onEdit && canEdit && (
+                 <Button 
+                   variant="outline" 
+                   size="sm"
+                   onClick={onEdit}
+                 >
+                   수정
+                 </Button>
+               )}
               <Button 
                 variant="outline" 
                 size="sm"
