@@ -16,6 +16,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isTod
 import { ko } from "date-fns/locale";
 import { EventDialog } from "./components/event-dialog";
 import { DayEventsDialog } from "./components/day-events-dialog";
+import { NoticeViewDialog } from "./components/notice-view-dialog";
 import { isHoliday, holidayColors } from "@/lib/holidays";
 
 export default function CalendarPage() {
@@ -38,6 +39,7 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isDayEventsDialogOpen, setIsDayEventsDialogOpen] = useState(false);
+  const [isNoticeViewDialogOpen, setIsNoticeViewDialogOpen] = useState(false);
 
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
@@ -359,8 +361,21 @@ export default function CalendarPage() {
   };
 
   // 일정 클릭
+  // 이벤트 클릭 핸들러
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
+    
+    // 공지인 경우 간단한 보기 팝업 사용
+    if (event.type === 'notice') {
+      setIsNoticeViewDialogOpen(true);
+    } else {
+      setIsEventDialogOpen(true);
+    }
+  };
+
+  // 공지 수정 핸들러
+  const handleNoticeEdit = () => {
+    setIsNoticeViewDialogOpen(false);
     setIsEventDialogOpen(true);
   };
 
@@ -689,6 +704,18 @@ export default function CalendarPage() {
          date={selectedDate}
          events={selectedDate ? getEventsForDate(selectedDate) : []}
          onEventClick={handleEventClick}
+         onNoticeClick={(event) => {
+           setSelectedEvent(event);
+           setIsNoticeViewDialogOpen(true);
+         }}
+       />
+
+       {/* 공지 보기 다이얼로그 */}
+       <NoticeViewDialog
+         isOpen={isNoticeViewDialogOpen}
+         onOpenChange={setIsNoticeViewDialogOpen}
+         event={selectedEvent}
+         onEdit={handleNoticeEdit}
        />
     </div>
   );

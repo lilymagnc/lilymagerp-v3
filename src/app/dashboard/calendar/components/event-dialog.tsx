@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -226,7 +227,7 @@ export function EventDialog({
 
   return (
          <Dialog open={isOpen} onOpenChange={onOpenChange}>
-       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+               <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? '일정 수정' : '새 일정 추가'}
@@ -316,14 +317,30 @@ export function EventDialog({
 
           {/* 설명 */}
           <div className="space-y-2">
-            <Label htmlFor="description">설명</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="일정에 대한 설명을 입력하세요"
-              rows={3}
-            />
+            <Label htmlFor="description">
+              {formData.type === 'notice' ? '공지 내용' : '설명'}
+            </Label>
+            {formData.type === 'notice' ? (
+              <RichTextEditor
+                value={formData.description}
+                onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
+                placeholder="공지 내용을 입력하세요. HTML 형식으로 작성할 수 있습니다."
+                className="min-h-[300px]"
+              />
+            ) : (
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="일정에 대한 설명을 입력하세요"
+                rows={3}
+              />
+            )}
+            {formData.type === 'notice' && (
+              <p className="text-xs text-gray-500">
+                💡 공지 내용은 모든 대상 사용자에게 표시됩니다. HTML 형식으로 작성하여 더 풍부한 내용을 제공할 수 있습니다.
+              </p>
+            )}
           </div>
 
           {/* 시작 날짜 */}

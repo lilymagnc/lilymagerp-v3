@@ -1,6 +1,6 @@
 "use client";
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CalendarEvent } from '@/hooks/use-calendar';
@@ -15,6 +15,7 @@ interface DayEventsDialogProps {
   date: Date | null;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
+  onNoticeClick?: (event: CalendarEvent) => void;
 }
 
 const getEventIcon = (type: string) => {
@@ -52,7 +53,8 @@ function DayEventsDialogComponent({
   onOpenChange,
   date,
   events,
-  onEventClick
+  onEventClick,
+  onNoticeClick
 }: DayEventsDialogProps) {
   if (!date) return null;
 
@@ -92,6 +94,9 @@ function DayEventsDialogComponent({
               총 {events.length}건
             </Badge>
           </DialogTitle>
+          <DialogDescription>
+            해당 날짜의 모든 일정을 확인하세요.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -125,11 +130,17 @@ function DayEventsDialogComponent({
               </h3>
               <div className="space-y-3">
                 {pendingEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => onEventClick(event)}
-                  >
+                                     <div
+                     key={event.id}
+                     className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                     onClick={() => {
+                       if (event.type === 'notice' && onNoticeClick) {
+                         onNoticeClick(event);
+                       } else {
+                         onEventClick(event);
+                       }
+                     }}
+                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
                         <div className={`w-3 h-3 rounded-full mt-1 ${event.color}`}></div>
@@ -144,7 +155,11 @@ function DayEventsDialogComponent({
                             )}
                           </div>
                           {event.description && (
-                            <p className="text-sm text-gray-600 mb-2">{event.description}</p>
+                            <div className={`mb-2 ${event.type === 'notice' ? 'bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400' : ''}`}>
+                              <p className={`${event.type === 'notice' ? 'text-sm text-blue-800 leading-relaxed' : 'text-sm text-gray-600'}`}>
+                                {event.description}
+                              </p>
+                            </div>
                           )}
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <div className="flex items-center gap-1">
@@ -175,11 +190,17 @@ function DayEventsDialogComponent({
               </h3>
               <div className="space-y-3">
                 {completedEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => onEventClick(event)}
-                  >
+                                     <div
+                     key={event.id}
+                     className="p-4 border rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                     onClick={() => {
+                       if (event.type === 'notice' && onNoticeClick) {
+                         onNoticeClick(event);
+                       } else {
+                         onEventClick(event);
+                       }
+                     }}
+                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
                         <div className={`w-3 h-3 rounded-full mt-1 ${event.color}`}></div>
@@ -194,7 +215,11 @@ function DayEventsDialogComponent({
                             )}
                           </div>
                           {event.description && (
-                            <p className="text-sm text-gray-600 mb-2">{event.description}</p>
+                            <div className={`mb-2 ${event.type === 'notice' ? 'bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400' : ''}`}>
+                              <p className={`${event.type === 'notice' ? 'text-sm text-blue-800 leading-relaxed' : 'text-sm text-gray-600'}`}>
+                                {event.description}
+                              </p>
+                            </div>
                           )}
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <div className="flex items-center gap-1">
