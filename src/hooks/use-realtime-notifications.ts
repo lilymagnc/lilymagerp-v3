@@ -14,7 +14,7 @@ import {
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { useBranches } from '@/hooks/use-branches';
-import { useVoiceNotifications } from '@/hooks/use-voice-notifications';
+
 import { useSettings } from '@/hooks/use-settings';
 
 export interface Notification {
@@ -36,7 +36,7 @@ export function useRealtimeNotifications() {
   
   const { user } = useAuth();
   const { branches } = useBranches();
-  const { notifyOrderTransfer } = useVoiceNotifications();
+
   const { settings } = useSettings();
 
   // 알림 목록 실시간 구독
@@ -83,22 +83,7 @@ export function useRealtimeNotifications() {
         setNotifications(notificationList);
         setLoading(false);
 
-        // 새로운 주문 이관 알림이 있으면 음성 알림 재생
-        const newTransferNotifications = notificationList.filter(
-          notification => 
-            notification.type === 'order_transfer' && 
-            !notification.isRead &&
-            notification.createdAt.toDate().getTime() > Date.now() - 10000 // 10초 이내
-        );
 
-        if (newTransferNotifications.length > 0 && settings?.orderTransferSettings?.voiceNotificationEnabled) {
-          const latestNotification = newTransferNotifications[0];
-          // 메시지에서 발주지점명 추출
-          const orderBranchMatch = latestNotification.message.match(/(.+?)지점으로부터/);
-          if (orderBranchMatch) {
-            notifyOrderTransfer(orderBranchMatch[1]);
-          }
-        }
       },
       (error) => {
         console.error('알림 구독 오류:', error);
@@ -108,7 +93,7 @@ export function useRealtimeNotifications() {
     );
 
     return () => unsubscribe();
-  }, [user, notifyOrderTransfer, settings?.orderTransferSettings?.voiceNotificationEnabled]);
+  }, [user]);
 
   // 알림 생성
   const createNotification = useCallback(async (notificationData: Omit<Notification, 'id' | 'createdAt'>) => {

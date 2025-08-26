@@ -44,7 +44,7 @@ import { useSettings, defaultSettings } from "@/hooks/use-settings";
 import { useDataCleanup } from "@/hooks/use-data-cleanup";
 import BackupManagement from "./components/backup-management";
 import { EmailTemplateEditor } from "@/components/email-template-editor";
-import { VoiceNotification } from "@/components/voice-notification";
+
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'general';
@@ -586,24 +586,7 @@ export default function SettingsPage() {
                       className="h-4 w-4"
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>음성 알림</Label>
-                      <p className="text-sm text-gray-500">주문 이관 시 음성으로 알림을 재생합니다</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={localSettings.orderTransferSettings?.voiceNotificationEnabled || false}
-                      onChange={(e) => setLocalSettings(prev => ({
-                        ...prev,
-                        orderTransferSettings: {
-                          ...prev.orderTransferSettings,
-                          voiceNotificationEnabled: e.target.checked
-                        }
-                      }))}
-                      className="h-4 w-4"
-                    />
-                  </div>
+
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>전광판 표시</Label>
@@ -644,8 +627,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
             
-            {/* 음성 알림 설정 */}
-            <VoiceNotification />
+
           </TabsContent>
           {/* 백업 관리 */}
           <TabsContent value="backup" className="space-y-4">

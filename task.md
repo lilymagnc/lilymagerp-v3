@@ -7,7 +7,7 @@
 1. **주문 이관**: A지점에서 B지점으로 주문 전송
 2. **금액 분배**: 발주지점과 수주지점 간 금액 분배 (기본: 발주지점 100%, 수주지점 0%)
 3. **권한 관리**: 지점 관리자 및 일반 직원이 주문 이관 기능 사용 가능
-4. **알림 시스템**: 음성 알림 및 실시간 알림
+4. **알림 시스템**: 실시간 알림
 5. **전광판**: 주문 이관 정보 실시간 표시
 6. **수주건 처리**: 수주지점에서 주문서 및 메시지 출력 가능
 
@@ -40,7 +40,7 @@
 - [x] **Task 3.3**: 이관 상세 정보 다이얼로그 (`src/app/dashboard/transfers/components/transfer-detail-dialog.tsx`)
 
 ### Phase 4: 알림 및 전광판 UI 구현 ✅ 완료
-- [x] **Task 4.1**: 음성 알림 설정 컴포넌트 (`src/components/voice-notification.tsx`)
+
 - [x] **Task 4.2**: 전광판 컴포넌트 (`src/components/display-board.tsx`)
 - [x] **Task 4.3**: 실시간 알림 센터 (`src/components/notification-center.tsx`)
 - [x] **Task 4.4**: 전광판 전용 페이지 (`src/app/display-board/page.tsx`)
@@ -49,7 +49,7 @@
 
 ### Phase 5: 권한 시스템 및 통합 테스트 ✅ 완료
 - [x] **Task 5.1**: 주문 이관 권한 시스템 구현
-- [x] **Task 5.2**: 음성 알림 훅 구현 (`src/hooks/use-voice-notifications.ts`)
+
 - [x] **Task 5.3**: 실시간 알림 훅 구현 (`src/hooks/use-realtime-notifications.ts`)
 - [x] **Task 5.4**: 전광판 훅 구현 (`src/hooks/use-display-board.tsx`)
 - [x] **Task 5.5**: 주문 이관 생성 시 알림 및 전광판 연동
@@ -69,12 +69,12 @@ src/
 │   └── order-transfer.ts          # 주문 이관 관련 타입 정의
 ├── hooks/
 │   ├── use-order-transfers.ts     # 주문 이관 핵심 로직
-│   ├── use-voice-notifications.ts # 음성 알림 훅
+
 │   ├── use-realtime-notifications.ts # 실시간 알림 훅
 │   └── use-display-board.tsx      # 전광판 훅
 ├── components/
 │   ├── order-transfer-dialog.tsx  # 이관 다이얼로그
-│   ├── voice-notification.tsx     # 음성 알림 설정
+
 │   ├── display-board.tsx          # 전광판 컴포넌트
 │   └── notification-center.tsx    # 알림 센터
 ├── app/
@@ -103,7 +103,7 @@ src/
 
 ## 주의사항
 1. **권한 관리**: 주문 이관 기능은 지점 관리자 권한으로 모든 지점 사용자가 사용 가능
-2. **음성 알림**: 브라우저 호환성 확인 필요 (Web Speech API)
+
 3. **실시간 알림**: Firebase Firestore 실시간 구독 사용
 4. **전광판**: 설정에 따른 자동 표시/숨김 기능
 5. **금액 분배**: 기본값은 발주지점 100%, 수주지점 0%
@@ -111,7 +111,7 @@ src/
 ## 성공 기준
 - [x] 주문 이관 기능이 정상적으로 작동
 - [x] 권한 시스템이 올바르게 적용
-- [x] 음성 알림이 정상적으로 재생
+
 - [x] 실시간 알림이 즉시 표시
 - [x] 전광판에 이관 정보가 실시간으로 표시
 - [x] 설정에서 모든 옵션을 변경 가능

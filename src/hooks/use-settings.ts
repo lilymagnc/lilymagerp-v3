@@ -199,7 +199,7 @@ export const defaultSettings: SystemSettings = {
           },
     autoNotification: true,
     notificationTemplate: "{발주지점}지점으로부터 주문이 이관되었습니다.",
-    voiceNotificationEnabled: true,
+
     displayBoardEnabled: true,
     displayBoardDuration: 30, // 30분
   }

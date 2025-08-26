@@ -5,6 +5,8 @@ import {
   addDoc, 
   updateDoc, 
   getDocs, 
+  getDoc,
+  deleteDoc,
   query, 
   where, 
   orderBy, 
@@ -47,7 +49,6 @@ export function useOrderTransfers() {
   // 권한 확인 함수
   const getTransferPermissions = useCallback((): TransferPermissions => {
     if (!user) {
-      console.log('사용자 정보 없음');
       return {
         canCreateTransfer: false,
         canAcceptTransfer: false,
@@ -64,15 +65,6 @@ export function useOrderTransfers() {
 
     // 주문 이관 기능은 모든 지점 사용자가 사용 가능
     const canManageTransfers = isAdmin || isBranchManager || isBranchUser;
-
-    console.log('권한 확인:', {
-      userRole: user.role,
-      userFranchise: user.franchise,
-      isAdmin,
-      isBranchManager,
-      isBranchUser,
-      canManageTransfers
-    });
 
     return {
       canCreateTransfer: canManageTransfers,
@@ -95,7 +87,6 @@ export function useOrderTransfers() {
 
       // 권한에 따른 필터링
       const permissions = getTransferPermissions();
-      console.log('이관 목록 조회 - 권한 확인:', permissions);
       
       // 모든 이관을 가져온 후 클라이언트에서 필터링
       q = query(q, orderBy('transferDate', 'desc'));
@@ -122,14 +113,11 @@ export function useOrderTransfers() {
       q = query(q, limit(pageSize));
 
       const snapshot = await getDocs(q);
-      console.log('Firestore에서 가져온 이관 데이터:', snapshot.docs.length, '개');
       
       const transfersData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as OrderTransfer[];
-      
-      console.log('이관 데이터 샘플:', transfersData.slice(0, 2));
 
       if (snapshot.docs.length < pageSize) {
         setHasMore(false);
@@ -144,11 +132,10 @@ export function useOrderTransfers() {
       if (!permissions.canViewAllTransfers && user?.franchise) {
         const userBranch = branches.find(b => b.name === user.franchise);
         if (userBranch) {
-          // 지점 사용자는 자신이 보낸 이관과 받은 이관 모두 볼 수 있음
-          filteredTransfersData = transfersData.filter(transfer => 
-            transfer.orderBranchId === userBranch.id || transfer.processBranchId === userBranch.id
-          );
-          console.log('필터링된 이관 데이터:', filteredTransfersData.length, '개');
+                     // 지점 사용자는 자신이 보낸 이관과 받은 이관 모두 볼 수 있음
+           filteredTransfersData = transfersData.filter(transfer => 
+             transfer.orderBranchId === userBranch.id || transfer.processBranchId === userBranch.id
+           );
         }
       }
 
@@ -176,11 +163,9 @@ export function useOrderTransfers() {
   ) => {
     try {
       setError(null);
-      console.log('이관 요청 생성 시작:', { orderId, transferForm });
 
       // 권한 확인
       const permissions = getTransferPermissions();
-      console.log('권한 확인 결과:', permissions);
       
       if (!permissions.canCreateTransfer) {
         throw new Error('이관 요청을 생성할 권한이 없습니다.');
@@ -197,20 +182,11 @@ export function useOrderTransfers() {
       }
 
       const orderData = orderDoc.docs[0].data();
-      console.log('원본 주문 데이터:', orderData);
       
       const orderBranch = branches.find(b => b.id === orderData.branchId);
       const processBranch = branches.find(b => b.id === transferForm.processBranchId);
-      
-      console.log('발주지점 정보:', orderBranch);
-      console.log('수주지점 정보:', processBranch);
 
       if (!orderBranch || !processBranch) {
-        console.error('지점 정보 누락:', { 
-          orderBranchId: orderData.branchId, 
-          processBranchId: transferForm.processBranchId,
-          availableBranches: branches.map(b => ({ id: b.id, name: b.name }))
-        });
         throw new Error('지점 정보를 찾을 수 없습니다.');
       }
 
@@ -334,8 +310,6 @@ export function useOrderTransfers() {
 
       // 이관이 수락되면 원본 주문의 출고지점을 수주지점으로 변경
       if (statusUpdate.status === 'accepted') {
-        console.log('이관 수락 처리 시작:', transferId);
-        
         const transferDoc = await getDocs(query(
           collection(db, 'order_transfers'),
           where('__name__', '==', transferId)
@@ -343,14 +317,10 @@ export function useOrderTransfers() {
 
         if (!transferDoc.empty) {
           const transferData = transferDoc.docs[0].data();
-          console.log('이관 데이터:', transferData);
           
           const processBranch = branches.find(b => b.id === transferData.processBranchId);
-          console.log('수주지점 정보:', processBranch);
           
           if (processBranch) {
-            console.log('원본 주문 업데이트 시작:', transferData.originalOrderId);
-            
             // 원본 주문 업데이트 - branchId는 유지하고 이관 정보만 업데이트
             await updateDoc(doc(db, 'orders', transferData.originalOrderId), {
               // branchId와 branchName은 발주지점 그대로 유지
@@ -360,12 +330,9 @@ export function useOrderTransfers() {
               'transferInfo.processBranchId': transferData.processBranchId,
               'transferInfo.processBranchName': transferData.processBranchName
             });
-            
-            console.log('원본 주문 업데이트 완료');
 
             // 전광판에 수락 상태 업데이트
-            console.log('전광판 업데이트 시작');
-            const displayResult = await createOrderTransferDisplay(
+            await createOrderTransferDisplay(
               transferId,
               transferData.orderBranchName,
               transferData.processBranchName,
@@ -373,12 +340,7 @@ export function useOrderTransfers() {
               transferData.transferReason,
               'accepted'
             );
-            console.log('전광판 업데이트 결과:', displayResult);
-          } else {
-            console.error('수주지점을 찾을 수 없음:', transferData.processBranchId);
           }
-        } else {
-          console.error('이관 데이터를 찾을 수 없음:', transferId);
         }
       }
 
@@ -505,7 +467,125 @@ export function useOrderTransfers() {
     }
   }, [user, getTransferPermissions, fetchTransfers, toast]);
 
-  // 이관 통계 조회
+  // 이관 기록 삭제
+  const deleteTransfer = useCallback(async (transferId: string) => {
+    if (!user) {
+      throw new Error('로그인이 필요합니다.');
+    }
+
+    try {
+      const transferRef = doc(db, 'order_transfers', transferId);
+      const transferDoc = await getDoc(transferRef);
+      
+      if (!transferDoc.exists()) {
+        throw new Error('이관 기록을 찾을 수 없습니다.');
+      }
+
+      const transferData = transferDoc.data() as OrderTransfer;
+      
+      // 권한 확인 - 본사 관리자 또는 관련 지점 관리자만 삭제 가능
+      const isAdmin = user.role === '본사 관리자';
+      const isRelatedBranchManager = user.role === '가맹점 관리자' && 
+        (transferData.orderBranchName === user.franchise || transferData.processBranchName === user.franchise);
+      
+      if (!isAdmin && !isRelatedBranchManager) {
+        throw new Error('이관 기록 삭제 권한이 없습니다.');
+      }
+
+      // 원본 주문에서 이관 정보 제거 (주문은 유지)
+      try {
+        await updateDoc(doc(db, 'orders', transferData.originalOrderId), {
+          transferInfo: null
+        });
+      } catch (orderError) {
+        // 주문이 이미 삭제되었을 수 있음 - 무시
+      }
+
+      // 이관 기록 삭제
+      await deleteDoc(transferRef);
+      
+      toast({
+        title: "이관 기록 삭제 완료",
+        description: "이관 기록이 삭제되었습니다. 원본 주문은 유지됩니다."
+      });
+
+      // 목록 새로고침
+      await fetchTransfers();
+
+    } catch (err) {
+      console.error('이관 기록 삭제 오류:', err);
+      const errorMessage = err instanceof Error ? err.message : '이관 기록 삭제 중 오류가 발생했습니다.';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: errorMessage
+      });
+      throw err;
+    }
+  }, [user, fetchTransfers, toast]);
+
+  // 고아 이관 기록 정리 (원본 주문이 없는 이관 기록 삭제)
+  const cleanupOrphanTransfers = useCallback(async () => {
+    if (!user || user.role !== '본사 관리자') {
+      throw new Error('고아 이관 기록 정리는 본사 관리자만 수행할 수 있습니다.');
+    }
+
+    try {
+      const transfersRef = collection(db, 'order_transfers');
+      const transfersSnapshot = await getDocs(transfersRef);
+      
+      let deletedCount = 0;
+      const batch = writeBatch(db);
+
+      for (const transferDoc of transfersSnapshot.docs) {
+        const transferData = transferDoc.data();
+        
+        // 원본 주문 존재 여부 확인
+        try {
+          const orderDoc = await getDoc(doc(db, 'orders', transferData.originalOrderId));
+          if (!orderDoc.exists()) {
+            // 원본 주문이 없으면 이관 기록 삭제
+            batch.delete(transferDoc.ref);
+            deletedCount++;
+          }
+        } catch (error) {
+          // 주문 조회 실패 시에도 이관 기록 삭제
+          batch.delete(transferDoc.ref);
+          deletedCount++;
+        }
+      }
+
+      if (deletedCount > 0) {
+        await batch.commit();
+        toast({
+          title: "고아 이관 기록 정리 완료",
+          description: `${deletedCount}개의 고아 이관 기록이 삭제되었습니다.`
+        });
+      } else {
+        toast({
+          title: "고아 이관 기록 정리",
+          description: "정리할 고아 이관 기록이 없습니다."
+        });
+      }
+
+      // 목록 새로고침
+      await fetchTransfers();
+
+    } catch (err) {
+      console.error('고아 이관 기록 정리 오류:', err);
+      const errorMessage = err instanceof Error ? err.message : '고아 이관 기록 정리 중 오류가 발생했습니다.';
+      setError(errorMessage);
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: errorMessage
+      });
+      throw err;
+    }
+  }, [user, fetchTransfers, toast]);
+
+    // 이관 통계 조회
   const getTransferStats = useCallback(async (): Promise<TransferStats> => {
     try {
       const transfersRef = collection(db, 'order_transfers');
@@ -513,27 +593,29 @@ export function useOrderTransfers() {
       
       const transfersData = snapshot.docs.map(doc => doc.data()) as OrderTransfer[];
       
-             // 사용자 지점 정보
-             const userBranch = user?.franchise;
-             const userBranchId = branches.find(b => b.name === userBranch)?.id;
-             
-             const stats: TransferStats = {
-         totalTransfers: transfersData.length,
-         pendingTransfers: transfersData.filter(t => t.status === 'pending').length,
-         acceptedTransfers: transfersData.filter(t => t.status === 'accepted').length,
-         rejectedTransfers: transfersData.filter(t => t.status === 'rejected').length,
-         completedTransfers: transfersData.filter(t => t.status === 'completed').length,
-         cancelledTransfers: transfersData.filter(t => t.status === 'cancelled').length,
-         totalAmount: transfersData.reduce((sum, t) => sum + t.originalOrderAmount, 0),
-         // 발주액: 내가 다른 지점으로 보낸 주문들의 총 금액
-         orderBranchAmount: userBranchId 
-           ? transfersData.filter(t => t.orderBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
-           : 0,
-         // 수주액: 내가 다른 지점으로부터 받은 주문들의 총 금액  
-         processBranchAmount: userBranchId
-           ? transfersData.filter(t => t.processBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
-           : 0
-       };
+      // 사용자 지점 정보
+      const userBranch = user?.franchise;
+      const userBranchId = branches.find(b => b.name === userBranch)?.id;
+      
+      const stats: TransferStats = {
+        totalTransfers: transfersData.length,
+        pendingTransfers: transfersData.filter(t => t.status === 'pending').length,
+        acceptedTransfers: transfersData.filter(t => t.status === 'accepted').length,
+        rejectedTransfers: transfersData.filter(t => t.status === 'rejected').length,
+        completedTransfers: transfersData.filter(t => t.status === 'completed').length,
+        cancelledTransfers: transfersData.filter(t => t.status === 'cancelled').length,
+        totalAmount: transfersData.reduce((sum, t) => sum + t.originalOrderAmount, 0),
+        // 발주액: 내가 다른 지점으로 보낸 주문들의 총 금액
+        orderBranchAmount: userBranchId 
+          ? transfersData.filter(t => t.orderBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
+          : 0,
+        // 수주액: 내가 다른 지점으로부터 받은 주문들의 총 금액  
+        processBranchAmount: userBranchId
+          ? transfersData.filter(t => t.processBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
+          : 0
+      };
+
+
 
       return stats;
 
@@ -541,7 +623,7 @@ export function useOrderTransfers() {
       console.error('이관 통계 조회 오류:', err);
       throw err;
     }
-  }, []);
+  }, [user?.franchise, branches]);
 
   // 금액 분배 계산
   const calculateAmountSplit = useCallback((
@@ -583,6 +665,8 @@ export function useOrderTransfers() {
     createTransfer,
     updateTransferStatus,
     cancelTransfer,
+    deleteTransfer,
+    cleanupOrphanTransfers,
     getTransferStats,
     calculateAmountSplit
   };

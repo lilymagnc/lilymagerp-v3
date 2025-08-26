@@ -20,6 +20,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useOrderTransfers } from "@/hooks/use-order-transfers";
 import { useAuth } from "@/hooks/use-auth";
 import { useBranches } from "@/hooks/use-branches";
@@ -41,6 +51,8 @@ export default function TransfersPage() {
     fetchTransfers,
     updateTransferStatus,
     cancelTransfer,
+    deleteTransfer,
+    cleanupOrphanTransfers,
     getTransferStats
   } = useOrderTransfers();
   
@@ -60,7 +72,9 @@ export default function TransfersPage() {
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedTransfer, setSelectedTransfer] = useState<any>(null);
+  const [transferToDelete, setTransferToDelete] = useState<string | null>(null);
 
   // 권한 확인
   const permissions = getTransferPermissions();
@@ -239,6 +253,34 @@ export default function TransfersPage() {
     setIsCancelDialogOpen(true);
   };
 
+  // 이관 기록 삭제 처리
+  const handleDeleteTransfer = async (transferId: string) => {
+    setTransferToDelete(transferId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  // 이관 기록 삭제 확인
+  const confirmDeleteTransfer = async () => {
+    if (!transferToDelete) return;
+    
+    try {
+      await deleteTransfer(transferToDelete);
+      setIsDeleteDialogOpen(false);
+      setTransferToDelete(null);
+    } catch (error) {
+      console.error('이관 기록 삭제 실패:', error);
+    }
+  };
+
+  // 고아 이관 기록 정리
+  const handleCleanupOrphanTransfers = async () => {
+    try {
+      await cleanupOrphanTransfers();
+    } catch (error) {
+      console.error('고아 이관 기록 정리 실패:', error);
+    }
+  };
+
   // 상태 배지 렌더링
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -268,6 +310,12 @@ export default function TransfersPage() {
             <RefreshCw className="mr-2 h-4 w-4" />
             새로고침
           </Button>
+          {user?.role === '본사 관리자' && (
+            <Button variant="outline" onClick={handleCleanupOrphanTransfers}>
+              <X className="mr-2 h-4 w-4" />
+              고아 기록 정리
+            </Button>
+          )}
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
             엑셀 다운로드
@@ -573,6 +621,17 @@ export default function TransfersPage() {
                             취소
                           </Button>
                         )}
+                        {(user?.role === '본사 관리자' || 
+                          (user?.role === '가맹점 관리자' && 
+                           (transfer.orderBranchName === user?.franchise || transfer.processBranchName === user?.franchise))) && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteTransfer(transfer.id)}
+                          >
+                            삭제
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -617,6 +676,24 @@ export default function TransfersPage() {
         onClose={() => setIsCancelDialogOpen(false)}
         transfer={selectedTransfer}
       />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이관 기록 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              정말로 이 이관 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteTransfer} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

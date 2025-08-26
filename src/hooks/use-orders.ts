@@ -429,6 +429,21 @@ export function useOrders() {
       
       const orderData = orderDoc.data() as Order;
       
+      // 관련된 주문 이관 기록 찾기 및 삭제
+      const transfersRef = collection(db, 'order_transfers');
+      const transfersQuery = query(transfersRef, where('originalOrderId', '==', orderId));
+      const transfersSnapshot = await getDocs(transfersQuery);
+      
+      // 배치로 이관 기록 삭제
+      if (!transfersSnapshot.empty) {
+        const batch = writeBatch(db);
+        transfersSnapshot.docs.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+        console.log(`${transfersSnapshot.size}개의 이관 기록이 삭제되었습니다.`);
+      }
+      
       // 주문 삭제
       await deleteDoc(orderRef);
       
@@ -439,10 +454,11 @@ export function useOrders() {
       
       toast({
         title: "주문 삭제 완료",
-        description: "주문이 성공적으로 삭제되었습니다."
+        description: "주문과 관련된 이관 기록이 모두 삭제되었습니다."
       });
       await fetchOrders(); // 목록 새로고침
     } catch (error) {
+      console.error('주문 삭제 오류:', error);
       toast({
         variant: "destructive",
         title: "주문 삭제 실패",

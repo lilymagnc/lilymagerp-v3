@@ -14,7 +14,7 @@ export interface OrderTransferSettings {
   };
   autoNotification: boolean;
   notificationTemplate: string;
-  voiceNotificationEnabled: boolean;
+
   displayBoardEnabled: boolean;
   displayBoardDuration: number; // 분 단위
 }
@@ -46,18 +46,7 @@ export interface OrderTransfer {
   completedBy?: string;
 }
 
-// 알림 데이터 타입
-export interface VoiceNotification {
-  id: string;
-  type: 'order_transfer' | 'new_order' | 'delivery_complete';
-  message: string;
-  branchId: string;
-  branchName: string;
-  createdAt: Date | Timestamp;
-  isRead: boolean;
-  transferId?: string; // 주문 이관 관련 알림인 경우
-  orderId?: string; // 주문 관련 알림인 경우
-}
+
 
 // 전광판 데이터 타입
 export interface DisplayBoardItem {
