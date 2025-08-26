@@ -321,7 +321,18 @@ export default function OrdersPage() {
     }
   };
   const filteredOrders = useMemo(() => {
+    console.log('필터링 시작:', {
+      totalOrders: orders.length,
+      isAdmin,
+      userBranch,
+      selectedBranch,
+      searchTerm,
+      selectedOrderStatus,
+      selectedPaymentStatus
+    });
+    
     let filtered = orders;
+    
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
       // 지점 사용자는 자신의 지점 주문과 이관받은 주문을 모두 볼 수 있음
@@ -329,8 +340,10 @@ export default function OrdersPage() {
         order.branchName === userBranch || 
         (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
       );
+      console.log('지점 필터링 후:', filtered.length);
     } else if (selectedBranch !== "all") {
       filtered = filtered.filter(order => order.branchName === selectedBranch);
+      console.log('선택된 지점 필터링 후:', filtered.length);
     }
     // 검색어 필터링
     if (searchTerm) {
@@ -380,12 +393,51 @@ export default function OrdersPage() {
 
      // 통계 계산
    const orderStats = useMemo(() => {
+     // 당일 매출 현황 계산 (주문일 기준 vs 결제일 기준)
+     const todayForRevenue = new Date();
+     const todayStartForRevenue = new Date(todayForRevenue.getFullYear(), todayForRevenue.getMonth(), todayForRevenue.getDate());
+     const todayEndForRevenue = new Date(todayForRevenue.getFullYear(), todayForRevenue.getMonth(), todayForRevenue.getDate(), 23, 59, 59, 999);
+     
+     // 오늘 주문한 모든 주문 (주문일 기준)
+     const todayOrderedOrdersForRevenue = filteredOrders.filter(order => {
+       if (!order.orderDate) return false;
+       const orderDate = (order.orderDate as Timestamp).toDate();
+       const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+       return orderDateOnly.getTime() === todayStartForRevenue.getTime();
+     });
+     
+     // 오늘 결제 완료된 모든 주문 (결제일 기준)
+     const todayCompletedOrdersForRevenue = filteredOrders.filter(order => {
+       if (order.payment?.status !== 'completed' || !order.payment?.completedAt) return false;
+       const completedDate = (order.payment.completedAt as Timestamp).toDate();
+       const completedDateOnly = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
+       return completedDateOnly.getTime() === todayStartForRevenue.getTime();
+     });
+     
+     // 오늘 주문했지만 아직 미결제인 주문
+     const todayOrderedButPendingOrdersForRevenue = todayOrderedOrdersForRevenue.filter(order => 
+       order.payment?.status !== 'completed'
+     );
+     
+     // 어제 주문했지만 오늘 결제된 주문
+     const yesterdayOrderedTodayCompletedOrdersForRevenue = todayCompletedOrdersForRevenue.filter(order => {
+       if (!order.orderDate) return false;
+       const orderDate = (order.orderDate as Timestamp).toDate();
+       const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+       return orderDateOnly.getTime() !== todayStartForRevenue.getTime();
+     });
+     
+     // 금액 계산
+     const todayOrderedAmountForRevenue = todayOrderedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     const todayCompletedAmountForRevenue = todayCompletedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     const todayPendingAmountForRevenue = todayOrderedButPendingOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     const yesterdayOrderedTodayCompletedAmountForRevenue = yesterdayOrderedTodayCompletedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
      const totalOrders = filteredOrders.length;
      
      // 총 매출 계산 (수주받은 주문은 금액 제외, 건수만 포함)
      const totalAmount = filteredOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
-       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
        return sum + (order.summary?.total || 0);
@@ -394,11 +446,11 @@ export default function OrdersPage() {
      // 총 매출의 완결/미결 분리 (수주받은 주문 제외)
      const totalCompletedOrders = filteredOrders.filter(order => 
        order.payment?.status === 'completed' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const totalPendingOrders = filteredOrders.filter(order => 
        order.payment?.status === 'pending' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const totalCompletedAmount = totalCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
      const totalPendingAmount = totalPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
@@ -413,7 +465,7 @@ export default function OrdersPage() {
        // 지점 사용자의 경우: 자신의 지점에서 발주한 주문 + 수주받은 주문 (건수만)
        if (!isAdmin && userBranch) {
          return isToday && (order.branchName === userBranch || 
-           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch));
+           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && order.transferInfo.processBranchName === userBranch));
        }
        
        // 관리자의 경우: 선택된 지점에서 발주한 주문만 포함
@@ -428,7 +480,7 @@ export default function OrdersPage() {
      // 오늘 주문 금액 계산 (수주받은 주문은 금액 제외)
      const todayAmount = todayOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
-       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
        return sum + (order.summary?.total || 0);
@@ -437,11 +489,11 @@ export default function OrdersPage() {
          // 오늘 주문의 완결/미결 분리 (수주받은 주문 제외)
      const todayCompletedOrders = todayOrders.filter(order => 
        order.payment?.status === 'completed' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const todayPendingOrders = todayOrders.filter(order => 
        order.payment?.status === 'pending' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const todayCompletedAmount = todayCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
      const todayPendingAmount = todayPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
@@ -456,7 +508,7 @@ export default function OrdersPage() {
        // 지점 사용자의 경우: 자신의 지점에서 발주한 주문 + 수주받은 주문 (건수만)
        if (!isAdmin && userBranch) {
          return isThisMonth && (order.branchName === userBranch || 
-           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch));
+           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && order.transferInfo.processBranchName === userBranch));
        }
        
        // 관리자의 경우: 선택된 지점에서 발주한 주문만 포함
@@ -471,7 +523,7 @@ export default function OrdersPage() {
      // 이번 달 주문 금액 계산 (수주받은 주문은 금액 제외)
      const thisMonthAmount = thisMonthOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
-       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
        return sum + (order.summary?.total || 0);
@@ -480,11 +532,11 @@ export default function OrdersPage() {
          // 이번 달 주문의 완결/미결 분리 (수주받은 주문 제외)
      const thisMonthCompletedOrders = thisMonthOrders.filter(order => 
        order.payment?.status === 'completed' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const thisMonthPendingOrders = thisMonthOrders.filter(order => 
        order.payment?.status === 'pending' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const thisMonthCompletedAmount = thisMonthCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
      const thisMonthPendingAmount = thisMonthPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
@@ -496,7 +548,7 @@ export default function OrdersPage() {
      const pendingPaymentCount = pendingPaymentOrders.length;
      const pendingPaymentAmount = pendingPaymentOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
-       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
        return sum + (order.summary?.total || 0);
@@ -524,7 +576,16 @@ export default function OrdersPage() {
        thisMonthPendingAmount,
        pendingPaymentCount,
        pendingPaymentAmount,
-       statusStats
+       statusStats,
+       // 당일 매출 현황 데이터
+       todayOrderedAmountForRevenue,
+       todayCompletedAmountForRevenue,
+       todayPendingAmountForRevenue,
+       yesterdayOrderedTodayCompletedAmountForRevenue,
+       todayOrderedOrdersForRevenue: todayOrderedOrdersForRevenue.length,
+       todayCompletedOrdersForRevenue: todayCompletedOrdersForRevenue.length,
+       todayOrderedButPendingOrdersForRevenue: todayOrderedButPendingOrdersForRevenue.length,
+       yesterdayOrderedTodayCompletedOrdersForRevenue: yesterdayOrderedTodayCompletedOrdersForRevenue.length
      };
   }, [filteredOrders]);
 
@@ -569,7 +630,7 @@ export default function OrdersPage() {
       </PageHeader>
       
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-6 gap-4 mb-6">
         {loading ? (
           // 로딩 중일 때 스켈레톤 표시
           <>
@@ -630,6 +691,18 @@ export default function OrdersPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">미결 주문</CardTitle>
                 <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">당일 매출 현황</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="animate-pulse">
@@ -724,6 +797,28 @@ export default function OrdersPage() {
                 <p className="text-xs opacity-90">₩{orderStats.pendingPaymentAmount.toLocaleString()}</p>
               </CardContent>
             </Card>
+                         <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium opacity-90">
+                   {isAdmin
+                     ? (selectedBranch !== "all" ? `${selectedBranch} 당일 매출` : '당일 매출 현황')
+                     : `${userBranch} 당일 매출`
+                   }
+                 </CardTitle>
+                 <DollarSign className="h-4 w-4 opacity-90" />
+               </CardHeader>
+                               <CardContent>
+                  <div className="text-2xl font-bold">₩{orderStats.todayOrderedAmountForRevenue.toLocaleString()}</div>
+                  <div className="space-y-1 mt-2">
+                    <p className="text-xs opacity-90">
+                      금일결제: ₩{orderStats.todayCompletedAmountForRevenue.toLocaleString()}
+                    </p>
+                    <p className="text-xs opacity-90">
+                      미결제: ₩{orderStats.todayPendingAmountForRevenue.toLocaleString()}
+                    </p>
+                  </div>
+                </CardContent>
+             </Card>
           </>
         )}
       </div>
@@ -863,6 +958,12 @@ export default function OrdersPage() {
                  <div className="text-sm text-muted-foreground flex items-center gap-2">
                    <span>총 {filteredOrders.length}건</span>
                    <span>총 ₩{orderStats.totalAmount.toLocaleString()}</span>
+                   {loading && <span className="text-blue-500">(로딩 중...)</span>}
+                   {!loading && filteredOrders.length === 0 && (
+                     <span className="text-red-500">
+                       (전체 주문: {orders.length}건, 필터링 후: 0건)
+                     </span>
+                   )}
                  </div>
                  <div className="flex items-center gap-2">
                    <label htmlFor="page-size" className="text-sm text-muted-foreground">페이지당:</label>

@@ -83,6 +83,12 @@ export interface OrderData {
 export interface Order extends Omit<OrderData, 'orderDate'> {
   id: string;
   orderDate: Timestamp;
+  transferInfo?: {
+    isTransferred: boolean;
+    processBranchName?: string;
+    transferDate?: Timestamp;
+    transferReason?: string;
+  };
 }
 export type PaymentStatus = "paid" | "pending" | "completed";
 export function useOrders() {
@@ -117,6 +123,12 @@ export function useOrders() {
       const queryPromise = getDocs(q);
       const querySnapshot = await Promise.race([queryPromise, timeoutPromise]) as any;
       
+      console.log('주문 데이터 조회 결과:', {
+        totalDocs: querySnapshot.docs.length,
+        userFranchise: user?.franchise,
+        userRole: user?.role
+      });
+      
       const ordersData = querySnapshot.docs.map((doc: any) => {
         const data = doc.data();
         // Legacy data migration: convert old receiptType values to new ones
@@ -132,9 +144,20 @@ export function useOrders() {
           receiptType 
         } as Order;
       });
+      
+      console.log('처리된 주문 데이터:', {
+        totalOrders: ordersData.length,
+        sampleOrder: ordersData[0] ? {
+          id: ordersData[0].id,
+          branchName: ordersData[0].branchName,
+          ordererName: ordersData[0].orderer?.name
+        } : null
+      });
+      
       setOrders(ordersData);
     } catch (error) {
-      // 주문 정보 로딩 오류는 조용히 처리
+      console.error('주문 데이터 로딩 오류:', error);
+      // 주문 정보 로딩 오류는 조용히 처리하되, 콘솔에는 로그 남김
     } finally {
       setLoading(false);
     }

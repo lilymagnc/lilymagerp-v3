@@ -103,13 +103,26 @@ export function useDisplayBoard() {
     branchName: string,
     priority: 'high' | 'medium' | 'low' = 'medium',
     transferId?: string,
-    orderId?: string
+    orderId?: string,
+    // 주문 이관 관련 추가 매개변수
+    orderBranchName?: string,
+    processBranchName?: string,
+    orderAmount?: number,
+    transferReason?: string,
+    status?: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled',
+    orderInfo?: {
+      orderNumber?: string;
+      deliveryDate?: string;
+      deliveryTime?: string;
+      recipientName?: string;
+      recipientContact?: string;
+    }
   ) => {
     try {
       const displayDuration = settings.orderTransferSettings?.displayBoardDuration || 30;
       const expiresAt = new Date(Date.now() + displayDuration * 60 * 1000);
 
-      const displayData = {
+      const displayData: any = {
         type,
         title,
         content,
@@ -124,6 +137,24 @@ export function useDisplayBoard() {
         displayDuration
       };
 
+      // 주문 이관 관련 추가 정보 저장
+      if (type === 'order_transfer' && transferId) {
+        displayData.orderBranchName = orderBranchName;
+        displayData.processBranchName = processBranchName;
+        displayData.orderAmount = orderAmount;
+        displayData.transferReason = transferReason;
+        displayData.status = status;
+        
+        // 주문 상세 정보 저장
+        if (orderInfo) {
+          displayData.orderNumber = orderInfo.orderNumber;
+          displayData.deliveryDate = orderInfo.deliveryDate;
+          displayData.deliveryTime = orderInfo.deliveryTime;
+          displayData.recipientName = orderInfo.recipientName;
+          displayData.recipientContact = orderInfo.recipientContact;
+        }
+      }
+
       await addDoc(collection(db, 'display_board'), displayData);
 
     } catch (err) {
@@ -134,26 +165,65 @@ export function useDisplayBoard() {
 
   // 주문 이관 전광판 생성
   const createOrderTransferDisplay = useCallback(async (
-    fromBranchId: string,
-    fromBranchName: string,
-    toBranchId: string,
-    toBranchName: string,
     transferId: string,
-    orderNumber?: string
+    orderBranchName: string,
+    processBranchName: string,
+    orderAmount: number,
+    transferReason: string,
+    status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled',
+    orderInfo?: {
+      orderNumber?: string;
+      deliveryDate?: string;
+      deliveryTime?: string;
+      recipientName?: string;
+      recipientContact?: string;
+    }
   ) => {
-    const title = '주문 이관 알림';
-    const content = `${fromBranchName} → ${toBranchName} 지점 이관${orderNumber ? `\n주문번호: ${orderNumber}` : ''}`;
+    const userBranch = branches.find(b => b.name === processBranchName);
+    if (!userBranch) return;
+
+    // 전광판에 표시할 상세 내용 구성
+    let content = `주문이관배송\n`;
+    content += `${orderBranchName} → ${processBranchName}\n`;
+    
+    if (orderInfo?.orderNumber) {
+      content += `주문번호: ${orderInfo.orderNumber}\n`;
+    }
+    
+    if (orderInfo?.deliveryDate && orderInfo?.deliveryTime) {
+      content += `배송일시: ${orderInfo.deliveryDate} ${orderInfo.deliveryTime}\n`;
+    }
+    
+    if (orderInfo?.recipientName) {
+      content += `수령인: ${orderInfo.recipientName}`;
+      if (orderInfo?.recipientContact) {
+        content += ` (${orderInfo.recipientContact})`;
+      }
+      content += '\n';
+    }
+    
+    content += `금액: ${orderAmount.toLocaleString()}원\n`;
+    content += `사유: ${transferReason}`;
+    
+    const title = `주문이관배송 - ${status === 'pending' ? '대기중' : status === 'accepted' ? '수락됨' : status === 'cancelled' ? '취소됨' : status}`;
     
     await createDisplayItem(
       'order_transfer',
       title,
       content,
-      toBranchId,
-      toBranchName,
+      userBranch.id,
+      processBranchName,
       'high',
-      transferId
+      transferId,
+      undefined, // orderId
+      orderBranchName,
+      processBranchName,
+      orderAmount,
+      transferReason,
+      status,
+      orderInfo
     );
-  }, [createDisplayItem]);
+  }, [createDisplayItem, branches]);
 
   // 새 주문 전광판 생성
   const createNewOrderDisplay = useCallback(async (
@@ -173,7 +243,7 @@ export function useDisplayBoard() {
       branchId,
       branchName,
       'medium',
-      undefined,
+      undefined, // transferId
       orderId
     );
   }, [createDisplayItem]);
@@ -196,7 +266,7 @@ export function useDisplayBoard() {
       branchId,
       branchName,
       'low',
-      undefined,
+      undefined, // transferId
       orderId
     );
   }, [createDisplayItem]);
@@ -219,7 +289,7 @@ export function useDisplayBoard() {
       branchId,
       branchName,
       'medium',
-      undefined,
+      undefined, // transferId
       orderId
     );
   }, [createDisplayItem]);

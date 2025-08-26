@@ -129,6 +129,41 @@ export function DisplayBoard() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* 주문 정보 표시 */}
+                  {item.orderNumber && (
+                    <div className="bg-blue-50 p-3 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-blue-600 font-semibold">주문번호</span>
+                        <span className="font-mono text-sm">{item.orderNumber}</span>
+                      </div>
+                      
+                      {/* 배송 정보 */}
+                      {(item.deliveryDate || item.deliveryTime) && (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-gray-600">배송일:</span>
+                            <span className="ml-1 font-medium">{item.deliveryDate || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">배송시간:</span>
+                            <span className="ml-1 font-medium">{item.deliveryTime || '-'}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* 수령인 정보 */}
+                      {item.recipientName && (
+                        <div className="mt-2">
+                          <span className="text-gray-600 text-sm">수령인:</span>
+                          <span className="ml-1 font-medium">{item.recipientName}</span>
+                          {item.recipientContact && (
+                            <span className="ml-2 text-gray-500">({item.recipientContact})</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-500">발주지점</p>

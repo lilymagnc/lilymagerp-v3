@@ -192,32 +192,39 @@ export default function TransfersPage() {
         return true;
       });
       
-      // 발주/수주 구분 통계 추가
+      // 발주/수주 구분 통계 추가 (본사 관리자가 아닌 경우에만)
       const userBranch = user?.franchise;
-      const orderBranchCount = currentFilteredTransfers.filter(transfer => 
-        transfer.orderBranchName === userBranch
-      ).length;
-      const processBranchCount = currentFilteredTransfers.filter(transfer => 
-        transfer.processBranchName === userBranch
-      ).length;
+      let orderBranchCount = 0;
+      let processBranchCount = 0;
+      let orderBranchDetails: Record<string, number> = {};
+      let processBranchDetails: Record<string, number> = {};
       
-      // 발주 이관 상세 정보 (수주지점별 건수)
-      const orderBranchDetails = currentFilteredTransfers
-        .filter(transfer => transfer.orderBranchName === userBranch)
-        .reduce((acc, transfer) => {
-          const processBranch = transfer.processBranchName;
-          acc[processBranch] = (acc[processBranch] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-      
-      // 수주 이관 상세 정보 (발주지점별 건수)
-      const processBranchDetails = currentFilteredTransfers
-        .filter(transfer => transfer.processBranchName === userBranch)
-        .reduce((acc, transfer) => {
-          const orderBranch = transfer.orderBranchName;
-          acc[orderBranch] = (acc[orderBranch] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
+      if (!isAdmin && userBranch) {
+        orderBranchCount = currentFilteredTransfers.filter(transfer => 
+          transfer.orderBranchName === userBranch
+        ).length;
+        processBranchCount = currentFilteredTransfers.filter(transfer => 
+          transfer.processBranchName === userBranch
+        ).length;
+        
+        // 발주 이관 상세 정보 (수주지점별 건수)
+        orderBranchDetails = currentFilteredTransfers
+          .filter(transfer => transfer.orderBranchName === userBranch)
+          .reduce((acc, transfer) => {
+            const processBranch = transfer.processBranchName;
+            acc[processBranch] = (acc[processBranch] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+        
+        // 수주 이관 상세 정보 (발주지점별 건수)
+        processBranchDetails = currentFilteredTransfers
+          .filter(transfer => transfer.processBranchName === userBranch)
+          .reduce((acc, transfer) => {
+            const orderBranch = transfer.orderBranchName;
+            acc[orderBranch] = (acc[orderBranch] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+      }
       
       setStats({
         ...transferStats,
@@ -235,6 +242,15 @@ export default function TransfersPage() {
   React.useEffect(() => {
     calculateStats();
   }, [transfers, searchTerm, selectedStatus, selectedOrderBranch, selectedProcessBranch, startDate, endDate, user?.franchise]);
+
+  // 사용자 지점에 따른 자동 필터링
+  React.useEffect(() => {
+    if (!isAdmin && user?.franchise) {
+      // 일반 사용자는 자동으로 자신의 지점으로 필터링
+      setSelectedOrderBranch(user.franchise);
+      setSelectedProcessBranch(user.franchise);
+    }
+  }, [isAdmin, user?.franchise]);
 
   // 상태 변경 핸들러
   const handleStatusChange = (transferId: string, status: 'accepted' | 'rejected' | 'completed', notes?: string) => {

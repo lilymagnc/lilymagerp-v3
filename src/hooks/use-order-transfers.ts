@@ -234,14 +234,23 @@ export function useOrderTransfers() {
         transferRef.id
       );
 
-      // 전광판 아이템 생성
+      // 전광판 아이템 생성 - 주문 정보 포함
+      const orderInfo = {
+        orderNumber: orderData.orderNumber,
+        deliveryDate: orderData.deliveryInfo?.date || '',
+        deliveryTime: orderData.deliveryInfo?.time || '',
+        recipientName: orderData.deliveryInfo?.recipientName || '',
+        recipientContact: orderData.deliveryInfo?.recipientContact || ''
+      };
+      
       await createOrderTransferDisplay(
         transferRef.id,
         orderBranch.name,
         processBranch.name,
         orderData.summary.total,
         transferForm.transferReason,
-        'pending'
+        'pending',
+        orderInfo
       );
 
       toast({
@@ -331,15 +340,42 @@ export function useOrderTransfers() {
               'transferInfo.processBranchName': transferData.processBranchName
             });
 
-            // 전광판에 수락 상태 업데이트
-            await createOrderTransferDisplay(
-              transferId,
-              transferData.orderBranchName,
-              transferData.processBranchName,
-              transferData.originalOrderAmount,
-              transferData.transferReason,
-              'accepted'
-            );
+            // 원본 주문 정보 조회하여 전광판에 표시
+            try {
+              const orderDoc = await getDoc(doc(db, 'orders', transferData.originalOrderId));
+              if (orderDoc.exists()) {
+                const orderData = orderDoc.data();
+                const orderInfo = {
+                  orderNumber: orderData.orderNumber,
+                  deliveryDate: orderData.deliveryInfo?.date || '',
+                  deliveryTime: orderData.deliveryInfo?.time || '',
+                  recipientName: orderData.deliveryInfo?.recipientName || '',
+                  recipientContact: orderData.deliveryInfo?.recipientContact || ''
+                };
+                
+                // 전광판에 수락 상태 업데이트
+                await createOrderTransferDisplay(
+                  transferId,
+                  transferData.orderBranchName,
+                  transferData.processBranchName,
+                  transferData.originalOrderAmount,
+                  transferData.transferReason,
+                  'accepted',
+                  orderInfo
+                );
+              }
+            } catch (error) {
+              console.error('주문 정보 조회 실패:', error);
+              // 주문 정보 없이도 전광판 생성
+              await createOrderTransferDisplay(
+                transferId,
+                transferData.orderBranchName,
+                transferData.processBranchName,
+                transferData.originalOrderAmount,
+                transferData.transferReason,
+                'accepted'
+              );
+            }
           }
         }
       }
@@ -436,15 +472,7 @@ export function useOrderTransfers() {
         cancelReason
       );
 
-      // 전광판에 취소 상태 업데이트
-      await createOrderTransferDisplay(
-        transferId,
-        transferData.orderBranchName,
-        transferData.processBranchName,
-        transferData.originalOrderAmount,
-        transferData.transferReason,
-        'cancelled'
-      );
+      // 취소 시에는 전광판에 표시하지 않음
 
       toast({
         title: '이관 취소 완료',
@@ -596,26 +624,35 @@ export function useOrderTransfers() {
       // 사용자 지점 정보
       const userBranch = user?.franchise;
       const userBranchId = branches.find(b => b.name === userBranch)?.id;
+      const permissions = getTransferPermissions();
+      
+      // 권한에 따른 필터링된 데이터
+      let filteredTransfersData = transfersData;
+      
+      // 본사 관리자가 아닌 경우 지점별 필터링
+      if (!permissions.canViewAllTransfers && userBranchId) {
+        filteredTransfersData = transfersData.filter(transfer => 
+          transfer.orderBranchId === userBranchId || transfer.processBranchId === userBranchId
+        );
+      }
       
       const stats: TransferStats = {
-        totalTransfers: transfersData.length,
-        pendingTransfers: transfersData.filter(t => t.status === 'pending').length,
-        acceptedTransfers: transfersData.filter(t => t.status === 'accepted').length,
-        rejectedTransfers: transfersData.filter(t => t.status === 'rejected').length,
-        completedTransfers: transfersData.filter(t => t.status === 'completed').length,
-        cancelledTransfers: transfersData.filter(t => t.status === 'cancelled').length,
-        totalAmount: transfersData.reduce((sum, t) => sum + t.originalOrderAmount, 0),
+        totalTransfers: filteredTransfersData.length,
+        pendingTransfers: filteredTransfersData.filter(t => t.status === 'pending').length,
+        acceptedTransfers: filteredTransfersData.filter(t => t.status === 'accepted').length,
+        rejectedTransfers: filteredTransfersData.filter(t => t.status === 'rejected').length,
+        completedTransfers: filteredTransfersData.filter(t => t.status === 'completed').length,
+        cancelledTransfers: filteredTransfersData.filter(t => t.status === 'cancelled').length,
+        totalAmount: filteredTransfersData.reduce((sum, t) => sum + t.originalOrderAmount, 0),
         // 발주액: 내가 다른 지점으로 보낸 주문들의 총 금액
         orderBranchAmount: userBranchId 
-          ? transfersData.filter(t => t.orderBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
+          ? filteredTransfersData.filter(t => t.orderBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
           : 0,
         // 수주액: 내가 다른 지점으로부터 받은 주문들의 총 금액  
         processBranchAmount: userBranchId
-          ? transfersData.filter(t => t.processBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
+          ? filteredTransfersData.filter(t => t.processBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
           : 0
       };
-
-
 
       return stats;
 
@@ -623,7 +660,7 @@ export function useOrderTransfers() {
       console.error('이관 통계 조회 오류:', err);
       throw err;
     }
-  }, [user?.franchise, branches]);
+  }, [user?.franchise, branches, getTransferPermissions]);
 
   // 금액 분배 계산
   const calculateAmountSplit = useCallback((
