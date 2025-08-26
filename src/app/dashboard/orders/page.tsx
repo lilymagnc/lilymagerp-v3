@@ -437,6 +437,7 @@ export default function OrdersPage() {
      // 총 매출 계산 (수주받은 주문은 금액 제외, 건수만 포함)
      const totalAmount = filteredOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       // transferInfo가 null이거나 isTransferred가 false인 경우는 일반 주문으로 처리
        if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
@@ -480,6 +481,7 @@ export default function OrdersPage() {
      // 오늘 주문 금액 계산 (수주받은 주문은 금액 제외)
      const todayAmount = todayOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       // transferInfo가 null이거나 isTransferred가 false인 경우는 일반 주문으로 처리
        if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
@@ -523,6 +525,7 @@ export default function OrdersPage() {
      // 이번 달 주문 금액 계산 (수주받은 주문은 금액 제외)
      const thisMonthAmount = thisMonthOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       // transferInfo가 null이거나 isTransferred가 false인 경우는 일반 주문으로 처리
        if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
@@ -548,6 +551,7 @@ export default function OrdersPage() {
      const pendingPaymentCount = pendingPaymentOrders.length;
      const pendingPaymentAmount = pendingPaymentOrders.reduce((sum, order) => {
        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       // transferInfo가 null이거나 isTransferred가 false인 경우는 일반 주문으로 처리
        if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }

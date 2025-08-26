@@ -241,7 +241,7 @@ export default function TransfersPage() {
   // 초기 통계 로드 및 필터 변경 시 재계산
   React.useEffect(() => {
     calculateStats();
-  }, [transfers, searchTerm, selectedStatus, selectedOrderBranch, selectedProcessBranch, startDate, endDate, user?.franchise]);
+  }, [transfers, searchTerm, selectedStatus, selectedOrderBranch, selectedProcessBranch, startDate, endDate, user?.franchise, loading]);
 
   // 사용자 지점에 따른 자동 필터링
   React.useEffect(() => {
@@ -283,6 +283,12 @@ export default function TransfersPage() {
       await deleteTransfer(transferToDelete);
       setIsDeleteDialogOpen(false);
       setTransferToDelete(null);
+      
+      // 이관 기록 삭제 후 강제 새로고침 및 통계 업데이트
+      await fetchTransfers();
+      setTimeout(async () => {
+        await calculateStats();
+      }, 200);
     } catch (error) {
       console.error('이관 기록 삭제 실패:', error);
     }

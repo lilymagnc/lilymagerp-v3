@@ -534,7 +534,7 @@ export function useOrderTransfers() {
       
       toast({
         title: "이관 기록 삭제 완료",
-        description: "이관 기록이 삭제되었습니다. 원본 주문은 유지됩니다."
+        description: "이관 기록이 삭제되었습니다. 원본 주문의 이관 정보도 제거되었습니다."
       });
 
       // 목록 새로고침
