@@ -1046,7 +1046,7 @@ export default function DashboardPage() {
         let recentOrdersQuery = query(
           collection(db, "orders"),
           orderBy("orderDate", "desc"),
-          limit(20)
+          limit(50)
         );
         
         const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
@@ -1076,8 +1076,8 @@ export default function DashboardPage() {
         
                  // 클라이언트 사이드에서 필터링
          const recentOrdersData = currentFilteredBranch 
-           ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 3)
-           : allRecentOrders.slice(0, 3);
+           ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 10)
+           : allRecentOrders.slice(0, 10);
           
         setRecentOrders(recentOrdersData);
 
