@@ -285,30 +285,32 @@ export default function DashboardPage() {
         const total = order.summary?.total || order.total || 0;
         const branchName = order.branchName || '지점 미지정';
         
-        // 완결처리된 주문은 결제일 기준, 미결 주문은 주문일 기준
-        let revenueDate;
-        if (order.payment?.status === 'completed' && order.payment?.completedAt) {
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
-          revenueDate = order.payment.completedAt.toDate();
-        } else {
-          // 미결 주문: 주문일 기준
-          const orderDate = order.orderDate;
-          if (!orderDate) return;
-          
-          if (orderDate.toDate) {
-            revenueDate = orderDate.toDate();
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
           } else {
-            revenueDate = new Date(orderDate);
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
           }
-        }
-        
-        const dateKey = format(revenueDate, 'yyyy-MM-dd');
-        
-        if (salesByDate[dateKey] && salesByDate[dateKey].hasOwnProperty(branchName)) {
-          salesByDate[dateKey][branchName] += total;
-        } else if (salesByDate[dateKey]) {
-          // 지점이 availableBranches에 없지만 해당 날짜에 데이터가 있는 경우
-          salesByDate[dateKey][branchName] = total;
+          
+          const dateKey = format(revenueDate, 'yyyy-MM-dd');
+          
+          if (salesByDate[dateKey] && salesByDate[dateKey].hasOwnProperty(branchName)) {
+            salesByDate[dateKey][branchName] += total;
+          } else if (salesByDate[dateKey]) {
+            // 지점이 availableBranches에 없지만 해당 날짜에 데이터가 있는 경우
+            salesByDate[dateKey][branchName] = total;
+          }
         }
       });
       
@@ -379,27 +381,29 @@ export default function DashboardPage() {
       userBranchOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         
-        // 완결처리된 주문은 결제일 기준, 미결 주문은 주문일 기준
-        let revenueDate;
-        if (order.payment?.status === 'completed' && order.payment?.completedAt) {
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
-          revenueDate = order.payment.completedAt.toDate();
-        } else {
-          // 미결 주문: 주문일 기준
-          const orderDate = order.orderDate;
-          if (!orderDate) return;
-          
-          if (orderDate.toDate) {
-            revenueDate = orderDate.toDate();
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
           } else {
-            revenueDate = new Date(orderDate);
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
           }
-        }
-        
-        const dateKey = format(revenueDate, 'yyyy-MM-dd');
-        
-        if (salesByDate[dateKey] !== undefined) {
-          salesByDate[dateKey] += total;
+          
+          const dateKey = format(revenueDate, 'yyyy-MM-dd');
+          
+          if (salesByDate[dateKey] !== undefined) {
+            salesByDate[dateKey] += total;
+          }
         }
       });
       
@@ -447,8 +451,12 @@ export default function DashboardPage() {
       orders.forEach((order: any) => {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
-        if (salesByBranch.hasOwnProperty(branchName)) {
-          salesByBranch[branchName] += total;
+        
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
+          if (salesByBranch.hasOwnProperty(branchName)) {
+            salesByBranch[branchName] += total;
+          }
         }
       });
       
@@ -511,25 +519,35 @@ export default function DashboardPage() {
       
       // 주문 데이터로 매출 계산
       allOrders.forEach((order: any) => {
-        const orderDate = order.orderDate;
-        if (!orderDate) return;
-        
-        let orderDateObj;
-        if (orderDate.toDate) {
-          orderDateObj = orderDate.toDate();
-        } else {
-          orderDateObj = new Date(orderDate);
-        }
-        
-        const weekKey = format(orderDateObj, 'yyyy-\'W\'ww');
-        const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
+        const branchName = order.branchName || '지점 미지정';
         
-        if (salesByWeek[weekKey] && salesByWeek[weekKey].hasOwnProperty(branchName)) {
-          salesByWeek[weekKey][branchName] += total;
-        } else if (salesByWeek[weekKey]) {
-          // 지점이 availableBranches에 없지만 해당 주에 데이터가 있는 경우
-          salesByWeek[weekKey][branchName] = total;
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
+          // 완결처리된 주문: 결제 완료일 기준
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
+          } else {
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
+          }
+          
+          const weekKey = format(revenueDate, 'yyyy-\'W\'ww');
+          
+          if (salesByWeek[weekKey] && salesByWeek[weekKey].hasOwnProperty(branchName)) {
+            salesByWeek[weekKey][branchName] += total;
+          } else if (salesByWeek[weekKey]) {
+            // 지점이 availableBranches에 없지만 해당 주에 데이터가 있는 경우
+            salesByWeek[weekKey][branchName] = total;
+          }
         }
       });
       
@@ -598,21 +616,31 @@ export default function DashboardPage() {
       
       // 주문 데이터로 매출 계산
       userBranchOrders.forEach((order: any) => {
-        const orderDate = order.orderDate;
-        if (!orderDate) return;
-        
-        let orderDateObj;
-        if (orderDate.toDate) {
-          orderDateObj = orderDate.toDate();
-        } else {
-          orderDateObj = new Date(orderDate);
-        }
-        
-        const weekKey = format(orderDateObj, 'yyyy-\'W\'ww');
         const total = order.summary?.total || order.total || 0;
         
-        if (salesByWeek[weekKey] !== undefined) {
-          salesByWeek[weekKey] += total;
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
+          // 완결처리된 주문: 결제 완료일 기준
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
+          } else {
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
+          }
+          
+          const weekKey = format(revenueDate, 'yyyy-\'W\'ww');
+          
+          if (salesByWeek[weekKey] !== undefined) {
+            salesByWeek[weekKey] += total;
+          }
         }
       });
       
@@ -659,8 +687,12 @@ export default function DashboardPage() {
       orders.forEach((order: any) => {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
-        if (salesByBranch.hasOwnProperty(branchName)) {
-          salesByBranch[branchName] += total;
+        
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
+          if (salesByBranch.hasOwnProperty(branchName)) {
+            salesByBranch[branchName] += total;
+          }
         }
       });
       
@@ -724,25 +756,35 @@ export default function DashboardPage() {
       
       // 주문 데이터로 매출 계산
       allOrders.forEach((order: any) => {
-        const orderDate = order.orderDate;
-        if (!orderDate) return;
-        
-        let orderDateObj;
-        if (orderDate.toDate) {
-          orderDateObj = orderDate.toDate();
-        } else {
-          orderDateObj = new Date(orderDate);
-        }
-        
-        const monthKey = format(orderDateObj, 'yyyy-MM');
-        const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
+        const branchName = order.branchName || '지점 미지정';
         
-        if (salesByMonth[monthKey] && salesByMonth[monthKey].hasOwnProperty(branchName)) {
-          salesByMonth[monthKey][branchName] += total;
-        } else if (salesByMonth[monthKey]) {
-          // 지점이 availableBranches에 없지만 해당 월에 데이터가 있는 경우
-          salesByMonth[monthKey][branchName] = total;
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
+          // 완결처리된 주문: 결제 완료일 기준
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
+          } else {
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
+          }
+          
+          const monthKey = format(revenueDate, 'yyyy-MM');
+          
+          if (salesByMonth[monthKey] && salesByMonth[monthKey].hasOwnProperty(branchName)) {
+            salesByMonth[monthKey][branchName] += total;
+          } else if (salesByMonth[monthKey]) {
+            // 지점이 availableBranches에 없지만 해당 월에 데이터가 있는 경우
+            salesByMonth[monthKey][branchName] = total;
+          }
         }
       });
       
@@ -812,21 +854,31 @@ export default function DashboardPage() {
       
       // 주문 데이터로 매출 계산
       userBranchOrders.forEach((order: any) => {
-        const orderDate = order.orderDate;
-        if (!orderDate) return;
-        
-        let orderDateObj;
-        if (orderDate.toDate) {
-          orderDateObj = orderDate.toDate();
-        } else {
-          orderDateObj = new Date(orderDate);
-        }
-        
-        const monthKey = format(orderDateObj, 'yyyy-MM');
         const total = order.summary?.total || order.total || 0;
         
-        if (salesByMonth[monthKey] !== undefined) {
-          salesByMonth[monthKey] += total;
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
+          // 완결처리된 주문: 결제 완료일 기준
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
+          } else {
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
+          }
+          
+          const monthKey = format(revenueDate, 'yyyy-MM');
+          
+          if (salesByMonth[monthKey] !== undefined) {
+            salesByMonth[monthKey] += total;
+          }
         }
       });
       
@@ -873,8 +925,12 @@ export default function DashboardPage() {
       orders.forEach((order: any) => {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
-        if (salesByBranch.hasOwnProperty(branchName)) {
-          salesByBranch[branchName] += total;
+        
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (order.payment?.status === 'completed') {
+          if (salesByBranch.hasOwnProperty(branchName)) {
+            salesByBranch[branchName] += total;
+          }
         }
       });
       
