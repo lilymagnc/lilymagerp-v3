@@ -17,6 +17,7 @@ import { ko } from "date-fns/locale";
 import { EventDialog } from "./components/event-dialog";
 import { DayEventsDialog } from "./components/day-events-dialog";
 import { NoticeViewDialog } from "./components/notice-view-dialog";
+
 import { isHoliday, holidayColors } from "@/lib/holidays";
 
 export default function CalendarPage() {
@@ -361,11 +362,10 @@ export default function CalendarPage() {
   };
 
   // 일정 클릭
-  // 이벤트 클릭 핸들러
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
     
-    // 공지인 경우 간단한 보기 팝업 사용
+    // 공지인 경우 전용 보기 팝업 사용
     if (event.type === 'notice') {
       setIsNoticeViewDialogOpen(true);
     } else {
@@ -697,27 +697,27 @@ export default function CalendarPage() {
          currentUser={user}
        />
 
-       {/* 날짜별 일정 다이얼로그 */}
-       <DayEventsDialog
-         isOpen={isDayEventsDialogOpen}
-         onOpenChange={setIsDayEventsDialogOpen}
-         date={selectedDate}
-         events={selectedDate ? getEventsForDate(selectedDate) : []}
-         onEventClick={handleEventClick}
-         onNoticeClick={(event) => {
-           setSelectedEvent(event);
-           setIsNoticeViewDialogOpen(true);
-         }}
-       />
+               {/* 날짜별 일정 다이얼로그 */}
+        <DayEventsDialog
+          isOpen={isDayEventsDialogOpen}
+          onOpenChange={setIsDayEventsDialogOpen}
+          date={selectedDate}
+          events={selectedDate ? getEventsForDate(selectedDate) : []}
+          onEventClick={handleEventClick}
+          onNoticeClick={(event) => {
+            setSelectedEvent(event);
+            setIsNoticeViewDialogOpen(true);
+          }}
+        />
 
-       {/* 공지 보기 다이얼로그 */}
-       <NoticeViewDialog
-         isOpen={isNoticeViewDialogOpen}
-         onOpenChange={setIsNoticeViewDialogOpen}
-         event={selectedEvent}
-         onEdit={handleNoticeEdit}
-         currentUser={user}
-       />
+        {/* 공지 보기 다이얼로그 */}
+        <NoticeViewDialog
+          isOpen={isNoticeViewDialogOpen}
+          onOpenChange={setIsNoticeViewDialogOpen}
+          event={selectedEvent}
+          onEdit={handleNoticeEdit}
+          currentUser={user}
+        />
     </div>
   );
 }

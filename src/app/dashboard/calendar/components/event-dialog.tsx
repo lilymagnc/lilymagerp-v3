@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -329,33 +330,40 @@ export function EventDialog({
             />
           </div>
 
-          {/* 설명 */}
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              {formData.type === 'notice' ? '공지 내용' : '설명'}
-            </Label>
-            {formData.type === 'notice' ? (
-              <RichTextEditor
-                value={formData.description}
-                onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
-                placeholder="공지 내용을 입력하세요. HTML 형식으로 작성할 수 있습니다."
-                className="min-h-[300px]"
-              />
-            ) : (
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="일정에 대한 설명을 입력하세요"
-                rows={3}
-              />
-            )}
-            {formData.type === 'notice' && (
-              <p className="text-xs text-gray-500">
-                💡 공지 내용은 모든 대상 사용자에게 표시됩니다. HTML 형식으로 작성하여 더 풍부한 내용을 제공할 수 있습니다.
-              </p>
-            )}
-          </div>
+                      {/* 설명 */}
+            <div className="space-y-2">
+              <Label htmlFor="description">
+                {formData.type === 'notice' ? '공지 내용' : '설명'}
+              </Label>
+              {formData.type === 'notice' ? (
+                <RichTextEditor
+                  value={formData.description}
+                  onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
+                  placeholder="공지 내용을 입력하세요. HTML 형식으로 작성할 수 있습니다."
+                  className="min-h-[300px]"
+                />
+              ) : (
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="일정에 대한 설명을 입력하세요"
+                  rows={3}
+                />
+              )}
+              
+                             {formData.type === 'notice' && (
+                 <div className="text-xs text-gray-500 space-y-1">
+                   <p>💡 공지 내용은 모든 대상 사용자에게 표시됩니다. HTML 에디터를 사용하여 더 풍부한 내용을 제공할 수 있습니다.</p>
+                   <p>📝 <strong>사용 가능한 기능:</strong></p>
+                   <ul className="list-disc list-inside ml-2 space-y-1">
+                     <li>제목 (H1, H2, H3), 굵은 글씨, 기울임, 밑줄, 취소선</li>
+                     <li>색상, 배경색, 목록, 정렬</li>
+                     <li>링크, 이미지, 코드 블록</li>
+                   </ul>
+                 </div>
+               )}
+            </div>
 
           {/* 시작 날짜 */}
           <div className="space-y-2">
