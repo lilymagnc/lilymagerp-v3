@@ -43,6 +43,7 @@ export interface OrderData {
   payment: {
     method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
     status: PaymentStatus;
+    completedAt?: Timestamp; // 완결처리 시 기록되는 시간
   };
   pickupInfo: {
     date: string;
@@ -99,7 +100,14 @@ export function useOrders() {
       }
       
       const ordersCollection = collection(db, 'orders');
-      const q = query(ordersCollection, orderBy("orderDate", "desc"));
+      let q = query(ordersCollection, orderBy("orderDate", "desc"));
+      
+      // 지점 사용자의 경우 자신의 지점 주문과 이관받은 주문을 모두 조회
+      if (user?.franchise && user?.role !== '본사 관리자') {
+        // 현재 지점의 주문과 이관받은 주문을 모두 조회
+        // 이는 클라이언트 사이드에서 필터링하므로 모든 주문을 가져옴
+        console.log('지점 사용자 주문 조회:', user.franchise);
+      }
       
       // 타임아웃 설정을 더 길게 설정
       const timeoutPromise = new Promise((_, reject) => 
@@ -318,7 +326,14 @@ export function useOrders() {
   const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'completed') => {
     try {
         const orderRef = doc(db, 'orders', orderId);
-        await updateDoc(orderRef, { 'payment.status': newStatus });
+        const updateData: any = { 'payment.status': newStatus };
+        
+        // 완결처리 시 현재 시간 기록
+        if (newStatus === 'completed') {
+          updateData['payment.completedAt'] = serverTimestamp();
+        }
+        
+        await updateDoc(orderRef, updateData);
         toast({
             title: '결제 상태 변경 성공',
             description: `결제 상태가 '${newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,

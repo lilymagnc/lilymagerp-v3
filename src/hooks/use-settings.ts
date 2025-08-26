@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { OrderTransferSettings } from '@/types/order-transfer';
 
 export interface SystemSettings {
   // 사이트 정보
@@ -60,6 +61,9 @@ export interface SystemSettings {
   // 배송완료 사진 관리 설정
   autoDeleteDeliveryPhotos: boolean;
   deliveryPhotoRetentionDays: number; // 보관 일수
+
+  // 주문 이관 설정
+  orderTransferSettings: OrderTransferSettings;
 }
 
 export const defaultSettings: SystemSettings = {
@@ -178,7 +182,27 @@ export const defaultSettings: SystemSettings = {
 
   // 배송완료 사진 관리 설정
   autoDeleteDeliveryPhotos: false,
-  deliveryPhotoRetentionDays: 90 // 90일 보관
+  deliveryPhotoRetentionDays: 90, // 90일 보관
+
+          // 주문 이관 설정
+        orderTransferSettings: {
+          defaultTransferSplit: {
+            orderBranch: 100, // 발주지점 100%
+            processBranch: 0, // 수주지점 0%
+          },
+          transferRules: {
+            'store': { orderBranch: 100, processBranch: 0 },
+            'phone': { orderBranch: 100, processBranch: 0 },
+            'naver': { orderBranch: 100, processBranch: 0 },
+            'kakao': { orderBranch: 100, processBranch: 0 },
+            'etc': { orderBranch: 100, processBranch: 0 },
+          },
+    autoNotification: true,
+    notificationTemplate: "{발주지점}지점으로부터 주문이 이관되었습니다.",
+    voiceNotificationEnabled: true,
+    displayBoardEnabled: true,
+    displayBoardDuration: 30, // 30분
+  }
 };
 
 export function useSettings() {

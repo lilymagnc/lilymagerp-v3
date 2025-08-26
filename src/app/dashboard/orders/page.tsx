@@ -3,12 +3,13 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart, CheckSquare, Square } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart, CheckSquare, Square, ArrowRightLeft, Package } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useOrders, Order } from "@/hooks/use-orders";
+import { useOrderTransfers } from "@/hooks/use-order-transfers";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +23,7 @@ import { MessagePrintDialog } from "./components/message-print-dialog";
 import { OrderDetailDialog } from "./components/order-detail-dialog";
 import { OrderEditDialog } from "./components/order-edit-dialog";
 import { ExcelUploadDialog } from "./components/excel-upload-dialog";
+import { OrderTransferDialog } from "@/components/order-transfer-dialog";
 import { Trash2, XCircle, Calendar as CalendarIcon } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { exportOrdersToExcel } from "@/lib/excel-export";
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils";
 export default function OrdersPage() {
   const { orders, loading, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
+  const { createTransfer, getTransferPermissions } = useOrderTransfers();
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -53,6 +56,10 @@ export default function OrdersPage() {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isOrderEditDialogOpen, setIsOrderEditDialogOpen] = useState(false);
   const [selectedOrderForAction, setSelectedOrderForAction] = useState<Order | null>(null);
+  
+  // 이관 관련 상태
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [selectedOrderForTransfer, setSelectedOrderForTransfer] = useState<Order | null>(null);
   
   // 일괄 삭제 관련 상태
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -200,6 +207,12 @@ export default function OrdersPage() {
       // 주문 삭제 오류는 조용히 처리
     }
   };
+
+  // 이관 버튼 클릭 처리
+  const handleTransferClick = (order: Order) => {
+    setSelectedOrderForTransfer(order);
+    setIsTransferDialogOpen(true);
+  };
   // 취소 다이얼로그 열기
   const openCancelDialog = (order: Order) => {
     setSelectedOrderForAction(order);
@@ -285,10 +298,22 @@ export default function OrdersPage() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-  const getPaymentStatusBadge = (status: string) => {
+  const getPaymentStatusBadge = (order: Order) => {
+    const status = order.payment?.status;
+    const completedAt = order.payment?.completedAt;
+    
     switch (status) {
       case 'completed':
-        return <Badge className="bg-blue-500 text-white">완결</Badge>;
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge className="bg-blue-500 text-white">완결</Badge>
+            {completedAt && (
+              <span className="text-xs text-gray-500">
+                {format((completedAt as Timestamp).toDate(), 'MM/dd HH:mm')}
+              </span>
+            )}
+          </div>
+        );
       case 'pending':
         return <Badge variant="secondary" className="bg-yellow-500 text-white">미결</Badge>;
       default:
@@ -299,7 +324,11 @@ export default function OrdersPage() {
     let filtered = orders;
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
-      filtered = filtered.filter(order => order.branchName === userBranch);
+      // 지점 사용자는 자신의 지점 주문과 이관받은 주문을 모두 볼 수 있음
+      filtered = filtered.filter(order => 
+        order.branchName === userBranch || 
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+      );
     } else if (selectedBranch !== "all") {
       filtered = filtered.filter(order => order.branchName === selectedBranch);
     }
@@ -349,28 +378,129 @@ export default function OrdersPage() {
     return filtered;
   }, [orders, searchTerm, selectedBranch, selectedOrderStatus, selectedPaymentStatus, startDate, endDate, isAdmin, userBranch]);
 
-  // 통계 계산
-  const orderStats = useMemo(() => {
-    const totalOrders = filteredOrders.length;
-    const totalAmount = filteredOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     // 통계 계산
+   const orderStats = useMemo(() => {
+     const totalOrders = filteredOrders.length;
+     
+     // 총 매출 계산 (수주받은 주문은 금액 제외, 건수만 포함)
+     const totalAmount = filteredOrders.reduce((sum, order) => {
+       // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+         return sum; // 금액 제외
+       }
+       return sum + (order.summary?.total || 0);
+     }, 0);
+     
+     // 총 매출의 완결/미결 분리 (수주받은 주문 제외)
+     const totalCompletedOrders = filteredOrders.filter(order => 
+       order.payment?.status === 'completed' && 
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+     );
+     const totalPendingOrders = filteredOrders.filter(order => 
+       order.payment?.status === 'pending' && 
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+     );
+     const totalCompletedAmount = totalCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     const totalPendingAmount = totalPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
     
-    // 오늘 주문
-    const today = new Date();
-    const todayOrders = filteredOrders.filter(order => {
-      if (!order.orderDate) return false;
-      const orderDate = (order.orderDate as Timestamp).toDate();
-      return orderDate.toDateString() === today.toDateString();
-    });
-    const todayAmount = todayOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+         // 오늘 주문 (해당 지점에서 발주한 주문만 포함, 수주받은 주문은 건수만)
+     const today = new Date();
+     const todayOrders = filteredOrders.filter(order => {
+       if (!order.orderDate) return false;
+       const orderDate = (order.orderDate as Timestamp).toDate();
+       const isToday = orderDate.toDateString() === today.toDateString();
+       
+       // 지점 사용자의 경우: 자신의 지점에서 발주한 주문 + 수주받은 주문 (건수만)
+       if (!isAdmin && userBranch) {
+         return isToday && (order.branchName === userBranch || 
+           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch));
+       }
+       
+       // 관리자의 경우: 선택된 지점에서 발주한 주문만 포함
+       if (isAdmin && selectedBranch !== "all") {
+         return isToday && order.branchName === selectedBranch;
+       }
+       
+       // 관리자가 전체 지점을 선택한 경우: 모든 지점에서 발주한 주문 포함
+       return isToday;
+     });
+     
+     // 오늘 주문 금액 계산 (수주받은 주문은 금액 제외)
+     const todayAmount = todayOrders.reduce((sum, order) => {
+       // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+         return sum; // 금액 제외
+       }
+       return sum + (order.summary?.total || 0);
+     }, 0);
+    
+         // 오늘 주문의 완결/미결 분리 (수주받은 주문 제외)
+     const todayCompletedOrders = todayOrders.filter(order => 
+       order.payment?.status === 'completed' && 
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+     );
+     const todayPendingOrders = todayOrders.filter(order => 
+       order.payment?.status === 'pending' && 
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+     );
+     const todayCompletedAmount = todayCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     const todayPendingAmount = todayPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
 
-    // 이번 달 주문
-    const thisMonthOrders = filteredOrders.filter(order => {
-      if (!order.orderDate) return false;
-      const orderDate = (order.orderDate as Timestamp).toDate();
-      return orderDate.getMonth() === today.getMonth() && 
-             orderDate.getFullYear() === today.getFullYear();
-    });
-    const thisMonthAmount = thisMonthOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+         // 이번 달 주문 (해당 지점에서 발주한 주문만 포함, 수주받은 주문은 건수만)
+     const thisMonthOrders = filteredOrders.filter(order => {
+       if (!order.orderDate) return false;
+       const orderDate = (order.orderDate as Timestamp).toDate();
+       const isThisMonth = orderDate.getMonth() === today.getMonth() && 
+                          orderDate.getFullYear() === today.getFullYear();
+       
+       // 지점 사용자의 경우: 자신의 지점에서 발주한 주문 + 수주받은 주문 (건수만)
+       if (!isAdmin && userBranch) {
+         return isThisMonth && (order.branchName === userBranch || 
+           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch));
+       }
+       
+       // 관리자의 경우: 선택된 지점에서 발주한 주문만 포함
+       if (isAdmin && selectedBranch !== "all") {
+         return isThisMonth && order.branchName === selectedBranch;
+       }
+       
+       // 관리자가 전체 지점을 선택한 경우: 모든 지점에서 발주한 주문 포함
+       return isThisMonth;
+     });
+     
+     // 이번 달 주문 금액 계산 (수주받은 주문은 금액 제외)
+     const thisMonthAmount = thisMonthOrders.reduce((sum, order) => {
+       // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+         return sum; // 금액 제외
+       }
+       return sum + (order.summary?.total || 0);
+     }, 0);
+    
+         // 이번 달 주문의 완결/미결 분리 (수주받은 주문 제외)
+     const thisMonthCompletedOrders = thisMonthOrders.filter(order => 
+       order.payment?.status === 'completed' && 
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+     );
+     const thisMonthPendingOrders = thisMonthOrders.filter(order => 
+       order.payment?.status === 'pending' && 
+       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+     );
+     const thisMonthCompletedAmount = thisMonthCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     const thisMonthPendingAmount = thisMonthPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+
+         // 미결 주문 통계 (수주받은 주문은 건수만, 금액은 제외)
+     const pendingPaymentOrders = filteredOrders.filter(order => 
+       order.payment?.status === 'pending'
+     );
+     const pendingPaymentCount = pendingPaymentOrders.length;
+     const pendingPaymentAmount = pendingPaymentOrders.reduce((sum, order) => {
+       // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch) {
+         return sum; // 금액 제외
+       }
+       return sum + (order.summary?.total || 0);
+     }, 0);
 
     // 주문 상태별 통계
     const statusStats = filteredOrders.reduce((acc, order) => {
@@ -379,15 +509,23 @@ export default function OrdersPage() {
       return acc;
     }, {} as Record<string, number>);
 
-    return {
-      totalOrders,
-      totalAmount,
-      todayOrders: todayOrders.length,
-      todayAmount,
-      thisMonthOrders: thisMonthOrders.length,
-      thisMonthAmount,
-      statusStats
-    };
+         return {
+       totalOrders,
+       totalAmount,
+       totalCompletedAmount,
+       totalPendingAmount,
+       todayOrders: todayOrders.length,
+       todayAmount,
+       todayCompletedAmount,
+       todayPendingAmount,
+       thisMonthOrders: thisMonthOrders.length,
+       thisMonthAmount,
+       thisMonthCompletedAmount,
+       thisMonthPendingAmount,
+       pendingPaymentCount,
+       pendingPaymentAmount,
+       statusStats
+     };
   }, [filteredOrders]);
 
   // 페이지네이션 계산
@@ -421,11 +559,17 @@ export default function OrdersPage() {
               <Download className="mr-2 h-4 w-4" />
               엑셀 다운로드
           </Button>
+          <Button variant="outline" asChild>
+              <Link href="/dashboard/transfers">
+                  <ArrowRightLeft className="mr-2 h-4 w-4" />
+                  주문이관 관리
+              </Link>
+          </Button>
         </div>
       </PageHeader>
       
       {/* 통계 카드 */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 mb-6">
         {loading ? (
           // 로딩 중일 때 스켈레톤 표시
           <>
@@ -455,7 +599,12 @@ export default function OrdersPage() {
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">오늘 주문</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {isAdmin
+                    ? (selectedBranch !== "all" ? `${selectedBranch} 오늘 주문` : '오늘 주문')
+                    : `${userBranch} 오늘 주문`
+                  }
+                </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -469,6 +618,18 @@ export default function OrdersPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">이번 달 주문</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="animate-pulse">
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">미결 주문</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="animate-pulse">
@@ -492,40 +653,75 @@ export default function OrdersPage() {
                 </p>
               </CardContent>
             </Card>
+                         <Card>
+               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium">총 매출</CardTitle>
+                 <DollarSign className="h-4 w-4 text-muted-foreground" />
+               </CardHeader>
+               <CardContent>
+                 <div className="text-2xl font-bold">₩{orderStats.totalAmount.toLocaleString()}</div>
+                 <div className="space-y-1">
+                   <p className="text-xs text-green-600 font-medium">
+                     완결: ₩{orderStats.totalCompletedAmount.toLocaleString()}
+                   </p>
+                   <p className="text-xs text-orange-600 font-medium">
+                     미결: ₩{orderStats.totalPendingAmount.toLocaleString()}
+                   </p>
+                 </div>
+               </CardContent>
+             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">총 매출</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">₩{orderStats.totalAmount.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">
-                  필터링된 총 매출
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">오늘 주문</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  {isAdmin
+                    ? (selectedBranch !== "all" ? `${selectedBranch} 오늘 주문` : '오늘 주문')
+                    : `${userBranch} 오늘 주문`
+                  }
+                </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{orderStats.todayOrders}건</div>
-                <p className="text-xs text-muted-foreground">
-                  ₩{orderStats.todayAmount.toLocaleString()}
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-green-600 font-medium">
+                    완결: ₩{orderStats.todayCompletedAmount.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-orange-600 font-medium">
+                    미결: ₩{orderStats.todayPendingAmount.toLocaleString()}
+                  </p>
+                </div>
               </CardContent>
             </Card>
-            <Card>
+                         <Card>
+               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium">이번 달 주문</CardTitle>
+                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
+               </CardHeader>
+               <CardContent>
+                 <div className="text-2xl font-bold">{orderStats.thisMonthOrders}건</div>
+                 <div className="space-y-1">
+                   <p className="text-xs text-green-600 font-medium">
+                     완결: ₩{orderStats.thisMonthCompletedAmount.toLocaleString()}
+                   </p>
+                   <p className="text-xs text-orange-600 font-medium">
+                     미결: ₩{orderStats.thisMonthPendingAmount.toLocaleString()}
+                   </p>
+                 </div>
+               </CardContent>
+             </Card>
+            <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">이번 달 주문</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium opacity-90">
+                  {isAdmin
+                    ? (selectedBranch !== "all" ? `${selectedBranch} 미결` : '미결 주문')
+                    : `${userBranch} 미결`
+                  }
+                </CardTitle>
+                <Package className="h-4 w-4 opacity-90" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{orderStats.thisMonthOrders}건</div>
-                <p className="text-xs text-muted-foreground">
-                  ₩{orderStats.thisMonthAmount.toLocaleString()}
-                </p>
+                <div className="text-2xl font-bold">{orderStats.pendingPaymentCount}건</div>
+                <p className="text-xs opacity-90">₩{orderStats.pendingPaymentAmount.toLocaleString()}</p>
               </CardContent>
             </Card>
           </>
@@ -806,11 +1002,27 @@ export default function OrdersPage() {
                   <TableCell>
                     {order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}
                   </TableCell>
-                  <TableCell>{order.branchName}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span>{order.branchName}</span>
+                        {order.transferInfo?.isTransferred && (
+                          <Badge variant="outline" className="text-xs">
+                            이관됨
+                          </Badge>
+                        )}
+                      </div>
+                      {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && (
+                        <div className="text-xs text-gray-500">
+                          처리: {order.transferInfo.processBranchName}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                       <div className="flex flex-col gap-1">
                         {getStatusBadge(order.status)}
-                        {order.payment && getPaymentStatusBadge(order.payment.status)}
+                        {order.payment && getPaymentStatusBadge(order)}
                       </div>
                   </TableCell>
                   <TableCell className="text-right">₩{order.summary.total.toLocaleString()}</TableCell>
@@ -850,6 +1062,15 @@ export default function OrdersPage() {
                            <FileText className="mr-2 h-4 w-4" />
                            주문 수정
                          </DropdownMenuItem>
+                         {getTransferPermissions().canCreateTransfer && !order.transferInfo?.isTransferred && (
+                           <DropdownMenuItem onClick={(e) => {
+                             e.stopPropagation();
+                             handleTransferClick(order);
+                           }}>
+                             <ArrowRightLeft className="mr-2 h-4 w-4" />
+                             지점 이관
+                           </DropdownMenuItem>
+                         )}
                         <DropdownMenuSeparator />
                                                  <DropdownMenuSub>
                            <DropdownMenuSubTrigger>주문 상태 변경</DropdownMenuSubTrigger>
@@ -1003,6 +1224,12 @@ export default function OrdersPage() {
              <ExcelUploadDialog
          isOpen={isExcelUploadDialogOpen}
          onOpenChange={setIsExcelUploadDialogOpen}
+       />
+       
+       <OrderTransferDialog
+         isOpen={isTransferDialogOpen}
+         onClose={() => setIsTransferDialogOpen(false)}
+         order={selectedOrderForTransfer}
        />
                {/* 주문 취소 다이얼로그 */}
         <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>

@@ -26,6 +26,8 @@ interface DashboardStats {
   newCustomers: number;
   weeklyOrders: number; // 총 주문 건수에서 주간 주문 건수로 변경
   pendingOrders: number;
+  pendingPaymentCount: number; // 미결 주문 건수
+  pendingPaymentAmount: number; // 미결 주문 금액
 }
 
 interface Order {
@@ -112,7 +114,9 @@ export default function DashboardPage() {
     totalRevenue: 0,
     newCustomers: 0,
     weeklyOrders: 0, // 총 주문 건수에서 주간 주문 건수로 변경
-    pendingOrders: 0
+    pendingOrders: 0,
+    pendingPaymentCount: 0,
+    pendingPaymentAmount: 0
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -278,23 +282,27 @@ export default function DashboardPage() {
       
       // 주문 데이터로 매출 계산
       allOrders.forEach((order: any) => {
-        const orderDate = order.orderDate;
-        if (!orderDate) {
-          return;
-        }
-        
-        let orderDateObj;
-        if (orderDate.toDate) {
-          orderDateObj = orderDate.toDate();
-        } else {
-          orderDateObj = new Date(orderDate);
-        }
-        
-        const dateKey = format(orderDateObj, 'yyyy-MM-dd');
-        const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
+        const branchName = order.branchName || '지점 미지정';
         
-
+        // 완결처리된 주문은 결제일 기준, 미결 주문은 주문일 기준
+        let revenueDate;
+        if (order.payment?.status === 'completed' && order.payment?.completedAt) {
+          // 완결처리된 주문: 결제 완료일 기준
+          revenueDate = order.payment.completedAt.toDate();
+        } else {
+          // 미결 주문: 주문일 기준
+          const orderDate = order.orderDate;
+          if (!orderDate) return;
+          
+          if (orderDate.toDate) {
+            revenueDate = orderDate.toDate();
+          } else {
+            revenueDate = new Date(orderDate);
+          }
+        }
+        
+        const dateKey = format(revenueDate, 'yyyy-MM-dd');
         
         if (salesByDate[dateKey] && salesByDate[dateKey].hasOwnProperty(branchName)) {
           salesByDate[dateKey][branchName] += total;
@@ -369,18 +377,26 @@ export default function DashboardPage() {
       
       // 주문 데이터로 매출 계산
       userBranchOrders.forEach((order: any) => {
-        const orderDate = order.orderDate;
-        if (!orderDate) return;
+        const total = order.summary?.total || order.total || 0;
         
-        let orderDateObj;
-        if (orderDate.toDate) {
-          orderDateObj = orderDate.toDate();
+        // 완결처리된 주문은 결제일 기준, 미결 주문은 주문일 기준
+        let revenueDate;
+        if (order.payment?.status === 'completed' && order.payment?.completedAt) {
+          // 완결처리된 주문: 결제 완료일 기준
+          revenueDate = order.payment.completedAt.toDate();
         } else {
-          orderDateObj = new Date(orderDate);
+          // 미결 주문: 주문일 기준
+          const orderDate = order.orderDate;
+          if (!orderDate) return;
+          
+          if (orderDate.toDate) {
+            revenueDate = orderDate.toDate();
+          } else {
+            revenueDate = new Date(orderDate);
+          }
         }
         
-        const dateKey = format(orderDateObj, 'yyyy-MM-dd');
-        const total = order.summary?.total || order.total || 0;
+        const dateKey = format(revenueDate, 'yyyy-MM-dd');
         
         if (salesByDate[dateKey] !== undefined) {
           salesByDate[dateKey] += total;
@@ -1115,11 +1131,22 @@ export default function DashboardPage() {
         }) : allCustomers;
         const newCustomers = customers.length;
 
+        // 미결 주문 통계 계산
+        const pendingPaymentOrders = orders.filter((order: any) => 
+          order.payment?.status === 'pending'
+        );
+        const pendingPaymentCount = pendingPaymentOrders.length;
+        const pendingPaymentAmount = pendingPaymentOrders.reduce((acc, order: any) => 
+          acc + (order.summary?.total || order.total || 0), 0
+        );
+
         const statsData = {
           totalRevenue: yearlyRevenue, // 총 매출을 년 매출로 변경
           newCustomers,
           weeklyOrders, // 주간 주문 건수로 변경
-          pendingOrders
+          pendingOrders,
+          pendingPaymentCount,
+          pendingPaymentAmount
         };
         
 
@@ -1132,7 +1159,9 @@ export default function DashboardPage() {
           totalRevenue: 0,
           newCustomers: 0,
           weeklyOrders: 0, // 주간 주문 건수로 변경
-          pendingOrders: 0
+          pendingOrders: 0,
+          pendingPaymentCount: 0,
+          pendingPaymentAmount: 0
         });
         setRecentOrders([]);
       } finally {
@@ -1355,7 +1384,7 @@ export default function DashboardPage() {
       )}
       
       {/* 상단 통계 카드 */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
@@ -1423,6 +1452,22 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.pendingOrders}</div>
             <p className="text-xs opacity-90">처리 필요한 주문</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium opacity-90">
+              {isAdmin 
+                ? (currentFilteredBranch ? `${currentFilteredBranch} 미결` : '미결 주문')
+                : `${userBranch} 미결`
+              }
+            </CardTitle>
+            <Package className="h-4 w-4 opacity-90" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendingPaymentCount}</div>
+            <p className="text-xs opacity-90">{formatCurrency(stats.pendingPaymentAmount)}</p>
           </CardContent>
         </Card>
       </div>

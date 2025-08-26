@@ -44,6 +44,7 @@ import { useSettings, defaultSettings } from "@/hooks/use-settings";
 import { useDataCleanup } from "@/hooks/use-data-cleanup";
 import BackupManagement from "./components/backup-management";
 import { EmailTemplateEditor } from "@/components/email-template-editor";
+import { VoiceNotification } from "@/components/voice-notification";
 export default function SettingsPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'general';
@@ -183,7 +184,7 @@ export default function SettingsPage() {
         </Link>
       </div>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-10">
+        <TabsList className="grid w-full grid-cols-11">
           <TabsTrigger value="general">일반 설정</TabsTrigger>
           <TabsTrigger value="delivery">배송 설정</TabsTrigger>
           <TabsTrigger value="notifications">알림 설정</TabsTrigger>
@@ -192,6 +193,7 @@ export default function SettingsPage() {
           <TabsTrigger value="files">파일 관리</TabsTrigger>
           <TabsTrigger value="security">보안 설정</TabsTrigger>
           <TabsTrigger value="discount">할인 설정</TabsTrigger>
+          <TabsTrigger value="order-transfer">주문 이관</TabsTrigger>
           <TabsTrigger value="backup">백업 관리</TabsTrigger>
           <TabsTrigger value="data-cleanup">데이터 초기화</TabsTrigger>
         </TabsList>
@@ -492,6 +494,158 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+          {/* 주문 이관 설정 */}
+          <TabsContent value="order-transfer" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowRightLeft className="h-5 w-5" />
+                  주문 이관 기본 설정
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultOrderBranchSplit">발주지점 기본 분배율 (%)</Label>
+                    <Input
+                      id="defaultOrderBranchSplit"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={localSettings.orderTransferSettings?.defaultTransferSplit?.orderBranch || 100}
+                      onChange={(e) => setLocalSettings(prev => ({
+                        ...prev,
+                        orderTransferSettings: {
+                          ...prev.orderTransferSettings,
+                          defaultTransferSplit: {
+                            ...prev.orderTransferSettings?.defaultTransferSplit,
+                            orderBranch: Number(e.target.value),
+                            processBranch: 100 - Number(e.target.value)
+                          }
+                        }
+                      }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="defaultProcessBranchSplit">수주지점 기본 분배율 (%)</Label>
+                    <Input
+                      id="defaultProcessBranchSplit"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={localSettings.orderTransferSettings?.defaultTransferSplit?.processBranch || 0}
+                      onChange={(e) => setLocalSettings(prev => ({
+                        ...prev,
+                        orderTransferSettings: {
+                          ...prev.orderTransferSettings,
+                          defaultTransferSplit: {
+                            ...prev.orderTransferSettings?.defaultTransferSplit,
+                            processBranch: Number(e.target.value),
+                            orderBranch: 100 - Number(e.target.value)
+                          }
+                        }
+                      }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notificationTemplate">알림 메시지 템플릿</Label>
+                  <Input
+                    id="notificationTemplate"
+                    value={localSettings.orderTransferSettings?.notificationTemplate || ""}
+                    onChange={(e) => setLocalSettings(prev => ({
+                      ...prev,
+                      orderTransferSettings: {
+                        ...prev.orderTransferSettings,
+                        notificationTemplate: e.target.value
+                      }
+                    }))}
+                    placeholder="{발주지점}지점으로부터 주문이 이관되었습니다."
+                  />
+                  <p className="text-xs text-gray-500">
+                    사용 가능한 변수: {'{발주지점}'}, {'{수주지점}'}, {'{주문번호}'}
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>자동 알림</Label>
+                      <p className="text-sm text-gray-500">주문 이관 시 자동으로 알림을 생성합니다</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={localSettings.orderTransferSettings?.autoNotification || false}
+                      onChange={(e) => setLocalSettings(prev => ({
+                        ...prev,
+                        orderTransferSettings: {
+                          ...prev.orderTransferSettings,
+                          autoNotification: e.target.checked
+                        }
+                      }))}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>음성 알림</Label>
+                      <p className="text-sm text-gray-500">주문 이관 시 음성으로 알림을 재생합니다</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={localSettings.orderTransferSettings?.voiceNotificationEnabled || false}
+                      onChange={(e) => setLocalSettings(prev => ({
+                        ...prev,
+                        orderTransferSettings: {
+                          ...prev.orderTransferSettings,
+                          voiceNotificationEnabled: e.target.checked
+                        }
+                      }))}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>전광판 표시</Label>
+                      <p className="text-sm text-gray-500">주문 이관 정보를 전광판에 표시합니다</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={localSettings.orderTransferSettings?.displayBoardEnabled || false}
+                      onChange={(e) => setLocalSettings(prev => ({
+                        ...prev,
+                        orderTransferSettings: {
+                          ...prev.orderTransferSettings,
+                          displayBoardEnabled: e.target.checked
+                        }
+                      }))}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="displayBoardDuration">전광판 표시 시간 (분)</Label>
+                  <Input
+                    id="displayBoardDuration"
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={localSettings.orderTransferSettings?.displayBoardDuration || 30}
+                    onChange={(e) => setLocalSettings(prev => ({
+                      ...prev,
+                      orderTransferSettings: {
+                        ...prev.orderTransferSettings,
+                        displayBoardDuration: Number(e.target.value)
+                      }
+                    }))}
+                    disabled={!localSettings.orderTransferSettings?.displayBoardEnabled}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* 음성 알림 설정 */}
+            <VoiceNotification />
           </TabsContent>
           {/* 백업 관리 */}
           <TabsContent value="backup" className="space-y-4">

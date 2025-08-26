@@ -210,9 +210,15 @@ export default function PickupDeliveryPage() {
     
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
-      filteredOrders = filteredOrders.filter(order => order.branchName === userBranch);
+      filteredOrders = filteredOrders.filter(order => 
+        order.branchName === userBranch ||
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+      );
     } else if (selectedBranch !== 'all') {
-      filteredOrders = filteredOrders.filter(order => order.branchName === selectedBranch);
+      filteredOrders = filteredOrders.filter(order => 
+        order.branchName === selectedBranch ||
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === selectedBranch)
+      );
     }
     
     // 검색어 필터링
@@ -257,9 +263,15 @@ export default function PickupDeliveryPage() {
     
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
-      filteredOrders = filteredOrders.filter(order => order.branchName === userBranch);
+      filteredOrders = filteredOrders.filter(order => 
+        order.branchName === userBranch ||
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+      );
     } else if (selectedBranch !== 'all') {
-      filteredOrders = filteredOrders.filter(order => order.branchName === selectedBranch);
+      filteredOrders = filteredOrders.filter(order => 
+        order.branchName === selectedBranch ||
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === selectedBranch)
+      );
     }
     
     // 검색어 필터링
@@ -302,9 +314,15 @@ export default function PickupDeliveryPage() {
     );
     // 권한에 따른 지점 필터링
     if (!isAdmin && userBranch) {
-      filteredOrders = filteredOrders.filter(order => order.branchName === userBranch);
+      filteredOrders = filteredOrders.filter(order => 
+        order.branchName === userBranch ||
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
+      );
     } else if (selectedBranch !== 'all') {
-      filteredOrders = filteredOrders.filter(order => order.branchName === selectedBranch);
+      filteredOrders = filteredOrders.filter(order => 
+        order.branchName === selectedBranch ||
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === selectedBranch)
+      );
     }
     
     // 검색어 필터링
@@ -1039,7 +1057,23 @@ export default function PickupDeliveryPage() {
                               {order.pickupInfo?.pickerContact || '-'}
                             </div>
                           </TableCell>
-                          <TableCell>{order.branchName}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span>{order.branchName}</span>
+                                {order.transferInfo?.isTransferred && (
+                                  <Badge variant="outline" className="text-xs">
+                                    이관됨
+                                  </Badge>
+                                )}
+                              </div>
+                              {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && (
+                                <div className="text-xs text-gray-500">
+                                  처리: {order.transferInfo.processBranchName}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{getStatusBadge(order.status)}</TableCell>
                           <TableCell>₩{order.summary.total.toLocaleString()}</TableCell>
                           <TableCell className="text-center">
@@ -1188,7 +1222,23 @@ export default function PickupDeliveryPage() {
                               <span className="text-muted-foreground text-sm">미입력</span>
                             )}
                           </TableCell>
-                          <TableCell>{order.branchName}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span>{order.branchName}</span>
+                                {order.transferInfo?.isTransferred && (
+                                  <Badge variant="outline" className="text-xs">
+                                    이관됨
+                                  </Badge>
+                                )}
+                              </div>
+                              {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && (
+                                <div className="text-xs text-gray-500">
+                                  처리: {order.transferInfo.processBranchName}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{getStatusBadge(order.status)}</TableCell>
                           <TableCell>₩{order.summary.total.toLocaleString()}</TableCell>
                           <TableCell className="text-center">

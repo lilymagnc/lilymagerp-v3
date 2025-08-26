@@ -20,7 +20,8 @@ import {
   FileText,
   CreditCard,
   Truck,
-  Home
+  Home,
+  ArrowRightLeft
 } from "lucide-react";
 interface OrderDetailDialogProps {
   isOpen: boolean;
@@ -104,7 +105,23 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                     <Building className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">출고지점</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{order.branchName}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName 
+                        ? order.transferInfo.processBranchName 
+                        : order.branchName}
+                    </p>
+                    {order.transferInfo?.isTransferred && (
+                      <Badge variant="outline" className="text-xs">
+                        이관됨
+                      </Badge>
+                    )}
+                  </div>
+                  {order.transferInfo?.isTransferred && (
+                    <p className="text-xs text-gray-500">
+                      발주지점: {order.branchName}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -359,6 +376,53 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                   <p className="text-sm whitespace-pre-wrap text-amber-800">
                     {order.request}
                   </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {/* 이관 정보 */}
+          {order.transferInfo?.isTransferred && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ArrowRightLeft className="h-4 w-4" />
+                  이관 정보
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">처리 지점</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {order.transferInfo.processBranchName}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">이관일시</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {order.transferInfo.transferredAt && 
+                         format((order.transferInfo.transferredAt as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')}
+                      </p>
+                    </div>
+                  </div>
+                  {order.transferInfo.transferId && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">이관 ID</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {order.transferInfo.transferId}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

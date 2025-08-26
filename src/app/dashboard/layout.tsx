@@ -6,12 +6,13 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images, DollarSign, Target, BarChart3, Package, Receipt, Settings, Database, Percent } from 'lucide-react';
+import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images, DollarSign, Target, BarChart3, Package, Receipt, Settings, Database, Percent, ArrowRightLeft } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import React from 'react';
 import Image from 'next/image';
 import { ROLE_LABELS } from '@/types/user-role';
+import { NotificationCenter } from '@/components/notification-center';
 
 export default function DashboardLayout({
   children,
@@ -38,6 +39,7 @@ export default function DashboardLayout({
         '/dashboard/orders/new',           // 주문접수
         '/dashboard/material-request',     // 자재요청
         '/dashboard/orders',               // 주문현황
+        '/dashboard/transfers',            // 주문 이관 관리
         '/dashboard/orders/print-message', // 메시지 인쇄 미리보기
         '/dashboard/print-labels',         // 라벨 인쇄 미리보기
         '/dashboard/customers/statement/print', // 거래명세서 인쇄 미리보기
@@ -120,6 +122,8 @@ export default function DashboardLayout({
                     <SidebarMenuItem>
                         <SidebarMenuButton onClick={() => router.push('/dashboard/orders')}><ClipboardList />주문 현황</SidebarMenuButton>
                     </SidebarMenuItem>
+                    
+
                     
                     {/* 5. 픽업/배송예약관리 (모든 사용자) */}
                     <SidebarMenuItem>
@@ -240,6 +244,9 @@ export default function DashboardLayout({
                 <SidebarTrigger className="xl:hidden" />
                 <div className="w-full flex-1">
                     {/* Header content can go here if needed */}
+                </div>
+                <div className="flex items-center gap-2">
+                    <NotificationCenter />
                 </div>
              </header>
             <div className="p-4 lg:p-6">
