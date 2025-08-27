@@ -349,15 +349,6 @@ export default function OrdersPage() {
     return orderer.name;
   };
   const filteredOrders = useMemo(() => {
-    console.log('필터링 시작:', {
-      totalOrders: orders.length,
-      isAdmin,
-      userBranch,
-      selectedBranch,
-      searchTerm,
-      selectedOrderStatus,
-      selectedPaymentStatus
-    });
     
     let filtered = orders;
     
@@ -368,10 +359,10 @@ export default function OrdersPage() {
         order.branchName === userBranch || 
         (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch)
       );
-      console.log('지점 필터링 후:', filtered.length);
+
     } else if (selectedBranch !== "all") {
       filtered = filtered.filter(order => order.branchName === selectedBranch);
-      console.log('선택된 지점 필터링 후:', filtered.length);
+
     }
     // 검색어 필터링
     if (searchTerm) {

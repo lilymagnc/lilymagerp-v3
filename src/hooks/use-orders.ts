@@ -123,11 +123,7 @@ export function useOrders() {
       const queryPromise = getDocs(q);
       const querySnapshot = await Promise.race([queryPromise, timeoutPromise]) as any;
       
-      console.log('주문 데이터 조회 결과:', {
-        totalDocs: querySnapshot.docs.length,
-        userFranchise: user?.franchise,
-        userRole: user?.role
-      });
+
       
       const ordersData = querySnapshot.docs.map((doc: any) => {
         const data = doc.data();
@@ -145,14 +141,7 @@ export function useOrders() {
         } as Order;
       });
       
-      console.log('처리된 주문 데이터:', {
-        totalOrders: ordersData.length,
-        sampleOrder: ordersData[0] ? {
-          id: ordersData[0].id,
-          branchName: ordersData[0].branchName,
-          ordererName: ordersData[0].orderer?.name
-        } : null
-      });
+
       
       setOrders(ordersData);
     } catch (error) {
