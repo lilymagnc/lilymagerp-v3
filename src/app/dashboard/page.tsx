@@ -85,6 +85,9 @@ export default function DashboardPage() {
   const { events: calendarEvents } = useCalendar();
   const { orders } = useOrders();
   
+  // 한국어 요일 배열
+  const koreanWeekdays = ['일', '월', '화', '수', '목', '금', '토'];
+  
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
@@ -334,9 +337,11 @@ export default function DashboardPage() {
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByDate).map(([date, branchSales]) => {
         const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
+        const dateObj = parseISO(date);
+        const weekday = koreanWeekdays[dateObj.getDay()];
         
         return {
-          date: format(parseISO(date), 'M/d'),
+          date: `${format(dateObj, 'M/d')} (${weekday})`,
           totalSales,
           branchSales,
           ...branchSales // 각 지점별 매출을 개별 속성으로 추가
@@ -425,10 +430,15 @@ export default function DashboardPage() {
       });
       
       // 차트 데이터 형식으로 변환
-      return Object.entries(salesByDate).map(([date, sales]) => ({
-        date: format(parseISO(date), 'M/d'),
-        sales
-      }));
+      return Object.entries(salesByDate).map(([date, sales]) => {
+        const dateObj = parseISO(date);
+        const weekday = koreanWeekdays[dateObj.getDay()];
+        
+        return {
+          date: `${format(dateObj, 'M/d')} (${weekday})`,
+          sales
+        };
+      });
     } catch (error) {
       console.error("Error generating branch daily sales:", error);
       return [];
