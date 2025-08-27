@@ -304,6 +304,7 @@ export default function OrdersPage() {
     
     switch (status) {
       case 'completed':
+      case 'paid':
         return (
           <div className="flex flex-col gap-1">
             <Badge className="bg-blue-500 text-white">완결</Badge>
@@ -378,8 +379,8 @@ export default function OrdersPage() {
     // 결제 상태 필터링
     if (selectedPaymentStatus !== "all") {
       filtered = filtered.filter(order => {
-        if (selectedPaymentStatus === "completed") {
-          return order.payment?.status === "completed";
+        if (selectedPaymentStatus === "paid") {
+          return order.payment?.status === "paid" || order.payment?.status === "completed";
         } else if (selectedPaymentStatus === "pending") {
           return order.payment?.status === "pending";
         }
@@ -427,7 +428,7 @@ export default function OrdersPage() {
      
      // 오늘 결제 완료된 모든 주문 (결제일 기준)
      const todayCompletedOrdersForRevenue = filteredOrders.filter(order => {
-       if (order.payment?.status !== 'completed' || !order.payment?.completedAt) return false;
+       if ((order.payment?.status !== 'paid' && order.payment?.status !== 'completed') || !order.payment?.completedAt) return false;
        const completedDate = (order.payment.completedAt as Timestamp).toDate();
        const completedDateOnly = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
        return completedDateOnly.getTime() === todayStartForRevenue.getTime();
@@ -435,7 +436,7 @@ export default function OrdersPage() {
      
      // 오늘 주문했지만 아직 미결제인 주문
      const todayOrderedButPendingOrdersForRevenue = todayOrderedOrdersForRevenue.filter(order => 
-       order.payment?.status !== 'completed'
+       order.payment?.status !== 'paid' && order.payment?.status !== 'completed'
      );
      
      // 어제 주문했지만 오늘 결제된 주문
@@ -465,7 +466,7 @@ export default function OrdersPage() {
      
      // 총 매출의 완결/미결 분리 (수주받은 주문 제외)
      const totalCompletedOrders = filteredOrders.filter(order => 
-       order.payment?.status === 'completed' && 
+       (order.payment?.status === 'paid' || order.payment?.status === 'completed') && 
        !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const totalPendingOrders = filteredOrders.filter(order => 
@@ -509,7 +510,7 @@ export default function OrdersPage() {
     
          // 오늘 주문의 완결/미결 분리 (수주받은 주문 제외)
      const todayCompletedOrders = todayOrders.filter(order => 
-       order.payment?.status === 'completed' && 
+       (order.payment?.status === 'paid' || order.payment?.status === 'completed') && 
        !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const todayPendingOrders = todayOrders.filter(order => 
@@ -553,7 +554,7 @@ export default function OrdersPage() {
     
          // 이번 달 주문의 완결/미결 분리 (수주받은 주문 제외)
      const thisMonthCompletedOrders = thisMonthOrders.filter(order => 
-       order.payment?.status === 'completed' && 
+       (order.payment?.status === 'paid' || order.payment?.status === 'completed') && 
        !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
      );
      const thisMonthPendingOrders = thisMonthOrders.filter(order => 
@@ -912,7 +913,7 @@ export default function OrdersPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">전체 결제</SelectItem>
-                        <SelectItem value="completed">완결</SelectItem>
+                        <SelectItem value="paid">완결</SelectItem>
                         <SelectItem value="pending">미결</SelectItem>
                     </SelectContent>
                 </Select>
@@ -1229,7 +1230,7 @@ export default function OrdersPage() {
                            <DropdownMenuSubContent>
                              <DropdownMenuItem onClick={(e) => {
                                e.stopPropagation();
-                               updatePaymentStatus(order.id, 'completed');
+                               updatePaymentStatus(order.id, 'paid');
                              }}>
                                완결
                              </DropdownMenuItem>

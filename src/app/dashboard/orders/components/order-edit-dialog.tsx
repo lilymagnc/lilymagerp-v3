@@ -676,7 +676,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
                      </SelectTrigger>
                      <SelectContent>
                        <SelectItem value="pending">미결</SelectItem>
-                       <SelectItem value="completed">완결</SelectItem>
+                       <SelectItem value="paid">완결</SelectItem>
                      </SelectContent>
                    </Select>
                  </div>

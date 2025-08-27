@@ -191,10 +191,10 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
     // 결제 상태 매핑
     const paymentStatusMap: { [key: string]: string } = {
       'pending': 'pending',
-      'completed': 'completed',
-      'paid': 'completed',
+      'paid': 'paid',
+      'completed': 'paid',
       '미결': 'pending',
-      '완결': 'completed'
+      '완결': 'paid'
     };
 
     const order = {
@@ -224,7 +224,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       receiptType: receiptType as any,
       payment: {
         method: (paymentMethodMap[excelData.paymentMethod] || 'card') as "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay",
-        status: (paymentStatusMap[excelData.paymentStatus] || 'pending') as "paid" | "pending" | "completed"
+        status: (paymentStatusMap[excelData.paymentStatus] || 'pending') as "paid" | "pending"
       },
       pickupInfo: pickupInfo,
       deliveryInfo: deliveryInfo,

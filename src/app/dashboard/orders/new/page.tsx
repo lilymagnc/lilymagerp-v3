@@ -484,7 +484,7 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         registerCustomer: registerCustomer,
         payment: {
             method: paymentMethod,
-            status: paymentStatus === "paid" ? "completed" : paymentStatus,
+            status: paymentStatus,
         },
         pickupInfo: (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
@@ -914,7 +914,7 @@ const debouncedCustomerSearch = useCallback(
                                  <div>
                                     <Label className="text-xs text-muted-foreground">결제 상태</Label>
                                     <RadioGroup value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)} className="flex items-center gap-4 mt-2">
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="pending" id="status-pending" /><Label htmlFor="status-pending">결제대기</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="pending" id="status-pending" /><Label htmlFor="status-pending">미결</Label></div>
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="paid" id="status-paid" /><Label htmlFor="status-paid">결제완료</Label></div>
                                     </RadioGroup>
                                 </div>

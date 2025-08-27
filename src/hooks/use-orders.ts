@@ -90,7 +90,7 @@ export interface Order extends Omit<OrderData, 'orderDate'> {
     transferReason?: string;
   };
 }
-export type PaymentStatus = "paid" | "pending" | "completed";
+export type PaymentStatus = "paid" | "pending";
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);

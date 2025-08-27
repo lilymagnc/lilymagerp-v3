@@ -140,7 +140,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
         '적립포인트': order.summary?.pointsEarned || 0,
         '총금액': order.summary?.total || 0,
         '결제방법': order.payment?.method || '',
-        '결제상태': order.payment?.status === 'completed' ? '완결' : '미결',
+        '결제상태': order.payment?.status === 'paid' ? '완결' : '미결',
         '주문상태': order.status === 'completed' ? '완료' : order.status === 'canceled' ? '취소' : '진행중',
         '메시지타입': order.message?.type || '',
         '메시지내용': order.message?.content || '',

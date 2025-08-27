@@ -116,7 +116,7 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
         totalAmount: order.summary.total,
         deliveryFee: order.summary.deliveryFee,
         paymentMethod: order.payment.method,
-        paymentStatus: order.payment.status === 'completed' ? '완결' : '미결',
+        paymentStatus: order.payment.status === 'paid' ? '완결' : '미결',
         deliveryDate: order.deliveryInfo?.date ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` : '정보 없음',
         recipientName: order.deliveryInfo?.recipientName ?? '',
         recipientContact: order.deliveryInfo?.recipientContact ?? '',

@@ -281,12 +281,27 @@ export default function DashboardPage() {
       }
       
       // 주문 데이터로 매출 계산
+      console.log(`🔍 총 ${allOrders.length}개의 주문을 처리 중...`);
+      let paidOrdersCount = 0;
+      let completedOrdersCount = 0;
+      let pendingOrdersCount = 0;
+      
       allOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const branchName = order.branchName || '지점 미지정';
+        const paymentStatus = order.payment?.status;
+        
+        // 상태별 카운트
+        if (paymentStatus === 'paid') {
+          paidOrdersCount++;
+        } else if (paymentStatus === 'completed') {
+          completedOrdersCount++;
+        } else if (paymentStatus === 'pending') {
+          pendingOrdersCount++;
+        }
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -313,6 +328,8 @@ export default function DashboardPage() {
           }
         }
       });
+      
+      console.log(`📊 Payment Status 통계: paid=${paidOrdersCount}, completed=${completedOrdersCount}, pending=${pendingOrdersCount}`);
       
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByDate).map(([date, branchSales]) => {
@@ -382,7 +399,7 @@ export default function DashboardPage() {
         const total = order.summary?.total || order.total || 0;
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -453,7 +470,7 @@ export default function DashboardPage() {
         const total = order.summary?.total || order.total || 0;
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           if (salesByBranch.hasOwnProperty(branchName)) {
             salesByBranch[branchName] += total;
           }
@@ -523,7 +540,7 @@ export default function DashboardPage() {
         const branchName = order.branchName || '지점 미지정';
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -615,11 +632,26 @@ export default function DashboardPage() {
       }
       
       // 주문 데이터로 매출 계산
+      console.log(`🔍 지점 ${userBranch}의 총 ${userBranchOrders.length}개의 주문을 처리 중...`);
+      let paidOrdersCount = 0;
+      let completedOrdersCount = 0;
+      let pendingOrdersCount = 0;
+      
       userBranchOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
+        const paymentStatus = order.payment?.status;
+        
+        // 상태별 카운트
+        if (paymentStatus === 'paid') {
+          paidOrdersCount++;
+        } else if (paymentStatus === 'completed') {
+          completedOrdersCount++;
+        } else if (paymentStatus === 'pending') {
+          pendingOrdersCount++;
+        }
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -643,6 +675,8 @@ export default function DashboardPage() {
           }
         }
       });
+      
+      console.log(`📊 지점 ${userBranch} Payment Status 통계: paid=${paidOrdersCount}, completed=${completedOrdersCount}, pending=${pendingOrdersCount}`);
       
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByWeek).map(([week, sales]) => ({
@@ -689,7 +723,7 @@ export default function DashboardPage() {
         const total = order.summary?.total || order.total || 0;
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           if (salesByBranch.hasOwnProperty(branchName)) {
             salesByBranch[branchName] += total;
           }
@@ -760,7 +794,7 @@ export default function DashboardPage() {
         const branchName = order.branchName || '지점 미지정';
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -857,7 +891,7 @@ export default function DashboardPage() {
         const total = order.summary?.total || order.total || 0;
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -927,7 +961,7 @@ export default function DashboardPage() {
         const total = order.summary?.total || order.total || 0;
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'completed') {
+        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           if (salesByBranch.hasOwnProperty(branchName)) {
             salesByBranch[branchName] += total;
           }
