@@ -45,6 +45,7 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
   const getPaymentStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'paid':
         return <Badge className="bg-blue-500 text-white">완결</Badge>;
       case 'pending':
         return <Badge variant="secondary" className="bg-yellow-500 text-white">미결</Badge>;
