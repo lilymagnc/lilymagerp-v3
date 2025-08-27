@@ -38,7 +38,8 @@ import {
   Trash2,
   AlertTriangle,
   Camera,
-  BookOpen
+  BookOpen,
+  ArrowRightLeft
 } from "lucide-react";
 import { useSettings, defaultSettings } from "@/hooks/use-settings";
 import { useDataCleanup } from "@/hooks/use-data-cleanup";

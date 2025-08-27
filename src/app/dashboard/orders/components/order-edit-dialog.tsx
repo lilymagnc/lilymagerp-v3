@@ -14,6 +14,7 @@ import { Order } from "@/hooks/use-orders";
 import { Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useOrders } from "@/hooks/use-orders";
+import { useSettings } from "@/hooks/use-settings";
 import { 
   User, 
   Phone, 
@@ -49,6 +50,7 @@ interface OrderItem {
 export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialogProps) {
   const { toast } = useToast();
   const { updateOrder } = useOrders();
+  const { settings } = useSettings();
   const [isLoading, setIsLoading] = useState(false);
   
   // 폼 상태
@@ -173,7 +175,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
 
   const calculateTotal = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const deliveryFee = formData.receiptType === 'delivery_reservation' ? 3000 : 0;
+    const deliveryFee = formData.receiptType === 'delivery_reservation' ? (settings?.defaultDeliveryFee || 0) : 0;
     
     // 기존 주문의 할인 정보 사용
     const discountAmount = order?.summary?.discountAmount || 0;
