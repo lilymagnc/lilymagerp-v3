@@ -320,6 +320,34 @@ export default function OrdersPage() {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
+  // 결제 수단 표시 함수
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'card':
+        return '카드';
+      case 'cash':
+        return '현금';
+      case 'transfer':
+        return '계좌이체';
+      case 'mainpay':
+        return '메인페이';
+      case 'shopping_mall':
+        return '쇼핑몰';
+      case 'epay':
+        return '이페이';
+      default:
+        return method;
+    }
+  };
+
+  // 주문자 이름과 회사명 표시 함수
+  const getOrdererDisplay = (orderer: any) => {
+    if (orderer.company && orderer.company.trim()) {
+      return `${orderer.name} (${orderer.company})`;
+    }
+    return orderer.name;
+  };
   const filteredOrders = useMemo(() => {
     console.log('필터링 시작:', {
       totalOrders: orders.length,
@@ -1037,11 +1065,11 @@ export default function OrdersPage() {
                   )}
                 </Button>
               </TableHead>
-              <TableHead>주문 ID</TableHead>
-              <TableHead>주문자</TableHead>
-              <TableHead>상품명</TableHead>
               <TableHead>주문일</TableHead>
+              <TableHead>주문자/회사명</TableHead>
+              <TableHead>상품명</TableHead>
               <TableHead>출고지점</TableHead>
+              <TableHead>결제수단</TableHead>
               <TableHead>상태</TableHead>
               <TableHead className="text-right">금액</TableHead>
               <TableHead className="text-right">작업</TableHead>
@@ -1051,11 +1079,12 @@ export default function OrdersPage() {
             {loading ? (
                Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-6" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                       <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
@@ -1095,18 +1124,19 @@ export default function OrdersPage() {
                         )}
                       </Button>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {order.id.slice(0, 8)}...
+                    <TableCell>
+                      {order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}
                     </TableCell>
-                  <TableCell>{order.orderer.name}</TableCell>
-                  <TableCell className="max-w-xs">
-                    <div className="truncate" title={getProductNames(order)}>
-                      {getProductNames(order)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}
-                  </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={getOrdererDisplay(order.orderer)}>
+                        {getOrdererDisplay(order.orderer)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={getProductNames(order)}>
+                        {getProductNames(order)}
+                      </div>
+                    </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
@@ -1123,6 +1153,9 @@ export default function OrdersPage() {
                         </div>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {order.payment?.method ? getPaymentMethodText(order.payment.method) : '-'}
                   </TableCell>
                   <TableCell>
                       <div className="flex flex-col gap-1">
