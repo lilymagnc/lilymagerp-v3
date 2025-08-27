@@ -331,6 +331,53 @@ export function useOrders() {
             console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
             // 캘린더 이벤트 상태 변경 실패는 주문 상태 변경을 막지 않음
           }
+
+          // 주문이 완료되면 이관 상태도 함께 업데이트
+          try {
+            const orderDoc = await getDoc(orderRef);
+            if (orderDoc.exists()) {
+              const orderData = orderDoc.data();
+              
+              // 이관된 주문인지 확인
+              if (orderData.transferInfo?.isTransferred && orderData.transferInfo?.transferId) {
+                const transferRef = doc(db, 'order_transfers', orderData.transferInfo.transferId);
+                
+                // 이관 상태를 'completed'로 업데이트
+                await updateDoc(transferRef, {
+                  status: 'completed',
+                  completedAt: serverTimestamp(),
+                  completedBy: user?.uid,
+                  updatedAt: serverTimestamp()
+                });
+
+                // 발주지점의 원본 주문도 완료 상태로 업데이트
+                if (orderData.transferInfo.originalBranchId && orderData.transferInfo.originalBranchId !== orderData.branchId) {
+                  // 원본 주문 조회
+                  const originalOrderQuery = query(
+                    collection(db, 'orders'),
+                    where('orderNumber', '==', orderData.orderNumber),
+                    where('branchId', '==', orderData.transferInfo.originalBranchId)
+                  );
+                  const originalOrderSnapshot = await getDocs(originalOrderQuery);
+                  
+                  if (!originalOrderSnapshot.empty) {
+                    const originalOrderRef = originalOrderSnapshot.docs[0].ref;
+                    await updateDoc(originalOrderRef, { 
+                      status: 'completed',
+                      updatedAt: serverTimestamp()
+                    });
+                    
+                    console.log('발주지점 원본 주문도 완료 상태로 업데이트되었습니다.');
+                  }
+                }
+
+                console.log('이관 상태가 완료로 업데이트되었습니다.');
+              }
+            }
+          } catch (transferError) {
+            console.error('이관 상태 업데이트 중 오류:', transferError);
+            // 이관 상태 업데이트 실패는 주문 상태 변경을 막지 않음
+          }
         }
         
         toast({

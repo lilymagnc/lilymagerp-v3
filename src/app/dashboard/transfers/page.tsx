@@ -266,7 +266,7 @@ export default function TransfersPage() {
       case 'rejected':
         return <Badge variant="destructive" className="flex items-center gap-1"><XCircle className="h-3 w-3" />거절됨</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="flex items-center gap-1"><AlertCircle className="h-3 w-3" />완료됨</Badge>;
+        return <Badge variant="outline" className="flex items-center gap-1 bg-green-50 text-green-700 border-green-200"><CheckCircle className="h-3 w-3" />완료됨</Badge>;
       case 'cancelled':
         return <Badge variant="secondary" className="flex items-center gap-1 bg-gray-100 text-gray-800"><X className="h-3 w-3" />취소됨</Badge>;
       default:
@@ -356,18 +356,30 @@ export default function TransfersPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">취소됨</CardTitle>
-                <X className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats?.cancelledTransfers || 0}건</div>
-                <p className="text-xs text-muted-foreground">
-                  취소된 이관
-                </p>
-              </CardContent>
-            </Card>
+                         <Card>
+               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium">취소됨</CardTitle>
+                 <X className="h-4 w-4 text-muted-foreground" />
+               </CardHeader>
+               <CardContent>
+                 <div className="text-2xl font-bold">{stats?.cancelledTransfers || 0}건</div>
+                 <p className="text-xs text-muted-foreground">
+                   취소된 이관
+                 </p>
+               </CardContent>
+             </Card>
+             <Card>
+               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium">완료됨</CardTitle>
+                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
+               </CardHeader>
+               <CardContent>
+                 <div className="text-2xl font-bold">{stats?.completedTransfers || 0}건</div>
+                 <p className="text-xs text-muted-foreground">
+                   완료된 이관
+                 </p>
+               </CardContent>
+             </Card>
                          <Card>
                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                  <CardTitle className="text-sm font-medium">총 금액</CardTitle>
