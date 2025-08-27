@@ -130,13 +130,10 @@ export function useOrderTransfers() {
       
       // 권한에 따른 필터링
       if (!permissions.canViewAllTransfers && user?.franchise) {
-        const userBranch = branches.find(b => b.name === user.franchise);
-        if (userBranch) {
-                     // 지점 사용자는 자신이 보낸 이관과 받은 이관 모두 볼 수 있음
-           filteredTransfersData = transfersData.filter(transfer => 
-             transfer.orderBranchId === userBranch.id || transfer.processBranchId === userBranch.id
-           );
-        }
+        // 지점 사용자는 자신이 보낸 이관과 받은 이관 모두 볼 수 있음
+        filteredTransfersData = transfersData.filter(transfer => 
+          transfer.orderBranchName === user.franchise || transfer.processBranchName === user.franchise
+        );
       }
 
       setTransfers(prev => 
@@ -434,10 +431,10 @@ export function useOrderTransfers() {
 
       const transferData = transferDoc.docs[0].data();
       
-      // 발주지점 사용자만 취소 가능
-      if (transferData.orderBranchId !== user?.franchise && user?.role !== '본사 관리자') {
-        throw new Error('발주지점 사용자만 이관을 취소할 수 있습니다.');
-      }
+             // 발주지점 사용자만 취소 가능
+       if (transferData.orderBranchName !== user?.franchise && user?.role !== '본사 관리자') {
+         throw new Error('발주지점 사용자만 이관을 취소할 수 있습니다.');
+       }
 
       // pending 상태인 경우에만 취소 가능
       if (transferData.status !== 'pending') {
@@ -619,40 +616,42 @@ export function useOrderTransfers() {
       const transfersRef = collection(db, 'order_transfers');
       const snapshot = await getDocs(transfersRef);
       
-      const transfersData = snapshot.docs.map(doc => doc.data()) as OrderTransfer[];
+             const transfersData = snapshot.docs.map(doc => ({
+         id: doc.id,
+         ...doc.data()
+       })) as OrderTransfer[];
       
       // 사용자 지점 정보
       const userBranch = user?.franchise;
-      const userBranchId = branches.find(b => b.name === userBranch)?.id;
       const permissions = getTransferPermissions();
       
       // 권한에 따른 필터링된 데이터
       let filteredTransfersData = transfersData;
       
       // 본사 관리자가 아닌 경우 지점별 필터링
-      if (!permissions.canViewAllTransfers && userBranchId) {
+      if (!permissions.canViewAllTransfers && userBranch) {
         filteredTransfersData = transfersData.filter(transfer => 
-          transfer.orderBranchId === userBranchId || transfer.processBranchId === userBranchId
+          transfer.orderBranchName === userBranch || transfer.processBranchName === userBranch
         );
       }
       
-      const stats: TransferStats = {
-        totalTransfers: filteredTransfersData.length,
-        pendingTransfers: filteredTransfersData.filter(t => t.status === 'pending').length,
-        acceptedTransfers: filteredTransfersData.filter(t => t.status === 'accepted').length,
-        rejectedTransfers: filteredTransfersData.filter(t => t.status === 'rejected').length,
-        completedTransfers: filteredTransfersData.filter(t => t.status === 'completed').length,
-        cancelledTransfers: filteredTransfersData.filter(t => t.status === 'cancelled').length,
-        totalAmount: filteredTransfersData.reduce((sum, t) => sum + t.originalOrderAmount, 0),
-        // 발주액: 내가 다른 지점으로 보낸 주문들의 총 금액
-        orderBranchAmount: userBranchId 
-          ? filteredTransfersData.filter(t => t.orderBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
-          : 0,
-        // 수주액: 내가 다른 지점으로부터 받은 주문들의 총 금액  
-        processBranchAmount: userBranchId
-          ? filteredTransfersData.filter(t => t.processBranchId === userBranchId).reduce((sum, t) => sum + t.originalOrderAmount, 0)
-          : 0
-      };
+             const stats: TransferStats = {
+         totalTransfers: filteredTransfersData.length,
+         pendingTransfers: filteredTransfersData.filter(t => t.status === 'pending').length,
+         acceptedTransfers: filteredTransfersData.filter(t => t.status === 'accepted').length,
+         rejectedTransfers: filteredTransfersData.filter(t => t.status === 'rejected').length,
+         completedTransfers: filteredTransfersData.filter(t => t.status === 'completed').length,
+         cancelledTransfers: filteredTransfersData.filter(t => t.status === 'cancelled').length,
+         totalAmount: filteredTransfersData.reduce((sum, t) => sum + t.originalOrderAmount, 0),
+         // 발주액: 내가 다른 지점으로 보낸 주문들의 총 금액
+         orderBranchAmount: userBranch 
+           ? filteredTransfersData.filter(t => t.orderBranchName === userBranch).reduce((sum, t) => sum + t.originalOrderAmount, 0)
+           : 0,
+         // 수주액: 내가 다른 지점으로부터 받은 주문들의 총 금액  
+         processBranchAmount: userBranch
+           ? filteredTransfersData.filter(t => t.processBranchName === userBranch).reduce((sum, t) => sum + t.originalOrderAmount, 0)
+           : 0
+       };
 
       return stats;
 

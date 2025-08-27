@@ -144,54 +144,6 @@ export default function TransfersPage() {
     try {
       const transferStats = await getTransferStats();
       
-      // 현재 필터링된 이관 목록 계산
-      const currentFilteredTransfers = transfers.filter(transfer => {
-        // 검색어 필터
-        if (searchTerm) {
-          const searchLower = searchTerm.toLowerCase();
-          const matchesSearch = 
-            transfer.originalOrderId.toLowerCase().includes(searchLower) ||
-            transfer.orderBranchName.toLowerCase().includes(searchLower) ||
-            transfer.processBranchName.toLowerCase().includes(searchLower) ||
-            transfer.transferByUser.toLowerCase().includes(searchLower) ||
-            transfer.transferReason.toLowerCase().includes(searchLower);
-          
-          if (!matchesSearch) return false;
-        }
-
-        // 상태 필터
-        if (selectedStatus !== "all" && transfer.status !== selectedStatus) {
-          return false;
-        }
-
-        // 발주지점 필터
-        if (selectedOrderBranch !== "all" && transfer.orderBranchName !== selectedOrderBranch) {
-          return false;
-        }
-
-        // 수주지점 필터
-        if (selectedProcessBranch !== "all" && transfer.processBranchName !== selectedProcessBranch) {
-          return false;
-        }
-
-        // 날짜 필터
-        if (startDate) {
-          const transferDate = transfer.transferDate instanceof Timestamp 
-            ? transfer.transferDate.toDate() 
-            : new Date(transfer.transferDate);
-          if (transferDate < startDate) return false;
-        }
-
-        if (endDate) {
-          const transferDate = transfer.transferDate instanceof Timestamp 
-            ? transfer.transferDate.toDate() 
-            : new Date(transfer.transferDate);
-          if (transferDate > endDate) return false;
-        }
-
-        return true;
-      });
-      
       // 발주/수주 구분 통계 추가 (본사 관리자가 아닌 경우에만)
       const userBranch = user?.franchise;
       let orderBranchCount = 0;
@@ -200,15 +152,16 @@ export default function TransfersPage() {
       let processBranchDetails: Record<string, number> = {};
       
       if (!isAdmin && userBranch) {
-        orderBranchCount = currentFilteredTransfers.filter(transfer => 
+        // 전체 이관 데이터에서 발주/수주 구분 계산
+        orderBranchCount = transfers.filter(transfer => 
           transfer.orderBranchName === userBranch
         ).length;
-        processBranchCount = currentFilteredTransfers.filter(transfer => 
+        processBranchCount = transfers.filter(transfer => 
           transfer.processBranchName === userBranch
         ).length;
         
         // 발주 이관 상세 정보 (수주지점별 건수)
-        orderBranchDetails = currentFilteredTransfers
+        orderBranchDetails = transfers
           .filter(transfer => transfer.orderBranchName === userBranch)
           .reduce((acc, transfer) => {
             const processBranch = transfer.processBranchName;
@@ -217,7 +170,7 @@ export default function TransfersPage() {
           }, {} as Record<string, number>);
         
         // 수주 이관 상세 정보 (발주지점별 건수)
-        processBranchDetails = currentFilteredTransfers
+        processBranchDetails = transfers
           .filter(transfer => transfer.processBranchName === userBranch)
           .reduce((acc, transfer) => {
             const orderBranch = transfer.orderBranchName;
@@ -243,14 +196,14 @@ export default function TransfersPage() {
     calculateStats();
   }, [transfers, searchTerm, selectedStatus, selectedOrderBranch, selectedProcessBranch, startDate, endDate, user?.franchise, loading]);
 
-  // 사용자 지점에 따른 자동 필터링
-  React.useEffect(() => {
-    if (!isAdmin && user?.franchise) {
-      // 일반 사용자는 자동으로 자신의 지점으로 필터링
-      setSelectedOrderBranch(user.franchise);
-      setSelectedProcessBranch(user.franchise);
-    }
-  }, [isAdmin, user?.franchise]);
+  // 사용자 지점에 따른 자동 필터링 - 제거 (이미 훅에서 필터링됨)
+  // React.useEffect(() => {
+  //   if (!isAdmin && user?.franchise) {
+  //     // 일반 사용자는 자동으로 자신의 지점으로 필터링
+  //     setSelectedOrderBranch(user.franchise);
+  //     setSelectedProcessBranch(user.franchise);
+  //   }
+  // }, [isAdmin, user?.franchise]);
 
   // 상태 변경 핸들러
   const handleStatusChange = (transferId: string, status: 'accepted' | 'rejected' | 'completed', notes?: string) => {
