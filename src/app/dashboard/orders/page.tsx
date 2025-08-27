@@ -315,7 +315,7 @@ export default function OrdersPage() {
           </div>
         );
       case 'pending':
-        return <Badge variant="secondary" className="bg-yellow-500 text-white">미결</Badge>;
+        return <Badge className="bg-red-500 text-white font-semibold">미결</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
