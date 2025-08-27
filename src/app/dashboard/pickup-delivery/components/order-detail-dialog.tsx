@@ -29,6 +29,7 @@ const getStatusBadge = (status: string) => {
 const getPaymentStatusBadge = (status: string) => {
   switch (status) {
     case 'paid':
+    case 'completed':
       return <Badge variant="default" className="bg-green-100 text-green-800">결제완료</Badge>;
     case 'pending':
       return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">결제대기</Badge>;

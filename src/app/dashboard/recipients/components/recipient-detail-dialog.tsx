@@ -53,6 +53,7 @@ export function RecipientDetailDialog({ isOpen, onOpenChange, recipient }: Recip
 
   const getPaymentStatusBadge = (status: string) => {
     switch (status) {
+      case 'paid':
       case 'completed':
         return <Badge className="bg-blue-500 text-white">완결</Badge>;
       case 'pending':

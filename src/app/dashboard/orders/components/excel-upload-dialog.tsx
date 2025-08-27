@@ -128,7 +128,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       name: item.trim(),
       price: excelData.itemPrice,
       quantity: 1,
-      source: 'excel_upload', // 출처 표시
+      source: 'excel_upload' as const, // 출처 표시
       originalData: item.trim() // 원본 데이터 보존
     }));
 
@@ -224,7 +224,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       receiptType: receiptType as any,
       payment: {
         method: (paymentMethodMap[excelData.paymentMethod] || 'card') as "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay",
-        status: (paymentStatusMap[excelData.paymentStatus] || 'pending') as "paid" | "pending"
+        status: (paymentStatusMap[excelData.paymentStatus] || 'pending') as "paid" | "pending" | "completed"
       },
       pickupInfo: pickupInfo,
       deliveryInfo: deliveryInfo,
@@ -236,7 +236,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
         content: ""
       },
       request: excelData.specialRequests || '',
-      source: 'excel_upload' // 출처 표시
+              source: 'excel_upload' as const // 출처 표시
     };
 
     return order;

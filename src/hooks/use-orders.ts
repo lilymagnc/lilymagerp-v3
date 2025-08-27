@@ -90,7 +90,7 @@ export interface Order extends Omit<OrderData, 'orderDate'> {
     transferReason?: string;
   };
 }
-export type PaymentStatus = "paid" | "pending";
+export type PaymentStatus = "paid" | "pending" | "completed";
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -382,20 +382,26 @@ export function useOrders() {
         });
     }
   };
-  const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'completed') => {
+  const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'paid' | 'completed') => {
     try {
         const orderRef = doc(db, 'orders', orderId);
         const updateData: any = { 'payment.status': newStatus };
         
         // 완결처리 시 현재 시간 기록
-        if (newStatus === 'completed') {
+        if (newStatus === 'paid') {
           updateData['payment.completedAt'] = serverTimestamp();
+          console.log('Payment Status Update Debug:', {
+            orderId: orderId,
+            newStatus: newStatus,
+            completedAt: 'serverTimestamp()',
+            updateData: updateData
+          });
         }
         
         await updateDoc(orderRef, updateData);
         toast({
             title: '결제 상태 변경 성공',
-            description: `결제 상태가 '${newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
+            description: `결제 상태가 '${newStatus === 'paid' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
         });
         await fetchOrders();
     } catch (error) {

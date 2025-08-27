@@ -42,11 +42,23 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
         return <Badge variant="outline">{status}</Badge>;
     }
   };
-  const getPaymentStatusBadge = (status: string) => {
+  const getPaymentStatusBadge = (order: any) => {
+    const status = order.payment?.status;
+    const completedAt = order.payment?.completedAt;
+    
     switch (status) {
-      case 'completed':
       case 'paid':
-        return <Badge className="bg-blue-500 text-white">완결</Badge>;
+      case 'completed':
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge className="bg-blue-500 text-white">완결</Badge>
+            {completedAt && (
+              <span className="text-xs text-gray-500">
+                {format((completedAt as Timestamp).toDate(), 'MM/dd HH:mm')}
+              </span>
+            )}
+          </div>
+        );
       case 'pending':
         return <Badge variant="secondary" className="bg-yellow-500 text-white">미결</Badge>;
       default:
@@ -140,7 +152,7 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                   </div>
                   <div className="flex gap-2">
                     {getStatusBadge(order.status)}
-                    {order.payment && getPaymentStatusBadge(order.payment.status)}
+                    {order.payment && getPaymentStatusBadge(order)}
                   </div>
                 </div>
                 <div className="space-y-2">

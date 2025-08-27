@@ -77,7 +77,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
     },
     specialRequests: '',
     status: 'processing',
-    paymentStatus: 'pending',
+    paymentStatus: 'pending' as 'pending' | 'paid' | 'completed',
     paymentMethod: 'card' as 'card' | 'cash' | 'transfer' | 'mainpay' | 'shopping_mall' | 'epay'
   });
 
@@ -677,6 +677,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
                      <SelectContent>
                        <SelectItem value="pending">미결</SelectItem>
                        <SelectItem value="paid">완결</SelectItem>
+                       <SelectItem value="completed">완결</SelectItem>
                      </SelectContent>
                    </Select>
                  </div>

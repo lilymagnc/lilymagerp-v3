@@ -305,20 +305,15 @@ export default function DashboardPage() {
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
+          // 완결처리된 주문: 주문일 기준 (결제 완료일이 아닌 주문일 기준)
+          const orderDate = order.orderDate;
+          if (!orderDate) return;
+          
           let revenueDate;
-          if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+          if (orderDate.toDate) {
+            revenueDate = orderDate.toDate();
           } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return;
-            
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else {
-              revenueDate = new Date(orderDate);
-            }
+            revenueDate = new Date(orderDate);
           }
           
           const dateKey = format(revenueDate, 'yyyy-MM-dd');
@@ -1182,9 +1177,14 @@ export default function DashboardPage() {
         setRecentOrders(recentOrdersData);
 
         // 기본 통계 (필터링 적용)
-        // 년 매출 계산 (현재 년도의 매출만)
+        // 년 매출 계산 (현재 년도의 매출만) - 주문일 기준으로 계산 (당일매출 통계카드)
         const currentYear = new Date().getFullYear();
         const yearlyRevenue = orders.filter((order: any) => {
+          // 완결처리된 주문만 포함
+          if (order.payment?.status !== 'paid' && order.payment?.status !== 'completed') {
+            return false;
+          }
+          
           const orderDate = order.orderDate;
           if (!orderDate) return false;
           
@@ -1195,7 +1195,13 @@ export default function DashboardPage() {
             orderDateObj = new Date(orderDate);
           }
           
-          return orderDateObj.getFullYear() === currentYear;
+          // 주문일이 현재 년도인지 확인
+          if (orderDateObj.getFullYear() !== currentYear) {
+            return false;
+          }
+          
+          // 당일매출 통계카드는 주문일 기준으로 계산 (결제완료일과 무관)
+          return true;
         }).reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
         
         const pendingOrders = orders.filter((order: any) => order.status === 'pending' || order.status === 'processing').length;

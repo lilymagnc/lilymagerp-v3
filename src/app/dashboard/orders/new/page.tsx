@@ -40,7 +40,7 @@ type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
 type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
 type MessageType = "card" | "ribbon";
 type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
-type PaymentStatus = "pending" | "paid";
+type PaymentStatus = "pending" | "paid" | "completed";
 declare global {
   interface Window {
     daum: any;

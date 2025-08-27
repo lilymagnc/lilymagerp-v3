@@ -31,6 +31,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 export default function OrdersPage() {
   const { orders, loading, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
@@ -289,7 +292,7 @@ export default function OrdersPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return <Badge variant="default">완료</Badge>;
+        return <Badge variant="default">주문완료</Badge>;
       case 'processing':
         return <Badge variant="secondary">처리중</Badge>;
       case 'canceled':
@@ -303,8 +306,8 @@ export default function OrdersPage() {
     const completedAt = order.payment?.completedAt;
     
     switch (status) {
-      case 'completed':
       case 'paid':
+      case 'completed':
         return (
           <div className="flex flex-col gap-1">
             <Badge className="bg-blue-500 text-white">완결</Badge>
@@ -380,7 +383,7 @@ export default function OrdersPage() {
     if (selectedPaymentStatus !== "all") {
       filtered = filtered.filter(order => {
         if (selectedPaymentStatus === "paid") {
-          return order.payment?.status === "paid" || order.payment?.status === "completed";
+          return order.payment?.status === "paid";
         } else if (selectedPaymentStatus === "pending") {
           return order.payment?.status === "pending";
         }
@@ -426,32 +429,42 @@ export default function OrdersPage() {
        return orderDateOnly.getTime() === todayStartForRevenue.getTime();
      });
      
-     // 오늘 결제 완료된 모든 주문 (결제일 기준)
-     const todayCompletedOrdersForRevenue = filteredOrders.filter(order => {
-       if ((order.payment?.status !== 'paid' && order.payment?.status !== 'completed') || !order.payment?.completedAt) return false;
-       const completedDate = (order.payment.completedAt as Timestamp).toDate();
-       const completedDateOnly = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
-       return completedDateOnly.getTime() === todayStartForRevenue.getTime();
-     });
+           // 오늘 결제 완료된 모든 주문 (결제완료일 기준)
+      const todayCompletedOrdersForRevenue = filteredOrders.filter(order => {
+        if ((order.payment?.status !== 'paid' && order.payment?.status !== 'completed') || !order.payment?.completedAt) return false;
+        const completedDate = (order.payment.completedAt as Timestamp).toDate();
+        const completedDateOnly = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
+        return completedDateOnly.getTime() === todayStartForRevenue.getTime();
+      });
+      
+      // 금일결제: 어제 및 과거주문 + 오늘결제완료 (오늘주문 + 오늘결제완료는 제외)
+      const todayPaymentCompletedOrdersForRevenue = todayCompletedOrdersForRevenue.filter(order => {
+        if (!order.orderDate) return false;
+        const orderDate = (order.orderDate as Timestamp).toDate();
+        const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+        // 주문일이 오늘이 아닌 주문만 포함 (어제 및 과거주문)
+        return orderDateOnly.getTime() !== todayStartForRevenue.getTime();
+      });
      
      // 오늘 주문했지만 아직 미결제인 주문
      const todayOrderedButPendingOrdersForRevenue = todayOrderedOrdersForRevenue.filter(order => 
        order.payment?.status !== 'paid' && order.payment?.status !== 'completed'
      );
      
-     // 어제 주문했지만 오늘 결제된 주문
-     const yesterdayOrderedTodayCompletedOrdersForRevenue = todayCompletedOrdersForRevenue.filter(order => {
-       if (!order.orderDate) return false;
-       const orderDate = (order.orderDate as Timestamp).toDate();
-       const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
-       return orderDateOnly.getTime() !== todayStartForRevenue.getTime();
-     });
+           // 어제 주문했지만 오늘 결제된 주문
+      const yesterdayOrderedTodayCompletedOrdersForRevenue = todayCompletedOrdersForRevenue.filter(order => {
+        if (!order.orderDate) return false;
+        const orderDate = (order.orderDate as Timestamp).toDate();
+        const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+        return orderDateOnly.getTime() !== todayStartForRevenue.getTime();
+      });
      
-     // 금액 계산
-     const todayOrderedAmountForRevenue = todayOrderedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
-     const todayCompletedAmountForRevenue = todayCompletedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
-     const todayPendingAmountForRevenue = todayOrderedButPendingOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
-     const yesterdayOrderedTodayCompletedAmountForRevenue = yesterdayOrderedTodayCompletedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+           // 금액 계산
+      const todayOrderedAmountForRevenue = todayOrderedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+      const todayCompletedAmountForRevenue = todayCompletedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+      const todayPaymentCompletedAmountForRevenue = todayPaymentCompletedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+      const todayPendingAmountForRevenue = todayOrderedButPendingOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+      const yesterdayOrderedTodayCompletedAmountForRevenue = yesterdayOrderedTodayCompletedOrdersForRevenue.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
      const totalOrders = filteredOrders.length;
      
      // 총 매출 계산 (수주받은 주문은 금액 제외, 건수만 포함)
@@ -478,10 +491,12 @@ export default function OrdersPage() {
     
          // 오늘 주문 (해당 지점에서 발주한 주문만 포함, 수주받은 주문은 건수만)
      const today = new Date();
+     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
      const todayOrders = filteredOrders.filter(order => {
        if (!order.orderDate) return false;
        const orderDate = (order.orderDate as Timestamp).toDate();
-       const isToday = orderDate.toDateString() === today.toDateString();
+       const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+       const isToday = orderDateOnly.getTime() === todayStart.getTime();
        
        // 지점 사용자의 경우: 자신의 지점에서 발주한 주문 + 수주받은 주문 (건수만)
        if (!isAdmin && userBranch) {
@@ -508,17 +523,27 @@ export default function OrdersPage() {
        return sum + (order.summary?.total || 0);
      }, 0);
     
-         // 오늘 주문의 완결/미결 분리 (수주받은 주문 제외)
+         // 오늘 주문의 완결/미결 분리 (이관받은 주문은 금액만 0원으로 처리)
      const todayCompletedOrders = todayOrders.filter(order => 
-       (order.payment?.status === 'paid' || order.payment?.status === 'completed') && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
+       (order.payment?.status === 'paid' || order.payment?.status === 'completed')
      );
      const todayPendingOrders = todayOrders.filter(order => 
-       order.payment?.status === 'pending' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
+       order.payment?.status === 'pending'
      );
-     const todayCompletedAmount = todayCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
-     const todayPendingAmount = todayPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     const todayCompletedAmount = todayCompletedOrders.reduce((sum, order) => {
+       // 이관받은 주문은 금액에서 제외
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
+         return sum; // 금액 제외
+       }
+       return sum + (order.summary?.total || 0);
+     }, 0);
+     const todayPendingAmount = todayPendingOrders.reduce((sum, order) => {
+       // 이관받은 주문은 금액에서 제외
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
+         return sum; // 금액 제외
+       }
+       return sum + (order.summary?.total || 0);
+     }, 0);
 
          // 이번 달 주문 (해당 지점에서 발주한 주문만 포함, 수주받은 주문은 건수만)
      const thisMonthOrders = filteredOrders.filter(order => {
@@ -552,31 +577,118 @@ export default function OrdersPage() {
        return sum + (order.summary?.total || 0);
      }, 0);
     
-         // 이번 달 주문의 완결/미결 분리 (수주받은 주문 제외)
+         // 이번 달 주문의 완결/미결 분리 (이관받은 주문은 금액만 0원으로 처리)
      const thisMonthCompletedOrders = thisMonthOrders.filter(order => 
-       (order.payment?.status === 'paid' || order.payment?.status === 'completed') && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
+       (order.payment?.status === 'paid' || order.payment?.status === 'completed')
      );
      const thisMonthPendingOrders = thisMonthOrders.filter(order => 
-       order.payment?.status === 'pending' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
-     );
-     const thisMonthCompletedAmount = thisMonthCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
-     const thisMonthPendingAmount = thisMonthPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
-
-         // 미결 주문 통계 (수주받은 주문은 건수만, 금액은 제외)
-     const pendingPaymentOrders = filteredOrders.filter(order => 
        order.payment?.status === 'pending'
      );
-     const pendingPaymentCount = pendingPaymentOrders.length;
-     const pendingPaymentAmount = pendingPaymentOrders.reduce((sum, order) => {
-       // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
-       // transferInfo가 null이거나 isTransferred가 false인 경우는 일반 주문으로 처리
+     const thisMonthCompletedAmount = thisMonthCompletedOrders.reduce((sum, order) => {
+       // 이관받은 주문은 금액에서 제외
        if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
          return sum; // 금액 제외
        }
        return sum + (order.summary?.total || 0);
      }, 0);
+     const thisMonthPendingAmount = thisMonthPendingOrders.reduce((sum, order) => {
+       // 이관받은 주문은 금액에서 제외
+       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
+         return sum; // 금액 제외
+       }
+       return sum + (order.summary?.total || 0);
+     }, 0);
+
+                   // 미결 주문 통계 (수주받은 주문은 건수만, 금액은 제외)
+      const pendingPaymentOrders = filteredOrders.filter(order => 
+        order.payment?.status === 'pending'
+      );
+      
+      // 디버깅: 현재 데이터 상태 확인
+      console.log('=== 현재 데이터 상태 확인 ===');
+      console.log('전체 주문 수:', filteredOrders.length);
+      
+      const statusCounts = filteredOrders.reduce((acc, order) => {
+        const paymentStatus = order.payment?.status || 'undefined';
+        acc[paymentStatus] = (acc[paymentStatus] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('결제 상태별 주문 수:', statusCounts);
+      
+      // completed 상태인 주문들 확인
+      const completedStatusOrders = filteredOrders.filter(order => 
+        order.payment?.status === 'completed'
+      );
+      console.log('completed 상태 주문 수:', completedStatusOrders.length);
+      if (completedStatusOrders.length > 0) {
+        console.log('completed 상태 주문들:', completedStatusOrders.map(o => ({
+          id: o.id,
+          orderer: o.orderer?.name,
+          status: o.status,
+          paymentStatus: o.payment?.status
+        })));
+      }
+      
+      const pendingPaymentCount = pendingPaymentOrders.length;
+      const pendingPaymentAmount = pendingPaymentOrders.reduce((sum, order) => {
+        // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
+        // transferInfo가 null이거나 isTransferred가 false인 경우는 일반 주문으로 처리
+        if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
+          return sum; // 금액 제외
+        }
+        return sum + (order.summary?.total || 0);
+      }, 0);
+      
+             // 통계카드 디버깅
+       console.log('=== 통계카드 디버깅 ===');
+       console.log('오늘주문 카드:', {
+         todayOrders: todayOrders.length,
+         todayCompletedAmount,
+         todayPendingAmount,
+         todayCompletedOrders: todayCompletedOrders.length,
+         todayPendingOrders: todayPendingOrders.length
+       });
+       console.log('당일매출 카드:', {
+         todayCompletedAmount,
+         todayPaymentCompletedAmountForRevenue,
+         totalAmount: todayCompletedAmount + todayPaymentCompletedAmountForRevenue
+       });
+       console.log('총매출 카드:', {
+         totalAmount,
+         totalCompletedAmount,
+         totalPendingAmount
+       });
+       console.log('이번달주문 카드:', {
+         thisMonthOrders: thisMonthOrders.length,
+         thisMonthCompletedAmount,
+         thisMonthPendingAmount
+       });
+       console.log('미결 카드:', {
+         pendingPaymentCount,
+         pendingPaymentAmount
+       });
+       
+       // 오늘주문 상세 디버깅
+       console.log('=== 오늘주문 상세 디버깅 ===');
+       console.log('todayOrders 상세:', todayOrders.map(order => ({
+         id: order.id,
+         orderer: order.orderer?.name,
+         orderDate: order.orderDate,
+         paymentStatus: order.payment?.status,
+         amount: order.summary?.total,
+         branchName: order.branchName,
+         isTransferred: order.transferInfo?.isTransferred,
+         processBranchName: order.transferInfo?.processBranchName
+       })));
+       console.log('todayPendingOrders 상세:', todayPendingOrders.map(order => ({
+         id: order.id,
+         orderer: order.orderer?.name,
+         paymentStatus: order.payment?.status,
+         amount: order.summary?.total,
+         branchName: order.branchName,
+         isTransferred: order.transferInfo?.isTransferred,
+         processBranchName: order.transferInfo?.processBranchName
+       })));
 
     // 주문 상태별 통계
     const statusStats = filteredOrders.reduce((acc, order) => {
@@ -601,15 +713,17 @@ export default function OrdersPage() {
        pendingPaymentCount,
        pendingPaymentAmount,
        statusStats,
-       // 당일 매출 현황 데이터
-       todayOrderedAmountForRevenue,
-       todayCompletedAmountForRevenue,
-       todayPendingAmountForRevenue,
-       yesterdayOrderedTodayCompletedAmountForRevenue,
-       todayOrderedOrdersForRevenue: todayOrderedOrdersForRevenue.length,
-       todayCompletedOrdersForRevenue: todayCompletedOrdersForRevenue.length,
-       todayOrderedButPendingOrdersForRevenue: todayOrderedButPendingOrdersForRevenue.length,
-       yesterdayOrderedTodayCompletedOrdersForRevenue: yesterdayOrderedTodayCompletedOrdersForRevenue.length
+               // 당일 매출 현황 데이터
+        todayOrderedAmountForRevenue,
+        todayCompletedAmountForRevenue,
+        todayPaymentCompletedAmountForRevenue,
+        todayPendingAmountForRevenue,
+        yesterdayOrderedTodayCompletedAmountForRevenue,
+        todayOrderedOrdersForRevenue: todayOrderedOrdersForRevenue.length,
+        todayCompletedOrdersForRevenue: todayCompletedOrdersForRevenue.length,
+        todayPaymentCompletedOrdersForRevenue: todayPaymentCompletedOrdersForRevenue.length,
+        todayOrderedButPendingOrdersForRevenue: todayOrderedButPendingOrdersForRevenue.length,
+        yesterdayOrderedTodayCompletedOrdersForRevenue: yesterdayOrderedTodayCompletedOrdersForRevenue.length
      };
   }, [filteredOrders]);
 
@@ -831,17 +945,17 @@ export default function OrdersPage() {
                  </CardTitle>
                  <DollarSign className="h-4 w-4 opacity-90" />
                </CardHeader>
-                               <CardContent>
-                  <div className="text-2xl font-bold">₩{orderStats.todayOrderedAmountForRevenue.toLocaleString()}</div>
-                  <div className="space-y-1 mt-2">
-                    <p className="text-xs opacity-90">
-                      금일결제: ₩{orderStats.todayCompletedAmountForRevenue.toLocaleString()}
-                    </p>
-                    <p className="text-xs opacity-90">
-                      미결제: ₩{orderStats.todayPendingAmountForRevenue.toLocaleString()}
-                    </p>
-                  </div>
-                </CardContent>
+                                                <CardContent>
+                                       <div className="text-2xl font-bold">₩{(orderStats.todayCompletedAmount + orderStats.todayPaymentCompletedAmountForRevenue).toLocaleString()}</div>
+                   <div className="space-y-1 mt-2">
+                                           <p className="text-xs opacity-90">
+                        금일결제: ₩{orderStats.todayPaymentCompletedAmountForRevenue.toLocaleString()}
+                      </p>
+                     <p className="text-xs opacity-90">
+                       미결제: ₩{orderStats.todayPendingAmountForRevenue.toLocaleString()}
+                     </p>
+                   </div>
+                 </CardContent>
              </Card>
           </>
         )}
@@ -897,12 +1011,12 @@ export default function OrdersPage() {
                     <SelectTrigger id="order-status-select" name="order-status-select" className="w-full sm:w-[140px]">
                         <SelectValue placeholder="주문 상태" />
                     </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">전체 상태</SelectItem>
-                        <SelectItem value="processing">처리중</SelectItem>
-                        <SelectItem value="completed">완료</SelectItem>
-                        <SelectItem value="canceled">취소</SelectItem>
-                    </SelectContent>
+                                         <SelectContent>
+                         <SelectItem value="all">전체 상태</SelectItem>
+                         <SelectItem value="processing">처리중</SelectItem>
+                         <SelectItem value="completed">주문완료</SelectItem>
+                         <SelectItem value="canceled">취소</SelectItem>
+                     </SelectContent>
                 </Select>
               </div>
               <div>
@@ -1211,12 +1325,12 @@ export default function OrdersPage() {
                              }}>
                                처리중
                              </DropdownMenuItem>
-                             <DropdownMenuItem onClick={(e) => {
-                               e.stopPropagation();
-                               updateOrderStatus(order.id, 'completed');
-                             }}>
-                               완료
-                             </DropdownMenuItem>
+                                                           <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                updateOrderStatus(order.id, 'completed');
+                              }}>
+                                주문완료
+                              </DropdownMenuItem>
                              <DropdownMenuItem onClick={(e) => {
                                e.stopPropagation();
                                updateOrderStatus(order.id, 'canceled');
