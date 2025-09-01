@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { SystemUser } from "../page";
 import { format } from "date-fns";
 import { POSITIONS } from "@/lib/constants";
+
 interface UserTableProps {
   users: SystemUser[];
   onDeleteUser: (userId: string, userEmail: string) => Promise<void>;
@@ -19,19 +20,23 @@ interface UserTableProps {
   onToggleStatus: (userId: string, userEmail: string, currentStatus: boolean) => Promise<void>;
   onUserUpdated?: () => void; // 사용자 업데이트 콜백 추가
 }
+
 export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus, onUserUpdated }: UserTableProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<SystemUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<SystemUser | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
   const handleEdit = (user: SystemUser) => {
     setSelectedUser(user);
     setIsFormOpen(true);
   };
+
   const handleDeleteClick = (user: SystemUser) => {
     setUserToDelete(user);
     setIsDeleteDialogOpen(true);
   };
+
   const handleDeleteConfirm = async () => {
     if (userToDelete) {
       await onDeleteUser(userToDelete.id, userToDelete.email);
@@ -39,16 +44,28 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
       setUserToDelete(null);
     }
   };
+
   const handlePasswordResetClick = async (user: SystemUser) => {
     await onPasswordReset(user.id, user.email);
   };
+
   const handleToggleStatusClick = async (user: SystemUser) => {
     await onToggleStatus(user.id, user.email, user.isActive !== false);
   };
+
   const handleCloseForm = () => {
     setIsFormOpen(false);
     setSelectedUser(null);
   };
+
+  const handleUserUpdated = () => {
+    // 사용자 업데이트 후 폼 닫기 및 콜백 호출
+    handleCloseForm();
+    if (onUserUpdated) {
+      onUserUpdated();
+    }
+  };
+
   const getStatusBadge = (user: SystemUser) => {
     if (user.isActive === false) {
       return <Badge variant="destructive" className="flex items-center gap-1">
@@ -61,6 +78,7 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
       활성
     </Badge>;
   };
+
   const getPositionBadge = (position: string) => {
     let variant: "default" | "secondary" | "outline" | "destructive" = "outline";
     switch (position) {
@@ -84,6 +102,7 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
     }
     return <Badge variant={variant}>{position}</Badge>;
   };
+
   const formatLastLogin = (lastLogin: any) => {
     if (!lastLogin) return '-';
     try {
@@ -108,6 +127,7 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
       return '-';
     }
   };
+
   return (
     <>
       <Card>
@@ -195,6 +215,7 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
           </Table>
         </CardContent>
       </Card>
+
       {/* 삭제 확인 다이얼로그 */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
@@ -219,7 +240,16 @@ export function UserTable({ users, onDeleteUser, onPasswordReset, onToggleStatus
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {isFormOpen && <UserForm isOpen={isFormOpen} onOpenChange={handleCloseForm} user={selectedUser} onUserUpdated={onUserUpdated} />}
+
+      {/* 사용자 폼 */}
+      {isFormOpen && (
+        <UserForm 
+          isOpen={isFormOpen} 
+          onOpenChange={handleCloseForm} 
+          user={selectedUser} 
+          onUserUpdated={handleUserUpdated} 
+        />
+      )}
     </>
   );
 }

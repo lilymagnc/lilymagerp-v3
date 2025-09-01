@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuth } from "firebase/auth";
+
 export interface SystemUser {
   id: string; // email is the id
   email: string;
@@ -24,6 +25,7 @@ export interface SystemUser {
   isActive?: boolean;
   createdAt?: any;
 }
+
 export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [users, setUsers] = useState<SystemUser[]>([]);
@@ -31,72 +33,101 @@ export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // 데이터 새로고침 트리거
+  const [loading, setLoading] = useState(true);
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+
+  // 사용자 데이터 로드 함수
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      
+      const usersData = await Promise.all(
+        usersSnapshot.docs.map(async (doc) => {
+          const userData = {
+            id: doc.id,
+            ...doc.data()
+          } as SystemUser;
+          
+          // 직원 정보에서 직위 가져오기
+          try {
+            const employeesQuery = query(
+              collection(db, "employees"), 
+              where("email", "==", userData.email)
+            );
+            const employeeSnapshot = await getDocs(employeesQuery);
+            if (!employeeSnapshot.empty) {
+              const employeeData = employeeSnapshot.docs[0].data();
+              userData.position = employeeData.position || '직원';
+            } else {
+              userData.position = '직원'; // 기본값
+            }
+          } catch (error) {
+            console.error("직원 정보 조회 오류:", error);
+            userData.position = '직원'; // 오류 시 기본값
+          }
+          
+          return userData;
+        })
+      );
+
+      // 중복 이메일 체크 및 경고
+      const emailCounts = usersData.reduce((acc, user) => {
+        acc[user.email] = (acc[user.email] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      const duplicates = Object.entries(emailCounts).filter(([email, count]) => count > 1);
+      if (duplicates.length > 0) {
+        console.warn("중복 이메일 발견:", duplicates);
+        toast({
+          variant: "destructive",
+          title: "데이터 오류",
+          description: `중복 이메일이 발견되었습니다: ${duplicates.map(([email]) => email).join(', ')}`
+        });
+      }
+      
+      setUsers(usersData);
+    } catch (error) {
+      console.error("사용자 데이터 로드 오류:", error);
+      toast({
+        variant: "destructive",
+        title: "데이터 로드 실패",
+        description: "사용자 데이터를 불러오는 중 오류가 발생했습니다."
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 데이터 새로고침 함수
   const handleUserUpdated = () => {
-    setRefreshTrigger(prev => prev + 1);
+    loadUsers();
   };
+
+  // 초기 데이터 로드
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "users"), async (snapshot) => {
-        const usersData = await Promise.all(
-          snapshot.docs.map(async (doc) => {
-            const userData = {
-              id: doc.id,
-              ...doc.data()
-            } as SystemUser;
-            // 직원 정보에서 직위 가져오기
-            try {
-              const employeesQuery = query(
-                collection(db, "employees"), 
-                where("email", "==", userData.email)
-              );
-              const employeeSnapshot = await getDocs(employeesQuery);
-              if (!employeeSnapshot.empty) {
-                const employeeData = employeeSnapshot.docs[0].data();
-                userData.position = employeeData.position || '직원';
-                } else {
-                userData.position = '직원'; // 기본값
-                }
-            } catch (error) {
-              console.error("직원 정보 조회 오류:", error);
-              userData.position = '직원'; // 오류 시 기본값
-            }
-            return userData;
-          })
-        );
-        // 중복 이메일 체크 및 경고
-        const emailCounts = usersData.reduce((acc, user) => {
-          acc[user.email] = (acc[user.email] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        const duplicates = Object.entries(emailCounts).filter(([email, count]) => count > 1);
-        if (duplicates.length > 0) {
-          console.warn("중복 이메일 발견:", duplicates);
-          toast({
-            variant: "destructive",
-            title: "데이터 오류",
-            description: `중복 이메일이 발견되었습니다: ${duplicates.map(([email]) => email).join(', ')}`
-          });
-        }
-        setUsers(usersData);
-    });
-    return () => unsubscribe();
-  }, [toast, refreshTrigger]); // refreshTrigger 의존성 추가
+    loadUsers();
+  }, []);
+
   // 검색 및 필터링 적용
   useEffect(() => {
     let filtered = users;
+    
     // 검색어 필터링
     if (searchTerm) {
       filtered = filtered.filter(user =>
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.position && user.position.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
+    
     // 권한 필터링
     if (roleFilter !== "all") {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
+    
     // 상태 필터링
     if (statusFilter !== "all") {
       const isActive = statusFilter === "active";
@@ -104,8 +135,10 @@ export default function UsersPage() {
         statusFilter === "all" || user.isActive === isActive
       );
     }
+    
     setFilteredUsers(filtered);
   }, [users, searchTerm, roleFilter, statusFilter]);
+
   const handleDeleteUser = async (userId: string, userEmail: string) => {
     try {
       // 본사 관리자는 삭제할 수 없도록 체크
@@ -118,6 +151,7 @@ export default function UsersPage() {
         });
         return;
       }
+      
       // 현재 로그인한 사용자 자신을 삭제하려고 하는지 체크
       if (userId === currentUser?.uid) {
         toast({
@@ -127,11 +161,33 @@ export default function UsersPage() {
         });
         return;
       }
+
+      // 1. users 컬렉션에서 삭제
       await deleteDoc(doc(db, "users", userId));
+      
+      // 2. userRoles 컬렉션에서 비활성화
+      const userRolesQuery = query(collection(db, "userRoles"), where("email", "==", userEmail));
+      const userRolesSnapshot = await getDocs(userRolesQuery);
+      if (!userRolesSnapshot.empty) {
+        const userRoleDoc = userRolesSnapshot.docs[0];
+        await updateDoc(userRoleDoc.ref, { isActive: false });
+      }
+      
+      // 3. employees 컬렉션에서 삭제
+      const employeesQuery = query(collection(db, "employees"), where("email", "==", userEmail));
+      const employeesSnapshot = await getDocs(employeesQuery);
+      if (!employeesSnapshot.empty) {
+        const employeeDoc = employeesSnapshot.docs[0];
+        await deleteDoc(employeeDoc.ref);
+      }
+
       toast({
         title: "사용자 삭제 완료",
         description: `${userEmail} 사용자가 삭제되었습니다.`
       });
+      
+      // 데이터 새로고침
+      handleUserUpdated();
     } catch (error) {
       console.error("Error deleting user:", error);
       toast({
@@ -141,6 +197,7 @@ export default function UsersPage() {
       });
     }
   };
+
   const handlePasswordReset = async (userId: string, userEmail: string) => {
     try {
       const tempPassword = Math.random().toString(36).slice(-8);
@@ -159,16 +216,29 @@ export default function UsersPage() {
       });
     }
   };
+
   const handleToggleUserStatus = async (userId: string, userEmail: string, currentStatus: boolean) => {
     try {
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, {
         isActive: !currentStatus
       });
+      
+      // userRoles 컬렉션도 함께 업데이트
+      const userRolesQuery = query(collection(db, "userRoles"), where("email", "==", userEmail));
+      const userRolesSnapshot = await getDocs(userRolesQuery);
+      if (!userRolesSnapshot.empty) {
+        const userRoleDoc = userRolesSnapshot.docs[0];
+        await updateDoc(userRoleDoc.ref, { isActive: !currentStatus });
+      }
+      
       toast({
         title: "상태 변경 완료",
         description: `${userEmail} 사용자가 ${!currentStatus ? '활성화' : '비활성화'}되었습니다.`
       });
+      
+      // 데이터 새로고침
+      handleUserUpdated();
     } catch (error) {
       console.error("Error toggling user status:", error);
       toast({
@@ -178,6 +248,7 @@ export default function UsersPage() {
       });
     }
   };
+
   if (currentUser?.role !== '본사 관리자') {
     return (
       <div className="flex items-center justify-center h-96 border rounded-md">
@@ -185,8 +256,10 @@ export default function UsersPage() {
       </div>
     );
   }
+
   const activeUsers = users.filter(user => user.isActive !== false).length;
   const inactiveUsers = users.filter(user => user.isActive === false).length;
+
   return (
     <div>
       <PageHeader
@@ -198,6 +271,7 @@ export default function UsersPage() {
           사용자 추가
         </Button>
       </PageHeader>
+
       {/* 통계 카드 */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <Card>
@@ -239,6 +313,7 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       </div>
+
       {/* 검색 및 필터 */}
       <Card className="mb-6">
         <CardHeader>
@@ -253,7 +328,7 @@ export default function UsersPage() {
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="이메일로 검색..."
+                  placeholder="이메일 또는 직위로 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -284,6 +359,7 @@ export default function UsersPage() {
           </div>
         </CardContent>
       </Card>
+
       <UserTable 
         users={filteredUsers} 
         onDeleteUser={handleDeleteUser}
@@ -291,7 +367,12 @@ export default function UsersPage() {
         onToggleStatus={handleToggleUserStatus}
         onUserUpdated={handleUserUpdated}
       />
-      <UserForm isOpen={isFormOpen} onOpenChange={setIsFormOpen} onUserUpdated={handleUserUpdated} />
+      
+      <UserForm 
+        isOpen={isFormOpen} 
+        onOpenChange={setIsFormOpen} 
+        onUserUpdated={handleUserUpdated} 
+      />
     </div>
   );
 }

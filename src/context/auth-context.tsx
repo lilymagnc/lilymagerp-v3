@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!firebaseUser.email) return firebaseUser;
 
     try {
-      // 먼저 userRoles 컬렉션에서 사용자 역할 확인
+      // 1. 먼저 userRoles 컬렉션에서 사용자 역할 확인 (우선순위 1)
       const userRolesQuery = query(
         collection(db, 'userRoles'),
         where('email', '==', firebaseUser.email),
@@ -40,10 +40,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // userRoles에서 찾은 역할 사용
         const userRoleDoc = userRolesSnapshot.docs[0];
         const userRoleData = userRoleDoc.data();
-        // 역할 매핑
+        
+        // 역할 매핑 - 권한과 소속은 별개로 처리
         let role: '본사 관리자' | '가맹점 관리자' | '직원';
         switch (userRoleData.role) {
           case 'hq_manager':
+          case 'admin':
             role = '본사 관리자';
             break;
           case 'branch_manager':
@@ -56,14 +58,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             role = '직원';
         }
 
+        // 소속은 실제 branchName 사용 (권한과 별개)
+        const franchise = userRoleData.branchName || '미지정';
+
         return { 
           ...firebaseUser, 
           role, 
-          franchise: userRoleData.branchName || '미지정' 
+          franchise
         } as UserProfile;
       }
 
-      // userRoles에 없으면 기존 users 컬렉션 사용
+      // 2. userRoles에 없으면 기존 users 컬렉션 사용 (우선순위 2)
       const userDocRef = doc(db, 'users', firebaseUser.email);
       let userDoc = await getDoc(userDocRef);
 
@@ -81,12 +86,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         await setDoc(userDocRef, newUserProfile);
         userDoc = await getDoc(userDocRef);
-      } else {
-        // 이미 관리자가 미리 등록한 사용자 정보가 있는 경우
       }
 
       const userData = userDoc.data();
-      return { ...firebaseUser, role: userData?.role, franchise: userData?.franchise } as UserProfile;
+      
+      // 소속은 실제 franchise 사용 (권한과 별개)
+      const franchise = userData?.franchise || '미지정';
+      
+      return { 
+        ...firebaseUser, 
+        role: userData?.role, 
+        franchise 
+      } as UserProfile;
     } catch (error) {
       console.error("Error fetching or creating user role:", error);
     }

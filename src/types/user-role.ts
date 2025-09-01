@@ -20,6 +20,7 @@ export enum Permission {
 export interface UserRole {
   id: string;
   userId: string;
+  email: string;
   role: UserRoleType;
   branchId?: string; // 지점 사용자의 경우
   branchName?: string;
@@ -43,6 +44,7 @@ export const ROLE_PERMISSIONS: Record<UserRoleType, Permission[]> = {
     Permission.VIEW_ALL_REQUESTS,
     Permission.EDIT_PRICES,
     Permission.CHANGE_STATUS,
+    Permission.MANAGE_USERS,
     Permission.CONSOLIDATE_REQUESTS,
     Permission.EXPORT_DATA
   ],
@@ -73,14 +75,30 @@ export const hasAnyPermission = (userRole: UserRole | null, permissions: Permiss
   if (!userRole || !userRole.isActive) return false;
   return permissions.some(permission => userRole.permissions.includes(permission));
 };
+// 본사 관리자 권한 확인 (hq_manager 또는 admin)
+// 권한은 소속과 상관없이 작동
 export const isHQManager = (userRole: UserRole | null): boolean => {
-  return userRole?.role === UserRoleType.HQ_MANAGER && userRole.isActive;
+  return (
+    (userRole?.role === UserRoleType.HQ_MANAGER && userRole.isActive) ||
+    (userRole?.role === UserRoleType.ADMIN && userRole.isActive)
+  );
 };
 export const isBranchUser = (userRole: UserRole | null): boolean => {
   return userRole?.role === UserRoleType.BRANCH_USER && userRole.isActive;
 };
+export const isBranchManager = (userRole: UserRole | null): boolean => {
+  return userRole?.role === UserRoleType.BRANCH_MANAGER && userRole.isActive;
+};
 export const isAdmin = (userRole: UserRole | null): boolean => {
   return userRole?.role === UserRoleType.ADMIN && userRole.isActive;
+};
+// 본사 관리자 권한 확인 (hq_manager 또는 admin)
+// 권한은 소속과 상관없이 작동
+export const isHeadOfficeAdmin = (userRole: UserRole | null): boolean => {
+  return (
+    (userRole?.role === UserRoleType.HQ_MANAGER && userRole.isActive) ||
+    (userRole?.role === UserRoleType.ADMIN && userRole.isActive)
+  );
 };
 // 역할 표시명
 export const ROLE_LABELS: Record<UserRoleType, string> = {
