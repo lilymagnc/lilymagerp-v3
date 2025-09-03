@@ -122,6 +122,7 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
         recipientContact: order.deliveryInfo?.recipientContact ?? '',
         deliveryAddress: order.deliveryInfo?.address ?? '',
         message: order.message?.content ?? '',
+        messageType: order.message?.type ?? 'card', // 메시지 타입 추가
         isAnonymous: order.isAnonymous || false,
         branchInfo: {
             name: targetBranch.name,

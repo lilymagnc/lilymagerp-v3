@@ -16,6 +16,7 @@ export interface OrderPrintData {
     recipientContact: string;
     deliveryAddress: string;
     message: string;
+    messageType: 'card' | 'ribbon'; // 메시지 타입 추가
     isAnonymous: boolean;
     branchInfo: {
         name: string;
@@ -128,8 +129,16 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                         </tr>
                         {!isReceipt && (
                             <tr>
-                                <td className="border border-black p-1 font-bold align-top h-16">전달메세지<br/>(카드/리본)</td>
-                                <td colSpan={5} className="border border-black p-1 align-top">{data.message}</td>
+                                <td className="border border-black p-1 font-bold align-top h-16">
+                                    전달메세지<br/>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="flex items-center"><Checkbox checked={data.messageType === 'card'} /><span>카드</span></div>
+                                        <div className="flex items-center"><Checkbox checked={data.messageType === 'ribbon'} /><span>리본</span></div>
+                                    </div>
+                                </td>
+                                <td colSpan={5} className="border border-black p-1 align-top">
+                                    {data.message}
+                                </td>
                             </tr>
                         )}
                         {isReceipt && (
