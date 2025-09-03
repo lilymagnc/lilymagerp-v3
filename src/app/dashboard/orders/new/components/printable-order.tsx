@@ -52,31 +52,31 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                 <div className="text-center mb-4">
                     { !isReceipt && (
                         <>
-                        <Image
-                            src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg"
-                            alt="Logo"
-                            width={150}
-                            height={60}
-                            className="mx-auto"
-                            style={{ width: '150px', height: 'auto' }}
-                            priority
-                            unoptimized
-                        />
+                        <div className="mx-auto" style={{ width: '150px', height: '60px', position: 'relative' }}>
+                            <Image
+                                src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg"
+                                alt="Logo"
+                                fill
+                                className="object-contain"
+                                priority
+                                unoptimized
+                            />
+                        </div>
                         <h1 className="text-2xl font-bold mt-2">릴리맥 플라워앤가든 {title}</h1>
                         </>
                     )}
                     { isReceipt && (
                         <>
-                            <Image
-                                src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg"
-                                alt="Logo"
-                                width={100}
-                                height={40}
-                                className="mx-auto"
-                                style={{ width: '100px', height: 'auto' }}
-                                priority
-                                unoptimized
-                            />
+                            <div className="mx-auto" style={{ width: '100px', height: '40px', position: 'relative' }}>
+                                <Image
+                                    src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg"
+                                    alt="Logo"
+                                    fill
+                                    className="object-contain"
+                                    priority
+                                    unoptimized
+                                />
+                            </div>
                             <h1 className="text-2xl font-bold mt-2">{title}</h1>
                         </>
                     )}

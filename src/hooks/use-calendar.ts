@@ -19,6 +19,8 @@ export interface CalendarEvent {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
+  createdByRole?: string; // 작성자 역할 추가
+  createdByBranch?: string; // 작성자 지점 추가
 }
 
 export interface CreateCalendarEventData {
@@ -81,7 +83,9 @@ export function useCalendar() {
           isAllDay: data.isAllDay,
           createdAt: data.createdAt.toDate(),
           updatedAt: data.updatedAt.toDate(),
-          createdBy: data.createdBy
+          createdBy: data.createdBy,
+          createdByRole: data.createdByRole, // 작성자 역할 로드
+          createdByBranch: data.createdByBranch // 작성자 지점 로드
         });
       });
 
@@ -116,7 +120,9 @@ export function useCalendar() {
         endDate: data.endDate ? Timestamp.fromDate(data.endDate) : null,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-        createdBy: user.uid
+        createdBy: user.uid,
+        createdByRole: user.role, // 작성자 역할 저장
+        createdByBranch: user.franchise // 작성자 지점 저장
       };
 
       await addDoc(collection(db, 'calendarEvents'), eventData);

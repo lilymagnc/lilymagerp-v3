@@ -63,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         return { 
           ...firebaseUser, 
+          uid: firebaseUser.uid, // uid 명시적으로 포함
           role, 
           franchise
         } as UserProfile;
@@ -95,6 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       return { 
         ...firebaseUser, 
+        uid: firebaseUser.uid, // uid 명시적으로 포함
         role: userData?.role, 
         franchise 
       } as UserProfile;

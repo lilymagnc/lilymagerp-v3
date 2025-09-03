@@ -7,13 +7,14 @@ import { CalendarEvent } from '@/hooks/use-calendar';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Bell, Clock, MapPin, Edit } from 'lucide-react';
+import { canEditCalendarEvent, type User } from '@/lib/calendar-permissions';
 
 interface NoticeViewDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   event: CalendarEvent | null;
   onEdit?: () => void;
-  currentUser?: { role?: string; franchise?: string };
+  currentUser?: User;
 }
 
 export function NoticeViewDialog({
@@ -27,23 +28,7 @@ export function NoticeViewDialog({
 
   // 권한 확인 로직
   const canEdit = React.useMemo(() => {
-    if (!currentUser || !currentUser.role) return false;
-    
-    // 본사 관리자는 모든 공지 수정 가능
-    if (currentUser.role === '본사 관리자') return true;
-    
-    // 지점 관리자는 자신의 지점 공지만 수정 가능
-    if (currentUser.role === '지점 관리자') {
-      // 본사관리자가 작성한 전체 공지나 본사 공지는 수정 불가
-      if (event.branchName === '전체' || event.branchName === '본사') {
-        return false;
-      }
-      
-      // 자신의 지점 공지만 수정 가능
-      return event.branchName === currentUser.franchise;
-    }
-    
-    return false;
+    return canEditCalendarEvent(currentUser || null, event);
   }, [currentUser, event]);
 
   // HTML 내용을 안전하게 렌더링하는 함수

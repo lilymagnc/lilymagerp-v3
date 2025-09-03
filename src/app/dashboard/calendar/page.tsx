@@ -450,6 +450,11 @@ export default function CalendarPage() {
           branches={availableBranches}
           onSave={handleSaveEvent}
           onDelete={handleDeleteEvent}
+          currentUser={{
+            uid: user?.uid,
+            role: user?.role,
+            franchise: user?.franchise
+          }}
         />
       </div>
     );
@@ -694,7 +699,11 @@ export default function CalendarPage() {
          branches={availableBranches}
          onSave={handleSaveEvent}
          onDelete={handleDeleteEvent}
-         currentUser={user}
+         currentUser={{
+           uid: user?.uid,
+           role: user?.role,
+           franchise: user?.franchise
+         }}
        />
 
                {/* 날짜별 일정 다이얼로그 */}
@@ -716,7 +725,11 @@ export default function CalendarPage() {
           onOpenChange={setIsNoticeViewDialogOpen}
           event={selectedEvent}
           onEdit={handleNoticeEdit}
-          currentUser={user}
+          currentUser={{
+            uid: user?.uid,
+            role: user?.role,
+            franchise: user?.franchise
+          }}
         />
     </div>
   );
