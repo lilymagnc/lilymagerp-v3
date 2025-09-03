@@ -604,30 +604,16 @@ export default function OrdersPage() {
         order.payment?.status === 'pending'
       );
       
-      // 디버깅: 현재 데이터 상태 확인
-      console.log('=== 현재 데이터 상태 확인 ===');
-      console.log('전체 주문 수:', filteredOrders.length);
-      
       const statusCounts = filteredOrders.reduce((acc, order) => {
         const paymentStatus = order.payment?.status || 'undefined';
         acc[paymentStatus] = (acc[paymentStatus] || 0) + 1;
         return acc;
       }, {});
-      console.log('결제 상태별 주문 수:', statusCounts);
       
       // completed 상태인 주문들 확인
       const completedStatusOrders = filteredOrders.filter(order => 
         order.payment?.status === 'completed'
       );
-      console.log('completed 상태 주문 수:', completedStatusOrders.length);
-      if (completedStatusOrders.length > 0) {
-        console.log('completed 상태 주문들:', completedStatusOrders.map(o => ({
-          id: o.id,
-          orderer: o.orderer?.name,
-          status: o.status,
-          paymentStatus: o.payment?.status
-        })));
-      }
       
       const pendingPaymentCount = pendingPaymentOrders.length;
       const pendingPaymentAmount = pendingPaymentOrders.reduce((sum, order) => {
@@ -639,56 +625,9 @@ export default function OrdersPage() {
         return sum + (order.summary?.total || 0);
       }, 0);
       
-             // 통계카드 디버깅
-       console.log('=== 통계카드 디버깅 ===');
-       console.log('오늘주문 카드:', {
-         todayOrders: todayOrders.length,
-         todayCompletedAmount,
-         todayPendingAmount,
-         todayCompletedOrders: todayCompletedOrders.length,
-         todayPendingOrders: todayPendingOrders.length
-       });
-       console.log('당일매출 카드:', {
-         todayCompletedAmount,
-         todayPaymentCompletedAmountForRevenue,
-         totalAmount: todayCompletedAmount + todayPaymentCompletedAmountForRevenue
-       });
-       console.log('총매출 카드:', {
-         totalAmount,
-         totalCompletedAmount,
-         totalPendingAmount
-       });
-       console.log('이번달주문 카드:', {
-         thisMonthOrders: thisMonthOrders.length,
-         thisMonthCompletedAmount,
-         thisMonthPendingAmount
-       });
-       console.log('미결 카드:', {
-         pendingPaymentCount,
-         pendingPaymentAmount
-       });
+
        
-       // 오늘주문 상세 디버깅
-       console.log('=== 오늘주문 상세 디버깅 ===');
-       console.log('todayOrders 상세:', todayOrders.map(order => ({
-         id: order.id,
-         orderer: order.orderer?.name,
-         orderDate: order.orderDate,
-         paymentStatus: order.payment?.status,
-         amount: order.summary?.total,
-         branchName: order.branchName,
-         isTransferred: order.transferInfo?.isTransferred,
-         processBranchName: order.transferInfo?.processBranchName
-       })));
-       console.log('todayPendingOrders 상세:', todayPendingOrders.map(order => ({
-         id: order.id,
-         orderer: order.orderer?.name,
-         paymentStatus: order.payment?.status,
-         amount: order.summary?.total,
-         branchName: order.branchName,
-         isTransferred: order.transferInfo?.isTransferred,
-         processBranchName: order.transferInfo?.processBranchName
-       })));
+
 
     // 주문 상태별 통계
     const statusStats = filteredOrders.reduce((acc, order) => {
