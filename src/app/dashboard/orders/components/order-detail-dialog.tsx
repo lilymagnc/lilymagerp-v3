@@ -160,9 +160,14 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                     <CreditCard className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium">결제 수단</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {order.payment?.method || '미정'}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {order.payment?.method || '미정'}
+                    </p>
+                    {order.payment?.isSplitPayment && (
+                      <Badge variant="secondary" className="text-xs">분할결제</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -420,19 +425,19 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                         <span className="text-sm font-medium">이관일시</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {order.transferInfo.transferredAt && 
-                         format((order.transferInfo.transferredAt as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')}
+                        {order.transferInfo.transferDate && 
+                         format((order.transferInfo.transferDate as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')}
                       </p>
                     </div>
                   </div>
-                  {order.transferInfo.transferId && (
+                  {order.transferInfo.transferReason && (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">이관 ID</span>
+                        <span className="text-sm font-medium">이관 사유</span>
                       </div>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {order.transferInfo.transferId}
+                      <p className="text-sm text-muted-foreground">
+                        {order.transferInfo.transferReason}
                       </p>
                     </div>
                   )}
@@ -471,6 +476,33 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                   <span>총 결제금액</span>
                   <span>₩{order.summary.total.toLocaleString()}</span>
                 </div>
+                {/* 분할결제 정보 */}
+                {order.payment?.isSplitPayment && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-blue-600">분할결제 내역</div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">선결제 (주문일 매출)</span>
+                        <span className="text-green-600 font-medium">₩{(order.payment.firstPaymentAmount || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-orange-600">후결제 (완결 시 매출)</span>
+                        <span className="text-orange-600 font-medium">₩{(order.payment.secondPaymentAmount || 0).toLocaleString()}</span>
+                      </div>
+                      {order.payment.firstPaymentDate && (
+                        <div className="text-xs text-muted-foreground">
+                          선결제일: {format(order.payment.firstPaymentDate.toDate(), 'yyyy-MM-dd HH:mm')}
+                        </div>
+                      )}
+                      {order.payment.secondPaymentDate && (
+                        <div className="text-xs text-muted-foreground">
+                          후결제일: {format(order.payment.secondPaymentDate.toDate(), 'yyyy-MM-dd HH:mm')}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
                 {order.summary.pointsEarned > 0 && (
                   <div className="flex justify-between text-blue-600">
                     <span className="text-sm">적립 포인트</span>

@@ -15,6 +15,7 @@ import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIco
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch, initialBranches } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 // 20번째 줄 - 이것은 유지
@@ -29,7 +30,7 @@ import { useProducts, Product } from "@/hooks/use-products";
 import { useCustomers, Customer } from "@/hooks/use-customers";
 import { useAuth } from "@/hooks/use-auth";
 import { useDiscountSettings } from "@/hooks/use-discount-settings";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, serverTimestamp } from "firebase/firestore";
 import { debounce } from "lodash";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 interface OrderItem extends Product {
@@ -151,6 +152,9 @@ export default function NewOrderPage() {
   const [specialRequest, setSpecialRequest] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
+  // 분할결제 관련 상태
+  const [isSplitPaymentEnabled, setIsSplitPaymentEnabled] = useState(false);
+  const [firstPaymentAmount, setFirstPaymentAmount] = useState(0);
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
   const [existingOrder, setExistingOrder] = useState<Order | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -485,6 +489,11 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         payment: {
             method: paymentMethod,
             status: paymentStatus,
+            isSplitPayment: isSplitPaymentEnabled,
+            firstPaymentAmount: isSplitPaymentEnabled ? firstPaymentAmount : undefined,
+            firstPaymentDate: isSplitPaymentEnabled ? serverTimestamp() as any : undefined,
+            secondPaymentAmount: isSplitPaymentEnabled ? (orderSummary.total - firstPaymentAmount) : undefined,
+            secondPaymentDate: undefined, // 완결처리 시 설정
         },
         pickupInfo: (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
@@ -663,6 +672,23 @@ const debouncedCustomerSearch = useCallback(
   const pageTitle = existingOrder ? '주문 수정' : '주문테이블';
   const pageDescription = existingOrder ? '기존 주문을 수정합니다.' : '새로운 주문을 등록합니다.';
   const isLoading = ordersLoading || productsLoading || branchesLoading;
+  // 분할결제 총 금액이 변경될 때 선결제 금액 초기화
+  useEffect(() => {
+    if (isSplitPaymentEnabled && firstPaymentAmount === 0) {
+      setFirstPaymentAmount(Math.floor(orderSummary.total * 0.5)); // 기본값: 총액의 50%
+    }
+  }, [orderSummary.total, isSplitPaymentEnabled, firstPaymentAmount]);
+
+  // 선결제 금액이 총액을 초과하지 않도록 제한
+  const handleFirstPaymentAmountChange = (amount: number) => {
+    if (amount > orderSummary.total) {
+      setFirstPaymentAmount(orderSummary.total);
+    } else if (amount < 0) {
+      setFirstPaymentAmount(0);
+    } else {
+      setFirstPaymentAmount(amount);
+    }
+  };
   return (
     <div>
         <PageHeader
@@ -917,6 +943,52 @@ const debouncedCustomerSearch = useCallback(
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="pending" id="status-pending" /><Label htmlFor="status-pending">미결</Label></div>
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="paid" id="status-paid" /><Label htmlFor="status-paid">결제완료</Label></div>
                                     </RadioGroup>
+                                </div>
+                                {/* 분할결제 선택 */}
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs text-muted-foreground">분할결제</Label>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch 
+                                                id="split-payment" 
+                                                checked={isSplitPaymentEnabled} 
+                                                onCheckedChange={setIsSplitPaymentEnabled}
+                                            />
+                                            <Label htmlFor="split-payment" className="text-sm">분할결제 사용</Label>
+                                        </div>
+                                    </div>
+                                    {isSplitPaymentEnabled && (
+                                        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <Label className="text-sm font-medium">선결제 금액 (주문 시 결제)</Label>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <Input
+                                                            type="number"
+                                                            value={firstPaymentAmount}
+                                                            onChange={(e) => handleFirstPaymentAmountChange(parseInt(e.target.value) || 0)}
+                                                            className="flex-1"
+                                                            placeholder="선결제 금액"
+                                                            min={0}
+                                                            max={orderSummary.total}
+                                                        />
+                                                        <span className="text-sm text-muted-foreground">원</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-green-600 font-medium">선결제 (당일 매출)</span>
+                                                    <span className="text-green-600 font-medium">₩{firstPaymentAmount.toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-orange-600 font-medium">후결제 (완결 시 매출)</span>
+                                                    <span className="text-orange-600 font-medium">₩{(orderSummary.total - firstPaymentAmount).toLocaleString()}</span>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground bg-white p-2 rounded border">
+                                                    💡 선결제 금액은 주문일 매출로, 후결제 금액은 완결처리일 매출로 기록됩니다.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                           </Card>
@@ -1436,6 +1508,28 @@ const debouncedCustomerSearch = useCallback(
                             <span>총 결제 금액</span>
                             <span>₩{orderSummary.total.toLocaleString()}</span>
                         </div>
+                        
+                        {/* 분할결제 정보 추가 */}
+                        {isSplitPaymentEnabled && (
+                          <>
+                            <Separator />
+                            <div className="space-y-2">
+                              <div className="text-sm font-medium text-blue-600 mb-2">분할결제 내역</div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-green-600 font-medium">선결제 (주문일 매출)</span>
+                                <span className="text-green-600 font-medium">₩{firstPaymentAmount.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-orange-600 font-medium">후결제 (완결 시 매출)</span>
+                                <span className="text-orange-600 font-medium">₩{(orderSummary.total - firstPaymentAmount).toLocaleString()}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded border">
+                                💡 선결제는 주문일 매출로, 후결제는 완결처리일 매출로 각각 기록됩니다.
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        
                         {/* 주문등록 버튼을 총결제금액 아래에 추가 */}
                         <div className="pt-4">
                             <Button onClick={handleCompleteOrder} disabled={isSubmitting} className="w-full">

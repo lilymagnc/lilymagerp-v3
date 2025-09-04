@@ -44,6 +44,11 @@ export interface OrderData {
     method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
     status: PaymentStatus;
     completedAt?: Timestamp; // 완결처리 시 기록되는 시간
+    isSplitPayment?: boolean; // 분할결제 여부
+    firstPaymentAmount?: number; // 선결제 금액
+    firstPaymentDate?: Timestamp; // 선결제 날짜 (주문 날짜)
+    secondPaymentAmount?: number; // 후결제 금액
+    secondPaymentDate?: Timestamp; // 후결제 날짜 (완결처리 날짜)
   };
   pickupInfo: {
     date: string;
@@ -385,13 +390,25 @@ export function useOrders() {
   const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'paid' | 'completed') => {
     try {
         const orderRef = doc(db, 'orders', orderId);
+        
+        // 주문 정보를 먼저 가져와서 분할결제 여부 확인
+        const orderDoc = await getDoc(orderRef);
+        const orderData = orderDoc.data();
+        
         const updateData: any = { 'payment.status': newStatus };
         
         // 완결처리 시 현재 시간 기록
         if (newStatus === 'paid') {
           updateData['payment.completedAt'] = serverTimestamp();
+          
+          // 분할결제인 경우 후결제 날짜 기록
+          if (orderData?.payment?.isSplitPayment) {
+            updateData['payment.secondPaymentDate'] = serverTimestamp();
+          }
+          
           console.log('Payment Status Update Debug:', {
             orderId: orderId,
+            isSplitPayment: orderData?.payment?.isSplitPayment,
             newStatus: newStatus,
             completedAt: 'serverTimestamp()',
             updateData: updateData
