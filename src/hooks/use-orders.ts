@@ -454,17 +454,68 @@ export function useOrders() {
       }
       const orderData = orderDoc.data() as Order;
       const pointsUsed = orderData.summary.pointsUsed || 0;
-      // 고객이 포인트를 사용했고, 고객 ID가 있는 경우 포인트 환불
-      if (pointsUsed > 0 && orderData.orderer.id) {
-        await refundCustomerPoints(orderData.orderer.id, pointsUsed);
+      
+      // 포인트를 사용한 경우 환불 처리
+      if (pointsUsed > 0) {
+        let customerId = orderData.orderer.id;
+        
+        // 고객 ID가 없는 경우 연락처로 고객 찾기
+        if (!customerId && orderData.orderer.contact) {
+          const customerSnapshot = await getDocs(query(
+            collection(db, 'customers'),
+            where('contact', '==', orderData.orderer.contact),
+            where('isDeleted', '!=', true)
+          ));
+          
+          if (!customerSnapshot.empty) {
+            customerId = customerSnapshot.docs[0].id;
+          }
         }
+        
+        if (customerId) {
+          await refundCustomerPoints(customerId, pointsUsed);
+        } else {
+          console.warn('고객을 찾을 수 없어 포인트 환불을 할 수 없습니다:', {
+            ordererContact: orderData.orderer.contact,
+            ordererName: orderData.orderer.name,
+            pointsUsed: pointsUsed
+          });
+        }
+      }
+      // 적립 예정 포인트가 있는 경우 차감 처리
+      const pointsEarned = orderData.summary.pointsEarned || 0;
+      if (pointsEarned > 0) {
+        let customerId = orderData.orderer.id;
+        
+        // 고객 ID가 없는 경우 연락처로 고객 찾기
+        if (!customerId && orderData.orderer.contact) {
+          const customerSnapshot = await getDocs(query(
+            collection(db, 'customers'),
+            where('contact', '==', orderData.orderer.contact),
+            where('isDeleted', '!=', true)
+          ));
+          
+          if (!customerSnapshot.empty) {
+            customerId = customerSnapshot.docs[0].id;
+          }
+        }
+        
+        if (customerId) {
+          await deductCustomerPoints(customerId, pointsEarned);
+          console.log('적립 포인트 차감 완료:', {
+            customerId: customerId,
+            pointsEarned: pointsEarned
+          });
+        }
+      }
+
       // 주문 상태를 취소로 변경하고 금액을 0으로 설정
       await updateDoc(orderRef, {
         status: 'canceled',
         summary: {
           ...orderData.summary,
           subtotal: 0,
-          discount: 0,
+          discountAmount: 0,
           deliveryFee: 0,
           pointsUsed: 0,
           pointsEarned: 0,
@@ -480,9 +531,21 @@ export function useOrders() {
         await updateRecipientInfoOnOrderDelete(orderData.deliveryInfo, orderData.branchName);
       }
       
-      const successMessage = pointsUsed > 0 
-        ? `주문이 취소되고 금액이 0원으로 설정되었습니다. 사용한 ${pointsUsed}포인트가 환불되었습니다.`
-        : "주문이 취소되고 금액이 0원으로 설정되었습니다.";
+      // 성공 메시지 구성
+      let successMessage = "주문이 취소되고 금액이 0원으로 설정되었습니다.";
+      const messages = [];
+      
+      if (pointsUsed > 0) {
+        messages.push(`사용한 ${pointsUsed}포인트가 환불되었습니다.`);
+      }
+      
+      if (pointsEarned > 0) {
+        messages.push(`적립 예정이던 ${pointsEarned}포인트가 차감되었습니다.`);
+      }
+      
+      if (messages.length > 0) {
+        successMessage += ` ${messages.join(' ')}`;
+      }
       toast({
         title: "주문 취소 완료",
         description: successMessage
@@ -498,7 +561,7 @@ export function useOrders() {
       setLoading(false);
     }
   };
-  // 주문 삭제 (완전 삭제)
+  // 주문 삭제 (완전 삭제 + 포인트 복원)
   const deleteOrder = async (orderId: string) => {
     setLoading(true);
     try {
@@ -511,6 +574,60 @@ export function useOrders() {
       }
       
       const orderData = orderDoc.data() as Order;
+      const pointsUsed = orderData.summary.pointsUsed || 0;
+      const pointsEarned = orderData.summary.pointsEarned || 0;
+      
+      // 포인트를 사용한 경우 환불 처리
+      if (pointsUsed > 0) {
+        let customerId = orderData.orderer.id;
+        
+        // 고객 ID가 없는 경우 연락처로 고객 찾기
+        if (!customerId && orderData.orderer.contact) {
+          const customerSnapshot = await getDocs(query(
+            collection(db, 'customers'),
+            where('contact', '==', orderData.orderer.contact),
+            where('isDeleted', '!=', true)
+          ));
+          
+          if (!customerSnapshot.empty) {
+            customerId = customerSnapshot.docs[0].id;
+          }
+        }
+        
+        if (customerId) {
+          await refundCustomerPoints(customerId, pointsUsed);
+          console.log('주문 삭제 - 사용 포인트 환불 완료:', pointsUsed);
+        } else {
+          console.warn('주문 삭제 - 고객을 찾을 수 없어 포인트 환불 불가:', {
+            ordererContact: orderData.orderer.contact,
+            ordererName: orderData.orderer.name,
+            pointsUsed: pointsUsed
+          });
+        }
+      }
+      
+      // 적립 예정 포인트가 있는 경우 차감 처리
+      if (pointsEarned > 0) {
+        let customerId = orderData.orderer.id;
+        
+        // 고객 ID가 없는 경우 연락처로 고객 찾기
+        if (!customerId && orderData.orderer.contact) {
+          const customerSnapshot = await getDocs(query(
+            collection(db, 'customers'),
+            where('contact', '==', orderData.orderer.contact),
+            where('isDeleted', '!=', true)
+          ));
+          
+          if (!customerSnapshot.empty) {
+            customerId = customerSnapshot.docs[0].id;
+          }
+        }
+        
+        if (customerId) {
+          await deductCustomerPoints(customerId, pointsEarned);
+          console.log('주문 삭제 - 적립 포인트 차감 완료:', pointsEarned);
+        }
+      }
       
       // 관련된 주문 이관 기록 찾기 및 삭제
       const transfersRef = collection(db, 'order_transfers');
@@ -535,9 +652,25 @@ export function useOrders() {
         await updateRecipientInfoOnOrderDelete(orderData.deliveryInfo, orderData.branchName);
       }
       
+      // 성공 메시지 구성
+      let successMessage = "주문과 관련된 모든 데이터가 삭제되었습니다.";
+      const messages = [];
+      
+      if (pointsUsed > 0) {
+        messages.push(`사용한 ${pointsUsed}포인트가 환불되었습니다.`);
+      }
+      
+      if (pointsEarned > 0) {
+        messages.push(`적립 예정이던 ${pointsEarned}포인트가 차감되었습니다.`);
+      }
+      
+      if (messages.length > 0) {
+        successMessage += ` ${messages.join(' ')}`;
+      }
+      
       toast({
         title: "주문 삭제 완료",
-        description: "주문과 관련된 이관 기록이 모두 삭제되었습니다."
+        description: successMessage
       });
       await fetchOrders(); // 목록 새로고침
     } catch (error) {
@@ -750,14 +883,27 @@ const refundCustomerPoints = async (customerId: string, pointsToRefund: number) 
     const customerRef = doc(db, 'customers', customerId);
     const customerDoc = await getDoc(customerRef);
     if (customerDoc.exists()) {
-      const currentPoints = customerDoc.data().points || 0;
+      const customerData = customerDoc.data();
+      const currentPoints = customerData.points || 0;
       const newPoints = currentPoints + pointsToRefund;
+      
       await setDoc(customerRef, {
         points: newPoints,
         lastUpdated: serverTimestamp(),
       }, { merge: true });
+      
+      console.log('포인트 환불 완료:', {
+        customerId: customerId,
+        customerName: customerData.name,
+        currentPoints: currentPoints,
+        refundedPoints: pointsToRefund,
+        newPoints: newPoints
+      });
+    } else {
+      console.error('고객 문서를 찾을 수 없습니다:', customerId);
     }
   } catch (error) {
+    console.error('포인트 환불 중 오류 발생:', error);
     // 포인트 환불 실패해도 주문 취소는 계속 진행
   }
 };
