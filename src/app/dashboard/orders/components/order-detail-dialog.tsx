@@ -59,6 +59,13 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
             )}
           </div>
         );
+      case 'split_payment':
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge className="bg-orange-500 text-white font-semibold">분할결제</Badge>
+            <span className="text-xs text-gray-500">후결제 대기</span>
+          </div>
+        );
       case 'pending':
         return <Badge variant="secondary" className="bg-yellow-500 text-white">미결</Badge>;
       default:

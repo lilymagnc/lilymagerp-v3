@@ -41,7 +41,7 @@ type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
 type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
 type MessageType = "card" | "ribbon";
 type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
-type PaymentStatus = "pending" | "paid" | "completed";
+type PaymentStatus = "pending" | "paid" | "completed" | "split_payment";
 declare global {
   interface Window {
     daum: any;
@@ -488,7 +488,7 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         registerCustomer: registerCustomer,
         payment: {
             method: paymentMethod,
-            status: paymentStatus,
+            status: isSplitPaymentEnabled ? "split_payment" : paymentStatus,
             isSplitPayment: isSplitPaymentEnabled,
             firstPaymentAmount: isSplitPaymentEnabled ? firstPaymentAmount : undefined,
             firstPaymentDate: isSplitPaymentEnabled ? serverTimestamp() as any : undefined,

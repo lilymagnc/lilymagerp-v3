@@ -95,7 +95,7 @@ export interface Order extends Omit<OrderData, 'orderDate'> {
     transferReason?: string;
   };
 }
-export type PaymentStatus = "paid" | "pending" | "completed";
+export type PaymentStatus = "paid" | "pending" | "completed" | "split_payment";
 export function useOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -401,14 +401,15 @@ export function useOrders() {
         if (newStatus === 'paid') {
           updateData['payment.completedAt'] = serverTimestamp();
           
-          // 분할결제인 경우 후결제 날짜 기록
-          if (orderData?.payment?.isSplitPayment) {
+          // 분할결제인 경우 후결제 날짜 기록 및 상태 변경
+          if (orderData?.payment?.isSplitPayment || orderData?.payment?.status === 'split_payment') {
             updateData['payment.secondPaymentDate'] = serverTimestamp();
           }
           
           console.log('Payment Status Update Debug:', {
             orderId: orderId,
             isSplitPayment: orderData?.payment?.isSplitPayment,
+            currentStatus: orderData?.payment?.status,
             newStatus: newStatus,
             completedAt: 'serverTimestamp()',
             updateData: updateData

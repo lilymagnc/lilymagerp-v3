@@ -318,6 +318,13 @@ export default function OrdersPage() {
             )}
           </div>
         );
+      case 'split_payment':
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge className="bg-orange-500 text-white font-semibold">분할결제</Badge>
+            <span className="text-xs text-gray-500">후결제 대기</span>
+          </div>
+        );
       case 'pending':
         return <Badge className="bg-red-500 text-white font-semibold">미결</Badge>;
       default:
@@ -383,9 +390,11 @@ export default function OrdersPage() {
     if (selectedPaymentStatus !== "all") {
       filtered = filtered.filter(order => {
         if (selectedPaymentStatus === "paid") {
-          return order.payment?.status === "paid";
+          return order.payment?.status === "paid" || order.payment?.status === "completed";
         } else if (selectedPaymentStatus === "pending") {
           return order.payment?.status === "pending";
+        } else if (selectedPaymentStatus === "split_payment") {
+          return order.payment?.status === "split_payment";
         }
         return true;
       });
@@ -967,6 +976,7 @@ export default function OrdersPage() {
                     <SelectContent>
                         <SelectItem value="all">전체 결제</SelectItem>
                         <SelectItem value="paid">완결</SelectItem>
+                        <SelectItem value="split_payment">분할결제</SelectItem>
                         <SelectItem value="pending">미결</SelectItem>
                     </SelectContent>
                 </Select>
