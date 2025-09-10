@@ -266,7 +266,6 @@ export default function OrdersPage() {
   };
   const handleExcelDownload = () => {
     const ordersToExport = filteredOrders;
-    const filename = selectedBranch !== "all" ? `${selectedBranch}_주문내역` : "전체_주문내역";
     if (ordersToExport.length === 0) {
       toast({
         title: "다운로드할 데이터가 없습니다",
@@ -276,12 +275,14 @@ export default function OrdersPage() {
       return;
     }
     try {
-      exportOrdersToExcel(ordersToExport, filename);
+      // startDate와 endDate 파라미터는 선택사항이므로 생략
+      exportOrdersToExcel(ordersToExport);
       toast({
         title: "엑셀 다운로드 완료",
         description: `${ordersToExport.length}건의 주문 내역이 다운로드되었습니다.`,
       });
     } catch (error) {
+      console.error('엑셀 다운로드 오류:', error);
       toast({
         title: "다운로드 실패",
         description: "엑셀 파일 다운로드 중 오류가 발생했습니다.",

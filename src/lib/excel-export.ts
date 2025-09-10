@@ -439,8 +439,14 @@ export const exportPickupDeliveryToExcel = (
 
 // 주문 내보내기 함수
 export const exportOrdersToExcel = (orders: any[], startDate?: string, endDate?: string) => {
-  // 날짜 필터링 (선택사항)
-  let filteredOrders = orders;
+  try {
+    // 입력 데이터 검증
+    if (!orders || !Array.isArray(orders)) {
+      throw new Error('주문 데이터가 올바르지 않습니다.');
+    }
+
+    // 날짜 필터링 (선택사항)
+    let filteredOrders = orders;
   if (startDate && endDate) {
     filteredOrders = orders.filter(order => {
       const orderDate = order.orderDate?.toDate?.() || new Date(order.orderDate);
@@ -473,7 +479,7 @@ export const exportOrdersToExcel = (orders: any[], startDate?: string, endDate?:
     const itemName = firstItem ? firstItem.name : '-';
     const itemQuantity = firstItem ? firstItem.quantity : 0;
     const itemPrice = firstItem ? firstItem.price : 0;
-    const itemTotal = firstItem ? firstItem.total : 0;
+    const itemTotal = firstItem ? (firstItem.price * firstItem.quantity) : 0;
 
     return [
       order.id,
@@ -484,8 +490,8 @@ export const exportOrdersToExcel = (orders: any[], startDate?: string, endDate?:
       order.status || '-',
       itemName,
       itemQuantity,
-      itemPrice.toLocaleString(),
-      itemTotal.toLocaleString(),
+      (itemPrice || 0).toLocaleString(),
+      (itemTotal || 0).toLocaleString(),
       (order.summary?.deliveryFee || 0).toLocaleString(),
       (order.summary?.total || 0).toLocaleString(),
       order.payment?.method || '-',
@@ -517,8 +523,8 @@ export const exportOrdersToExcel = (orders: any[], startDate?: string, endDate?:
           '', // 주문상태
           item.name,
           item.quantity,
-          item.price.toLocaleString(),
-          item.total.toLocaleString(),
+          (item.price || 0).toLocaleString(),
+          ((item.price || 0) * (item.quantity || 0)).toLocaleString(),
           '', // 배송비
           '', // 총금액
           '', // 결제방법
@@ -596,6 +602,10 @@ export const exportOrdersToExcel = (orders: any[], startDate?: string, endDate?:
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('엑셀 내보내기 오류:', error);
+    throw error;
+  }
 };
 
 // 간편지출 내보내기 함수
@@ -604,8 +614,12 @@ export const exportToExcel = (expenses: SimpleExpense[], startDate?: string, end
   let filteredExpenses = expenses;
   if (startDate && endDate) {
     filteredExpenses = expenses.filter(expense => {
-      const expenseDate = expense.date && typeof expense.date === 'object' && 'toDate' in expense.date ? 
-        expense.date.toDate() : new Date(expense.date);
+      let expenseDate: Date;
+      if (expense.date && typeof expense.date === 'object' && 'toDate' in expense.date) {
+        expenseDate = expense.date.toDate();
+      } else {
+        expenseDate = new Date(expense.date as unknown as string | number);
+      }
       const expenseDateStr = expenseDate.toISOString().split('T')[0];
       return expenseDateStr >= startDate && expenseDateStr <= endDate;
     });
@@ -618,8 +632,12 @@ export const exportToExcel = (expenses: SimpleExpense[], startDate?: string, end
 
   // 데이터 변환
   const data = filteredExpenses.map(expense => {
-    const expenseDate = expense.date && typeof expense.date === 'object' && 'toDate' in expense.date ? 
-      expense.date.toDate() : new Date(expense.date);
+    let expenseDate: Date;
+    if (expense.date && typeof expense.date === 'object' && 'toDate' in expense.date) {
+      expenseDate = expense.date.toDate();
+    } else {
+      expenseDate = new Date(expense.date as unknown as string | number);
+    }
     const formattedDate = format(expenseDate, 'yyyy-MM-dd', { locale: ko });
 
     return [
