@@ -448,6 +448,35 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                       </p>
                     </div>
                   )}
+                  {order.transferInfo.amountSplit && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">금액 분배</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">발주지점</p>
+                          <p className="font-medium">{order.transferInfo.amountSplit.orderBranch}%</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">수주지점</p>
+                          <p className="font-medium">{order.transferInfo.amountSplit.processBranch}%</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {order.transferInfo.notes && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">추가 메모</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {order.transferInfo.notes}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

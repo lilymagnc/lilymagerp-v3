@@ -109,7 +109,25 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">지점</p>
-                <p className="font-medium">{order.branchName || '-'}</p>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">
+                      {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName 
+                        ? order.transferInfo.processBranchName 
+                        : order.branchName || '-'}
+                    </p>
+                    {order.transferInfo?.isTransferred && (
+                      <Badge variant="outline" className="text-xs">
+                        이관됨
+                      </Badge>
+                    )}
+                  </div>
+                  {order.transferInfo?.isTransferred && (
+                    <p className="text-xs text-gray-500">
+                      발주지점: {order.branchName}
+                    </p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -290,6 +308,50 @@ export function OrderDetailDialog({ order, open, onOpenChange }: OrderDetailDial
                 <div>
                   <p className="text-sm text-muted-foreground">결제 상태</p>
                   <div>{getPaymentStatusBadge(order.payment.status || 'pending')}</div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {/* 이관 정보 */}
+          {order.transferInfo?.isTransferred && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building className="w-4 h-4" />
+                  이관 정보
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">발주지점</p>
+                  <p className="font-medium">{order.branchName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">처리지점</p>
+                  <p className="font-medium">{order.transferInfo.processBranchName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">이관일시</p>
+                  <p className="font-medium">
+                    {order.transferInfo.transferDate ? formatOrderDate(order.transferInfo.transferDate) : '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">이관 상태</p>
+                  <div>
+                    {order.transferInfo.status === 'accepted' && (
+                      <Badge variant="default" className="bg-green-100 text-green-800">수락됨</Badge>
+                    )}
+                    {order.transferInfo.status === 'pending' && (
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">대기중</Badge>
+                    )}
+                    {order.transferInfo.status === 'rejected' && (
+                      <Badge variant="destructive">거절됨</Badge>
+                    )}
+                    {order.transferInfo.status === 'completed' && (
+                      <Badge variant="default" className="bg-blue-100 text-blue-800">완료됨</Badge>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

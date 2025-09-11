@@ -219,6 +219,15 @@ export function useOrderTransfers() {
           transferId: transferRef.id,
           originalBranchId: orderData.branchId,
           originalBranchName: orderBranch.name,
+          processBranchId: transferForm.processBranchId,
+          processBranchName: processBranch.name,
+          transferDate: serverTimestamp(),
+          transferReason: transferForm.transferReason,
+          transferBy: user?.uid || '',
+          transferByUser: user?.email || '',
+          status: 'pending',
+          amountSplit: transferForm.amountSplit,
+          notes: transferForm.notes,
           transferredAt: serverTimestamp()
         }
       });
@@ -300,6 +309,21 @@ export function useOrderTransfers() {
       } else if (statusUpdate.status === 'rejected') {
         updateData.rejectedAt = serverTimestamp();
         updateData.rejectedBy = user?.uid;
+        
+        // 이관 거절 시 원본 주문의 transferInfo 상태 업데이트
+        const transferDoc = await getDocs(query(
+          collection(db, 'order_transfers'),
+          where('__name__', '==', transferId)
+        ));
+
+        if (!transferDoc.empty) {
+          const transferData = transferDoc.docs[0].data();
+          await updateDoc(doc(db, 'orders', transferData.originalOrderId), {
+            'transferInfo.status': 'rejected',
+            'transferInfo.rejectedAt': serverTimestamp(),
+            'transferInfo.rejectedBy': user?.uid
+          });
+        }
       } else if (statusUpdate.status === 'completed') {
         updateData.completedAt = serverTimestamp();
         updateData.completedBy = user?.uid;
@@ -331,10 +355,20 @@ export function useOrderTransfers() {
             await updateDoc(doc(db, 'orders', transferData.originalOrderId), {
               // branchId와 branchName은 발주지점 그대로 유지
               // 대신 이관 정보를 업데이트
+              'transferInfo.isTransferred': true,
+              'transferInfo.transferId': transferId,
+              'transferInfo.originalBranchId': transferData.orderBranchId,
+              'transferInfo.originalBranchName': transferData.orderBranchName,
+              'transferInfo.processBranchId': transferData.processBranchId,
+              'transferInfo.processBranchName': transferData.processBranchName,
+              'transferInfo.transferDate': transferData.transferDate,
+              'transferInfo.transferReason': transferData.transferReason,
+              'transferInfo.transferBy': transferData.transferBy,
+              'transferInfo.transferByUser': transferData.transferByUser,
               'transferInfo.status': 'accepted',
               'transferInfo.acceptedAt': serverTimestamp(),
-              'transferInfo.processBranchId': transferData.processBranchId,
-              'transferInfo.processBranchName': transferData.processBranchName
+              'transferInfo.amountSplit': transferData.amountSplit,
+              'transferInfo.notes': transferData.notes
             });
 
             // 원본 주문 정보 조회하여 전광판에 표시
