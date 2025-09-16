@@ -42,6 +42,25 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'card':
+        return '카드';
+      case 'cash':
+        return '현금';
+      case 'transfer':
+        return '계좌이체';
+      case 'mainpay':
+        return '메인페이';
+      case 'shopping_mall':
+        return '쇼핑몰';
+      case 'epay':
+        return '이페이';
+      default:
+        return method;
+    }
+  };
+
   const getPaymentStatusBadge = (order: any) => {
     const status = order.payment?.status;
     const completedAt = order.payment?.completedAt;
@@ -168,9 +187,20 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                     <span className="text-sm font-medium">결제 수단</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      {order.payment?.method || '미정'}
-                    </p>
+                    {order.payment?.isSplitPayment ? (
+                      <div className="text-sm text-muted-foreground">
+                        <div className="text-green-600 font-medium">
+                          선결제: {order.payment.firstPaymentMethod ? getPaymentMethodText(order.payment.firstPaymentMethod) : '미설정'} (₩{order.payment.firstPaymentAmount?.toLocaleString() || 0})
+                        </div>
+                        <div className="text-orange-600 font-medium">
+                          후결제: {order.payment.secondPaymentMethod ? getPaymentMethodText(order.payment.secondPaymentMethod) : '미설정'} (₩{order.payment.secondPaymentAmount?.toLocaleString() || 0})
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {order.payment?.method ? getPaymentMethodText(order.payment.method) : '미정'}
+                      </p>
+                    )}
                     {order.payment?.isSplitPayment && (
                       <Badge variant="secondary" className="text-xs">분할결제</Badge>
                     )}

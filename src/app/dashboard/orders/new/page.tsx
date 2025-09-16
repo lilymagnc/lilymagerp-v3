@@ -155,6 +155,8 @@ export default function NewOrderPage() {
   // 분할결제 관련 상태
   const [isSplitPaymentEnabled, setIsSplitPaymentEnabled] = useState(false);
   const [firstPaymentAmount, setFirstPaymentAmount] = useState(0);
+  const [firstPaymentMethod, setFirstPaymentMethod] = useState<PaymentMethod>("card");
+  const [secondPaymentMethod, setSecondPaymentMethod] = useState<PaymentMethod>("card");
   const [showTodaysOrders, setShowTodaysOrders] = useState(false);
   const [existingOrder, setExistingOrder] = useState<Order | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -275,8 +277,21 @@ export default function NewOrderPage() {
               setMessageSender("");
             }
             setSpecialRequest(foundOrder.request || "");
-            setPaymentMethod(foundOrder.payment.method);
+            setPaymentMethod(foundOrder.payment.method || "card");
             setPaymentStatus(foundOrder.payment.status as PaymentStatus);
+            // 분할결제 정보 로드
+            if (foundOrder.payment.isSplitPayment) {
+              setIsSplitPaymentEnabled(true);
+              setFirstPaymentAmount(foundOrder.payment.firstPaymentAmount || 0);
+              setFirstPaymentMethod(foundOrder.payment.firstPaymentMethod || "card");
+              setSecondPaymentMethod(foundOrder.payment.secondPaymentMethod || "card");
+            } else {
+              // 일반 결제인 경우 분할결제 상태 초기화
+              setIsSplitPaymentEnabled(false);
+              setFirstPaymentAmount(0);
+              setFirstPaymentMethod("card");
+              setSecondPaymentMethod("card");
+            }
         }
       }
   }, [orderId, orders, ordersLoading, branches, branchesLoading, allProducts, productsLoading])
@@ -487,13 +502,15 @@ const handleOrdererContactChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         isAnonymous: isAnonymous,
         registerCustomer: registerCustomer,
         payment: {
-            method: paymentMethod,
+            method: isSplitPaymentEnabled ? undefined : paymentMethod, // 분할결제 시에는 일반 결제수단 저장하지 않음
             status: isSplitPaymentEnabled ? "split_payment" : paymentStatus,
             isSplitPayment: isSplitPaymentEnabled,
             firstPaymentAmount: isSplitPaymentEnabled ? firstPaymentAmount : undefined,
             firstPaymentDate: isSplitPaymentEnabled ? serverTimestamp() as any : undefined,
+            firstPaymentMethod: isSplitPaymentEnabled ? firstPaymentMethod : undefined,
             secondPaymentAmount: isSplitPaymentEnabled ? (orderSummary.total - firstPaymentAmount) : undefined,
             secondPaymentDate: undefined, // 완결처리 시 설정
+            secondPaymentMethod: isSplitPaymentEnabled ? secondPaymentMethod : undefined,
         },
         pickupInfo: (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') ? { 
             date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', 
@@ -678,6 +695,20 @@ const debouncedCustomerSearch = useCallback(
       setFirstPaymentAmount(Math.floor(orderSummary.total * 0.5)); // 기본값: 총액의 50%
     }
   }, [orderSummary.total, isSplitPaymentEnabled, firstPaymentAmount]);
+
+  // 분할결제 토글 변경 시 처리
+  const handleSplitPaymentToggle = (enabled: boolean) => {
+    setIsSplitPaymentEnabled(enabled);
+    if (!enabled) {
+      // 분할결제를 끄면 분할결제 관련 상태 초기화
+      setFirstPaymentAmount(0);
+      setFirstPaymentMethod("card");
+      setSecondPaymentMethod("card");
+    } else {
+      // 분할결제를 켜면 선결제 금액 기본값 설정
+      setFirstPaymentAmount(Math.floor(orderSummary.total * 0.5));
+    }
+  };
 
   // 선결제 금액이 총액을 초과하지 않도록 제한
   const handleFirstPaymentAmountChange = (amount: number) => {
@@ -928,14 +959,24 @@ const debouncedCustomerSearch = useCallback(
                             <CardContent className="p-4 space-y-4">
                                 <div>
                                     <Label className="text-xs text-muted-foreground">결제 수단</Label>
-                                    <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} className="flex items-center flex-wrap gap-4 mt-2">
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="pay-card" /><Label htmlFor="pay-card">카드</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="cash" id="pay-cash" /><Label htmlFor="pay-cash">현금</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="transfer" id="pay-transfer" /><Label htmlFor="pay-transfer">계좌이체</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="mainpay" id="pay-mainpay" /><Label htmlFor="pay-mainpay">메인페이</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="shopping_mall" id="pay-mall" /><Label htmlFor="pay-mall">쇼핑몰</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="epay" id="pay-epay" /><Label htmlFor="pay-epay">이페이</Label></div>
+                                    <RadioGroup 
+                                        value={paymentMethod} 
+                                        onValueChange={(v) => setPaymentMethod(v as PaymentMethod)} 
+                                        className={`flex items-center flex-wrap gap-4 mt-2 ${isSplitPaymentEnabled ? 'opacity-50 pointer-events-none' : ''}`}
+                                        disabled={isSplitPaymentEnabled}
+                                    >
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="pay-card" disabled={isSplitPaymentEnabled} /><Label htmlFor="pay-card">카드</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="cash" id="pay-cash" disabled={isSplitPaymentEnabled} /><Label htmlFor="pay-cash">현금</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="transfer" id="pay-transfer" disabled={isSplitPaymentEnabled} /><Label htmlFor="pay-transfer">계좌이체</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="mainpay" id="pay-mainpay" disabled={isSplitPaymentEnabled} /><Label htmlFor="pay-mainpay">메인페이</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="shopping_mall" id="pay-mall" disabled={isSplitPaymentEnabled} /><Label htmlFor="pay-mall">쇼핑몰</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="epay" id="pay-epay" disabled={isSplitPaymentEnabled} /><Label htmlFor="pay-epay">이페이</Label></div>
                                     </RadioGroup>
+                                    {isSplitPaymentEnabled && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            💡 분할결제 시에는 각 결제수단을 개별 선택하세요
+                                        </p>
+                                    )}
                                 </div>
                                  <div>
                                     <Label className="text-xs text-muted-foreground">결제 상태</Label>
@@ -952,7 +993,7 @@ const debouncedCustomerSearch = useCallback(
                                             <Switch 
                                                 id="split-payment" 
                                                 checked={isSplitPaymentEnabled} 
-                                                onCheckedChange={setIsSplitPaymentEnabled}
+                                                onCheckedChange={handleSplitPaymentToggle}
                                             />
                                             <Label htmlFor="split-payment" className="text-sm">분할결제 사용</Label>
                                         </div>
@@ -975,12 +1016,34 @@ const debouncedCustomerSearch = useCallback(
                                                         <span className="text-sm text-muted-foreground">원</span>
                                                     </div>
                                                 </div>
+                                                <div>
+                                                    <Label className="text-sm font-medium">선결제 수단</Label>
+                                                    <RadioGroup value={firstPaymentMethod} onValueChange={(v) => setFirstPaymentMethod(v as PaymentMethod)} className="flex items-center flex-wrap gap-3 mt-2">
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="first-pay-card" /><Label htmlFor="first-pay-card" className="text-sm">카드</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="cash" id="first-pay-cash" /><Label htmlFor="first-pay-cash" className="text-sm">현금</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="transfer" id="first-pay-transfer" /><Label htmlFor="first-pay-transfer" className="text-sm">계좌이체</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="mainpay" id="first-pay-mainpay" /><Label htmlFor="first-pay-mainpay" className="text-sm">메인페이</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="shopping_mall" id="first-pay-shopping" /><Label htmlFor="first-pay-shopping" className="text-sm">쇼핑몰</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="epay" id="first-pay-epay" /><Label htmlFor="first-pay-epay" className="text-sm">이페이</Label></div>
+                                                    </RadioGroup>
+                                                </div>
+                                                <div>
+                                                    <Label className="text-sm font-medium">후결제 수단</Label>
+                                                    <RadioGroup value={secondPaymentMethod} onValueChange={(v) => setSecondPaymentMethod(v as PaymentMethod)} className="flex items-center flex-wrap gap-3 mt-2">
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="second-pay-card" /><Label htmlFor="second-pay-card" className="text-sm">카드</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="cash" id="second-pay-cash" /><Label htmlFor="second-pay-cash" className="text-sm">현금</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="transfer" id="second-pay-transfer" /><Label htmlFor="second-pay-transfer" className="text-sm">계좌이체</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="mainpay" id="second-pay-mainpay" /><Label htmlFor="second-pay-mainpay" className="text-sm">메인페이</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="shopping_mall" id="second-pay-shopping" /><Label htmlFor="second-pay-shopping" className="text-sm">쇼핑몰</Label></div>
+                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="epay" id="second-pay-epay" /><Label htmlFor="second-pay-epay" className="text-sm">이페이</Label></div>
+                                                    </RadioGroup>
+                                                </div>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-green-600 font-medium">선결제 (당일 매출)</span>
+                                                    <span className="text-green-600 font-medium">선결제 (당일 매출) - {firstPaymentMethod === 'card' ? '카드' : firstPaymentMethod === 'cash' ? '현금' : firstPaymentMethod === 'transfer' ? '계좌이체' : firstPaymentMethod === 'mainpay' ? '메인페이' : firstPaymentMethod === 'shopping_mall' ? '쇼핑몰' : '이페이'}</span>
                                                     <span className="text-green-600 font-medium">₩{firstPaymentAmount.toLocaleString()}</span>
                                                 </div>
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-orange-600 font-medium">후결제 (완결 시 매출)</span>
+                                                    <span className="text-orange-600 font-medium">후결제 (완결 시 매출) - {secondPaymentMethod === 'card' ? '카드' : secondPaymentMethod === 'cash' ? '현금' : secondPaymentMethod === 'transfer' ? '계좌이체' : secondPaymentMethod === 'mainpay' ? '메인페이' : secondPaymentMethod === 'shopping_mall' ? '쇼핑몰' : '이페이'}</span>
                                                     <span className="text-orange-600 font-medium">₩{(orderSummary.total - firstPaymentAmount).toLocaleString()}</span>
                                                 </div>
                                                 <div className="text-xs text-muted-foreground bg-white p-2 rounded border">
@@ -1516,11 +1579,11 @@ const debouncedCustomerSearch = useCallback(
                             <div className="space-y-2">
                               <div className="text-sm font-medium text-blue-600 mb-2">분할결제 내역</div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-green-600 font-medium">선결제 (주문일 매출)</span>
+                                <span className="text-green-600 font-medium">선결제 (주문일 매출) - {firstPaymentMethod === 'card' ? '카드' : firstPaymentMethod === 'cash' ? '현금' : firstPaymentMethod === 'transfer' ? '계좌이체' : firstPaymentMethod === 'mainpay' ? '메인페이' : firstPaymentMethod === 'shopping_mall' ? '쇼핑몰' : '이페이'}</span>
                                 <span className="text-green-600 font-medium">₩{firstPaymentAmount.toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-orange-600 font-medium">후결제 (완결 시 매출)</span>
+                                <span className="text-orange-600 font-medium">후결제 (완결 시 매출) - {secondPaymentMethod === 'card' ? '카드' : secondPaymentMethod === 'cash' ? '현금' : secondPaymentMethod === 'transfer' ? '계좌이체' : secondPaymentMethod === 'mainpay' ? '메인페이' : secondPaymentMethod === 'shopping_mall' ? '쇼핑몰' : '이페이'}</span>
                                 <span className="text-orange-600 font-medium">₩{(orderSummary.total - firstPaymentAmount).toLocaleString()}</span>
                               </div>
                               <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded border">

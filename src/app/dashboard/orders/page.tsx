@@ -1211,7 +1211,18 @@ export default function OrdersPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {order.payment?.method ? getPaymentMethodText(order.payment.method) : '-'}
+                    {order.payment?.isSplitPayment ? (
+                      <div className="text-sm">
+                        <div className="text-green-600 font-medium">
+                          선: {order.payment.firstPaymentMethod ? getPaymentMethodText(order.payment.firstPaymentMethod) : '미설정'}
+                        </div>
+                        <div className="text-orange-600 font-medium">
+                          후: {order.payment.secondPaymentMethod ? getPaymentMethodText(order.payment.secondPaymentMethod) : '미설정'}
+                        </div>
+                      </div>
+                    ) : (
+                      order.payment?.method ? getPaymentMethodText(order.payment.method) : '-'
+                    )}
                   </TableCell>
                   <TableCell>
                       <div className="flex flex-col gap-1">

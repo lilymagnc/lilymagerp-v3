@@ -47,8 +47,10 @@ export interface OrderData {
     isSplitPayment?: boolean; // 분할결제 여부
     firstPaymentAmount?: number; // 선결제 금액
     firstPaymentDate?: Timestamp; // 선결제 날짜 (주문 날짜)
+    firstPaymentMethod?: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay"; // 선결제 수단
     secondPaymentAmount?: number; // 후결제 금액
     secondPaymentDate?: Timestamp; // 후결제 날짜 (완결처리 날짜)
+    secondPaymentMethod?: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay"; // 후결제 수단
   };
   pickupInfo: {
     date: string;
