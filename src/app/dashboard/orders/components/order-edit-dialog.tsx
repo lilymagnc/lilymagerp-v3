@@ -52,6 +52,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
   const { updateOrder } = useOrders();
   const { settings } = useSettings();
   const [isLoading, setIsLoading] = useState(false);
+  const [editableDeliveryFee, setEditableDeliveryFee] = useState(0);
   
   // 폼 상태
   const [formData, setFormData] = useState({
@@ -114,6 +115,9 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
         paymentStatus: order.payment?.status || 'pending',
         paymentMethod: order.payment?.method || 'card'
       });
+      
+      // 기존 배송비를 초기값으로 설정
+      setEditableDeliveryFee(order.summary?.deliveryFee || 0);
     }
   }, [order]);
 
@@ -175,7 +179,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
 
   const calculateTotal = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const deliveryFee = formData.receiptType === 'delivery_reservation' ? (settings?.defaultDeliveryFee || 0) : 0;
+    const deliveryFee = formData.receiptType === 'delivery_reservation' ? editableDeliveryFee : 0;
     
     // 기존 주문의 할인 정보 사용
     const discountAmount = order?.summary?.discountAmount || 0;
@@ -498,6 +502,21 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
                       placeholder="배송 주소를 입력하세요"
                       rows={3}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="delivery-fee">배송비</Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">₩</span>
+                      <Input
+                        id="delivery-fee"
+                        type="number"
+                        value={editableDeliveryFee}
+                        onChange={(e) => setEditableDeliveryFee(Number(e.target.value))}
+                        placeholder="배송비 입력"
+                        className="w-32"
+                        min="0"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
