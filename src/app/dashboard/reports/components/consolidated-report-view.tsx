@@ -25,15 +25,15 @@ import {
 import { 
   TrendingUp, 
   TrendingDown,
-  DollarSign, 
-  Target,
   AlertTriangle,
   CheckCircle,
   Download,
   RefreshCw,
   Lightbulb,
   BarChart3,
-  Activity
+  Activity,
+  DollarSign,
+  Target
 } from 'lucide-react';
 import { useReports } from '@/hooks/use-reports';
 import type { ReportFilter, ConsolidatedReport } from '@/hooks/use-reports';
