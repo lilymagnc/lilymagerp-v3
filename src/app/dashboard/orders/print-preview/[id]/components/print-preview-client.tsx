@@ -10,6 +10,7 @@ import { useBranches } from '@/hooks/use-branches';
 import { useAuth } from '@/hooks/use-auth';
 import { PageHeader } from '@/components/page-header';
 import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Order as OrderType } from '@/hooks/use-orders';
@@ -109,7 +110,7 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
     const itemsText = order.items.map(item => `${item.name} / ${item.quantity}개`).join('\n');
     const orderDateObject = new Date(order.orderDate);
     const printData: OrderPrintData | null = targetBranch ? {
-        orderDate: format(orderDateObject, "yyyy-MM-dd HH:mm"),
+        orderDate: format(orderDateObject, "yyyy-MM-dd HH:mm (E)", { locale: ko }),
         ordererName: order.orderer.name,
         ordererContact: order.orderer.contact,
         items: itemsText,
@@ -117,7 +118,10 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
         deliveryFee: order.summary.deliveryFee,
         paymentMethod: order.payment.method,
         paymentStatus: order.payment.status === 'paid' ? '완결' : '미결',
-        deliveryDate: order.deliveryInfo?.date ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` : '정보 없음',
+        deliveryDate: order.deliveryInfo?.date ? (() => {
+            const deliveryDateObject = new Date(order.deliveryInfo.date + ' ' + (order.deliveryInfo.time || '00:00'));
+            return `${order.deliveryInfo.date} ${order.deliveryInfo.time} (${format(deliveryDateObject, 'E', { locale: ko })})`;
+        })() : '정보 없음',
         recipientName: order.deliveryInfo?.recipientName ?? '',
         recipientContact: order.deliveryInfo?.recipientContact ?? '',
         deliveryAddress: order.deliveryInfo?.address ?? '',
