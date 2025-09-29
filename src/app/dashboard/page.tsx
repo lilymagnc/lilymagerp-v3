@@ -254,12 +254,8 @@ export default function DashboardPage() {
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // 선택된 기간 주문 데이터 조회
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startOfDay)),
-        where("orderDate", "<=", Timestamp.fromDate(endOfDay))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -365,12 +361,8 @@ export default function DashboardPage() {
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // 선택된 기간 주문 데이터 조회 (자신의 지점만)
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startOfDay)),
-        where("orderDate", "<=", Timestamp.fromDate(endOfDay))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -379,8 +371,6 @@ export default function DashboardPage() {
       const userBranchOrders = allOrders.filter((order: any) => 
         order.branchName === userBranch
       );
-      
-
       
       // 날짜별로 매출 계산
       const salesByDate: { [key: string]: number } = {};
@@ -510,12 +500,8 @@ export default function DashboardPage() {
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // 선택된 기간 주문 데이터 조회
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startOfDay)),
-        where("orderDate", "<=", Timestamp.fromDate(endOfDay))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -607,12 +593,8 @@ export default function DashboardPage() {
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // 선택된 기간 주문 데이터 조회 (자신의 지점만)
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startOfDay)),
-        where("orderDate", "<=", Timestamp.fromDate(endOfDay))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -764,12 +746,8 @@ export default function DashboardPage() {
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // 선택된 기간 주문 데이터 조회
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startOfDay)),
-        where("orderDate", "<=", Timestamp.fromDate(endOfDay))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -862,12 +840,8 @@ export default function DashboardPage() {
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
       
-      // 선택된 기간 주문 데이터 조회 (자신의 지점만)
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startOfDay)),
-        where("orderDate", "<=", Timestamp.fromDate(endOfDay))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
@@ -1177,7 +1151,7 @@ export default function DashboardPage() {
         setRecentOrders(recentOrdersData);
 
         // 기본 통계 (필터링 적용)
-        // 년 매출 계산 (현재 년도의 매출만) - 주문일 기준으로 계산 (당일매출 통계카드)
+        // 년 매출 계산 (현재 년도의 매출만) - 결제완료일 기준으로 계산 (당일매출 통계카드)
         const currentYear = new Date().getFullYear();
         const yearlyRevenue = orders.filter((order: any) => {
           // 완결처리된 주문만 포함
@@ -1185,22 +1159,27 @@ export default function DashboardPage() {
             return false;
           }
           
-          const orderDate = order.orderDate;
-          if (!orderDate) return false;
-          
-          let orderDateObj;
-          if (orderDate.toDate) {
-            orderDateObj = orderDate.toDate();
+          // 결제완료일 기준으로 매출 계산
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
           } else {
-            orderDateObj = new Date(orderDate);
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return false;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
           }
           
-          // 주문일이 현재 년도인지 확인
-          if (orderDateObj.getFullYear() !== currentYear) {
+          // 결제완료일(또는 주문일)이 현재 년도인지 확인
+          if (revenueDate.getFullYear() !== currentYear) {
             return false;
           }
           
-          // 당일매출 통계카드는 주문일 기준으로 계산 (결제완료일과 무관)
           return true;
         }).reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
         
