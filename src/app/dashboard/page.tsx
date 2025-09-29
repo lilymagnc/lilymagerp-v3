@@ -301,15 +301,20 @@ export default function DashboardPage() {
         
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
-          // 완결처리된 주문: 주문일 기준 (결제 완료일이 아닌 주문일 기준)
-          const orderDate = order.orderDate;
-          if (!orderDate) return;
-          
+          // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
-          if (orderDate.toDate) {
-            revenueDate = orderDate.toDate();
+          if (order.payment?.completedAt) {
+            revenueDate = order.payment.completedAt.toDate();
           } else {
-            revenueDate = new Date(orderDate);
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else {
+              revenueDate = new Date(orderDate);
+            }
           }
           
           const dateKey = format(revenueDate, 'yyyy-MM-dd');
@@ -1030,10 +1035,15 @@ export default function DashboardPage() {
     // 필터링 변경 시 차트 데이터도 업데이트
     try {
       if (isAdmin) {
-        // 본사 관리자: 선택된 기간 지점별 매출 비율
-        const adminDailyData = await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
-        setDailySales(adminDailyData);
-
+        if (currentFilteredBranch) {
+          // 본사 관리자가 특정 지점 선택 시: 해당 지점의 매출 차트
+          const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
+          setDailySales(branchDailyData);
+        } else {
+          // 본사 관리자: 선택된 기간 지점별 매출 비율
+          const adminDailyData = await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
+          setDailySales(adminDailyData);
+        }
       } else {
         // 가맹점/지점 직원: 선택된 기간 자신의 지점 매출
         const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
@@ -1260,10 +1270,15 @@ export default function DashboardPage() {
 
           // 권한별 차트 데이터 생성
           if (isAdmin) {
-            // 본사 관리자: 선택된 기간 지점별 매출 비율
-            const adminDailyData = await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
-            setDailySales(adminDailyData);
-
+            if (currentFilteredBranch) {
+              // 본사 관리자가 특정 지점 선택 시: 해당 지점의 매출 차트
+              const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
+              setDailySales(branchDailyData);
+            } else {
+              // 본사 관리자: 선택된 기간 지점별 매출 비율
+              const adminDailyData = await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
+              setDailySales(adminDailyData);
+            }
           } else {
             // 가맹점/지점 직원: 선택된 기간 자신의 지점 매출
             const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
@@ -1598,23 +1613,34 @@ export default function DashboardPage() {
                      <CardContent>
              <ResponsiveContainer width="100%" height={200}>
                {isAdmin ? (
-                 // 본사 관리자용: 지점별 매출 비율 차트
-               <BarChart data={dailySales}>
-                <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" fontSize={12} />
-                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                <Tooltip content={<CustomTooltip />} />
-                  {availableBranches.map((branch, index) => (
-                    <Bar 
-                      key={branch.name} 
-                      dataKey={branch.name} 
-                      stackId="a" 
-                      radius={[4, 4, 0, 0]}
-                      fill={getBranchColor(index)}
-                    />
-                  ))}
-              </BarChart>
-              ) : (
+                 currentFilteredBranch ? (
+                   // 본사 관리자가 특정 지점 선택 시: 해당 지점의 단일 매출 차트
+                   <BarChart data={dailySales}>
+                     <CartesianGrid strokeDasharray="3 3" />
+                     <XAxis dataKey="date" fontSize={12} />
+                     <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                     <Tooltip content={<CustomTooltip />} />
+                     <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#3B82F6" />
+                   </BarChart>
+                 ) : (
+                   // 본사 관리자용: 지점별 매출 비율 차트
+                   <BarChart data={dailySales}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" fontSize={12} />
+                    <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                      {availableBranches.map((branch, index) => (
+                        <Bar 
+                          key={branch.name} 
+                          dataKey={branch.name} 
+                          stackId="a" 
+                          radius={[4, 4, 0, 0]}
+                          fill={getBranchColor(index)}
+                        />
+                      ))}
+                </BarChart>
+                 )
+               ) : (
                 // 가맹점/지점 직원용: 자신의 지점 매출 차트
                 <BarChart data={dailySales}>
                   <CartesianGrid strokeDasharray="3 3" />
