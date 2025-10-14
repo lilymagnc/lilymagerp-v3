@@ -22,19 +22,11 @@ export default function HrPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [selectedPosition, setSelectedPosition] = useState("all");
-  // 기존 직원들의 직위를 가져와서 필터 옵션에 추가
-  const existingPositions = useMemo(() => [...new Set(employees.map(e => e.position))], [employees]);
-  const allPositionOptions = useMemo(() => {
-    const standardPositions = POSITION_OPTIONS.map(option => option.value);
-    const additionalPositions = existingPositions.filter(pos => !standardPositions.includes(pos));
-    return [...POSITION_OPTIONS, ...additionalPositions.map(pos => ({ value: pos, label: pos }))];
-  }, [existingPositions]);
   const filteredEmployees = useMemo(() => {
     return employees
       .filter(emp => (selectedBranch === "all" || emp.department === selectedBranch))
-      .filter(emp => (selectedPosition === "all" || emp.position === selectedPosition))
       .filter(emp => String(emp.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) || String(emp.email ?? '').toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [employees, searchTerm, selectedBranch, selectedPosition]);
+  }, [employees, searchTerm, selectedBranch]);
   const handleAdd = () => {
     setSelectedEmployee(null);
     setIsFormOpen(true);
@@ -98,17 +90,7 @@ export default function HrPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={selectedPosition} onValueChange={setSelectedPosition}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="직책" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">모든 직책</SelectItem>
-                {allPositionOptions.map(pos => (
-                    <SelectItem key={pos.value} value={pos.value}>{pos.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
           </div>
         </CardContent>
       </Card>

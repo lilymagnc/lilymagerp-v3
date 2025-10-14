@@ -11,7 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
 import { useCalendar } from "@/hooks/use-calendar";
@@ -1875,6 +1875,9 @@ export default function DashboardPage() {
                <ShoppingCart className="h-5 w-5" />
                주문 상세 정보
              </DialogTitle>
+             <DialogDescription>
+                선택된 주문의 상세 정보를 확인합니다.
+             </DialogDescription>
            </DialogHeader>
            {selectedOrder ? (
              <div className="space-y-6">

@@ -52,7 +52,9 @@ export default function DashboardLayout({
         '/dashboard/sample-albums',        // 샘플앨범
         '/dashboard/barcode-scanner',      // 바코드 스캐너
         '/dashboard/checklist',            // 체크리스트
-        '/dashboard/calendar'              // 일정관리
+        '/dashboard/calendar',              // 일정관리
+        '/dashboard/hr/requests',          // 인사 서류 신청
+        '/dashboard/hr/requests/new'       // 인사 서류 온라인 작성
       ];
       // 허용된 페이지가 아닌 경우에만 주문접수 페이지로 리다이렉트
              const isAllowedPage = allowedPages.includes(currentPath) || 
@@ -145,6 +147,11 @@ export default function DashboardLayout({
                         <SidebarMenuButton onClick={() => router.push('/dashboard/partners')}><Briefcase />거래처 관리</SidebarMenuButton>
                     </SidebarMenuItem>
 
+                    {/* 인사 서류 신청 (모든 사용자) */}
+                    <SidebarMenuItem>
+                        <SidebarMenuButton onClick={() => router.push('/dashboard/hr/requests')}><Briefcase />인사 서류 신청</SidebarMenuButton>
+                    </SidebarMenuItem>
+
                     {/* 본사 관리자만 접근 가능한 메뉴들 */}
                     {isHQManager() && (
                         <>
@@ -191,6 +198,10 @@ export default function DashboardLayout({
                             {/* 19. 인사 관리 (본사 관리자만) */}
                             <SidebarMenuItem>
                                 <SidebarMenuButton onClick={() => router.push('/dashboard/hr')}><Users />인사 관리</SidebarMenuButton>
+                            </SidebarMenuItem>
+                            {/* 인사 서류 관리 (본사 관리자만) */}
+                            <SidebarMenuItem>
+                                <SidebarMenuButton onClick={() => router.push('/dashboard/hr/management')}><Users />신청서 관리</SidebarMenuButton>
                             </SidebarMenuItem>
                             {/* 20. 사용자 관리 (본사 관리자만) */}
                             <SidebarMenuItem>

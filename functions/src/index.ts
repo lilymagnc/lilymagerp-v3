@@ -125,6 +125,69 @@ export const manualBackup = functions.https.onCall(async (data, context) => {
   }
 });
 
+import * as nodemailer from 'nodemailer';
+
+// Nodemailer transporter 설정 (실제 환경에서는 환경 변수 사용 권장)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'YOUR_EMAIL@gmail.com', // 여기에 실제 이메일 주소 입력
+    pass: 'YOUR_PASSWORD'       // 여기에 실제 앱 비밀번호 또는 계정 비밀번호 입력
+  }
+});
+
+// 인사 서류 제출 시 이메일 발송 함수
+export const onHrDocumentCreate = functions.firestore
+  .document('hr_documents/{docId}')
+  .onCreate(async (snap, context) => {
+    const docData = snap.data();
+    if (!docData) {
+      console.error('No document data found');
+      return;
+    }
+
+    const { userName, documentType, contents, fileUrl, submissionDate } = docData;
+    const toEmail = 'ADMIN_EMAIL@example.com'; // 알림을 받을 관리자 이메일
+
+    let subject = `[인사 서류] ${userName}님이 ${documentType}를 제출했습니다.`;
+    let text = `${userName}님이 ${documentType}를 제출했습니다.\n\n제출일: ${submissionDate.toDate().toLocaleString('ko-KR')}`;
+    let attachments = [];
+
+    if (fileUrl) {
+      // 파일 업로드의 경우
+      text += `\n\n작성된 파일이 첨부되었습니다.`;
+      attachments.push({ 
+        filename: `${userName}_${documentType}.pdf`, // 파일명은 적절히 변경 가능
+        path: fileUrl 
+      });
+    } else if (contents) {
+      // 온라인 작성의 경우
+      text += `\n\n[신청 내용]`;
+      if (contents.startDate) {
+        text += `\n- 휴직 시작일: ${contents.startDate.toDate().toLocaleDateString('ko-KR')}`;
+      }
+      if (contents.endDate) {
+        text += `\n- 휴직 종료일: ${contents.endDate.toDate().toLocaleDateString('ko-KR')}`;
+      }
+      text += `\n- 사유: ${contents.reason}`;
+    }
+
+    const mailOptions = {
+      from: 'YOUR_EMAIL@gmail.com', // 보내는 사람 이메일
+      to: toEmail,
+      subject: subject,
+      text: text,
+      attachments: attachments
+    };
+
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log(`Email sent to ${toEmail} for document ${snap.id}`);
+    } catch (error) {
+      console.error('Error sending email:', error);
+    }
+  });
+
 // 백업 복원 함수
 export const restoreBackup = functions.https.onCall(async (data, context) => {
   try {

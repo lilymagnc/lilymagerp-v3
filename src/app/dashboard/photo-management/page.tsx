@@ -18,7 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useUserRole } from "@/hooks/use-user-role";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Image from "next/image";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 
 export default function PhotoManagementPage() {
   const { orders, loading, updateOrder } = useOrders();
@@ -400,6 +400,7 @@ export default function PhotoManagementPage() {
                           <DialogContent className="max-w-2xl">
                             <DialogHeader>
                               <DialogTitle>배송완료 사진 - {photo.orderId}</DialogTitle>
+                              <DialogDescription>주문 {photo.orderId}의 배송완료 사진입니다.</DialogDescription>
                             </DialogHeader>
                             <div className="relative w-full h-96">
                               <Image
