@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -16,7 +17,7 @@ const NewHRRequestPage = () => {
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
   
-  const [documentType, setDocumentType] = useState<'휴직원' | '퇴직원'>('휴직원');
+  const [documentType, setDocumentType] = useState<'휴직원' | '퇴직원' | '휴가원'>('휴직원');
   
   // User profile info
   const [department, setDepartment] = useState('');
@@ -30,13 +31,16 @@ const NewHRRequestPage = () => {
   const [contact, setContact] = useState('');
   const [handover, setHandover] = useState('');
   const [joinDate, setJoinDate] = useState('');
+  const [leaveType, setLeaveType] = useState('연차'); // For vacation form
 
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
       setName(user.displayName || '');
-      setContact(user.phoneNumber || '');
+      // 휴가원일 때는 비상연락처를 사용자 정보의 전화번호로 기본 설정하지 않을 수 있으므로,
+      // documentType에 따라 조건부로 설정하거나 사용자가 직접 입력하도록 둡니다.
+      // setContact(user.phoneNumber || ''); 
       const fetchUserData = async () => {
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
@@ -67,12 +71,21 @@ const NewHRRequestPage = () => {
         contact,
         handover,
       };
-    } else { // 퇴직원
+    } else if (documentType === '퇴직원') { 
       contents = {
         department, position, name, 
         joinDate: joinDate ? new Date(joinDate) : null,
         endDate: endDate ? new Date(endDate) : null, // 퇴직예정일
         reason,
+      };
+    } else { // 휴가원
+      contents = {
+        department, position, name,
+        leaveType,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        reason,
+        contact,
       };
     }
 
@@ -121,12 +134,21 @@ const NewHRRequestPage = () => {
         contact,
         handover,
       };
-    } else { // 퇴직원
+    } else if (documentType === '퇴직원') { 
       contents = {
         department, position, name, 
         joinDate: joinDate ? new Date(joinDate) : null,
         endDate: endDate ? new Date(endDate) : null, // 퇴직예정일
         reason,
+      };
+    } else { // 휴가원
+      contents = {
+        department, position, name,
+        leaveType,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        reason,
+        contact, // 휴가중 비상연락처
       };
     }
 
@@ -159,6 +181,7 @@ const NewHRRequestPage = () => {
           <div className="tabs tabs-boxed">
             <a className={`tab ${documentType === '휴직원' ? 'tab-active' : ''}`} onClick={() => setDocumentType('휴직원')}>휴직원</a> 
             <a className={`tab mx-2 ${documentType === '퇴직원' ? 'tab-active' : ''}`} onClick={() => setDocumentType('퇴직원')}>퇴직원</a>
+            <a className={`tab ${documentType === '휴가원' ? 'tab-active' : ''}`} onClick={() => setDocumentType('휴가원')}>휴가원</a>
           </div>
         </div>
 
@@ -217,7 +240,7 @@ const NewHRRequestPage = () => {
                 <input type="text" className="input input-bordered w-full" value={handover} onChange={(e) => setHandover(e.target.value)} required />
               </div>
             </div>
-          ) : (
+          ) : documentType === '퇴직원' ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">사직 신청 내용</h3>
               <div className="form-control">
@@ -229,11 +252,41 @@ const NewHRRequestPage = () => {
                 <textarea className="textarea textarea-bordered w-full h-24" placeholder="일신상의 사유로..." value={reason} onChange={(e) => setReason(e.target.value)} required />
               </div>
             </div>
+          ) : (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">휴가 신청 내용</h3>
+               <div className="form-control">
+                <label className="label"><span className="label-text">휴가 종류</span></label>
+                <select className="select select-bordered w-full" value={leaveType} onChange={(e) => setLeaveType(e.target.value)}>
+                  <option>연차</option>
+                  <option>병가</option>
+                  <option>경조사</option>
+                  <option>공가</option>
+                  <option>기타</option>
+                </select>
+              </div>
+              <div className="form-control">
+                <label className="label"><span className="label-text">휴가 기간</span></label>
+                <div className="flex items-center gap-2">
+                  <input type="date" className="input input-bordered w-full" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+                  <span>~</span>
+                  <input type="date" className="input input-bordered w-full" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                </div>
+              </div>
+               <div className="form-control">
+                <label className="label"><span className="label-text">휴가 사유</span></label>
+                <input type="text" placeholder="예: 개인 사정" className="input input-bordered w-full" value={reason} onChange={(e) => setReason(e.target.value)} required />
+              </div>
+              <div className="form-control">
+                <label className="label"><span className="label-text">휴가 중 비상연락처</span></label>
+                <input type="text" className="input input-bordered w-full" value={contact} onChange={(e) => setContact(e.target.value)} required />
+              </div>
+            </div>
           )}
 
           {/* 최종 제출 */}
           <div className="text-center pt-8">
-            <p className="mb-4">위와 같이 {documentType === '휴직원' ? '휴직' : '사직'}하고자 하오니 허가하여 주시기 바랍니다.</p>
+            <p className="mb-4">위와 같이 {documentType}을(를) 신청하오니 허가하여 주시기 바랍니다.</p>
             <p className="mb-8">{today}</p>
             <div className="flex items-center justify-center gap-2">
               <span className="font-medium">신청인:</span>
