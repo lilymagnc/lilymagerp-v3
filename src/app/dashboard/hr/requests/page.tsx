@@ -94,8 +94,9 @@ const HRRequestsPage = () => {
             <h2 className="card-title">템플릿 다운로드</h2>
             <p>Word 또는 Excel 형식의 신청서 템플릿을 다운로드하여 직접 작성할 수 있습니다.</p>
             <div className="card-actions justify-end">
-              <a href="/templates/휴직신청서.docx" download className="btn btn-secondary">Word</a>
-              <a href="/templates/퇴직신청서.xlsx" download className="btn btn-secondary">Excel</a>
+              <a href="/templates/휴직신청서.docx" download className="btn btn-secondary">휴직원</a>
+              <a href="/templates/퇴직신청서.xlsx" download className="btn btn-secondary">퇴직원</a>
+              <a href="/templates/휴가신청서.docx" download className="btn btn-secondary">휴가원</a>
             </div>
           </div>
         </div>
