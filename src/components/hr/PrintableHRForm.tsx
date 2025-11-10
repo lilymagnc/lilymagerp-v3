@@ -17,6 +17,7 @@ interface HRDocument {
     reason?: string;
     contact?: string;
     handover?: string;
+    leaveType?: string; // For vacation requests
   };
 }
 
@@ -29,6 +30,13 @@ export const PrintableHRForm: React.FC<PrintableHRFormProps> = ({ document }) =>
 
   const { documentType, userName, submissionDate, contents = {} } = document;
   const today = submissionDate.toDate().toLocaleDateString('ko-KR');
+
+  const getTitleText = () => {
+    if (documentType === '휴직원') return '휴직';
+    if (documentType === '퇴직원') return '사직';
+    if (documentType === '휴가원') return '휴가';
+    return '';
+  }
 
   return (
     <html>
@@ -104,7 +112,7 @@ export const PrintableHRForm: React.FC<PrintableHRFormProps> = ({ document }) =>
           </div>
 
           <div style={{marginTop: '2rem'}}>
-            <h3>{documentType === '휴직원' ? '휴직' : '사직'} 신청 내용</h3>
+            <h3>{getTitleText()} 신청 내용</h3>
             <div className="content-box">
               {documentType === '휴직원' ? (
                 <>
@@ -116,17 +124,27 @@ export const PrintableHRForm: React.FC<PrintableHRFormProps> = ({ document }) =>
                   <p><strong>휴직 중 비상연락처:</strong> {contents.contact || '-'}</p>
                   <p><strong>업무 인수인계자:</strong> {contents.handover || '-'}</p>
                 </>
-              ) : (
+              ) : documentType === '퇴직원' ? (
                 <>
                   <p><strong>퇴직 예정일:</strong> {contents.endDate ? contents.endDate.toDate().toLocaleDateString('ko-KR') : '-'}</p>
                   <p><strong>사유:</strong> {contents.reason || '-'}</p>
+                </>
+              ) : (
+                <>
+                  <p><strong>휴가 종류:</strong> {contents.leaveType || '-'}</p>
+                  <p><strong>휴가 기간:</strong> 
+                    {contents.startDate ? contents.startDate.toDate().toLocaleDateString('ko-KR') : ''} ~ 
+                    {contents.endDate ? contents.endDate.toDate().toLocaleDateString('ko-KR') : ''}
+                  </p>
+                  <p><strong>사유:</strong> {contents.reason || '-'}</p>
+                  <p><strong>휴가 중 비상연락처:</strong> {contents.contact || '-'}</p>
                 </>
               )}
             </div>
           </div>
 
           <div className="submission-section">
-            <p style={{marginBottom: '1rem'}}>위와 같이 {documentType === '휴직원' ? '휴직' : '사직'}하고자 하오니 허가하여 주시기 바랍니다.</p>
+            <p style={{marginBottom: '1rem'}}>위와 같이 {getTitleText()}하고자 하오니 허가하여 주시기 바랍니다.</p>
             <p style={{marginBottom: '2rem'}}>{today}</p>
             <p>신청인: {contents.name || userName} (인)</p>
           </div>

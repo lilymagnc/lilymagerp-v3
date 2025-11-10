@@ -399,9 +399,12 @@ export function useOrders() {
         
         const updateData: any = { 'payment.status': newStatus };
         
-        // 완결처리 시 현재 시간 기록
-        if (newStatus === 'paid') {
-          updateData['payment.completedAt'] = serverTimestamp();
+        // 완결처리 시 현재 시간 기록 (paid 또는 completed 상태일 때)
+        if (newStatus === 'paid' || newStatus === 'completed') {
+          // completedAt이 아직 설정되지 않은 경우에만 설정
+          if (!orderData?.payment?.completedAt) {
+            updateData['payment.completedAt'] = serverTimestamp();
+          }
           
           // 분할결제인 경우 후결제 날짜 기록 및 상태 변경
           if (orderData?.payment?.isSplitPayment || orderData?.payment?.status === 'split_payment') {
@@ -413,7 +416,7 @@ export function useOrders() {
             isSplitPayment: orderData?.payment?.isSplitPayment,
             currentStatus: orderData?.payment?.status,
             newStatus: newStatus,
-            completedAt: 'serverTimestamp()',
+            completedAt: orderData?.payment?.completedAt ? 'already set' : 'serverTimestamp()',
             updateData: updateData
           });
         }
@@ -421,7 +424,7 @@ export function useOrders() {
         await updateDoc(orderRef, updateData);
         toast({
             title: '결제 상태 변경 성공',
-            description: `결제 상태가 '${newStatus === 'paid' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
+            description: `결제 상태가 '${newStatus === 'paid' || newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
         });
         await fetchOrders();
     } catch (error) {

@@ -478,26 +478,142 @@ export default function OrdersPage() {
      const totalOrders = filteredOrders.length;
      
      // 총 매출 계산 (수주받은 주문은 금액 제외, 건수만 포함)
-     const totalAmount = filteredOrders.reduce((sum, order) => {
-       // 수주받은 주문(이관받은 주문)은 금액에 포함하지 않음
-       // transferInfo가 null이거나 isTransferred가 false인 경우는 일반 주문으로 처리
-       if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
-         return sum; // 금액 제외
-       }
-       return sum + (order.summary?.total || 0);
-     }, 0);
+     // 날짜 필터가 있을 때는 결제 완료일 기준으로 계산하여 대시보드 차트와 일치시킴
+     const hasDateFilter = startDate || endDate;
      
-     // 총 매출의 완결/미결 분리 (수주받은 주문 제외)
-     const totalCompletedOrders = filteredOrders.filter(order => 
-       (order.payment?.status === 'paid' || order.payment?.status === 'completed') && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
-     );
-     const totalPendingOrders = filteredOrders.filter(order => 
-       order.payment?.status === 'pending' && 
-       !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
-     );
-     const totalCompletedAmount = totalCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
-     const totalPendingAmount = totalPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     let totalAmount = 0;
+     let totalCompletedAmount = 0;
+     let totalPendingAmount = 0;
+     
+     if (hasDateFilter) {
+       // 날짜 필터가 있을 때: 원본 orders에서 결제 완료일 기준으로 필터링 (대시보드 차트와 일치)
+       // 먼저 다른 필터(지점, 상태 등) 적용
+       let baseFiltered = orders;
+       
+       // 지점 필터링
+       if (!isAdmin && userBranch) {
+         baseFiltered = baseFiltered.filter(order => order.branchName === userBranch);
+       } else if (isAdmin && selectedBranch !== "all") {
+         baseFiltered = baseFiltered.filter(order => order.branchName === selectedBranch);
+       }
+       
+       // 주문 상태 필터링
+       if (selectedOrderStatus !== "all") {
+         baseFiltered = baseFiltered.filter(order => order.status === selectedOrderStatus);
+       }
+       
+       // 결제 상태 필터링
+       if (selectedPaymentStatus !== "all") {
+         if (selectedPaymentStatus === "paid") {
+           baseFiltered = baseFiltered.filter(order => order.payment?.status === "paid" || order.payment?.status === "completed");
+         } else if (selectedPaymentStatus === "pending") {
+           baseFiltered = baseFiltered.filter(order => order.payment?.status === "pending");
+         } else if (selectedPaymentStatus === "split_payment") {
+           baseFiltered = baseFiltered.filter(order => order.payment?.status === "split_payment");
+         }
+       }
+       
+       // 검색어 필터링
+       if (searchTerm) {
+         const searchLower = searchTerm.toLowerCase();
+         baseFiltered = baseFiltered.filter(order => {
+           const ordererName = order.orderer?.name?.toLowerCase() || '';
+           const orderId = order.id.toLowerCase();
+           return ordererName.includes(searchLower) || orderId.includes(searchLower);
+         });
+       }
+       
+       // 완결 주문: 결제 완료일 기준으로 필터링
+       const completedByPaymentDate = baseFiltered.filter(order => {
+         if (order.payment?.status !== 'paid' && order.payment?.status !== 'completed') {
+           return false;
+         }
+         
+         // 결제 완료일 기준으로 필터링
+         let revenueDate: Date | null = null;
+         if (order.payment?.completedAt) {
+           const completedDate = (order.payment.completedAt as Timestamp).toDate();
+           revenueDate = new Date(completedDate.getFullYear(), completedDate.getMonth(), completedDate.getDate());
+         } else if (order.orderDate) {
+           // 결제 완료일이 없으면 주문일 기준
+           const orderDate = (order.orderDate as Timestamp).toDate();
+           revenueDate = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+         }
+         
+         if (!revenueDate) return false;
+         
+         if (startDate && endDate) {
+           const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+           const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+           return revenueDate >= startDateOnly && revenueDate <= endDateOnly;
+         } else if (startDate) {
+           const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+           return revenueDate >= startDateOnly;
+         } else if (endDate) {
+           const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+           return revenueDate <= endDateOnly;
+         }
+         return true;
+       });
+       
+       totalCompletedAmount = completedByPaymentDate.reduce((sum, order) => {
+         if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
+           return sum;
+         }
+         return sum + (order.summary?.total || 0);
+       }, 0);
+       
+       // 미결 주문: 주문일 기준으로 필터링
+       const pendingByOrderDate = baseFiltered.filter(order => {
+         if (order.payment?.status !== 'pending') return false;
+         if (!order.orderDate) return false;
+         
+         const orderDate = (order.orderDate as Timestamp).toDate();
+         const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+         
+         if (startDate && endDate) {
+           const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+           const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+           return orderDateOnly >= startDateOnly && orderDateOnly <= endDateOnly;
+         } else if (startDate) {
+           const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+           return orderDateOnly >= startDateOnly;
+         } else if (endDate) {
+           const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+           return orderDateOnly <= endDateOnly;
+         }
+         return true;
+       });
+       
+       totalPendingAmount = pendingByOrderDate.reduce((sum, order) => {
+         if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
+           return sum;
+         }
+         return sum + (order.summary?.total || 0);
+       }, 0);
+       
+       totalAmount = totalCompletedAmount + totalPendingAmount;
+     } else {
+       // 날짜 필터가 없을 때: 주문일 기준으로 계산 (기존 방식)
+       totalAmount = filteredOrders.reduce((sum, order) => {
+         if (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch) {
+           return sum;
+         }
+         return sum + (order.summary?.total || 0);
+       }, 0);
+       
+       // 총 매출의 완결/미결 분리 (수주받은 주문 제외)
+       const totalCompletedOrders = filteredOrders.filter(order => 
+         (order.payment?.status === 'paid' || order.payment?.status === 'completed') && 
+         !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
+       );
+       const totalPendingOrders = filteredOrders.filter(order => 
+         order.payment?.status === 'pending' && 
+         !(order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && userBranch && order.transferInfo.processBranchName === userBranch)
+       );
+       totalCompletedAmount = totalCompletedOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+       totalPendingAmount = totalPendingOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+     }
     
          // 오늘 주문 (해당 지점에서 발주한 주문만 포함, 수주받은 주문은 건수만)
      const today = new Date();
@@ -674,7 +790,7 @@ export default function OrdersPage() {
         todayOrderedButPendingOrdersForRevenue: todayOrderedButPendingOrdersForRevenue.length,
         yesterdayOrderedTodayCompletedOrdersForRevenue: yesterdayOrderedTodayCompletedOrdersForRevenue.length
      };
-  }, [filteredOrders]);
+  }, [filteredOrders, orders, startDate, endDate, selectedBranch, selectedOrderStatus, selectedPaymentStatus, searchTerm, isAdmin, userBranch]);
 
   // 페이지네이션 계산
   const totalPages = Math.ceil(filteredOrders.length / pageSize);
@@ -824,6 +940,11 @@ export default function OrdersPage() {
                    <p className="text-xs text-green-600 font-medium">
                      완결: ₩{orderStats.totalCompletedAmount.toLocaleString()}
                    </p>
+                   {orderStats.todayPaymentCompletedAmountForRevenue > 0 && (
+                     <p className="text-xs text-blue-600 font-medium">
+                       금일결제: ₩{orderStats.todayPaymentCompletedAmountForRevenue.toLocaleString()}
+                     </p>
+                   )}
                    <p className="text-xs text-orange-600 font-medium">
                      미결: ₩{orderStats.totalPendingAmount.toLocaleString()}
                    </p>

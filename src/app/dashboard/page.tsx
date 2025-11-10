@@ -304,7 +304,14 @@ export default function DashboardPage() {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
           } else {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
@@ -312,6 +319,8 @@ export default function DashboardPage() {
             
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
             } else {
               revenueDate = new Date(orderDate);
             }
@@ -398,7 +407,14 @@ export default function DashboardPage() {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
           } else {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
@@ -406,6 +422,8 @@ export default function DashboardPage() {
             
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
             } else {
               revenueDate = new Date(orderDate);
             }
@@ -442,20 +460,11 @@ export default function DashboardPage() {
       const startDate = startOfDay(selectedDateObj);
       const endDate = endOfDay(selectedDateObj);
       
-      // 단순화된 쿼리 - 날짜만 필터링
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startDate)),
-        where("orderDate", "<=", Timestamp.fromDate(endDate))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
-      // 클라이언트 사이드에서 지점 필터링
-      const orders = currentFilteredBranch 
-        ? allOrders.filter(order => order.branchName === currentFilteredBranch)
-        : allOrders;
       
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
@@ -465,14 +474,45 @@ export default function DashboardPage() {
         salesByBranch[branchName] = 0;
       });
       
-      orders.forEach((order: any) => {
-        const branchName = order.branchName || '지점 미지정';
-        const total = order.summary?.total || order.total || 0;
-        
+      // 클라이언트 사이드에서 결제 완료일 기준으로 필터링 및 매출 계산
+      allOrders.forEach((order: any) => {
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          if (salesByBranch.hasOwnProperty(branchName)) {
-            salesByBranch[branchName] += total;
+          // 결제 완료일 기준으로 매출 계산
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
+          } else {
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
+            } else {
+              revenueDate = new Date(orderDate);
+            }
+          }
+          
+          // 선택된 날짜 범위에 해당하는지 확인
+          if (revenueDate >= startDate && revenueDate <= endDate) {
+            const branchName = order.branchName || '지점 미지정';
+            
+            // 지점 필터링 적용
+            if (!currentFilteredBranch || branchName === currentFilteredBranch) {
+              if (salesByBranch.hasOwnProperty(branchName)) {
+                salesByBranch[branchName] += order.summary?.total || order.total || 0;
+              }
+            }
           }
         }
       });
@@ -540,7 +580,14 @@ export default function DashboardPage() {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
           } else {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
@@ -548,6 +595,8 @@ export default function DashboardPage() {
             
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
             } else {
               revenueDate = new Date(orderDate);
             }
@@ -647,7 +696,14 @@ export default function DashboardPage() {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
           } else {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
@@ -655,6 +711,8 @@ export default function DashboardPage() {
             
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
             } else {
               revenueDate = new Date(orderDate);
             }
@@ -688,20 +746,11 @@ export default function DashboardPage() {
       const startDate = startOfWeek(new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7));
       const endDate = endOfWeek(startDate);
       
-      // 단순화된 쿼리 - 날짜만 필터링
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startDate)),
-        where("orderDate", "<=", Timestamp.fromDate(endDate))
-      );
+      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
+      const ordersQuery = query(collection(db, "orders"));
       
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
-      // 클라이언트 사이드에서 지점 필터링
-      const orders = currentFilteredBranch 
-        ? allOrders.filter(order => order.branchName === currentFilteredBranch)
-        : allOrders;
       
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
@@ -710,14 +759,45 @@ export default function DashboardPage() {
         salesByBranch[branchName] = 0;
       });
       
-      orders.forEach((order: any) => {
-        const branchName = order.branchName || '지점 미지정';
-        const total = order.summary?.total || order.total || 0;
-        
+      // 클라이언트 사이드에서 결제 완료일 기준으로 필터링 및 매출 계산
+      allOrders.forEach((order: any) => {
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          if (salesByBranch.hasOwnProperty(branchName)) {
-            salesByBranch[branchName] += total;
+          // 결제 완료일 기준으로 매출 계산
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
+          } else {
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
+            } else {
+              revenueDate = new Date(orderDate);
+            }
+          }
+          
+          // 선택된 주간 범위에 해당하는지 확인
+          if (revenueDate >= startDate && revenueDate <= endDate) {
+            const branchName = order.branchName || '지점 미지정';
+            
+            // 지점 필터링 적용
+            if (!currentFilteredBranch || branchName === currentFilteredBranch) {
+              if (salesByBranch.hasOwnProperty(branchName)) {
+                salesByBranch[branchName] += order.summary?.total || order.total || 0;
+              }
+            }
           }
         }
       });
@@ -786,7 +866,14 @@ export default function DashboardPage() {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
           } else {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
@@ -794,6 +881,8 @@ export default function DashboardPage() {
             
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
             } else {
               revenueDate = new Date(orderDate);
             }
@@ -879,7 +968,14 @@ export default function DashboardPage() {
           // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
           } else {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
@@ -887,6 +983,8 @@ export default function DashboardPage() {
             
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
             } else {
               revenueDate = new Date(orderDate);
             }
@@ -1172,7 +1270,14 @@ export default function DashboardPage() {
           // 결제완료일 기준으로 매출 계산
           let revenueDate;
           if (order.payment?.completedAt) {
-            revenueDate = order.payment.completedAt.toDate();
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
           } else {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
@@ -1180,6 +1285,8 @@ export default function DashboardPage() {
             
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
             } else {
               revenueDate = new Date(orderDate);
             }
