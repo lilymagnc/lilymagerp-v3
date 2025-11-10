@@ -44,7 +44,8 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
   const [isLoading, setIsLoading] = useState(false)
   const [newPoints, setNewPoints] = useState<number>(customer?.points || 0)
   const [reason, setReason] = useState("")
-  const [reasonType, setReasonType] = useState<string>("")
+  const [reasonType, setReasonType] = useState<string | undefined>(undefined)
+  const [isSelectOpen, setIsSelectOpen] = useState(false)
 
   // 포인트 수정 이유 옵션
   const reasonOptions = [
@@ -62,7 +63,7 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
     if (isOpen && customer) {
       setNewPoints(customer.points || 0)
       setReason("")
-      setReasonType("")
+      setReasonType(undefined)
     }
   }, [isOpen, customer])
 
@@ -174,9 +175,29 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
                     id="new-points"
                     type="number"
                     value={newPoints}
-                    onChange={(e) => setNewPoints(parseInt(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || value === '-') {
+                        setNewPoints(0);
+                      } else {
+                        const numValue = parseInt(value, 10);
+                        if (!isNaN(numValue)) {
+                          setNewPoints(numValue);
+                        }
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // 포인트 입력 필드에서 포커스가 벗어날 때 값 정규화
+                      const value = parseInt(e.target.value, 10);
+                      if (isNaN(value) || value < 0) {
+                        setNewPoints(0);
+                      } else {
+                        setNewPoints(value);
+                      }
+                    }}
                     placeholder="0"
                     className="mt-1"
+                    autoComplete="off"
                   />
                 </div>
 
@@ -213,11 +234,29 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="reason-type">수정 사유 유형</Label>
-                  <Select value={reasonType} onValueChange={setReasonType}>
-                    <SelectTrigger className="mt-1">
+                  <Select 
+                    value={reasonType || undefined} 
+                    onValueChange={(value) => {
+                      setReasonType(value)
+                    }}
+                    onOpenChange={setIsSelectOpen}
+                  >
+                    <SelectTrigger 
+                      className="mt-1" 
+                      id="reason-type"
+                      disabled={isLoading}
+                    >
                       <SelectValue placeholder="수정 사유를 선택하세요" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent 
+                      className="z-[9999]" 
+                      position="popper" 
+                      sideOffset={4}
+                      onCloseAutoFocus={(e) => {
+                        // 포인트 입력 필드로 포커스가 이동하지 않도록 방지
+                        e.preventDefault()
+                      }}
+                    >
                       {reasonOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           <div>
