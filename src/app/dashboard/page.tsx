@@ -66,6 +66,9 @@ interface WeeklySalesData {
   sales?: number; // 가맹점/지점 직원용
   totalSales?: number; // 본사 관리자용
   branchSales?: { [branchName: string]: number }; // 본사 관리자용
+  weekStart?: string;
+  weekEnd?: string;
+  weekRange?: string;
   [key: string]: any; // 지점별 매출을 동적 속성으로 추가
 }
 
@@ -551,22 +554,32 @@ export default function DashboardPage() {
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
-
-      
       // 주별로 데이터 그룹화
-      const salesByWeek: { [key: string]: { [branchName: string]: number } } = {};
+      const salesByWeek: {
+        [key: string]: {
+          branchSales: { [branchName: string]: number };
+          start: Date;
+          end: Date;
+        };
+      } = {};
       
       // 선택된 기간 주차 초기화
       const weeksDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24 * 7));
       for (let i = 0; i <= weeksDiff; i++) {
-        const weekStart = new Date(startOfDay);
-        weekStart.setDate(startOfDay.getDate() + (i * 7));
+        const baseDate = new Date(startOfDay);
+        baseDate.setDate(startOfDay.getDate() + (i * 7));
+        const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
         const weekKey = format(weekStart, 'yyyy-\'W\'ww');
-        salesByWeek[weekKey] = {};
+        salesByWeek[weekKey] = {
+          branchSales: {},
+          start: weekStart,
+          end: weekEnd,
+        };
         
         // 각 지점별 매출 초기화
         availableBranches.forEach(branch => {
-          salesByWeek[weekKey][branch.name] = 0;
+          salesByWeek[weekKey].branchSales[branch.name] = 0;
         });
       }
       
@@ -602,25 +615,34 @@ export default function DashboardPage() {
             }
           }
           
-          const weekKey = format(revenueDate, 'yyyy-\'W\'ww');
+          const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
+          const weekKey = format(revenueWeekStart, 'yyyy-\'W\'ww');
+          const weekEntry = salesByWeek[weekKey];
           
-          if (salesByWeek[weekKey] && salesByWeek[weekKey].hasOwnProperty(branchName)) {
-            salesByWeek[weekKey][branchName] += total;
-          } else if (salesByWeek[weekKey]) {
-            // 지점이 availableBranches에 없지만 해당 주에 데이터가 있는 경우
-            salesByWeek[weekKey][branchName] = total;
+          if (weekEntry) {
+            if (weekEntry.branchSales.hasOwnProperty(branchName)) {
+              weekEntry.branchSales[branchName] += total;
+            } else {
+              // 지점이 availableBranches에 없지만 해당 주에 데이터가 있는 경우
+              weekEntry.branchSales[branchName] = total;
+            }
           }
         }
       });
       
       // 차트 데이터 형식으로 변환
-      return Object.entries(salesByWeek).map(([week, branchSales]) => {
+      return Object.entries(salesByWeek).map(([week, { branchSales, start, end }]) => {
         const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
+        const weekStartLabel = format(start, 'M월 d일');
+        const weekEndLabel = format(end, 'M월 d일');
         
         return {
           week: week.replace('W', '주차 '),
           totalSales,
           branchSales,
+          weekStart: weekStartLabel,
+          weekEnd: weekEndLabel,
+          weekRange: `${weekStartLabel} ~ ${weekEndLabel}`,
           ...branchSales // 각 지점별 매출을 개별 속성으로 추가
         };
       });
@@ -661,15 +683,27 @@ export default function DashboardPage() {
 
       
       // 주별로 매출 계산
-      const salesByWeek: { [key: string]: number } = {};
+      const salesByWeek: {
+        [key: string]: {
+          sales: number;
+          start: Date;
+          end: Date;
+        };
+      } = {};
       
       // 선택된 기간 주차 초기화
       const weeksDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24 * 7));
       for (let i = 0; i <= weeksDiff; i++) {
-        const weekStart = new Date(startOfDay);
-        weekStart.setDate(startOfDay.getDate() + (i * 7));
+        const baseDate = new Date(startOfDay);
+        baseDate.setDate(startOfDay.getDate() + (i * 7));
+        const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
         const weekKey = format(weekStart, 'yyyy-\'W\'ww');
-        salesByWeek[weekKey] = 0;
+        salesByWeek[weekKey] = {
+          sales: 0,
+          start: weekStart,
+          end: weekEnd,
+        };
       }
       
       // 주문 데이터로 매출 계산
@@ -718,10 +752,12 @@ export default function DashboardPage() {
             }
           }
           
-          const weekKey = format(revenueDate, 'yyyy-\'W\'ww');
+          const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
+          const weekKey = format(revenueWeekStart, 'yyyy-\'W\'ww');
+          const weekEntry = salesByWeek[weekKey];
           
-          if (salesByWeek[weekKey] !== undefined) {
-            salesByWeek[weekKey] += total;
+          if (weekEntry) {
+            weekEntry.sales += total;
           }
         }
       });
@@ -729,10 +765,18 @@ export default function DashboardPage() {
       console.log(`📊 지점 ${userBranch} Payment Status 통계: paid=${paidOrdersCount}, completed=${completedOrdersCount}, pending=${pendingOrdersCount}`);
       
       // 차트 데이터 형식으로 변환
-      return Object.entries(salesByWeek).map(([week, sales]) => ({
-        week: week.replace('W', '주차 '),
-        sales
-      }));
+      return Object.entries(salesByWeek).map(([week, { sales, start, end }]) => {
+        const weekStartLabel = format(start, 'M월 d일');
+        const weekEndLabel = format(end, 'M월 d일');
+        
+        return {
+          week: week.replace('W', '주차 '),
+          sales,
+          weekStart: weekStartLabel,
+          weekEnd: weekEndLabel,
+          weekRange: `${weekStartLabel} ~ ${weekEndLabel}`,
+        };
+      });
     } catch (error) {
       console.error("Error generating branch weekly sales:", error);
       return [];
@@ -1442,9 +1486,14 @@ export default function DashboardPage() {
   // 차트용 커스텀 툴팁
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const payloadData = payload[0]?.payload;
+      const rangeText = payloadData?.weekRange;
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
           <p className="font-medium mb-2">{label}</p>
+          {rangeText && (
+            <p className="text-xs text-gray-500 mb-2">{rangeText}</p>
+          )}
           {isAdmin ? (
             // 본사 관리자용: 지점별 매출 + 총액 표시
             <div>
