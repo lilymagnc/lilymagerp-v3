@@ -8,12 +8,192 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  AlignmentType,
+  HeadingLevel,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  ShadingType,
+} from 'docx';
+import { saveAs } from 'file-saver';
+
+type HRDocumentType = '휴직원' | '퇴직원' | '휴가원';
+
+const createSectionTitle = (text: string) =>
+  new Paragraph({
+    text,
+    heading: HeadingLevel.HEADING_2,
+    spacing: { before: 200, after: 200 },
+  });
+
+const createLine = (label: string, placeholder: string) =>
+  new Paragraph({
+    children: [
+      new TextRun({ text: `${label}: `, bold: true }),
+      new TextRun({ text: placeholder }),
+    ],
+    spacing: { before: 100, after: 150 },
+  });
+
+const createSubmissionParagraphs = (titleText: string) => [
+  new Paragraph({
+    text: `위와 같이 ${titleText}하고자 하오니 허가하여 주시기 바랍니다.`,
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 600, after: 200 },
+  }),
+  createLine('작성일', 'YYYY-MM-DD'),
+  new Paragraph({
+    children: [
+      new TextRun({ text: '신청인: ', bold: true }),
+      new TextRun({ text: '________________ (인)' }),
+    ],
+    alignment: AlignmentType.RIGHT,
+    spacing: { before: 200, after: 200 },
+  }),
+];
+
+const createTableRow = (label: string, placeholder: string) =>
+  new TableRow({
+    children: [
+      new TableCell({
+        width: { size: 30, type: WidthType.PERCENTAGE },
+        shading: { fill: 'F3F4F6', color: 'auto', type: ShadingType.CLEAR },
+        margins: { top: 200, bottom: 200, left: 200, right: 200 },
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: label, bold: true })],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: 70, type: WidthType.PERCENTAGE },
+        margins: { top: 200, bottom: 200, left: 200, right: 200 },
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: placeholder })],
+          }),
+        ],
+      }),
+    ],
+  });
+
+const createInfoTable = (documentType: HRDocumentType) => {
+  const rows = [
+    createTableRow('소속', ''),
+    createTableRow('직위', ''),
+    createTableRow('성명', ''),
+  ];
+
+  if (documentType === '퇴직원') {
+    rows.push(createTableRow('입사일', ''));
+  }
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows,
+  });
+};
+
+const createContentTable = (documentType: HRDocumentType) => {
+  if (documentType === '휴직원') {
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        createTableRow('휴직 기간', ''),
+        createTableRow('사유', ''),
+        createTableRow('휴직 중 비상연락처', ''),
+        createTableRow('업무 인수인계자', ''),
+      ],
+    });
+  }
+
+  if (documentType === '퇴직원') {
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        createTableRow('퇴직 예정일', ''),
+        createTableRow('사유', ''),
+      ],
+    });
+  }
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      createTableRow('휴가 종류', ''),
+      createTableRow('휴가 기간', ''),
+      createTableRow('사유', ''),
+      createTableRow('휴가 중 비상연락처', ''),
+    ],
+  });
+};
+
+const buildTemplateDocument = (documentType: HRDocumentType) => {
+  const titleMap: Record<HRDocumentType, string> = {
+    휴직원: '휴직',
+    퇴직원: '사직',
+    휴가원: '휴가',
+  };
+
+  const children: (Paragraph | Table)[] = [
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: documentType,
+          bold: true,
+          size: 48,
+        }),
+      ],
+      heading: HeadingLevel.TITLE,
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 400 },
+    }),
+    createSectionTitle('신청인 정보'),
+    createInfoTable(documentType),
+    new Paragraph({ text: '', spacing: { after: 200 } }),
+  ];
+
+  if (documentType === '휴직원') {
+    children.push(
+      createSectionTitle('휴직 신청 내용'),
+      createContentTable(documentType),
+    );
+  } else if (documentType === '퇴직원') {
+    children.push(
+      createSectionTitle('사직 신청 내용'),
+      createContentTable(documentType),
+    );
+  } else {
+    children.push(
+      createSectionTitle('휴가 신청 내용'),
+      createContentTable(documentType),
+    );
+  }
+
+  children.push(...createSubmissionParagraphs(titleMap[documentType]));
+
+  return new Document({
+    sections: [
+      {
+        properties: {},
+        children,
+      },
+    ],
+  });
+};
 
 const HRRequestsPage = () => {
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
+  const [downloadingType, setDownloadingType] = useState<HRDocumentType | null>(null);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (!user) {
@@ -54,6 +234,27 @@ const HRRequestsPage = () => {
     }
   }, [user, router, toast]);
 
+  const handleTemplateDownload = useCallback(async (documentType: HRDocumentType) => {
+    setDownloadingType(documentType);
+
+    try {
+      const doc = buildTemplateDocument(documentType);
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `${documentType}_템플릿.docx`);
+
+      toast({
+        variant: 'success',
+        title: '다운로드 완료',
+        description: `${documentType} 템플릿이 Word 파일로 저장되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Template download error:', error);
+      toast({ variant: 'destructive', title: '오류', description: '템플릿 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' });
+    } finally {
+      setDownloadingType(null);
+    }
+  }, [toast]);
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: false });
 
   if (!user) {
@@ -79,7 +280,7 @@ const HRRequestsPage = () => {
             <p>웹사이트에서 직접 휴직 또는 퇴직 신청서를 작성하고 제출합니다.</p>
             <div className="card-actions justify-end">
               <button 
-                className="btn btn-primary"
+                className="btn btn-primary font-bold"
                 onClick={() => router.push('/dashboard/hr/requests/new')}
               >
                 작성하기
@@ -92,11 +293,34 @@ const HRRequestsPage = () => {
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
             <h2 className="card-title">템플릿 다운로드</h2>
-            <p>Word 또는 Excel 형식의 신청서 템플릿을 다운로드하여 직접 작성할 수 있습니다.</p>
-            <div className="card-actions justify-end">
-              <a href="/templates/휴직신청서.docx" download className="btn btn-secondary">휴직원</a>
-              <a href="/templates/퇴직신청서.xlsx" download className="btn btn-secondary">퇴직원</a>
-              <a href="/templates/휴가신청서.docx" download className="btn btn-secondary">휴가원</a>
+            <p>온라인 작성 화면과 동일한 양식을 Word 파일(.docx)로 다운로드합니다.</p>
+            <div className="card-actions justify-end flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                className={`btn btn-secondary font-bold ${downloadingType === '휴직원' ? 'loading' : ''}`}
+                onClick={() => handleTemplateDownload('휴직원')}
+                disabled={downloadingType !== null}
+              >
+                {downloadingType === '휴직원' ? '생성 중...' : '휴직원'}
+              </button>
+              <span className="font-bold text-base-content">/</span>
+              <button
+                type="button"
+                className={`btn btn-secondary font-bold ${downloadingType === '퇴직원' ? 'loading' : ''}`}
+                onClick={() => handleTemplateDownload('퇴직원')}
+                disabled={downloadingType !== null}
+              >
+                {downloadingType === '퇴직원' ? '생성 중...' : '퇴직원'}
+              </button>
+              <span className="font-bold text-base-content">/</span>
+              <button
+                type="button"
+                className={`btn btn-secondary font-bold ${downloadingType === '휴가원' ? 'loading' : ''}`}
+                onClick={() => handleTemplateDownload('휴가원')}
+                disabled={downloadingType !== null}
+              >
+                {downloadingType === '휴가원' ? '생성 중...' : '휴가원'}
+              </button>
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createRoot } from 'react-dom/client';
+import { PrintableHRForm } from '@/components/hr/PrintableHRForm';
 
 const NewHRRequestPage = () => {
   const router = useRouter();
