@@ -9,7 +9,11 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Document,
+  detectDocumentTypeFromFileName,
+  parseDocxFile,
+} from '@/lib/hr-docx-parser';
+import {
+  Document as DocxDocument,
   Packer,
   Paragraph,
   TextRun,
@@ -178,7 +182,7 @@ const buildTemplateDocument = (documentType: HRDocumentType) => {
 
   children.push(...createSubmissionParagraphs(titleMap[documentType]));
 
-  return new Document({
+  return new DocxDocument({
     sections: [
       {
         properties: {},
@@ -200,35 +204,73 @@ const HRRequestsPage = () => {
       toast({ variant: "destructive", title: "오류", description: "로그인이 필요합니다." });
       return;
     }
+
     if (acceptedFiles.length === 0) {
       return;
     }
 
     const file = acceptedFiles[0];
-    const documentType = file.name.includes('휴직') ? '휴직계' : '퇴직계';
+
+    // 파일 크기 검증 (10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast({ variant: "destructive", title: "파일 크기 오류", description: "파일 크기는 10MB 이하여야 합니다." });
+      return;
+    }
+
+    const fallbackDocumentType = detectDocumentTypeFromFileName(file.name);
+
     setUploading(true);
 
     try {
+      const parsedResult = await parseDocxFile(file, fallbackDocumentType);
+      const documentType = parsedResult?.documentType ?? fallbackDocumentType;
+
       const storage = getStorage();
-      const storageRef = ref(storage, `hr_submissions/${user.uid}/${Date.now()}_${file.name}`);
+      // 파일명 정리 (특수문자 제거)
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9가-힣._-]/g, '_');
+      const storageRef = ref(storage, `hr_submissions/${user.uid}/${Date.now()}_${sanitizedFileName}`);
       
       const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
 
-      await addDoc(collection(db, 'hr_documents'), {
+      const documentData: Record<string, unknown> = {
         userId: user.uid,
-        userName: user.displayName || 'Unknown User',
-        documentType: documentType,
+        userName: parsedResult?.userName || user.displayName || 'Unknown User',
+        documentType,
         submissionDate: serverTimestamp(),
         status: '처리중',
         fileUrl: downloadURL,
-      });
+        submissionMethod: 'file-upload',
+        originalFileName: file.name,
+      };
 
-      toast({ variant: "success", title: "성공", description: `${documentType} 파일이 성공적으로 제출되었습니다.` });
+      if (parsedResult?.contents) {
+        documentData.contents = parsedResult.contents;
+        documentData.extractedFromFile = true;
+      } else {
+        documentData.extractedFromFile = false;
+      }
+
+      await addDoc(collection(db, 'hr_documents'), documentData);
+
+      toast({ variant: "default", title: "성공", description: `${documentType} 파일이 성공적으로 제출되었습니다.` });
       router.push('/dashboard/hr/requests'); // Refresh the page to show new status if needed
-    } catch (error) {
+    } catch (error: any) {
       console.error("File upload error:", error);
-      toast({ variant: "destructive", title: "오류", description: "파일 제출 중 오류가 발생했습니다." });
+      let errorMessage = "파일 제출 중 오류가 발생했습니다.";
+      
+      if (error.code === 'storage/unauthorized') {
+        errorMessage = "파일 업로드 권한이 없습니다.";
+      } else if (error.code === 'storage/canceled') {
+        errorMessage = "파일 업로드가 취소되었습니다.";
+      } else if (error.code === 'storage/quota-exceeded') {
+        errorMessage = "저장 공간이 부족합니다.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({ variant: "destructive", title: "오류", description: errorMessage });
     } finally {
       setUploading(false);
     }
@@ -243,7 +285,7 @@ const HRRequestsPage = () => {
       saveAs(blob, `${documentType}_템플릿.docx`);
 
       toast({
-        variant: 'success',
+        variant: 'default',
         title: '다운로드 완료',
         description: `${documentType} 템플릿이 Word 파일로 저장되었습니다.`,
       });
@@ -255,7 +297,28 @@ const HRRequestsPage = () => {
     }
   }, [toast]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: false });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+    onDrop, 
+    multiple: false,
+    accept: {
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/msword': ['.doc'], // 구버전 Word 파일도 허용
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+    onDropRejected: (rejectedFiles) => {
+      if (rejectedFiles.length > 0) {
+        const rejection = rejectedFiles[0];
+        if (rejection.errors) {
+          const error = rejection.errors[0];
+          if (error.code === 'file-invalid-type') {
+            toast({ variant: "destructive", title: "파일 형식 오류", description: "Word 파일(.docx, .doc)만 업로드 가능합니다." });
+          } else if (error.code === 'file-too-large') {
+            toast({ variant: "destructive", title: "파일 크기 오류", description: "파일 크기는 10MB 이하여야 합니다." });
+          }
+        }
+      }
+    }
+  });
 
   if (!user) {
     return (
