@@ -14,17 +14,13 @@ export default function Home() {
   useEffect(() => {
     if (!loading && !roleLoading) {
       if (user) {
-        // 본사 관리자는 대시보드로, 지점 사용자는 주문 접수 페이지로
-        if (isHQManager()) {
-          router.push("/dashboard");
-        } else {
-          router.push("/dashboard/orders/new");
-        }
+        // 모든 사용자를 대시보드로 리다이렉트
+        router.push("/dashboard");
       } else {
         router.push("/login");
       }
     }
-  }, [user, loading, roleLoading, isHQManager, router]);
+  }, [user, loading, roleLoading, router]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

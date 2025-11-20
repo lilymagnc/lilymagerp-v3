@@ -29,43 +29,6 @@ export default function DashboardLayout({
         }
     }, [user, loading, router]);
 
-    // 지점 사용자가 로그인 후 주문접수 페이지로 리다이렉트 (허용된 페이지 제외)
-    React.useEffect(() => {
-        if (!loading && !roleLoading && user && !isHQManager()) {
-            const currentPath = window.location.pathname;
-            // 허용된 페이지 목록 (지점 사용자가 접근 가능한 페이지들)
-            const allowedPages = [
-                '/dashboard',                      // 대시보드 (지점 사용자용)
-                '/dashboard/orders/new',           // 주문접수
-                '/dashboard/material-request',     // 자재요청
-                '/dashboard/orders',               // 주문현황
-                '/dashboard/transfers',            // 주문 이관 관리
-                '/dashboard/orders/print-message', // 메시지 인쇄 미리보기
-                '/dashboard/print-labels',         // 라벨 인쇄 미리보기
-                '/dashboard/customers/statement/print', // 거래명세서 인쇄 미리보기
-                '/dashboard/pickup-delivery',      // 픽업/배송관리
-                '/dashboard/recipients',           // 수령자관리
-                '/dashboard/materials',            // 자재관리
-                '/dashboard/simple-expenses',      // 간편지출관리
-                '/dashboard/customers',            // 고객관리
-                '/dashboard/partners',             // 거래처관리
-                '/dashboard/sample-albums',        // 샘플앨범
-                '/dashboard/barcode-scanner',      // 바코드 스캐너
-                '/dashboard/checklist',            // 체크리스트
-                '/dashboard/calendar',              // 일정관리
-                '/dashboard/hr/requests',          // 인사 서류 신청
-                '/dashboard/hr/requests/new'       // 인사 서류 온라인 작성
-            ];
-            // 허용된 페이지가 아닌 경우에만 주문접수 페이지로 리다이렉트
-            const isAllowedPage = allowedPages.includes(currentPath) ||
-                currentPath.startsWith('/dashboard/checklist/') ||
-                currentPath === '/dashboard/checklist/template';
-            if (!isAllowedPage) {
-                router.push('/dashboard/orders/new');
-            }
-        }
-    }, [user, loading, roleLoading, isHQManager, router]);
-
     const handleLogout = async () => {
         await signOut(auth);
         router.push('/login');
