@@ -15,8 +15,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
 import { Customer } from "@/hooks/use-customers"
@@ -44,8 +42,7 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
   const [isLoading, setIsLoading] = useState(false)
   const [newPoints, setNewPoints] = useState<number>(customer?.points || 0)
   const [reason, setReason] = useState("")
-  const [reasonType, setReasonType] = useState<string | undefined>(undefined)
-  const [isSelectOpen, setIsSelectOpen] = useState(false)
+  const [reasonType, setReasonType] = useState<string>("")
 
   // 포인트 수정 이유 옵션
   const reasonOptions = [
@@ -63,7 +60,7 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
     if (isOpen && customer) {
       setNewPoints(customer.points || 0)
       setReason("")
-      setReasonType(undefined)
+      setReasonType("")
     }
   }, [isOpen, customer])
 
@@ -96,12 +93,12 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
         reason,
         user.displayName || user.email || "관리자"
       )
-      
+
       toast({
         title: "성공",
         description: "포인트가 성공적으로 수정되었습니다.",
       })
-      
+
       onOpenChange(false)
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
@@ -138,7 +135,7 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[60vh]">
+        <div className="flex-1 overflow-y-auto min-h-0">
           <div className="space-y-6 pr-4">
             {/* 고객 정보 */}
             <Card>
@@ -203,18 +200,16 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
 
                 {/* 포인트 변화 표시 */}
                 {difference !== 0 && (
-                  <div className={`p-3 rounded-lg border ${
-                    isIncrease ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-                  }`}>
+                  <div className={`p-3 rounded-lg border ${isIncrease ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                    }`}>
                     <div className="flex items-center gap-2">
                       {isIncrease ? (
                         <TrendingUp className="h-4 w-4 text-green-600" />
                       ) : (
                         <TrendingDown className="h-4 w-4 text-red-600" />
                       )}
-                      <span className={`font-medium ${
-                        isIncrease ? 'text-green-700' : 'text-red-700'
-                      }`}>
+                      <span className={`font-medium ${isIncrease ? 'text-green-700' : 'text-red-700'
+                        }`}>
                         {isIncrease ? '+' : ''}{difference.toLocaleString()} P
                       </span>
                       <span className="text-sm text-muted-foreground">
@@ -234,29 +229,11 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="reason-type">수정 사유 유형</Label>
-                  <Select 
-                    value={reasonType || undefined} 
-                    onValueChange={(value) => {
-                      setReasonType(value)
-                    }}
-                    onOpenChange={setIsSelectOpen}
-                  >
-                    <SelectTrigger 
-                      className="mt-1" 
-                      id="reason-type"
-                      disabled={isLoading}
-                    >
+                  <Select value={reasonType} onValueChange={setReasonType}>
+                    <SelectTrigger className="mt-1">
                       <SelectValue placeholder="수정 사유를 선택하세요" />
                     </SelectTrigger>
-                    <SelectContent 
-                      className="z-[9999]" 
-                      position="popper" 
-                      sideOffset={4}
-                      onCloseAutoFocus={(e) => {
-                        // 포인트 입력 필드로 포커스가 이동하지 않도록 방지
-                        e.preventDefault()
-                      }}
-                    >
+                    <SelectContent>
                       {reasonOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           <div>
@@ -311,7 +288,7 @@ export function PointEditDialog({ isOpen, onOpenChange, customer, onPointUpdate 
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex gap-2 flex-shrink-0 pt-4 border-t">
           <Button

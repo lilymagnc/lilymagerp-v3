@@ -211,7 +211,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span>고객 상세 정보</span>
@@ -221,12 +221,12 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
               고객의 상세 정보, 포인트 현황, 구매 내역을 확인할 수 있습니다.
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="info" className="w-full">
+          <Tabs defaultValue="info" className="w-full flex-1 flex flex-col min-h-0">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="info">기본 정보</TabsTrigger>
               <TabsTrigger value="orders">구매 내역 ({customerOrders.length})</TabsTrigger>
             </TabsList>
-            <TabsContent value="info" className="space-y-6">
+            <TabsContent value="info" className="space-y-6 flex-1 overflow-y-auto p-1">
               {/* 기본 정보 */}
               <div>
                 <h3 className="text-lg font-semibold mb-3">기본 정보</h3>
@@ -355,7 +355,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                 </div>
               </div>
             </TabsContent>
-            <TabsContent value="orders" className="space-y-4">
+            <TabsContent value="orders" className="space-y-4 flex-1 overflow-y-auto p-1">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">구매 내역</h3>
                 <div className="flex items-center gap-4">
