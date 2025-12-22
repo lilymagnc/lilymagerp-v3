@@ -92,9 +92,25 @@ export interface Order extends Omit<OrderData, 'orderDate'> {
   orderDate: Timestamp;
   transferInfo?: {
     isTransferred: boolean;
+    transferId?: string;
+    originalBranchId?: string;
+    originalBranchName?: string;
+    processBranchId?: string;
     processBranchName?: string;
     transferDate?: Timestamp;
     transferReason?: string;
+    transferBy?: string;
+    transferByUser?: string;
+    status?: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
+    amountSplit?: {
+      orderBranch: number;
+      processBranch: number;
+    };
+    notes?: string;
+    acceptedAt?: Timestamp;
+    rejectedAt?: Timestamp;
+    completedAt?: Timestamp;
+    cancelledAt?: Timestamp;
   };
 }
 export type PaymentStatus = "paid" | "pending" | "completed" | "split_payment";
@@ -106,32 +122,32 @@ export function useOrders() {
   const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       // Firebase 연결 상태 확인
       if (!db) {
         throw new Error('Firebase Firestore is not initialized');
       }
-      
+
       const ordersCollection = collection(db, 'orders');
       let q = query(ordersCollection, orderBy("orderDate", "desc"));
-      
+
       // 지점 사용자의 경우 자신의 지점 주문과 이관받은 주문을 모두 조회
       if (user?.franchise && user?.role !== '본사 관리자') {
         // 현재 지점의 주문과 이관받은 주문을 모두 조회
         // 이는 클라이언트 사이드에서 필터링하므로 모든 주문을 가져옴
         console.log('지점 사용자 주문 조회:', user.franchise);
       }
-      
+
       // 타임아웃 설정을 더 길게 설정
-      const timeoutPromise = new Promise((_, reject) => 
+      const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 30000)
       );
-      
+
       const queryPromise = getDocs(q);
       const querySnapshot = await Promise.race([queryPromise, timeoutPromise]) as any;
-      
 
-      
+
+
       const ordersData = querySnapshot.docs.map((doc: any) => {
         const data = doc.data();
         // Legacy data migration: convert old receiptType values to new ones
@@ -141,15 +157,15 @@ export function useOrders() {
         } else if (receiptType === 'delivery') {
           receiptType = 'delivery_reservation';
         }
-        return { 
-          id: doc.id, 
-          ...data, 
-          receiptType 
+        return {
+          id: doc.id,
+          ...data,
+          receiptType
         } as Order;
       });
-      
 
-      
+
+
       setOrders(ordersData);
     } catch (error) {
       console.error('주문 데이터 로딩 오류:', error);
@@ -165,8 +181,8 @@ export function useOrders() {
     setLoading(true);
     try {
       // Ensure orderDate is a JS Date object before proceeding
-      const orderDate = (orderData.orderDate instanceof Timestamp) 
-        ? orderData.orderDate.toDate() 
+      const orderDate = (orderData.orderDate instanceof Timestamp)
+        ? orderData.orderDate.toDate()
         : new Date(orderData.orderDate);
       const orderPayload = {
         ...orderData,
@@ -174,19 +190,19 @@ export function useOrders() {
       };
       // 매장픽업(즉시) 주문인지 확인
       const isImmediatePickup = orderData.receiptType === 'store_pickup';
-      
+
       // 매장픽업(즉시) 주문인 경우 자동으로 완료 상태로 설정
-      const finalOrderPayload = isImmediatePickup 
+      const finalOrderPayload = isImmediatePickup
         ? { ...orderPayload, status: 'completed' as const }
         : orderPayload;
-      
+
       // 주문 추가
       const orderDocRef = await addDoc(collection(db, 'orders'), finalOrderPayload);
-      
+
       // 엑셀 업로드 주문인지 확인
-      const isExcelUpload = orderData.source === 'excel_upload' || 
-                           orderData.items.some(item => item.source === 'excel_upload');
-      
+      const isExcelUpload = orderData.source === 'excel_upload' ||
+        orderData.items.some(item => item.source === 'excel_upload');
+
       // 고객 등록/업데이트 로직 (포인트 차감 포함)
       if (orderData.registerCustomer && !orderData.isAnonymous) {
         await registerCustomerFromOrder(orderData);
@@ -194,20 +210,20 @@ export function useOrders() {
         // 고객 등록을 하지 않지만 기존 고객이 포인트를 사용한 경우에만 별도 차감
         await deductCustomerPoints(orderData.orderer.id, orderData.summary.pointsUsed);
       }
-      
+
       // 수령자 정보 별도 저장 (배송 예약인 경우)
       if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
         await saveRecipientInfo(orderData.deliveryInfo, orderData.branchName, orderDocRef.id);
       }
-      
+
       const historyBatch = writeBatch(db);
-      
+
       // 엑셀 업로드 주문인 경우 재고 차감 제외
       if (isExcelUpload) {
         // 엑셀 업로드 주문은 재고 차감 없이 히스토리만 기록
         for (const item of orderData.items) {
           if (!item.id || item.quantity <= 0) continue;
-          
+
           const historyDocRef = doc(collection(db, "stockHistory"));
           historyBatch.set(historyDocRef, {
             date: Timestamp.fromDate(orderDate),
@@ -267,9 +283,9 @@ export function useOrders() {
           });
         }
       }
-      
+
       await historyBatch.commit();
-      
+
       let successMessage = '';
       if (isExcelUpload) {
         successMessage = '엑셀 업로드 주문이 추가되었습니다. (재고 차감 없음)';
@@ -278,12 +294,12 @@ export function useOrders() {
       } else {
         successMessage = '새 주문이 추가되고 재고가 업데이트되었습니다.';
       }
-        
+
       toast({
         title: '성공',
         description: successMessage,
       });
-      
+
       await fetchOrders();
       return orderDocRef.id; // 주문 ID 반환
     } catch (error) {
@@ -300,139 +316,139 @@ export function useOrders() {
   };
   const updateOrderStatus = async (orderId: string, newStatus: 'processing' | 'completed' | 'canceled') => {
     try {
-        const orderRef = doc(db, 'orders', orderId);
-        await updateDoc(orderRef, { status: newStatus });
-        
-        // 주문이 완료되면 해당하는 캘린더 이벤트 상태를 'completed'로 변경
-        if (newStatus === 'completed') {
-          try {
-            const calendarEventsRef = collection(db, 'calendarEvents');
-            const calendarQuery = query(
-              calendarEventsRef,
-              where('relatedId', '==', orderId)
-            );
-            const calendarSnapshot = await getDocs(calendarQuery);
-            
-            // 관련된 캘린더 이벤트 상태를 'completed'로 변경
-            const updatePromises = calendarSnapshot.docs.map(doc => 
-              updateDoc(doc.ref, { 
-                status: 'completed',
-                updatedAt: Timestamp.now()
-              })
-            );
-            await Promise.all(updatePromises);
-            
-            console.log(`${calendarSnapshot.docs.length}개의 캘린더 이벤트가 완료 상태로 변경되었습니다.`);
-          } catch (calendarError) {
-            console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
-            // 캘린더 이벤트 상태 변경 실패는 주문 상태 변경을 막지 않음
-          }
+      const orderRef = doc(db, 'orders', orderId);
+      await updateDoc(orderRef, { status: newStatus });
 
-          // 주문이 완료되면 이관 상태도 함께 업데이트
-          try {
-            const orderDoc = await getDoc(orderRef);
-            if (orderDoc.exists()) {
-              const orderData = orderDoc.data();
-              
-              // 이관된 주문인지 확인
-              if (orderData.transferInfo?.isTransferred && orderData.transferInfo?.transferId) {
-                const transferRef = doc(db, 'order_transfers', orderData.transferInfo.transferId);
-                
-                // 이관 상태를 'completed'로 업데이트
-                await updateDoc(transferRef, {
-                  status: 'completed',
-                  completedAt: serverTimestamp(),
-                  completedBy: user?.uid,
-                  updatedAt: serverTimestamp()
-                });
+      // 주문이 완료되면 해당하는 캘린더 이벤트 상태를 'completed'로 변경
+      if (newStatus === 'completed') {
+        try {
+          const calendarEventsRef = collection(db, 'calendarEvents');
+          const calendarQuery = query(
+            calendarEventsRef,
+            where('relatedId', '==', orderId)
+          );
+          const calendarSnapshot = await getDocs(calendarQuery);
 
-                // 발주지점의 원본 주문도 완료 상태로 업데이트
-                if (orderData.transferInfo.originalBranchId && orderData.transferInfo.originalBranchId !== orderData.branchId) {
-                  // 원본 주문 조회
-                  const originalOrderQuery = query(
-                    collection(db, 'orders'),
-                    where('orderNumber', '==', orderData.orderNumber),
-                    where('branchId', '==', orderData.transferInfo.originalBranchId)
-                  );
-                  const originalOrderSnapshot = await getDocs(originalOrderQuery);
-                  
-                  if (!originalOrderSnapshot.empty) {
-                    const originalOrderRef = originalOrderSnapshot.docs[0].ref;
-                    await updateDoc(originalOrderRef, { 
-                      status: 'completed',
-                      updatedAt: serverTimestamp()
-                    });
-                    
-                    console.log('발주지점 원본 주문도 완료 상태로 업데이트되었습니다.');
-                  }
-                }
+          // 관련된 캘린더 이벤트 상태를 'completed'로 변경
+          const updatePromises = calendarSnapshot.docs.map(doc =>
+            updateDoc(doc.ref, {
+              status: 'completed',
+              updatedAt: Timestamp.now()
+            })
+          );
+          await Promise.all(updatePromises);
 
-                console.log('이관 상태가 완료로 업데이트되었습니다.');
-              }
-            }
-          } catch (transferError) {
-            console.error('이관 상태 업데이트 중 오류:', transferError);
-            // 이관 상태 업데이트 실패는 주문 상태 변경을 막지 않음
-          }
+          console.log(`${calendarSnapshot.docs.length}개의 캘린더 이벤트가 완료 상태로 변경되었습니다.`);
+        } catch (calendarError) {
+          console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
+          // 캘린더 이벤트 상태 변경 실패는 주문 상태 변경을 막지 않음
         }
-        
-        toast({
-            title: '상태 변경 성공',
-            description: `주문 상태가 '${newStatus}'(으)로 변경되었습니다.`,
-        });
-        await fetchOrders();
+
+        // 주문이 완료되면 이관 상태도 함께 업데이트
+        try {
+          const orderDoc = await getDoc(orderRef);
+          if (orderDoc.exists()) {
+            const orderData = orderDoc.data();
+
+            // 이관된 주문인지 확인
+            if (orderData.transferInfo?.isTransferred && orderData.transferInfo?.transferId) {
+              const transferRef = doc(db, 'order_transfers', orderData.transferInfo.transferId);
+
+              // 이관 상태를 'completed'로 업데이트
+              await updateDoc(transferRef, {
+                status: 'completed',
+                completedAt: serverTimestamp(),
+                completedBy: user?.uid,
+                updatedAt: serverTimestamp()
+              });
+
+              // 발주지점의 원본 주문도 완료 상태로 업데이트
+              if (orderData.transferInfo.originalBranchId && orderData.transferInfo.originalBranchId !== orderData.branchId) {
+                // 원본 주문 조회
+                const originalOrderQuery = query(
+                  collection(db, 'orders'),
+                  where('orderNumber', '==', orderData.orderNumber),
+                  where('branchId', '==', orderData.transferInfo.originalBranchId)
+                );
+                const originalOrderSnapshot = await getDocs(originalOrderQuery);
+
+                if (!originalOrderSnapshot.empty) {
+                  const originalOrderRef = originalOrderSnapshot.docs[0].ref;
+                  await updateDoc(originalOrderRef, {
+                    status: 'completed',
+                    updatedAt: serverTimestamp()
+                  });
+
+                  console.log('발주지점 원본 주문도 완료 상태로 업데이트되었습니다.');
+                }
+              }
+
+              console.log('이관 상태가 완료로 업데이트되었습니다.');
+            }
+          }
+        } catch (transferError) {
+          console.error('이관 상태 업데이트 중 오류:', transferError);
+          // 이관 상태 업데이트 실패는 주문 상태 변경을 막지 않음
+        }
+      }
+
+      toast({
+        title: '상태 변경 성공',
+        description: `주문 상태가 '${newStatus}'(으)로 변경되었습니다.`,
+      });
+      await fetchOrders();
     } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: '오류',
-            description: '주문 상태 변경 중 오류가 발생했습니다.',
-        });
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '주문 상태 변경 중 오류가 발생했습니다.',
+      });
     }
   };
   const updatePaymentStatus = async (orderId: string, newStatus: 'pending' | 'paid' | 'completed') => {
     try {
-        const orderRef = doc(db, 'orders', orderId);
-        
-        // 주문 정보를 먼저 가져와서 분할결제 여부 확인
-        const orderDoc = await getDoc(orderRef);
-        const orderData = orderDoc.data();
-        
-        const updateData: any = { 'payment.status': newStatus };
-        
-        // 완결처리 시 현재 시간 기록 (paid 또는 completed 상태일 때)
-        if (newStatus === 'paid' || newStatus === 'completed') {
-          // completedAt이 아직 설정되지 않은 경우에만 설정
-          if (!orderData?.payment?.completedAt) {
-            updateData['payment.completedAt'] = serverTimestamp();
-          }
-          
-          // 분할결제인 경우 후결제 날짜 기록 및 상태 변경
-          if (orderData?.payment?.isSplitPayment || orderData?.payment?.status === 'split_payment') {
-            updateData['payment.secondPaymentDate'] = serverTimestamp();
-          }
-          
-          console.log('Payment Status Update Debug:', {
-            orderId: orderId,
-            isSplitPayment: orderData?.payment?.isSplitPayment,
-            currentStatus: orderData?.payment?.status,
-            newStatus: newStatus,
-            completedAt: orderData?.payment?.completedAt ? 'already set' : 'serverTimestamp()',
-            updateData: updateData
-          });
+      const orderRef = doc(db, 'orders', orderId);
+
+      // 주문 정보를 먼저 가져와서 분할결제 여부 확인
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+
+      const updateData: any = { 'payment.status': newStatus };
+
+      // 완결처리 시 현재 시간 기록 (paid 또는 completed 상태일 때)
+      if (newStatus === 'paid' || newStatus === 'completed') {
+        // completedAt이 아직 설정되지 않은 경우에만 설정
+        if (!orderData?.payment?.completedAt) {
+          updateData['payment.completedAt'] = serverTimestamp();
         }
-        
-        await updateDoc(orderRef, updateData);
-        toast({
-            title: '결제 상태 변경 성공',
-            description: `결제 상태가 '${newStatus === 'paid' || newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
+
+        // 분할결제인 경우 후결제 날짜 기록 및 상태 변경
+        if (orderData?.payment?.isSplitPayment || orderData?.payment?.status === 'split_payment') {
+          updateData['payment.secondPaymentDate'] = serverTimestamp();
+        }
+
+        console.log('Payment Status Update Debug:', {
+          orderId: orderId,
+          isSplitPayment: orderData?.payment?.isSplitPayment,
+          currentStatus: orderData?.payment?.status,
+          newStatus: newStatus,
+          completedAt: orderData?.payment?.completedAt ? 'already set' : 'serverTimestamp()',
+          updateData: updateData
         });
-        await fetchOrders();
+      }
+
+      await updateDoc(orderRef, updateData);
+      toast({
+        title: '결제 상태 변경 성공',
+        description: `결제 상태가 '${newStatus === 'paid' || newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
+      });
+      await fetchOrders();
     } catch (error) {
-        toast({
-            variant: 'destructive',
-            title: '오류',
-            description: '결제 상태 변경 중 오류가 발생했습니다.',
-        });
+      toast({
+        variant: 'destructive',
+        title: '오류',
+        description: '결제 상태 변경 중 오류가 발생했습니다.',
+      });
     }
   };
   const updateOrder = async (orderId: string, data: Partial<OrderData>) => {
@@ -459,11 +475,11 @@ export function useOrders() {
       }
       const orderData = orderDoc.data() as Order;
       const pointsUsed = orderData.summary.pointsUsed || 0;
-      
+
       // 포인트를 사용한 경우 환불 처리
       if (pointsUsed > 0) {
         let customerId = orderData.orderer.id;
-        
+
         // 고객 ID가 없는 경우 연락처로 고객 찾기
         if (!customerId && orderData.orderer.contact) {
           const customerSnapshot = await getDocs(query(
@@ -471,12 +487,12 @@ export function useOrders() {
             where('contact', '==', orderData.orderer.contact),
             where('isDeleted', '!=', true)
           ));
-          
+
           if (!customerSnapshot.empty) {
             customerId = customerSnapshot.docs[0].id;
           }
         }
-        
+
         if (customerId) {
           await refundCustomerPoints(customerId, pointsUsed);
         } else {
@@ -491,7 +507,7 @@ export function useOrders() {
       const pointsEarned = orderData.summary.pointsEarned || 0;
       if (pointsEarned > 0) {
         let customerId = orderData.orderer.id;
-        
+
         // 고객 ID가 없는 경우 연락처로 고객 찾기
         if (!customerId && orderData.orderer.contact) {
           const customerSnapshot = await getDocs(query(
@@ -499,12 +515,12 @@ export function useOrders() {
             where('contact', '==', orderData.orderer.contact),
             where('isDeleted', '!=', true)
           ));
-          
+
           if (!customerSnapshot.empty) {
             customerId = customerSnapshot.docs[0].id;
           }
         }
-        
+
         if (customerId) {
           await deductCustomerPoints(customerId, pointsEarned);
           console.log('적립 포인트 차감 완료:', {
@@ -530,24 +546,24 @@ export function useOrders() {
         canceledAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      
+
       // 배송 예약 주문인 경우 수령자 정보도 처리 (주문 취소 시에는 수령자 정보는 유지하되 주문 횟수만 감소)
       if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
         await updateRecipientInfoOnOrderDelete(orderData.deliveryInfo, orderData.branchName);
       }
-      
+
       // 성공 메시지 구성
       let successMessage = "주문이 취소되고 금액이 0원으로 설정되었습니다.";
       const messages = [];
-      
+
       if (pointsUsed > 0) {
         messages.push(`사용한 ${pointsUsed}포인트가 환불되었습니다.`);
       }
-      
+
       if (pointsEarned > 0) {
         messages.push(`적립 예정이던 ${pointsEarned}포인트가 차감되었습니다.`);
       }
-      
+
       if (messages.length > 0) {
         successMessage += ` ${messages.join(' ')}`;
       }
@@ -573,19 +589,19 @@ export function useOrders() {
       // 주문 정보 먼저 가져오기
       const orderRef = doc(db, 'orders', orderId);
       const orderDoc = await getDoc(orderRef);
-      
+
       if (!orderDoc.exists()) {
         throw new Error('주문을 찾을 수 없습니다.');
       }
-      
+
       const orderData = orderDoc.data() as Order;
       const pointsUsed = orderData.summary.pointsUsed || 0;
       const pointsEarned = orderData.summary.pointsEarned || 0;
-      
+
       // 포인트를 사용한 경우 환불 처리
       if (pointsUsed > 0) {
         let customerId = orderData.orderer.id;
-        
+
         // 고객 ID가 없는 경우 연락처로 고객 찾기
         if (!customerId && orderData.orderer.contact) {
           const customerSnapshot = await getDocs(query(
@@ -593,12 +609,12 @@ export function useOrders() {
             where('contact', '==', orderData.orderer.contact),
             where('isDeleted', '!=', true)
           ));
-          
+
           if (!customerSnapshot.empty) {
             customerId = customerSnapshot.docs[0].id;
           }
         }
-        
+
         if (customerId) {
           await refundCustomerPoints(customerId, pointsUsed);
           console.log('주문 삭제 - 사용 포인트 환불 완료:', pointsUsed);
@@ -610,11 +626,11 @@ export function useOrders() {
           });
         }
       }
-      
+
       // 적립 예정 포인트가 있는 경우 차감 처리
       if (pointsEarned > 0) {
         let customerId = orderData.orderer.id;
-        
+
         // 고객 ID가 없는 경우 연락처로 고객 찾기
         if (!customerId && orderData.orderer.contact) {
           const customerSnapshot = await getDocs(query(
@@ -622,23 +638,23 @@ export function useOrders() {
             where('contact', '==', orderData.orderer.contact),
             where('isDeleted', '!=', true)
           ));
-          
+
           if (!customerSnapshot.empty) {
             customerId = customerSnapshot.docs[0].id;
           }
         }
-        
+
         if (customerId) {
           await deductCustomerPoints(customerId, pointsEarned);
           console.log('주문 삭제 - 적립 포인트 차감 완료:', pointsEarned);
         }
       }
-      
+
       // 관련된 주문 이관 기록 찾기 및 삭제
       const transfersRef = collection(db, 'order_transfers');
       const transfersQuery = query(transfersRef, where('originalOrderId', '==', orderId));
       const transfersSnapshot = await getDocs(transfersQuery);
-      
+
       // 배치로 이관 기록 삭제
       if (!transfersSnapshot.empty) {
         const batch = writeBatch(db);
@@ -648,31 +664,31 @@ export function useOrders() {
         await batch.commit();
         console.log(`${transfersSnapshot.size}개의 이관 기록이 삭제되었습니다.`);
       }
-      
+
       // 주문 삭제
       await deleteDoc(orderRef);
-      
+
       // 배송 예약 주문인 경우 수령자 정보 처리
       if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {
         await updateRecipientInfoOnOrderDelete(orderData.deliveryInfo, orderData.branchName);
       }
-      
+
       // 성공 메시지 구성
       let successMessage = "주문과 관련된 모든 데이터가 삭제되었습니다.";
       const messages = [];
-      
+
       if (pointsUsed > 0) {
         messages.push(`사용한 ${pointsUsed}포인트가 환불되었습니다.`);
       }
-      
+
       if (pointsEarned > 0) {
         messages.push(`적립 예정이던 ${pointsEarned}포인트가 차감되었습니다.`);
       }
-      
+
       if (messages.length > 0) {
         successMessage += ` ${messages.join(' ')}`;
       }
-      
+
       toast({
         title: "주문 삭제 완료",
         description: successMessage
@@ -691,20 +707,20 @@ export function useOrders() {
   };
   // 배송완료 처리 (사진 포함)
   const completeDelivery = async (
-    orderId: string, 
+    orderId: string,
     completionPhotoUrl?: string,
     completedBy?: string
   ) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       const orderDoc = await getDoc(orderRef);
-      
+
       if (!orderDoc.exists()) {
         throw new Error('주문을 찾을 수 없습니다.');
       }
 
       const orderData = orderDoc.data() as Order;
-      
+
       // 배송 정보 업데이트
       const updatedDeliveryInfo = {
         ...orderData.deliveryInfo,
@@ -738,7 +754,7 @@ export function useOrders() {
 
         // 동적 import를 통해 순환 참조 방지
         const { sendDeliveryCompleteEmail } = await import('@/lib/email-service');
-        
+
         await sendDeliveryCompleteEmail(
           orderData.orderer.email,
           orderData.orderer.name,
@@ -757,16 +773,16 @@ export function useOrders() {
           where('relatedId', '==', orderId)
         );
         const calendarSnapshot = await getDocs(calendarQuery);
-        
+
         // 관련된 캘린더 이벤트 상태를 'completed'로 변경
-        const updatePromises = calendarSnapshot.docs.map(doc => 
-          updateDoc(doc.ref, { 
+        const updatePromises = calendarSnapshot.docs.map(doc =>
+          updateDoc(doc.ref, {
             status: 'completed',
             updatedAt: Timestamp.now()
           })
         );
         await Promise.all(updatePromises);
-        
+
         console.log(`${calendarSnapshot.docs.length}개의 캘린더 이벤트가 완료 상태로 변경되었습니다.`);
       } catch (calendarError) {
         console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
@@ -778,7 +794,7 @@ export function useOrders() {
 
       toast({
         title: "배송완료 처리됨",
-        description: completionPhotoUrl ? 
+        description: completionPhotoUrl ?
           "배송완료 사진과 함께 고객에게 알림 이메일이 발송되었습니다." :
           "배송완료 처리가 완료되었습니다."
       });
@@ -891,12 +907,12 @@ const refundCustomerPoints = async (customerId: string, pointsToRefund: number) 
       const customerData = customerDoc.data();
       const currentPoints = customerData.points || 0;
       const newPoints = currentPoints + pointsToRefund;
-      
+
       await setDoc(customerRef, {
         points: newPoints,
         lastUpdated: serverTimestamp(),
       }, { merge: true });
-      
+
       console.log('포인트 환불 완료:', {
         customerId: customerId,
         customerName: customerData.name,
@@ -967,12 +983,12 @@ const updateRecipientInfoOnOrderDelete = async (deliveryInfo: any, branchName: s
       where('branchName', '==', branchName)
     );
     const existingRecipients = await getDocs(recipientsQuery);
-    
+
     if (!existingRecipients.empty) {
       const recipientDoc = existingRecipients.docs[0];
       const existingData = recipientDoc.data();
       const newOrderCount = Math.max(0, (existingData.orderCount || 1) - 1);
-      
+
       if (newOrderCount === 0) {
         // 주문 횟수가 0이 되면 수령자 정보 삭제
         await deleteDoc(recipientDoc.ref);

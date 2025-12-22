@@ -7,21 +7,22 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { Order } from "@/hooks/use-orders";
 import { Timestamp } from "firebase/firestore";
-import { 
-  User, 
-  Phone, 
-  Mail, 
-  Building, 
-  MapPin, 
-  Calendar, 
-  Clock, 
-  Package, 
+import {
+  User,
+  Phone,
+  Mail,
+  Building,
+  MapPin,
+  Calendar,
+  Clock,
+  Package,
   MessageSquare,
   FileText,
   CreditCard,
   Truck,
   Home,
-  ArrowRightLeft
+  ArrowRightLeft,
+  DollarSign
 } from "lucide-react";
 interface OrderDetailDialogProps {
   isOpen: boolean;
@@ -64,7 +65,7 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
   const getPaymentStatusBadge = (order: any) => {
     const status = order.payment?.status;
     const completedAt = order.payment?.completedAt;
-    
+
     switch (status) {
       case 'paid':
       case 'completed':
@@ -146,8 +147,8 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                   </div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-muted-foreground">
-                      {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName 
-                        ? order.transferInfo.processBranchName 
+                      {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName
+                        ? order.transferInfo.processBranchName
                         : order.branchName}
                     </p>
                     {order.transferInfo?.isTransferred && (
@@ -278,11 +279,11 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                       <span className="text-sm font-medium">픽업/배송일시</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {order.pickupInfo?.date && order.pickupInfo?.time 
+                      {order.pickupInfo?.date && order.pickupInfo?.time
                         ? `${order.pickupInfo.date} ${order.pickupInfo.time}`
                         : order.deliveryInfo?.date && order.deliveryInfo?.time
-                        ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}`
-                        : '-'
+                          ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}`
+                          : '-'
                       }
                     </p>
                   </div>
@@ -389,7 +390,7 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                     const messageParts = order.message.content.split('\n---\n');
                     const messageContent = messageParts[0];
                     const senderName = messageParts.length > 1 ? messageParts[1] : null;
-                    
+
                     return (
                       <>
                         {senderName && (
@@ -462,8 +463,8 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                         <span className="text-sm font-medium">이관일시</span>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {order.transferInfo.transferDate && 
-                         format((order.transferInfo.transferDate as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')}
+                        {order.transferInfo.transferDate &&
+                          format((order.transferInfo.transferDate as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')}
                       </p>
                     </div>
                   </div>
