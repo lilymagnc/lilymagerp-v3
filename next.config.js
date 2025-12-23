@@ -34,20 +34,6 @@ const nextConfig = {
     experimental: {
         // optimizeCss: true, // Vercel에서 문제가 있어서 비활성화
     },
-
-    // Firebase 관련 최적화
-    webpack: (config, { isServer }) => {
-        if (!isServer) {
-            // 클라이언트 사이드에서 Firebase 관련 모듈 최적화
-            config.resolve.fallback = {
-                ...config.resolve.fallback,
-                fs: false,
-                net: false,
-                tls: false,
-            };
-        }
-        return config;
-    },
 };
 
 module.exports = nextConfig;
