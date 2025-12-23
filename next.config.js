@@ -4,10 +4,7 @@ const nextConfig = {
     typescript: {
         ignoreBuildErrors: true,
     },
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
-    
+
     // 이미지 최적화
     images: {
         remotePatterns: [
@@ -32,12 +29,12 @@ const nextConfig = {
         ],
         unoptimized: false,
     },
-    
+
     // CSS 최적화
     experimental: {
         // optimizeCss: true, // Vercel에서 문제가 있어서 비활성화
     },
-    
+
     // Firebase 관련 최적화
     webpack: (config, { isServer }) => {
         if (!isServer) {
