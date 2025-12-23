@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import {
   BarChart3,
   PieChart,
   TrendingUp,
@@ -27,6 +27,7 @@ import { useProducts } from '@/hooks/use-products';
 import { useCustomers } from '@/hooks/use-customers';
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { YearEndExportDialog } from './components/year-end-export-dialog';
 
 // 통계 데이터 타입 정의
 interface SalesStats {
@@ -283,10 +284,7 @@ export default function StatsDashboard() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            내보내기
-          </Button>
+          <YearEndExportDialog />
         </div>
       </div>
 
@@ -305,7 +303,7 @@ export default function StatsDashboard() {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">평균 주문금액</CardTitle>
@@ -564,8 +562,8 @@ export default function StatsDashboard() {
                             <span className="text-sm font-bold">₩{payment.sales.toLocaleString()}</span>
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
