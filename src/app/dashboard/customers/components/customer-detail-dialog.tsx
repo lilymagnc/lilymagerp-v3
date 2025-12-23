@@ -106,16 +106,16 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
     // 엑셀 데이터 준비 (상세 정보 포함)
     const excelData = customerOrders.map(order => {
       // 상품 목록을 문자열로 변환
-      const itemsList = order.items?.map((item: any) => 
+      const itemsList = order.items?.map((item: any) =>
         `${item.name} (${item.quantity}개 x ${item.price?.toLocaleString()}원)`
       ).join('; ') || '';
       // 배송 정보
-      const deliveryInfo = order.deliveryInfo ? 
-        `${order.deliveryInfo.recipientName} / ${order.deliveryInfo.recipientContact} / ${order.deliveryInfo.address}` : 
+      const deliveryInfo = order.deliveryInfo ?
+        `${order.deliveryInfo.recipientName} / ${order.deliveryInfo.recipientContact} / ${order.deliveryInfo.address}` :
         '픽업';
       // 픽업 정보
-      const pickupInfo = order.pickupInfo ? 
-        `${order.pickupInfo.pickerName} / ${order.pickupInfo.pickerContact} / ${order.pickupInfo.date} ${order.pickupInfo.time}` : 
+      const pickupInfo = order.pickupInfo ?
+        `${order.pickupInfo.pickerName} / ${order.pickupInfo.pickerContact} / ${order.pickupInfo.date} ${order.pickupInfo.time}` :
         '';
       return {
         '주문일': formatSafeDate(order.orderDate),
@@ -126,9 +126,9 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
         '주문자이메일': order.orderer?.email || '',
         '지점': order.branchName || '',
         '주문타입': order.orderType || '',
-        '수령방법': order.receiptType === 'store_pickup' ? '매장픽업 (즉시)' : 
-                   order.receiptType === 'pickup_reservation' ? '픽업예약' : 
-                   order.receiptType === 'delivery_reservation' ? '배송예약' : '기타',
+        '수령방법': order.receiptType === 'store_pickup' ? '매장픽업 (즉시)' :
+          order.receiptType === 'pickup_reservation' ? '픽업예약' :
+            order.receiptType === 'delivery_reservation' ? '배송예약' : '기타',
         '배송정보': deliveryInfo,
         '픽업정보': pickupInfo,
         '상품목록': itemsList,
@@ -250,89 +250,89 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                 </div>
               </div>
               <Separator />
-                             {/* 추가 정보 */}
-               <div>
-                 <h3 className="text-lg font-semibold mb-3">추가 정보</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <div>
-                     <label className="text-sm font-medium text-muted-foreground">주 거래 지점</label>
-                     <p className="text-sm mt-1">{currentCustomer.primaryBranch || currentCustomer.branch || '-'}</p>
-                   </div>
-                   <div>
-                     <label className="text-sm font-medium text-muted-foreground">고객 등급</label>
-                     <p className="text-sm mt-1">{currentCustomer.grade || '신규'}</p>
-                   </div>
-                 </div>
-               </div>
-               <Separator />
-               {/* 지점별 등록 정보 */}
-               {currentCustomer.branches && Object.keys(currentCustomer.branches).length > 0 && (
-                 <div>
-                   <h3 className="text-lg font-semibold mb-3">등록된 지점</h3>
-                   <div className="space-y-3">
-                     {Object.entries(currentCustomer.branches).map(([branchId, branchInfo]) => (
-                       <div key={branchId} className="border rounded-lg p-3">
-                         <div className="flex items-center justify-between">
-                           <div>
-                             <p className="font-medium">{branchId}</p>
-                             <p className="text-sm text-muted-foreground">
-                               등록일: {formatSafeDate(branchInfo.registeredAt)}
-                             </p>
-                             {branchInfo.grade && (
-                               <p className="text-sm text-muted-foreground">
-                                 등급: {branchInfo.grade}
-                               </p>
-                             )}
-                           </div>
-                           {branchId === currentCustomer.primaryBranch && (
-                             <Badge variant="secondary" className="text-xs">
-                               주 거래 지점
-                             </Badge>
-                           )}
-                         </div>
-                         {branchInfo.notes && (
-                           <p className="text-sm text-muted-foreground mt-2">
-                             메모: {branchInfo.notes}
-                           </p>
-                         )}
-                       </div>
-                     ))}
-                   </div>
-                 </div>
-               )}
+              {/* 추가 정보 */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">추가 정보</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">주 거래 지점</label>
+                    <p className="text-sm mt-1">{currentCustomer.primaryBranch || currentCustomer.branch || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">고객 등급</label>
+                    <p className="text-sm mt-1">{currentCustomer.grade || '신규'}</p>
+                  </div>
+                </div>
+              </div>
               <Separator />
-                             {/* 포인트 정보 */}
-               <div>
-                 <div className="flex items-center justify-between mb-3">
-                   <h3 className="text-lg font-semibold">포인트 정보</h3>
-                   <div className="flex gap-2">
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={() => setShowPointHistory(true)}
-                       className="flex items-center gap-2"
-                     >
-                       <History className="h-4 w-4" />
-                       이력 조회
-                     </Button>
-                     <Button
-                       variant="outline"
-                       size="sm"
-                       onClick={() => setShowPointEdit(true)}
-                       className="flex items-center gap-2"
-                     >
-                       <Coins className="h-4 w-4" />
-                       포인트 수정
-                     </Button>
-                   </div>
-                 </div>
-                 <div className="flex items-center gap-2">
-                   <span className="text-sm font-medium text-muted-foreground">보유 포인트:</span>
-                   <Badge variant="secondary" className="text-lg font-bold">
-                     {(currentCustomer.points || 0).toLocaleString()} P
-                   </Badge>
-                 </div>
-               </div>
+              {/* 지점별 등록 정보 */}
+              {currentCustomer.branches && Object.keys(currentCustomer.branches).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">등록된 지점</h3>
+                  <div className="space-y-3">
+                    {Object.entries(currentCustomer.branches).map(([branchId, branchInfo]) => (
+                      <div key={branchId} className="border rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">{branchId}</p>
+                            <p className="text-sm text-muted-foreground">
+                              등록일: {formatSafeDate(branchInfo.registeredAt)}
+                            </p>
+                            {branchInfo.grade && (
+                              <p className="text-sm text-muted-foreground">
+                                등급: {branchInfo.grade}
+                              </p>
+                            )}
+                          </div>
+                          {branchId === currentCustomer.primaryBranch && (
+                            <Badge variant="secondary" className="text-xs">
+                              주 거래 지점
+                            </Badge>
+                          )}
+                        </div>
+                        {branchInfo.notes && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            메모: {branchInfo.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Separator />
+              {/* 포인트 정보 */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold">포인트 정보</h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPointHistory(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <History className="h-4 w-4" />
+                      이력 조회
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPointEdit(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Coins className="h-4 w-4" />
+                      포인트 수정
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">보유 포인트:</span>
+                  <Badge variant="secondary" className="text-lg font-bold">
+                    {(currentCustomer.points || 0).toLocaleString()} P
+                  </Badge>
+                </div>
+              </div>
               <Separator />
               {/* 등록 정보 */}
               <div>
@@ -438,11 +438,11 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                           </TableCell>
                           <TableCell>
                             <Badge variant={
-                              order.status === 'completed' ? 'default' : 
-                              order.status === 'canceled' ? 'destructive' : 'secondary'
+                              order.status === 'completed' ? 'default' :
+                                order.status === 'canceled' ? 'destructive' : 'secondary'
                             }>
-                              {order.status === 'completed' ? '완료' : 
-                               order.status === 'canceled' ? '취소' : '진행중'}
+                              {order.status === 'completed' ? '완료' :
+                                order.status === 'canceled' ? '취소' : '진행중'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -474,7 +474,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <span>주문 상세 정보</span>
-                <Badge variant="outline">{selectedOrder.orderNumber}</Badge>
+                <Badge variant="outline">{selectedOrder.id?.slice(0, 8) || '-'}</Badge>
               </DialogTitle>
               <DialogDescription>
                 주문의 상세 정보와 상품 목록을 확인할 수 있습니다.
@@ -487,7 +487,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">주문번호</label>
-                    <p className="text-sm mt-1">{selectedOrder.orderNumber}</p>
+                    <p className="text-sm mt-1 font-mono">{selectedOrder.id?.slice(0, 8) || '-'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">주문일</label>
@@ -495,7 +495,7 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">총 금액</label>
-                    <p className="text-sm mt-1 font-bold">{selectedOrder.totalAmount?.toLocaleString() || 0}원</p>
+                    <p className="text-sm mt-1 font-bold text-lg">{(selectedOrder.summary?.total || 0).toLocaleString()}원</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">상태</label>
@@ -536,23 +536,23 @@ export function CustomerDetailDialog({ isOpen, onOpenChange, customer, onCustome
             </div>
           </DialogContent>
         </Dialog>
-             )}
+      )}
 
-       {/* 포인트 수정 다이얼로그 */}
-       <PointEditDialog
-         isOpen={showPointEdit}
-         onOpenChange={setShowPointEdit}
-         customer={currentCustomer}
-         onPointUpdate={handlePointUpdate}
-       />
+      {/* 포인트 수정 다이얼로그 */}
+      <PointEditDialog
+        isOpen={showPointEdit}
+        onOpenChange={setShowPointEdit}
+        customer={currentCustomer}
+        onPointUpdate={handlePointUpdate}
+      />
 
-       {/* 포인트 이력 다이얼로그 */}
-       <PointHistoryDialog
-         isOpen={showPointHistory}
-         onOpenChange={setShowPointHistory}
-         customerId={currentCustomer?.id}
-         customerName={currentCustomer?.name}
-       />
-     </>
-   )
- } 
+      {/* 포인트 이력 다이얼로그 */}
+      <PointHistoryDialog
+        isOpen={showPointHistory}
+        onOpenChange={setShowPointHistory}
+        customerId={currentCustomer?.id}
+        customerName={currentCustomer?.name}
+      />
+    </>
+  )
+} 
