@@ -417,10 +417,9 @@ export function useOrders() {
 
       // 완결처리 시 현재 시간 기록 (paid 또는 completed 상태일 때)
       if (newStatus === 'paid' || newStatus === 'completed') {
-        // completedAt이 아직 설정되지 않은 경우에만 설정
-        if (!orderData?.payment?.completedAt) {
-          updateData['payment.completedAt'] = serverTimestamp();
-        }
+        // 완결 처리 시 항상 현재 시간으로 completedAt 업데이트
+        // 이렇게 해야 미결→완결 전환 시 완결한 날짜가 정확하게 기록됨
+        updateData['payment.completedAt'] = serverTimestamp();
 
         // 분할결제인 경우 후결제 날짜 기록 및 상태 변경
         if (orderData?.payment?.isSplitPayment || orderData?.payment?.status === 'split_payment') {
@@ -432,7 +431,19 @@ export function useOrders() {
           isSplitPayment: orderData?.payment?.isSplitPayment,
           currentStatus: orderData?.payment?.status,
           newStatus: newStatus,
-          completedAt: orderData?.payment?.completedAt ? 'already set' : 'serverTimestamp()',
+          completedAt: 'serverTimestamp() - 매출은 완결 날짜 기준',
+          updateData: updateData
+        });
+      } else if (newStatus === 'pending') {
+        // 미결로 변경 시 completedAt을 null로 설정하여 제거
+        // 이렇게 해야 나중에 다시 완결 처리할 때 새로운 날짜가 설정됨
+        updateData['payment.completedAt'] = null;
+
+        console.log('Payment Status Update Debug:', {
+          orderId: orderId,
+          currentStatus: orderData?.payment?.status,
+          newStatus: newStatus,
+          completedAt: 'null - 미결 상태로 변경',
           updateData: updateData
         });
       }

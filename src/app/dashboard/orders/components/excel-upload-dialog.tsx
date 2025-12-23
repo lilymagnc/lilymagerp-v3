@@ -61,8 +61,8 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-          file.type === 'application/vnd.ms-excel') {
+      if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.type === 'application/vnd.ms-excel') {
         setSelectedFile(file);
         setUploadResult(null);
       } else {
@@ -138,7 +138,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       // 날짜 파싱 실패 시 현재 시간으로 설정
       orderDate = new Date();
     }
-    
+
     // 시간이 없는 경우 기본 시간 설정 (09:00)
     if (excelData.orderDate && !excelData.orderDate.includes(':')) {
       const dateOnly = new Date(excelData.orderDate);
@@ -224,7 +224,12 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       receiptType: receiptType as any,
       payment: {
         method: (paymentMethodMap[excelData.paymentMethod] || 'card') as "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay",
-        status: (paymentStatusMap[excelData.paymentStatus] || 'pending') as "paid" | "pending" | "completed"
+        status: (paymentStatusMap[excelData.paymentStatus] || 'pending') as "paid" | "pending" | "completed",
+        // 완결 상태로 엑셀 업로드되는 경우 completedAt 설정 (매출 날짜 정확한 기록)
+        completedAt: ((paymentStatusMap[excelData.paymentStatus] === 'paid' ||
+          paymentStatusMap[excelData.paymentStatus] === 'completed'))
+          ? Timestamp.now()
+          : undefined
       },
       pickupInfo: pickupInfo,
       deliveryInfo: deliveryInfo,
@@ -236,7 +241,7 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
         content: ""
       },
       request: excelData.specialRequests || '',
-              source: 'excel_upload' as const // 출처 표시
+      source: 'excel_upload' as const // 출처 표시
     };
 
     return order;
@@ -334,12 +339,12 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
           console.error(`주문 삭제 실패: ${orderId}`, error);
         }
       }
-      
+
       toast({
         title: "일괄 삭제 완료",
         description: `${deletedCount}개의 주문이 삭제되었습니다.`,
       });
-      
+
       // 결과 초기화
       setUploadResult(null);
     } catch (error) {
@@ -378,41 +383,41 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
       // 기존 데이터 업로드용 중복 체크 (완화된 기준)
       const { collection, query, where, getDocs } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
-      
+
       // 주문일시를 Date 객체로 변환
       const orderDate = new Date(order.orderDate);
       const startOfDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
       const endOfDay = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate(), 23, 59, 59);
-      
+
       // 기존 주문 검색 (지점명 + 날짜 + 상품명 + 금액으로 중복 체크)
       const q = query(
         collection(db, 'orders'),
         where('branchName', '==', order.branchName)
       );
-      
+
       const querySnapshot = await getDocs(q);
-      
+
       // 같은 날짜에 같은 상품과 금액으로 주문한 내역이 있는지 확인
       for (const doc of querySnapshot.docs) {
         const existingOrder = doc.data();
         if (existingOrder.orderDate) {
-          const existingDate = existingOrder.orderDate.toDate ? 
-            existingOrder.orderDate.toDate() : 
+          const existingDate = existingOrder.orderDate.toDate ?
+            existingOrder.orderDate.toDate() :
             new Date(existingOrder.orderDate);
-          
+
           // 같은 날짜인지 확인
           if (existingDate >= startOfDay && existingDate <= endOfDay) {
             // 상품명과 금액도 비교
             const existingItems = existingOrder.items?.map((item: any) => item.name).join(',') || '';
             const existingTotal = existingOrder.summary?.total || 0;
-            
+
             if (existingItems === order.orderItems && existingTotal === order.totalAmount) {
               return true; // 중복 발견
             }
           }
         }
       }
-      
+
       return false; // 중복 없음
     } catch (error) {
       return false; // 오류 발생 시 중복이 아닌 것으로 처리
@@ -456,9 +461,9 @@ export function ExcelUploadDialog({ isOpen, onOpenChange }: ExcelUploadDialogPro
                 템플릿 다운로드
               </Button>
               <p className="text-xs text-muted-foreground mt-2">
-                템플릿을 다운로드하여 데이터를 입력한 후 업로드하세요. 
+                템플릿을 다운로드하여 데이터를 입력한 후 업로드하세요.
                 <br />
-                <span className="text-blue-600 font-medium">💡 팁:</span> 
+                <span className="text-blue-600 font-medium">💡 팁:</span>
                 • 날짜만 입력해도 됩니다 (시간은 자동으로 09:00으로 설정)
                 <br />
                 • 등록되지 않은 상품명도 입력 가능합니다
