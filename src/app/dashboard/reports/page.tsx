@@ -124,16 +124,31 @@ export default function StatsDashboard() {
     const totalOrders = filteredOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-    // 지점별 매출
+    // 지점별 매출 (누락 방지를 위해 지점명 텍스트 기준 그룹화)
     const branchSalesMap = new Map();
     filteredOrders.forEach(order => {
-      const branch = branches.find(b => b.id === order.branchId);
-      if (branch) {
-        const existing = branchSalesMap.get(order.branchId) || { branchId: order.branchId, branchName: branch.name, sales: 0, orders: 0 };
-        existing.sales += order.summary.total;
-        existing.orders += 1;
-        branchSalesMap.set(order.branchId, existing);
+      // branchName을 우선 사용하고, 없으면 ID로 찾아서 이름 가져오기
+      let branchName = order.branchName;
+
+      // branchName이 없는 경우 branchId로 조회 시도
+      if (!branchName && order.branchId) {
+        const branch = branches.find(b => b.id === order.branchId);
+        if (branch) branchName = branch.name;
       }
+
+      branchName = branchName || '지점 미지정';
+
+      // Map의 키를 branchName으로 사용
+      const existing = branchSalesMap.get(branchName) || {
+        branchId: order.branchId || 'unknown',
+        branchName: branchName,
+        sales: 0,
+        orders: 0
+      };
+
+      existing.sales += order.summary.total;
+      existing.orders += 1;
+      branchSalesMap.set(branchName, existing);
     });
 
     // 상품별 매출
