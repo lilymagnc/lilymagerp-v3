@@ -87,17 +87,17 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { events: calendarEvents } = useCalendar();
   const { orders } = useOrders();
-  
+
   // 한국어 요일 배열
   const koreanWeekdays = ['일', '월', '화', '수', '목', '금', '토'];
-  
+
   // 사용자 권한에 따른 지점 필터링
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
-  
+
   // 본사 관리자용 지점 필터링 상태
   const [selectedBranchFilter, setSelectedBranchFilter] = useState<string>('전체');
-  
+
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
     if (isAdmin) {
@@ -126,44 +126,44 @@ export default function DashboardPage() {
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // 주문 상세보기 다이얼로그 상태
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailDialogOpen, setOrderDetailDialogOpen] = useState(false);
-  
+
   // 차트별 데이터 상태
   const [dailySales, setDailySales] = useState<DailySalesData[]>([]);
   const [weeklySales, setWeeklySales] = useState<WeeklySalesData[]>([]);
   const [monthlySales, setMonthlySales] = useState<MonthlySalesData[]>([]);
-  
+
   // 차트별 날짜 필터링 상태
   const [dailyStartDate, setDailyStartDate] = useState(format(new Date(Date.now() - 13 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [dailyEndDate, setDailyEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  
+
   const [weeklyStartDate, setWeeklyStartDate] = useState(format(new Date(Date.now() - 56 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [weeklyEndDate, setWeeklyEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  
+
   const [monthlyStartDate, setMonthlyStartDate] = useState(format(new Date(new Date().getFullYear(), new Date().getMonth() - 11, 1), 'yyyy-MM-dd'));
   const [monthlyEndDate, setMonthlyEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  
+
   // 기존 날짜 상태 (다른 용도로 사용)
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedWeek, setSelectedWeek] = useState(format(new Date(), 'yyyy-\'W\'ww'));
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-  
+
   // 날씨 정보 상태
   const [weatherInfo, setWeatherInfo] = useState<WeatherInfo | null>(null);
-  
+
   // 주문 데이터를 캘린더 이벤트로 변환 (일정관리와 동일한 로직)
   const convertOrdersToEvents = useMemo(() => {
     const pickupDeliveryEvents: any[] = [];
-    
+
     orders.forEach(order => {
       // 관리자가 아닌 경우 해당 지점의 주문만 처리
       if (!isAdmin && order.branchName !== userBranch) {
         return;
       }
-      
+
       // 픽업 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
       if (order.pickupInfo && order.receiptType === 'pickup_reservation' && (order.status === 'processing' || order.status === 'completed')) {
         // date와 time 필드를 조합하여 날짜 객체 생성
@@ -185,7 +185,7 @@ export default function DashboardPage() {
           }
         }
       }
-      
+
       // 배송 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
       if (order.deliveryInfo && order.receiptType === 'delivery_reservation' && (order.status === 'processing' || order.status === 'completed')) {
         // date와 time 필드를 조합하여 날짜 객체 생성
@@ -208,7 +208,7 @@ export default function DashboardPage() {
         }
       }
     });
-    
+
     return pickupDeliveryEvents;
   }, [orders, isAdmin, userBranch]);
 
@@ -217,25 +217,25 @@ export default function DashboardPage() {
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const allEvents = [...calendarEvents, ...convertOrdersToEvents];
-    
+
     return allEvents.filter(event => {
       const eventDate = new Date(event.startDate);
       const eventDateOnly = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
       const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-      
-      return eventDateOnly.getTime() === todayOnly.getTime() || 
-             eventDateOnly.getTime() === tomorrowOnly.getTime();
+
+      return eventDateOnly.getTime() === todayOnly.getTime() ||
+        eventDateOnly.getTime() === tomorrowOnly.getTime();
     }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
   }, [calendarEvents, convertOrdersToEvents]);
-  
+
   // 매장별 색상 정의
   const branchColors = [
     '#FF8C00', '#32CD32', '#4682B4', '#DAA520', '#FF6347', '#9370DB', '#20B2AA', '#FF69B4'
   ];
-  
+
   const getBranchColor = (index: number) => {
     return branchColors[index % branchColors.length];
   };
@@ -249,25 +249,25 @@ export default function DashboardPage() {
         date.setDate(date.getDate() - 13); // 기본 14일간
         return date;
       })();
-      
+
       // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
       const startOfDay = new Date(start);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
 
-      
+
+
       // 날짜별로 데이터 그룹화
       const salesByDate: { [key: string]: { [branchName: string]: number } } = {};
-      
+
       // 선택된 기간 날짜 초기화
       const daysDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24));
       for (let i = 0; i <= daysDiff; i++) {
@@ -275,24 +275,24 @@ export default function DashboardPage() {
         date.setDate(startOfDay.getDate() + i);
         const dateKey = format(date, 'yyyy-MM-dd');
         salesByDate[dateKey] = {};
-        
+
         // 각 지점별 매출 초기화
         availableBranches.forEach(branch => {
           salesByDate[dateKey][branch.name] = 0;
         });
       }
-      
+
       // 주문 데이터로 매출 계산
       console.log(`🔍 총 ${allOrders.length}개의 주문을 처리 중...`);
       let paidOrdersCount = 0;
       let completedOrdersCount = 0;
       let pendingOrdersCount = 0;
-      
+
       allOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const branchName = order.branchName || '지점 미지정';
         const paymentStatus = order.payment?.status;
-        
+
         // 상태별 카운트
         if (paymentStatus === 'paid') {
           paidOrdersCount++;
@@ -301,7 +301,7 @@ export default function DashboardPage() {
         } else if (paymentStatus === 'pending') {
           pendingOrdersCount++;
         }
-        
+
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
@@ -319,7 +319,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -328,9 +328,9 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           const dateKey = format(revenueDate, 'yyyy-MM-dd');
-          
+
           if (salesByDate[dateKey] && salesByDate[dateKey].hasOwnProperty(branchName)) {
             salesByDate[dateKey][branchName] += total;
           } else if (salesByDate[dateKey]) {
@@ -339,15 +339,15 @@ export default function DashboardPage() {
           }
         }
       });
-      
+
       console.log(`📊 Payment Status 통계: paid=${paidOrdersCount}, completed=${completedOrdersCount}, pending=${pendingOrdersCount}`);
-      
+
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByDate).map(([date, branchSales]) => {
         const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
         const dateObj = parseISO(date);
         const weekday = koreanWeekdays[dateObj.getDay()];
-        
+
         return {
           date: `${format(dateObj, 'M/d')} (${weekday})`,
           totalSales,
@@ -370,28 +370,28 @@ export default function DashboardPage() {
         date.setDate(date.getDate() - 13); // 기본 14일간
         return date;
       })();
-      
+
       // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
       const startOfDay = new Date(start);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
+
       // 자신의 지점 주문만 필터링
-      const userBranchOrders = allOrders.filter((order: any) => 
+      const userBranchOrders = allOrders.filter((order: any) =>
         order.branchName === userBranch
       );
-      
+
       // 날짜별로 매출 계산
       const salesByDate: { [key: string]: number } = {};
-      
+
       // 선택된 기간 날짜 초기화
       const daysDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24));
       for (let i = 0; i <= daysDiff; i++) {
@@ -400,11 +400,11 @@ export default function DashboardPage() {
         const dateKey = format(date, 'yyyy-MM-dd');
         salesByDate[dateKey] = 0;
       }
-      
+
       // 주문 데이터로 매출 계산
       userBranchOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
-        
+
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
@@ -422,7 +422,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -431,20 +431,20 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           const dateKey = format(revenueDate, 'yyyy-MM-dd');
-          
+
           if (salesByDate[dateKey] !== undefined) {
             salesByDate[dateKey] += total;
           }
         }
       });
-      
+
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByDate).map(([date, sales]) => {
         const dateObj = parseISO(date);
         const weekday = koreanWeekdays[dateObj.getDay()];
-        
+
         return {
           date: `${format(dateObj, 'M/d')} (${weekday})`,
           sales
@@ -462,21 +462,21 @@ export default function DashboardPage() {
       const selectedDateObj = parseISO(date);
       const startDate = startOfDay(selectedDateObj);
       const endDate = endOfDay(selectedDateObj);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
+
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
-      
+
       // 각 매장별 매출 계산
       branchNames.forEach(branchName => {
         salesByBranch[branchName] = 0;
       });
-      
+
       // 클라이언트 사이드에서 결제 완료일 기준으로 필터링 및 매출 계산
       allOrders.forEach((order: any) => {
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
@@ -496,7 +496,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -505,11 +505,11 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           // 선택된 날짜 범위에 해당하는지 확인
           if (revenueDate >= startDate && revenueDate <= endDate) {
             const branchName = order.branchName || '지점 미지정';
-            
+
             // 지점 필터링 적용
             if (!currentFilteredBranch || branchName === currentFilteredBranch) {
               if (salesByBranch.hasOwnProperty(branchName)) {
@@ -519,7 +519,7 @@ export default function DashboardPage() {
           }
         }
       });
-      
+
       return branchNames.map((branchName, index) => ({
         branch: branchName,
         sales: salesByBranch[branchName],
@@ -540,20 +540,20 @@ export default function DashboardPage() {
         date.setDate(date.getDate() - 56); // 기본 8주간 (8 * 7 = 56일)
         return date;
       })();
-      
+
       // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
       const startOfDay = new Date(start);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
+
       // 주별로 데이터 그룹화
       const salesByWeek: {
         [key: string]: {
@@ -562,7 +562,7 @@ export default function DashboardPage() {
           end: Date;
         };
       } = {};
-      
+
       // 선택된 기간 주차 초기화
       const weeksDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24 * 7));
       for (let i = 0; i <= weeksDiff; i++) {
@@ -576,18 +576,18 @@ export default function DashboardPage() {
           start: weekStart,
           end: weekEnd,
         };
-        
+
         // 각 지점별 매출 초기화
         availableBranches.forEach(branch => {
           salesByWeek[weekKey].branchSales[branch.name] = 0;
         });
       }
-      
+
       // 주문 데이터로 매출 계산
       allOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const branchName = order.branchName || '지점 미지정';
-        
+
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
@@ -605,7 +605,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -614,11 +614,11 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
           const weekKey = format(revenueWeekStart, 'yyyy-\'W\'ww');
           const weekEntry = salesByWeek[weekKey];
-          
+
           if (weekEntry) {
             if (weekEntry.branchSales.hasOwnProperty(branchName)) {
               weekEntry.branchSales[branchName] += total;
@@ -629,13 +629,13 @@ export default function DashboardPage() {
           }
         }
       });
-      
+
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByWeek).map(([week, { branchSales, start, end }]) => {
         const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
         const weekStartLabel = format(start, 'M월 d일');
         const weekEndLabel = format(end, 'M월 d일');
-        
+
         return {
           week: week.replace('W', '주차 '),
           totalSales,
@@ -661,27 +661,27 @@ export default function DashboardPage() {
         date.setDate(date.getDate() - 56); // 기본 8주간 (8 * 7 = 56일)
         return date;
       })();
-      
+
       // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
       const startOfDay = new Date(start);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
+
       // 자신의 지점 주문만 필터링
-      const userBranchOrders = allOrders.filter((order: any) => 
+      const userBranchOrders = allOrders.filter((order: any) =>
         order.branchName === userBranch
       );
-      
 
-      
+
+
       // 주별로 매출 계산
       const salesByWeek: {
         [key: string]: {
@@ -690,7 +690,7 @@ export default function DashboardPage() {
           end: Date;
         };
       } = {};
-      
+
       // 선택된 기간 주차 초기화
       const weeksDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24 * 7));
       for (let i = 0; i <= weeksDiff; i++) {
@@ -705,17 +705,17 @@ export default function DashboardPage() {
           end: weekEnd,
         };
       }
-      
+
       // 주문 데이터로 매출 계산
       console.log(`🔍 지점 ${userBranch}의 총 ${userBranchOrders.length}개의 주문을 처리 중...`);
       let paidOrdersCount = 0;
       let completedOrdersCount = 0;
       let pendingOrdersCount = 0;
-      
+
       userBranchOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const paymentStatus = order.payment?.status;
-        
+
         // 상태별 카운트
         if (paymentStatus === 'paid') {
           paidOrdersCount++;
@@ -724,7 +724,7 @@ export default function DashboardPage() {
         } else if (paymentStatus === 'pending') {
           pendingOrdersCount++;
         }
-        
+
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
@@ -742,7 +742,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -751,24 +751,24 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
           const weekKey = format(revenueWeekStart, 'yyyy-\'W\'ww');
           const weekEntry = salesByWeek[weekKey];
-          
+
           if (weekEntry) {
             weekEntry.sales += total;
           }
         }
       });
-      
+
       console.log(`📊 지점 ${userBranch} Payment Status 통계: paid=${paidOrdersCount}, completed=${completedOrdersCount}, pending=${pendingOrdersCount}`);
-      
+
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByWeek).map(([week, { sales, start, end }]) => {
         const weekStartLabel = format(start, 'M월 d일');
         const weekEndLabel = format(end, 'M월 d일');
-        
+
         return {
           week: week.replace('W', '주차 '),
           sales,
@@ -789,20 +789,20 @@ export default function DashboardPage() {
       const [year, week] = weekString.split('-W');
       const startDate = startOfWeek(new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7));
       const endDate = endOfWeek(startDate);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
+
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
-      
+
       branchNames.forEach(branchName => {
         salesByBranch[branchName] = 0;
       });
-      
+
       // 클라이언트 사이드에서 결제 완료일 기준으로 필터링 및 매출 계산
       allOrders.forEach((order: any) => {
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
@@ -822,7 +822,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -831,11 +831,11 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           // 선택된 주간 범위에 해당하는지 확인
           if (revenueDate >= startDate && revenueDate <= endDate) {
             const branchName = order.branchName || '지점 미지정';
-            
+
             // 지점 필터링 적용
             if (!currentFilteredBranch || branchName === currentFilteredBranch) {
               if (salesByBranch.hasOwnProperty(branchName)) {
@@ -845,7 +845,7 @@ export default function DashboardPage() {
           }
         }
       });
-      
+
       return branchNames.map((branchName, index) => ({
         branch: branchName,
         sales: salesByBranch[branchName],
@@ -867,25 +867,25 @@ export default function DashboardPage() {
         date.setDate(1); // 월 첫째 날로 설정
         return date;
       })();
-      
+
       // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
       const startOfDay = new Date(start);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
 
-      
+
+
       // 월별로 데이터 그룹화
       const salesByMonth: { [key: string]: { [branchName: string]: number } } = {};
-      
+
       // 선택된 기간 월 초기화
       const monthsDiff = (endOfDay.getFullYear() - startOfDay.getFullYear()) * 12 + (endOfDay.getMonth() - startOfDay.getMonth());
       for (let i = 0; i <= monthsDiff; i++) {
@@ -893,18 +893,18 @@ export default function DashboardPage() {
         monthDate.setMonth(startOfDay.getMonth() + i);
         const monthKey = format(monthDate, 'yyyy-MM');
         salesByMonth[monthKey] = {};
-        
+
         // 각 지점별 매출 초기화
         availableBranches.forEach(branch => {
           salesByMonth[monthKey][branch.name] = 0;
         });
       }
-      
+
       // 주문 데이터로 매출 계산
       allOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const branchName = order.branchName || '지점 미지정';
-        
+
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
@@ -922,7 +922,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -931,9 +931,9 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           const monthKey = format(revenueDate, 'yyyy-MM');
-          
+
           if (salesByMonth[monthKey] && salesByMonth[monthKey].hasOwnProperty(branchName)) {
             salesByMonth[monthKey][branchName] += total;
           } else if (salesByMonth[monthKey]) {
@@ -942,11 +942,11 @@ export default function DashboardPage() {
           }
         }
       });
-      
+
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByMonth).map(([month, branchSales]) => {
         const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
-        
+
         return {
           month: format(parseISO(month + '-01'), 'M월'),
           totalSales,
@@ -970,30 +970,30 @@ export default function DashboardPage() {
         date.setDate(1); // 월 첫째 날로 설정
         return date;
       })();
-      
+
       // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
       const startOfDay = new Date(start);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
-      
+
       // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
       const ordersQuery = query(collection(db, "orders"));
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
+
       // 자신의 지점 주문만 필터링
-      const userBranchOrders = allOrders.filter((order: any) => 
+      const userBranchOrders = allOrders.filter((order: any) =>
         order.branchName === userBranch
       );
-      
 
-      
+
+
       // 월별로 매출 계산
       const salesByMonth: { [key: string]: number } = {};
-      
+
       // 선택된 기간 월 초기화
       const monthsDiff = (endOfDay.getFullYear() - startOfDay.getFullYear()) * 12 + (endOfDay.getMonth() - startOfDay.getMonth());
       for (let i = 0; i <= monthsDiff; i++) {
@@ -1002,11 +1002,11 @@ export default function DashboardPage() {
         const monthKey = format(monthDate, 'yyyy-MM');
         salesByMonth[monthKey] = 0;
       }
-      
+
       // 주문 데이터로 매출 계산
       userBranchOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
-        
+
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           // 완결처리된 주문: 결제 완료일 기준
@@ -1024,7 +1024,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -1033,15 +1033,15 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           const monthKey = format(revenueDate, 'yyyy-MM');
-          
+
           if (salesByMonth[monthKey] !== undefined) {
             salesByMonth[monthKey] += total;
           }
         }
       });
-      
+
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByMonth).map(([month, sales]) => ({
         month: format(parseISO(month + '-01'), 'M월'),
@@ -1059,33 +1059,33 @@ export default function DashboardPage() {
       const [year, month] = monthString.split('-');
       const startDate = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
       const endDate = endOfMonth(startDate);
-      
+
       // 단순화된 쿼리 - 날짜만 필터링
       const ordersQuery = query(
         collection(db, "orders"),
         where("orderDate", ">=", Timestamp.fromDate(startDate)),
         where("orderDate", "<=", Timestamp.fromDate(endDate))
       );
-      
+
       const ordersSnapshot = await getDocs(ordersQuery);
       const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
+
       // 클라이언트 사이드에서 지점 필터링
-      const orders = currentFilteredBranch 
+      const orders = currentFilteredBranch
         ? allOrders.filter(order => order.branchName === currentFilteredBranch)
         : allOrders;
-      
+
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
-      
+
       branchNames.forEach(branchName => {
         salesByBranch[branchName] = 0;
       });
-      
+
       orders.forEach((order: any) => {
         const branchName = order.branchName || '지점 미지정';
         const total = order.summary?.total || order.total || 0;
-        
+
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
           if (salesByBranch.hasOwnProperty(branchName)) {
@@ -1093,7 +1093,7 @@ export default function DashboardPage() {
           }
         }
       });
-      
+
       return branchNames.map((branchName, index) => ({
         branch: branchName,
         sales: salesByBranch[branchName],
@@ -1109,7 +1109,7 @@ export default function DashboardPage() {
   const handleDailyDateChange = async (startDate: string, endDate: string) => {
     setDailyStartDate(startDate);
     setDailyEndDate(endDate);
-    
+
     try {
       if (isAdmin) {
         const adminDailyData = await generateAdminDailySales(new Date(startDate), new Date(endDate));
@@ -1126,7 +1126,7 @@ export default function DashboardPage() {
   const handleWeeklyDateChange = async (startDate: string, endDate: string) => {
     setWeeklyStartDate(startDate);
     setWeeklyEndDate(endDate);
-    
+
     try {
       if (isAdmin) {
         const adminWeeklyData = await generateAdminWeeklySales(new Date(startDate), new Date(endDate));
@@ -1143,7 +1143,7 @@ export default function DashboardPage() {
   const handleMonthlyDateChange = async (startDate: string, endDate: string) => {
     setMonthlyStartDate(startDate);
     setMonthlyEndDate(endDate);
-    
+
     try {
       if (isAdmin) {
         const adminMonthlyData = await generateAdminMonthlySales(new Date(startDate), new Date(endDate));
@@ -1172,7 +1172,7 @@ export default function DashboardPage() {
 
   // 지점 필터링 변경 핸들러
   const handleBranchFilterChange = async (branch: string) => {
-    
+
     setSelectedBranchFilter(branch);
     // 필터링 변경 시 차트 데이터도 업데이트
     try {
@@ -1192,7 +1192,7 @@ export default function DashboardPage() {
         setDailySales(branchDailyData);
 
       }
-      
+
       if (isAdmin) {
         // 본사 관리자: 선택된 기간 지점별 매출 비율
         const adminWeeklyData = await generateAdminWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate));
@@ -1233,12 +1233,12 @@ export default function DashboardPage() {
         console.error('날씨 정보 가져오기 실패:', error);
       }
     }
-    
+
     fetchWeatherData();
-    
+
     // 30분마다 날씨 정보 업데이트
     const weatherInterval = setInterval(fetchWeatherData, 30 * 60 * 1000);
-    
+
     return () => clearInterval(weatherInterval);
   }, []);
 
@@ -1247,20 +1247,20 @@ export default function DashboardPage() {
       setLoading(true);
       try {
 
-        
+
         // 주문 데이터 가져오기 (필터링 적용) - 단순화된 쿼리
         let ordersQuery = collection(db, "orders");
-        
+
         const ordersSnapshot = await getDocs(ordersQuery);
         const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-        
 
-        
+
+
         // 클라이언트 사이드에서 필터링
-        const orders = currentFilteredBranch 
+        const orders = currentFilteredBranch
           ? allOrders.filter(order => order.branchName === currentFilteredBranch)
           : allOrders;
-        
+
 
 
         // 최근 주문 (실제 데이터) - 단순화된 쿼리
@@ -1269,11 +1269,11 @@ export default function DashboardPage() {
           orderBy("orderDate", "desc"),
           limit(50)
         );
-        
+
         const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
         const allRecentOrders = recentOrdersSnapshot.docs.map(doc => {
           const orderData = doc.data() as any;
-          
+
           // 상품명 추출 로직
           let productNames = '상품 정보 없음';
           if (orderData.items && Array.isArray(orderData.items)) {
@@ -1283,7 +1283,7 @@ export default function DashboardPage() {
             const names = orderData.products.map((product: any) => product.name || product.productName || '상품명 없음');
             productNames = names.length > 0 ? names.join(', ') : '상품 정보 없음';
           }
-          
+
           return {
             id: doc.id,
             orderer: orderData.orderer || { name: '주문자 정보 없음' },
@@ -1294,13 +1294,20 @@ export default function DashboardPage() {
             productNames: productNames
           };
         });
-        
-                 // 클라이언트 사이드에서 필터링
-         const recentOrdersData = currentFilteredBranch 
-           ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 10)
-           : allRecentOrders.slice(0, 10);
-          
-        setRecentOrders(recentOrdersData);
+
+        // 클라이언트 사이드에서 필터링
+        const recentOrdersData = currentFilteredBranch
+          ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 10)
+          : allRecentOrders.slice(0, 10);
+
+        // 중복 제거 (ID 기준)
+        const uniqueRecentOrdersMap = new Map();
+        recentOrdersData.forEach(order => {
+          uniqueRecentOrdersMap.set(order.id, order);
+        });
+        const uniqueRecentOrders = Array.from(uniqueRecentOrdersMap.values());
+
+        setRecentOrders(uniqueRecentOrders);
 
         // 기본 통계 (필터링 적용)
         // 년 매출 계산 (현재 년도의 매출만) - 결제완료일 기준으로 계산 (당일매출 통계카드)
@@ -1310,7 +1317,7 @@ export default function DashboardPage() {
           if (order.payment?.status !== 'paid' && order.payment?.status !== 'completed') {
             return false;
           }
-          
+
           // 결제완료일 기준으로 매출 계산
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -1326,7 +1333,7 @@ export default function DashboardPage() {
             // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return false;
-            
+
             if (orderDate.toDate) {
               revenueDate = orderDate.toDate();
             } else if (orderDate instanceof Date) {
@@ -1335,31 +1342,31 @@ export default function DashboardPage() {
               revenueDate = new Date(orderDate);
             }
           }
-          
+
           // 결제완료일(또는 주문일)이 현재 년도인지 확인
           if (revenueDate.getFullYear() !== currentYear) {
             return false;
           }
-          
+
           return true;
         }).reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
-        
+
         const pendingOrders = orders.filter((order: any) => order.status === 'pending' || order.status === 'processing').length;
-        
+
         // 주간 주문 건수 계산 (이번 주 월요일부터 일요일까지)
         const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // 월요일부터 시작
         const currentWeekEnd = endOfWeek(new Date(), { weekStartsOn: 1 }); // 일요일까지
         const weeklyOrders = orders.filter((order: any) => {
           const orderDate = order.orderDate;
           if (!orderDate) return false;
-          
+
           let orderDateObj;
           if (orderDate.toDate) {
             orderDateObj = orderDate.toDate();
           } else {
             orderDateObj = new Date(orderDate);
           }
-          
+
           return orderDateObj >= currentWeekStart && orderDateObj <= currentWeekEnd;
         }).length;
 
@@ -1369,7 +1376,7 @@ export default function DashboardPage() {
         let customersQuery = collection(db, "customers");
         const customersSnapshot = await getDocs(customersQuery);
         const allCustomers = customersSnapshot.docs;
-        
+
         // 클라이언트 사이드에서 필터링
         const customers = currentFilteredBranch ? allCustomers.filter(doc => {
           const data = doc.data();
@@ -1378,11 +1385,11 @@ export default function DashboardPage() {
         const newCustomers = customers.length;
 
         // 미결 주문 통계 계산
-        const pendingPaymentOrders = orders.filter((order: any) => 
+        const pendingPaymentOrders = orders.filter((order: any) =>
           order.payment?.status === 'pending'
         );
         const pendingPaymentCount = pendingPaymentOrders.length;
-        const pendingPaymentAmount = pendingPaymentOrders.reduce((acc, order: any) => 
+        const pendingPaymentAmount = pendingPaymentOrders.reduce((acc, order: any) =>
           acc + (order.summary?.total || order.total || 0), 0
         );
 
@@ -1394,10 +1401,10 @@ export default function DashboardPage() {
           pendingPaymentCount,
           pendingPaymentAmount
         };
-        
+
 
         setStats(statsData);
-        
+
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         // 오류 발생 시 기본값 설정
@@ -1414,7 +1421,7 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
-    
+
     if (branches.length > 0 && user) {
       fetchDashboardData().then(async () => {
         try {
@@ -1436,7 +1443,7 @@ export default function DashboardPage() {
             setDailySales(branchDailyData);
 
           }
-          
+
           // 권한별 주간/월간 차트 데이터 생성
           if (isAdmin) {
             // 본사 관리자: 선택된 기간 지점별 매출 비율
@@ -1459,7 +1466,7 @@ export default function DashboardPage() {
   }, [branches, user, currentFilteredBranch]);
 
   const formatCurrency = (value: number) => `₩${value.toLocaleString()}`;
-  
+
   const formatDate = (date: any) => {
     if (!date) return '날짜 없음';
     if (date.toDate) {
@@ -1552,9 +1559,9 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-4 max-h-screen overflow-y-auto">
-        <PageHeader 
-          title={getDashboardTitle()} 
-          description={getDashboardDescription()} 
+        <PageHeader
+          title={getDashboardTitle()}
+          description={getDashboardDescription()}
         />
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -1580,71 +1587,71 @@ export default function DashboardPage() {
         description={getDashboardDescription()}
       />
       <BulletinBoard />
-      
 
-        
-       {/* 메뉴바 */}
+
+
+      {/* 메뉴바 */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-                             <Button 
-                 variant="outline" 
-                 size="sm" 
-                 className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                 onClick={() => router.push('/dashboard/calendar')}
-               >
-                 <CalendarDays className="h-4 w-4 mr-2" />
-                 일정관리
-               </Button>
-               <Button 
-                 variant="outline" 
-                 size="sm" 
-                 className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                 onClick={() => router.push('/dashboard/checklist')}
-               >
-                 <CheckSquare className="h-4 w-4 mr-2" />
-                 체크리스트
-               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                onClick={() => router.push('/dashboard/calendar')}
+              >
+                <CalendarDays className="h-4 w-4 mr-2" />
+                일정관리
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-blue-500 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                onClick={() => router.push('/dashboard/checklist')}
+              >
+                <CheckSquare className="h-4 w-4 mr-2" />
+                체크리스트
+              </Button>
               {/* 향후 다른 메뉴 버튼들을 여기에 추가할 수 있습니다 */}
             </div>
           </div>
         </CardContent>
       </Card>
-      
+
       {/* 본사 관리자용 지점 필터링 드롭다운 */}
       {isAdmin && (
         <Card>
-                     <CardContent className="pt-6">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <label className="text-sm font-medium text-gray-700">지점 선택:</label>
-                <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="지점을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="전체">전체 지점</SelectItem>
-                    {availableBranches.map((branch) => (
-                      <SelectItem key={branch.name} value={branch.name}>
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span className="text-sm text-gray-500">
-                  {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
-                </span>
-              </div>
-           </CardContent>
+          <CardContent className="pt-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <label className="text-sm font-medium text-gray-700">지점 선택:</label>
+              <Select value={selectedBranchFilter} onValueChange={handleBranchFilterChange}>
+                <SelectTrigger className="w-full sm:w-48">
+                  <SelectValue placeholder="지점을 선택하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="전체">전체 지점</SelectItem>
+                  {availableBranches.map((branch) => (
+                    <SelectItem key={branch.name} value={branch.name}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-500">
+                {currentFilteredBranch ? `${currentFilteredBranch} 데이터` : '전체 지점 데이터'}
+              </span>
+            </div>
+          </CardContent>
         </Card>
       )}
-      
+
       {/* 상단 통계 카드 */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin 
+              {isAdmin
                 ? (currentFilteredBranch ? `${currentFilteredBranch} 년 매출` : '총 년 매출')
                 : `${userBranch} 년 매출`
               }
@@ -1659,11 +1666,11 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin 
+              {isAdmin
                 ? (currentFilteredBranch ? `${currentFilteredBranch} 고객` : '등록 고객')
                 : `${userBranch} 고객`
               }
@@ -1678,11 +1685,11 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin 
+              {isAdmin
                 ? (currentFilteredBranch ? `${currentFilteredBranch} 주문` : '총 주문')
                 : `${userBranch} 주문`
               }
@@ -1694,11 +1701,11 @@ export default function DashboardPage() {
             <p className="text-xs opacity-90">이번 주 주문 건수</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin 
+              {isAdmin
                 ? (currentFilteredBranch ? `${currentFilteredBranch} 대기` : '처리 대기')
                 : `${userBranch} 대기`
               }
@@ -1710,11 +1717,11 @@ export default function DashboardPage() {
             <p className="text-xs opacity-90">처리 필요한 주문</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium opacity-90">
-              {isAdmin 
+              {isAdmin
                 ? (currentFilteredBranch ? `${currentFilteredBranch} 미결` : '미결 주문')
                 : `${userBranch} 미결`
               }
@@ -1732,76 +1739,76 @@ export default function DashboardPage() {
       <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
         {/* 일별 매출 현황 */}
         <Card>
-                     <CardHeader>
-             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-               <div>
-                 <CardTitle className="flex items-center gap-2">
-                   <Calendar className="h-5 w-5 text-blue-600" />
-                   {isAdmin 
-                      ? (currentFilteredBranch ? `${currentFilteredBranch} 일별 매출` : '일별 지점별 매출 현황')
-                     : `${userBranch} 일별 매출`
-                   }
-                 </CardTitle>
-                 <p className="text-sm text-gray-600">
-                    {isAdmin && !currentFilteredBranch 
-                      ? '선택된 기간 지점별 매출 비율' 
-                      : '선택된 기간 매출 트렌드'
-                    }
-                 </p>
-               </div>
-               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                 <Input
-                   type="date"
-                    value={dailyStartDate}
-                    onChange={(e) => handleDailyDateChange(e.target.value, dailyEndDate)}
-                    className="w-full sm:w-32"
-                  />
-                  <span className="text-sm text-gray-500">~</span>
-                  <Input
-                    type="date"
-                    value={dailyEndDate}
-                    onChange={(e) => handleDailyDateChange(dailyStartDate, e.target.value)}
-                    className="w-full sm:w-32"
-                 />
-               </div>
-             </div>
-           </CardHeader>
-                     <CardContent>
-             <ResponsiveContainer width="100%" height={200}>
-               {isAdmin ? (
-                 currentFilteredBranch ? (
-                   // 본사 관리자가 특정 지점 선택 시: 해당 지점의 단일 매출 차트
-                   <BarChart data={dailySales}>
-                     <CartesianGrid strokeDasharray="3 3" />
-                     <XAxis dataKey="date" fontSize={12} />
-                     <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                     <Tooltip content={<CustomTooltip />} />
-                     <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#3B82F6" />
-                   </BarChart>
-                 ) : (
-                   // 본사 관리자용: 지점별 매출 비율 차트
-                   <BarChart data={dailySales}>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  {isAdmin
+                    ? (currentFilteredBranch ? `${currentFilteredBranch} 일별 매출` : '일별 지점별 매출 현황')
+                    : `${userBranch} 일별 매출`
+                  }
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  {isAdmin && !currentFilteredBranch
+                    ? '선택된 기간 지점별 매출 비율'
+                    : '선택된 기간 매출 트렌드'
+                  }
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                <Input
+                  type="date"
+                  value={dailyStartDate}
+                  onChange={(e) => handleDailyDateChange(e.target.value, dailyEndDate)}
+                  className="w-full sm:w-32"
+                />
+                <span className="text-sm text-gray-500">~</span>
+                <Input
+                  type="date"
+                  value={dailyEndDate}
+                  onChange={(e) => handleDailyDateChange(dailyStartDate, e.target.value)}
+                  className="w-full sm:w-32"
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              {isAdmin ? (
+                currentFilteredBranch ? (
+                  // 본사 관리자가 특정 지점 선택 시: 해당 지점의 단일 매출 차트
+                  <BarChart data={dailySales}>
                     <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" fontSize={12} />
-                    <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                    <XAxis dataKey="date" fontSize={12} />
+                    <YAxis tickFormatter={(value) => `₩${(value / 1000000).toFixed(1)}M`} fontSize={12} />
                     <Tooltip content={<CustomTooltip />} />
-                      {availableBranches.map((branch, index) => (
-                        <Bar 
-                          key={branch.name} 
-                          dataKey={branch.name} 
-                          stackId="a" 
-                          radius={[4, 4, 0, 0]}
-                          fill={getBranchColor(index)}
-                        />
-                      ))}
-                </BarChart>
-                 )
-               ) : (
+                    <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#3B82F6" />
+                  </BarChart>
+                ) : (
+                  // 본사 관리자용: 지점별 매출 비율 차트
+                  <BarChart data={dailySales}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" fontSize={12} />
+                    <YAxis tickFormatter={(value) => `₩${(value / 1000000).toFixed(1)}M`} fontSize={12} />
+                    <Tooltip content={<CustomTooltip />} />
+                    {availableBranches.map((branch, index) => (
+                      <Bar
+                        key={branch.name}
+                        dataKey={branch.name}
+                        stackId="a"
+                        radius={[4, 4, 0, 0]}
+                        fill={getBranchColor(index)}
+                      />
+                    ))}
+                  </BarChart>
+                )
+              ) : (
                 // 가맹점/지점 직원용: 자신의 지점 매출 차트
                 <BarChart data={dailySales}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" fontSize={12} />
-                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                  <YAxis tickFormatter={(value) => `₩${(value / 1000000).toFixed(1)}M`} fontSize={12} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#3B82F6" />
                 </BarChart>
@@ -1812,65 +1819,65 @@ export default function DashboardPage() {
 
         {/* 주간 매출 현황 */}
         <Card>
-                     <CardHeader>
-             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-               <div>
-                 <CardTitle className="flex items-center gap-2">
-                   <CalendarDays className="h-5 w-5 text-green-600" />
-                   {isAdmin 
-                      ? (currentFilteredBranch ? `${currentFilteredBranch} 주간 매출` : '주간 지점별 매출 현황')
-                     : `${userBranch} 주간 매출`
-                   }
-                 </CardTitle>
-                 <p className="text-sm text-gray-600">
-                    {isAdmin && !currentFilteredBranch 
-                      ? '선택된 기간 지점별 매출 비율' 
-                      : '선택된 기간 매출 트렌드'
-                    }
-                 </p>
-               </div>
-               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                 <Input
-                    type="date"
-                    value={weeklyStartDate}
-                    onChange={(e) => handleWeeklyDateChange(e.target.value, weeklyEndDate)}
-                    className="w-full sm:w-32"
-                  />
-                  <span className="text-sm text-gray-500">~</span>
-                  <Input
-                    type="date"
-                    value={weeklyEndDate}
-                    onChange={(e) => handleWeeklyDateChange(weeklyStartDate, e.target.value)}
-                    className="w-full sm:w-32"
-                 />
-               </div>
-             </div>
-           </CardHeader>
-                     <CardContent>
-             <ResponsiveContainer width="100%" height={200}>
-               {isAdmin ? (
-                 // 본사 관리자용: 지점별 매출 비율 차트
-               <BarChart data={weeklySales}>
-                <CartesianGrid strokeDasharray="3 3" />
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5 text-green-600" />
+                  {isAdmin
+                    ? (currentFilteredBranch ? `${currentFilteredBranch} 주간 매출` : '주간 지점별 매출 현황')
+                    : `${userBranch} 주간 매출`
+                  }
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  {isAdmin && !currentFilteredBranch
+                    ? '선택된 기간 지점별 매출 비율'
+                    : '선택된 기간 매출 트렌드'
+                  }
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                <Input
+                  type="date"
+                  value={weeklyStartDate}
+                  onChange={(e) => handleWeeklyDateChange(e.target.value, weeklyEndDate)}
+                  className="w-full sm:w-32"
+                />
+                <span className="text-sm text-gray-500">~</span>
+                <Input
+                  type="date"
+                  value={weeklyEndDate}
+                  onChange={(e) => handleWeeklyDateChange(weeklyStartDate, e.target.value)}
+                  className="w-full sm:w-32"
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              {isAdmin ? (
+                // 본사 관리자용: 지점별 매출 비율 차트
+                <BarChart data={weeklySales}>
+                  <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="week" fontSize={12} />
-                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-                <Tooltip content={<CustomTooltip />} />
+                  <YAxis tickFormatter={(value) => `₩${(value / 1000000).toFixed(1)}M`} fontSize={12} />
+                  <Tooltip content={<CustomTooltip />} />
                   {availableBranches.map((branch, index) => (
-                    <Bar 
-                      key={branch.name} 
-                      dataKey={branch.name} 
-                      stackId="a" 
+                    <Bar
+                      key={branch.name}
+                      dataKey={branch.name}
+                      stackId="a"
                       radius={[4, 4, 0, 0]}
                       fill={getBranchColor(index)}
                     />
                   ))}
-              </BarChart>
+                </BarChart>
               ) : (
                 // 가맹점/지점 직원용: 자신의 지점 매출 차트
                 <BarChart data={weeklySales}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="week" fontSize={12} />
-                  <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                  <YAxis tickFormatter={(value) => `₩${(value / 1000000).toFixed(1)}M`} fontSize={12} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#10B981" />
                 </BarChart>
@@ -1882,65 +1889,65 @@ export default function DashboardPage() {
 
       {/* 월별 매출 현황 */}
       <Card>
-                 <CardHeader>
-           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-             <div>
-               <CardTitle className="flex items-center gap-2">
-                 <Building className="h-5 w-5 text-purple-600" />
-                 {isAdmin 
-                    ? (currentFilteredBranch ? `${currentFilteredBranch} 월별 매출` : '월별 지점별 매출 현황')
-                   : `${userBranch} 월별 매출`
-                 }
-               </CardTitle>
-               <p className="text-sm text-gray-600">
-                  {isAdmin && !currentFilteredBranch 
-                    ? '선택된 기간 지점별 매출 비율' 
-                    : '선택된 기간 매출 트렌드'
-                  }
-               </p>
-             </div>
-             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-               <Input
-                  type="date"
-                  value={monthlyStartDate}
-                  onChange={(e) => handleMonthlyDateChange(e.target.value, monthlyEndDate)}
-                  className="w-full sm:w-32"
-                />
-                <span className="text-sm text-gray-500">~</span>
-                <Input
-                  type="date"
-                  value={monthlyEndDate}
-                  onChange={(e) => handleMonthlyDateChange(monthlyStartDate, e.target.value)}
-                  className="w-full sm:w-32"
-               />
-             </div>
-           </div>
-         </CardHeader>
-                 <CardContent>
-           <ResponsiveContainer width="100%" height={200}>
-             {isAdmin ? (
-               // 본사 관리자용: 지점별 매출 비율 차트
-             <BarChart data={monthlySales}>
-              <CartesianGrid strokeDasharray="3 3" />
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5 text-purple-600" />
+                {isAdmin
+                  ? (currentFilteredBranch ? `${currentFilteredBranch} 월별 매출` : '월별 지점별 매출 현황')
+                  : `${userBranch} 월별 매출`
+                }
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                {isAdmin && !currentFilteredBranch
+                  ? '선택된 기간 지점별 매출 비율'
+                  : '선택된 기간 매출 트렌드'
+                }
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <Input
+                type="date"
+                value={monthlyStartDate}
+                onChange={(e) => handleMonthlyDateChange(e.target.value, monthlyEndDate)}
+                className="w-full sm:w-32"
+              />
+              <span className="text-sm text-gray-500">~</span>
+              <Input
+                type="date"
+                value={monthlyEndDate}
+                onChange={(e) => handleMonthlyDateChange(monthlyStartDate, e.target.value)}
+                className="w-full sm:w-32"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={200}>
+            {isAdmin ? (
+              // 본사 관리자용: 지점별 매출 비율 차트
+              <BarChart data={monthlySales}>
+                <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" fontSize={12} />
-              <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
-              <Tooltip content={<CustomTooltip />} />
+                <YAxis tickFormatter={(value) => `₩${(value / 1000000).toFixed(1)}M`} fontSize={12} />
+                <Tooltip content={<CustomTooltip />} />
                 {availableBranches.map((branch, index) => (
-                  <Bar 
-                    key={branch.name} 
-                    dataKey={branch.name} 
-                    stackId="a" 
+                  <Bar
+                    key={branch.name}
+                    dataKey={branch.name}
+                    stackId="a"
                     radius={[4, 4, 0, 0]}
                     fill={getBranchColor(index)}
                   />
                 ))}
-            </BarChart>
+              </BarChart>
             ) : (
               // 가맹점/지점 직원용: 자신의 지점 매출 차트
               <BarChart data={monthlySales}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" fontSize={12} />
-                <YAxis tickFormatter={(value) => `₩${(value/1000000).toFixed(1)}M`} fontSize={12} />
+                <YAxis tickFormatter={(value) => `₩${(value / 1000000).toFixed(1)}M`} fontSize={12} />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="sales" radius={[4, 4, 0, 0]} fill="#8B5CF6" />
               </BarChart>
@@ -1953,7 +1960,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isAdmin 
+            {isAdmin
               ? (currentFilteredBranch ? `${currentFilteredBranch} 최근 주문` : '최근 주문')
               : `${userBranch} 최근 주문`
             }
@@ -2003,8 +2010,8 @@ export default function DashboardPage() {
                         <p className="font-bold">{formatCurrency(order.total)}</p>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           className="text-xs"
                           onClick={() => handleOrderDetail(order)}
@@ -2023,106 +2030,106 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-                    {/* 주문 상세보기 다이얼로그 */}
-       <Dialog open={orderDetailDialogOpen} onOpenChange={handleCloseOrderDetail}>
-         <DialogContent className="max-w-2xl">
-           <DialogHeader>
-             <DialogTitle className="flex items-center gap-2">
-               <ShoppingCart className="h-5 w-5" />
-               주문 상세 정보
-             </DialogTitle>
-             <DialogDescription>
-                선택된 주문의 상세 정보를 확인합니다.
-             </DialogDescription>
-           </DialogHeader>
-           {selectedOrder ? (
-             <div className="space-y-6">
-               {/* 기본 정보 */}
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                   <p className="text-sm font-medium text-gray-500">주문 ID</p>
-                   <p className="font-mono text-lg">#{selectedOrder.id.slice(-6)}</p>
-                 </div>
-                 <div className="space-y-2">
-                   <p className="text-sm font-medium text-gray-500">주문 상태</p>
-                   <div>{getStatusBadge(selectedOrder.status)}</div>
-                 </div>
-                 <div className="space-y-2">
-                   <p className="text-sm font-medium text-gray-500">주문일</p>
-                   <p>{formatDate(selectedOrder.orderDate)}</p>
-                 </div>
-                 <div className="space-y-2">
-                   <p className="text-sm font-medium text-gray-500">출고지점</p>
-                   <p>{selectedOrder.branchName}</p>
-                 </div>
-               </div>
+      {/* 주문 상세보기 다이얼로그 */}
+      <Dialog open={orderDetailDialogOpen} onOpenChange={handleCloseOrderDetail}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              주문 상세 정보
+            </DialogTitle>
+            <DialogDescription>
+              선택된 주문의 상세 정보를 확인합니다.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrder ? (
+            <div className="space-y-6">
+              {/* 기본 정보 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-500">주문 ID</p>
+                  <p className="font-mono text-lg">#{selectedOrder.id.slice(-6)}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-500">주문 상태</p>
+                  <div>{getStatusBadge(selectedOrder.status)}</div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-500">주문일</p>
+                  <p>{formatDate(selectedOrder.orderDate)}</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-500">출고지점</p>
+                  <p>{selectedOrder.branchName}</p>
+                </div>
+              </div>
 
-               {/* 주문자 정보 */}
-               <div className="border-t pt-4">
-                 <h3 className="font-medium mb-3">주문자 정보</h3>
-                 <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                     <p className="text-sm font-medium text-gray-500">이름</p>
-                     <p>{selectedOrder.orderer?.name || '정보 없음'}</p>
-                   </div>
-                   <div className="space-y-2">
-                     <p className="text-sm font-medium text-gray-500">연락처</p>
-                     <p>{selectedOrder.orderer?.contact || '정보 없음'}</p>
-                   </div>
-                   <div className="space-y-2">
-                     <p className="text-sm font-medium text-gray-500">회사</p>
-                     <p>{selectedOrder.orderer?.company || '정보 없음'}</p>
-                   </div>
-                   <div className="space-y-2">
-                     <p className="text-sm font-medium text-gray-500">이메일</p>
-                     <p>{selectedOrder.orderer?.email || '정보 없음'}</p>
-                   </div>
-                 </div>
-               </div>
+              {/* 주문자 정보 */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">주문자 정보</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-500">이름</p>
+                    <p>{selectedOrder.orderer?.name || '정보 없음'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-500">연락처</p>
+                    <p>{selectedOrder.orderer?.contact || '정보 없음'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-500">회사</p>
+                    <p>{selectedOrder.orderer?.company || '정보 없음'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-500">이메일</p>
+                    <p>{selectedOrder.orderer?.email || '정보 없음'}</p>
+                  </div>
+                </div>
+              </div>
 
-               {/* 상품 정보 */}
-               <div className="border-t pt-4">
-                 <h3 className="font-medium mb-3">상품 정보</h3>
-                 <div className="bg-gray-50 p-3 rounded-lg">
-                   <p className="text-sm">{selectedOrder.productNames || '상품 정보 없음'}</p>
-                 </div>
-               </div>
+              {/* 상품 정보 */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">상품 정보</h3>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm">{selectedOrder.productNames || '상품 정보 없음'}</p>
+                </div>
+              </div>
 
-               {/* 금액 정보 */}
-               <div className="border-t pt-4">
-                 <h3 className="font-medium mb-3">금액 정보</h3>
-                 <div className="bg-blue-50 p-4 rounded-lg">
-                   <p className="text-2xl font-bold text-blue-600">
-                     {formatCurrency(selectedOrder.total)}
-                   </p>
-                 </div>
-               </div>
+              {/* 금액 정보 */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-3">금액 정보</h3>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(selectedOrder.total)}
+                  </p>
+                </div>
+              </div>
 
-               {/* 액션 버튼 */}
-               <div className="border-t pt-4 flex justify-end gap-2">
-                 <Button 
-                   variant="outline" 
-                   onClick={handleCloseOrderDetail}
-                 >
-                   닫기
-                 </Button>
-                 <Button 
-                   onClick={() => {
-                     // 주문 관리 페이지로 이동
-                     window.location.href = `/dashboard/orders`;
-                   }}
-                 >
-                   주문 관리로 이동
-                 </Button>
-               </div>
-             </div>
-           ) : (
-             <div className="text-center py-8">
-               <p className="text-gray-500">주문 상세를 불러올 수 없습니다.</p>
-             </div>
-           )}
-         </DialogContent>
-       </Dialog>
+              {/* 액션 버튼 */}
+              <div className="border-t pt-4 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleCloseOrderDetail}
+                >
+                  닫기
+                </Button>
+                <Button
+                  onClick={() => {
+                    // 주문 관리 페이지로 이동
+                    window.location.href = `/dashboard/orders`;
+                  }}
+                >
+                  주문 관리로 이동
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">주문 상세를 불러올 수 없습니다.</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

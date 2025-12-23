@@ -166,7 +166,14 @@ export function useOrders() {
 
 
 
-      setOrders(ordersData);
+      // 중복 제거 (ID 기준) - 혹시 모를 중복 방지
+      const uniqueOrdersMap = new Map();
+      ordersData.forEach((order: any) => {
+        uniqueOrdersMap.set(order.id, order);
+      });
+      const uniqueOrders = Array.from(uniqueOrdersMap.values()) as Order[];
+
+      setOrders(uniqueOrders);
     } catch (error) {
       console.error('주문 데이터 로딩 오류:', error);
       // 주문 정보 로딩 오류는 조용히 처리하되, 콘솔에는 로그 남김
