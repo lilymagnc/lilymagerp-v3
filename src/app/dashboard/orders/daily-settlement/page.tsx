@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Target, DollarSign, ArrowRightLeft, RefreshCw, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Calendar, Target, DollarSign, ArrowRightLeft, RefreshCw, ChevronLeft, ChevronRight, FileText, XCircle } from "lucide-react";
 import { format, subDays, addDays, startOfDay, endOfDay } from "date-fns";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { useBranches } from "@/hooks/use-branches";
@@ -17,6 +17,7 @@ import { PageHeader } from "@/components/page-header";
 import Link from 'next/link';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { OrderDetailDialog } from "../components/order-detail-dialog";
 
 export default function DailySettlementPage() {
     const { orders, loading: ordersLoading } = useOrders();
@@ -26,6 +27,8 @@ export default function DailySettlementPage() {
 
     const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [selectedBranch, setSelectedBranch] = useState<string>('all');
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const isAdmin = user?.role === '본사 관리자';
     const userBranch = user?.franchise;
@@ -67,10 +70,65 @@ export default function DailySettlementPage() {
             return dateB.getTime() - dateA.getTime();
         });
 
-        let totalPayment = 0;   // 기준 지점의 총 결제액 (발주 기준)
+        // 2-1. 이월 주문 결제 필터링 (주문은 예전인데 오늘 결제 완료된 건)
+        const previousOrderPayments = orders.filter(order => {
+            const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
+            const isBeforeToday = orderDate < from;
+            const isCanceled = order.status === 'canceled';
+
+            if (!isBeforeToday || isCanceled) return false;
+
+            // 결제 완료일 확인 (payment.completedAt 또는 payment.secondPaymentDate)
+            const completedAt = (order.payment as any).completedAt?.toDate();
+            const secondPaymentDate = (order.payment as any).secondPaymentDate?.toDate();
+
+            const isCompletedToday = completedAt && completedAt >= from && completedAt <= to;
+            const isSecondPaidToday = secondPaymentDate && secondPaymentDate >= from && secondPaymentDate <= to;
+
+            if (!isCompletedToday && !isSecondPaidToday) return false;
+
+            // 지분 확인
+            if (currentTargetBranch === 'all') return true;
+            const isOriginalBranch = order.branchName === currentTargetBranch;
+            const isProcessBranch = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentTargetBranch;
+
+            return isOriginalBranch || isProcessBranch;
+        });
+
+        let totalPayment = 0;   // 기준 지점의 당일 주문 총 결제액
         let outgoingSettle = 0; // 발주 정산액 (내 지분)
         let incomingSettle = 0; // 수주 정산액 (내 지분)
         let netSales = 0;       // 실질 매출 합계
+        let prevOrderPaymentTotal = 0; // 이월 주문 수금액
+
+        // 결제수단별 집계
+        const paymentStats = {
+            card: { count: 0, amount: 0 },
+            cash: { count: 0, amount: 0 },
+            transfer: { count: 0, amount: 0 },
+            others: { count: 0, amount: 0 }
+        };
+
+        const updatePaymentStats = (order: Order) => {
+            const isPaid = order.payment?.status === 'paid' || order.payment?.status === 'completed';
+            if (!isPaid) return; // 미결 주문은 수금 통계에서 제외
+
+            const method = order.payment.method;
+            const total = order.summary.total;
+            if (method === 'card') {
+                paymentStats.card.count++;
+                paymentStats.card.amount += total;
+            } else if (method === 'cash') {
+                paymentStats.cash.count++;
+                paymentStats.cash.amount += total;
+            } else if (method === 'transfer') {
+                paymentStats.transfer.count++;
+                paymentStats.transfer.amount += total;
+            } else {
+                paymentStats.others.count++;
+                paymentStats.others.amount += total;
+            }
+        };
 
         dailyOrders.forEach(order => {
             const total = order.summary.total;
@@ -78,28 +136,78 @@ export default function DailySettlementPage() {
             const transferStatus = order.transferInfo?.status;
             const isValidTransfer = isTransferred && (transferStatus === 'accepted' || transferStatus === 'completed');
 
+            const isPaid = order.payment?.status === 'paid' || order.payment?.status === 'completed';
+
             const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
 
+            updatePaymentStats(order);
+
             if (currentTargetBranch === 'all') {
-                // 전체 보기일 때는 모든 주문의 100%를 보여줌 (중복 없이)
                 totalPayment += total;
-                netSales += total;
-                outgoingSettle += total;
+                if (isPaid) {
+                    netSales += total;
+                    outgoingSettle += total;
+                }
             } else {
-                // 특정 지점 보기일 때
                 const isOriginal = order.branchName === currentTargetBranch;
                 const isProcess = isValidTransfer && order.transferInfo?.processBranchName === currentTargetBranch;
 
                 if (isOriginal) {
                     totalPayment += total;
-                    const share = isValidTransfer ? Math.round(total * (split.orderBranch / 100)) : total;
-                    outgoingSettle += share;
-                    netSales += share;
+                    if (isPaid) {
+                        const share = isValidTransfer ? Math.round(total * (split.orderBranch / 100)) : total;
+                        outgoingSettle += share;
+                        netSales += share;
+                    }
                 }
 
                 if (isProcess) {
+                    if (isPaid) {
+                        const share = Math.round(total * (split.processBranch / 100));
+                        incomingSettle += share;
+                        netSales += share;
+                    }
+                }
+            }
+        });
+
+        // 금일 미결 주문 필터링
+        const pendingOrdersToday = dailyOrders.filter(order => order.payment?.status === 'pending');
+        const pendingAmountToday = pendingOrdersToday.reduce((sum, order) => {
+            if (currentTargetBranch === 'all') return sum + order.summary.total;
+
+            const isOriginal = order.branchName === currentTargetBranch;
+            const isValidTransfer = order.transferInfo?.isTransferred && (order.transferInfo?.status === 'accepted' || order.transferInfo?.status === 'completed');
+            const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+
+            if (isOriginal) {
+                return sum + (isValidTransfer ? Math.round(order.summary.total * (split.orderBranch / 100)) : order.summary.total);
+            }
+            return sum;
+        }, 0);
+
+        // 이월 주문 결제 처리
+        previousOrderPayments.forEach(order => {
+            const total = order.summary.total;
+            updatePaymentStats(order);
+
+            if (currentTargetBranch === 'all') {
+                prevOrderPaymentTotal += total;
+                netSales += total;
+            } else {
+                const isOriginal = order.branchName === currentTargetBranch;
+                const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentTargetBranch;
+
+                const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+
+                if (isOriginal) {
+                    const share = order.transferInfo?.isTransferred ? Math.round(total * (split.orderBranch / 100)) : total;
+                    prevOrderPaymentTotal += share;
+                    netSales += share;
+                }
+                if (isProcess) {
                     const share = Math.round(total * (split.processBranch / 100));
-                    incomingSettle += share;
+                    prevOrderPaymentTotal += share;
                     netSales += share;
                 }
             }
@@ -107,11 +215,18 @@ export default function DailySettlementPage() {
 
         return {
             dailyOrders,
+            previousOrderPayments,
+            pendingOrdersToday,
             totalPayment,
             outgoingSettle,
             incomingSettle,
             netSales,
-            orderCount: dailyOrders.length
+            prevOrderPaymentTotal,
+            pendingAmountToday,
+            orderCount: dailyOrders.length,
+            paymentStats,
+            from,
+            to
         };
     }, [orders, reportDate, currentTargetBranch]);
 
@@ -165,19 +280,22 @@ export default function DailySettlementPage() {
             </PageHeader>
 
             {/* 요약 카드 */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="bg-blue-50/50">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <Card className="bg-blue-50/50 border-blue-100">
                     <CardHeader className="pb-2">
-                        <CardDescription className="text-blue-600 font-medium">총 결제 금액 (발주 기준)</CardDescription>
+                        <CardDescription className="text-blue-600 font-medium whitespace-nowrap">오늘 접수 총액 (발주 기준)</CardDescription>
                         <CardTitle className="text-2xl font-bold flex items-baseline gap-2">
                             ₩{stats?.totalPayment.toLocaleString()}
-                            <span className="text-sm font-normal text-muted-foreground">({stats?.orderCount || 0}건)</span>
                         </CardTitle>
+                        <div className="flex justify-between items-center mt-1">
+                            <span className="text-xs text-muted-foreground mr-1">({stats?.orderCount || 0}건)</span>
+                            <span className="text-[10px] text-orange-600 font-medium">미결: ₩{stats?.pendingAmountToday.toLocaleString()}</span>
+                        </div>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>발주 매출 (내 지분)</CardDescription>
+                        <CardDescription>발주 수금액 (내 지분)</CardDescription>
                         <CardTitle className="text-2xl font-bold">₩{stats?.outgoingSettle.toLocaleString()}</CardTitle>
                     </CardHeader>
                 </Card>
@@ -187,10 +305,68 @@ export default function DailySettlementPage() {
                         <CardTitle className="text-2xl font-bold">₩{stats?.incomingSettle.toLocaleString()}</CardTitle>
                     </CardHeader>
                 </Card>
+                <Card className="bg-purple-50/50 border-purple-100">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-purple-600 font-medium">이월 주문 결제 (수금)</CardDescription>
+                        <CardTitle className="text-2xl font-bold flex items-baseline gap-2">
+                            ₩{stats?.prevOrderPaymentTotal.toLocaleString()}
+                            <span className="text-sm font-normal text-muted-foreground">({stats?.previousOrderPayments.length || 0}건)</span>
+                        </CardTitle>
+                    </CardHeader>
+                </Card>
                 <Card className="bg-primary/5 border-primary/20">
                     <CardHeader className="pb-2">
-                        <CardDescription className="text-primary font-bold">최종 실질 매출</CardDescription>
+                        <CardDescription className="text-primary font-bold">최종 실질 수익 (당일수금+이월수금)</CardDescription>
                         <CardTitle className="text-2xl font-bold text-primary">₩{stats?.netSales.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+            </div>
+
+            {/* 결제수단별 요약 */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <Card className="border-l-4 border-l-orange-400">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="font-bold flex justify-between items-center">
+                            💳 카드 결제
+                            <span className="text-xs font-normal text-muted-foreground">{stats?.paymentStats.card.count || 0}건</span>
+                        </CardDescription>
+                        <CardTitle className="text-xl font-bold text-orange-600">₩{stats?.paymentStats.card.amount.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="border-l-4 border-l-green-400">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="font-bold flex justify-between items-center">
+                            💵 현금 결제
+                            <span className="text-xs font-normal text-muted-foreground">{stats?.paymentStats.cash.count || 0}건</span>
+                        </CardDescription>
+                        <CardTitle className="text-xl font-bold text-green-600">₩{stats?.paymentStats.cash.amount.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="border-l-4 border-l-blue-400">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="font-bold flex justify-between items-center">
+                            🏦 계좌 이체
+                            <span className="text-xs font-normal text-muted-foreground">{stats?.paymentStats.transfer.count || 0}건</span>
+                        </CardDescription>
+                        <CardTitle className="text-xl font-bold text-blue-600">₩{stats?.paymentStats.transfer.amount.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="border-l-4 border-l-gray-400">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="font-bold flex justify-between items-center">
+                            ✨ 기타 결제
+                            <span className="text-xs font-normal text-muted-foreground">{stats?.paymentStats.others.count || 0}건</span>
+                        </CardDescription>
+                        <CardTitle className="text-xl font-bold text-gray-600">₩{stats?.paymentStats.others.amount.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="border-l-4 border-l-red-500 bg-red-50/10">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="font-bold flex justify-between items-center text-red-600">
+                            🚩 금일 미결제
+                            <span className="text-xs font-normal text-muted-foreground">{stats?.pendingOrdersToday.length || 0}건</span>
+                        </CardDescription>
+                        <CardTitle className="text-xl font-bold text-red-600">₩{stats?.pendingAmountToday.toLocaleString()}</CardTitle>
                     </CardHeader>
                 </Card>
             </div>
@@ -255,7 +431,14 @@ export default function DailySettlementPage() {
                                     const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
 
                                     return (
-                                        <TableRow key={order.id}>
+                                        <TableRow
+                                            key={order.id}
+                                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setIsDetailOpen(true);
+                                            }}
+                                        >
                                             <TableCell className="text-center text-xs text-muted-foreground">{index + 1}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
@@ -291,15 +474,210 @@ export default function DailySettlementPage() {
                 </CardContent>
             </Card>
 
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-purple-600" />
+                        당일 수금 내역 (이월 주문)
+                    </CardTitle>
+                    <CardDescription>이전 주문 건에 대해 {reportDate}에 결제가 완료된 내역입니다.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="w-[50px]">번호</TableHead>
+                                <TableHead>주문일/번호</TableHead>
+                                <TableHead>고객명</TableHead>
+                                <TableHead>결제수단</TableHead>
+                                <TableHead>전체금액</TableHead>
+                                <TableHead>수금액</TableHead>
+                                <TableHead>상태</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {stats?.previousOrderPayments.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                                        이월 결제 내역이 없습니다.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                stats?.previousOrderPayments.map((order, index) => {
+                                    const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+                                    let myShare = 0;
+                                    const isOriginal = order.branchName === currentTargetBranch;
+                                    const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentTargetBranch;
+
+                                    if (currentTargetBranch === 'all') {
+                                        myShare = order.summary.total;
+                                    } else {
+                                        if (isOriginal) {
+                                            myShare = order.transferInfo?.isTransferred ? Math.round(order.summary.total * (split.orderBranch / 100)) : order.summary.total;
+                                        } else if (isProcess) {
+                                            myShare = Math.round(order.summary.total * (split.processBranch / 100));
+                                        }
+                                    }
+
+                                    const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
+
+                                    // 수금 시간 추출 (오늘 날짜와 매칭되는 결제 완료 시간)
+                                    const completedAt = (order.payment as any).completedAt?.toDate?.() || (order.payment as any).completedAt;
+                                    const secondPaymentDate = (order.payment as any).secondPaymentDate?.toDate?.() || (order.payment as any).secondPaymentDate;
+                                    let collectionTime = null;
+                                    const todayFrom = stats?.from;
+                                    const todayTo = stats?.to;
+
+                                    if (todayFrom && todayTo) {
+                                        if (completedAt && completedAt >= todayFrom && completedAt <= todayTo) collectionTime = completedAt;
+                                        else if (secondPaymentDate && secondPaymentDate >= todayFrom && secondPaymentDate <= todayTo) collectionTime = secondPaymentDate;
+                                    }
+
+                                    return (
+                                        <TableRow
+                                            key={order.id}
+                                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setIsDetailOpen(true);
+                                            }}
+                                        >
+                                            <TableCell className="text-center text-xs text-muted-foreground">{index + 1}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-muted-foreground">{format(orderDate, 'yyyy-MM-dd')}</span>
+                                                    <span className="font-mono text-xs">{(order as any).orderNumber || order.id.slice(0, 8)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{order.orderer.name}</TableCell>
+                                            <TableCell className="text-xs">{order.payment.method}</TableCell>
+                                            <TableCell className="text-muted-foreground line-through text-[11px]">₩{order.summary.total.toLocaleString()}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    {collectionTime && (
+                                                        <span className="text-[10px] text-purple-500 font-medium">
+                                                            {format(collectionTime, 'HH:mm:ss')} 수금
+                                                        </span>
+                                                    )}
+                                                    <span className="font-bold text-purple-600">₩{myShare.toLocaleString()}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant={order.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
+                                                    {order.status === 'completed' ? '완료' : '진행중'}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <XCircle className="h-5 w-5 text-red-500" />
+                        금일 미결제 내역
+                    </CardTitle>
+                    <CardDescription>오늘 접수된 주문 중 아직 결제가 완료되지 않은 내역입니다.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="w-[50px]">번호</TableHead>
+                                <TableHead>주문시간/번호</TableHead>
+                                <TableHead>고객명</TableHead>
+                                <TableHead>전체금액</TableHead>
+                                <TableHead>미결금액</TableHead>
+                                <TableHead>이관 정보</TableHead>
+                                <TableHead>상태</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {stats?.pendingOrdersToday.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                                        오늘 발생한 미결제 내역이 없습니다.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                stats?.pendingOrdersToday.map((order, index) => {
+                                    const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+                                    let myShare = 0;
+                                    const isOriginal = order.branchName === currentTargetBranch;
+                                    const isValidTransfer = order.transferInfo?.isTransferred && (order.transferInfo?.status === 'accepted' || order.transferInfo?.status === 'completed');
+
+                                    if (currentTargetBranch === 'all') {
+                                        myShare = order.summary.total;
+                                    } else {
+                                        if (isOriginal) {
+                                            myShare = isValidTransfer ? Math.round(order.summary.total * (split.orderBranch / 100)) : order.summary.total;
+                                        }
+                                    }
+
+                                    const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
+
+                                    return (
+                                        <TableRow
+                                            key={order.id}
+                                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setIsDetailOpen(true);
+                                            }}
+                                        >
+                                            <TableCell className="text-center text-xs text-muted-foreground">{index + 1}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-orange-600 font-medium">{format(orderDate, 'HH:mm:ss')}</span>
+                                                    <span className="font-mono text-xs">{(order as any).orderNumber || order.id.slice(0, 8)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{order.orderer.name}</TableCell>
+                                            <TableCell className="text-muted-foreground text-[11px]">₩{order.summary.total.toLocaleString()}</TableCell>
+                                            <TableCell className="font-bold text-red-600">₩{myShare.toLocaleString()}</TableCell>
+                                            <TableCell className="text-xs">
+                                                {order.transferInfo?.isTransferred ? (
+                                                    <div className="flex flex-col">
+                                                        <span>{isOriginal ? '📤 발주' : '📥 수주'}</span>
+                                                        <span className="text-[10px] text-muted-foreground">{order.transferInfo.processBranchName}</span>
+                                                    </div>
+                                                ) : '일반'}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant={order.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
+                                                    {order.status === 'completed' ? '완료' : '진행중'}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
             <div className="bg-gray-50 p-4 rounded-lg border text-sm text-muted-foreground">
                 <h4 className="font-bold text-gray-700 mb-2">💡 정산 안내</h4>
                 <ul className="list-disc list-inside space-y-1">
-                    <li><strong>실질 매출:</strong> 각 주문에서 선택된 지점이 가져가는 지분(%)을 합산한 금액입니다.</li>
+                    <li><strong>실질 수익:</strong> 오늘 발생한 주문의 매출액과, 과거 주문에 대해 오늘 수금된 금액을 합산한 총 수익입니다.</li>
+                    <li><strong>이월 주문 결제 (수금):</strong> 이전 날짜에 접수된 주문이 미결 상태였으나, 오늘 완결 처리되어 입금된 비중입니다.</li>
                     <li><strong>이관 주문 (📤 발주):</strong> 타 지점에 작업을 맡긴 경우, 설정된 분배율에 따라 수익이 잡힙니다.</li>
                     <li><strong>이관 주문 (📥 수주):</strong> 타 지점의 주문을 받아 작업만 한 경우, 설정된 수익분율에 따라 수익이 잡힙니다.</li>
                     <li>취소된 주문은 정산에 포함되지 않습니다.</li>
                 </ul>
             </div>
+
+            <OrderDetailDialog
+                isOpen={isDetailOpen}
+                onOpenChange={setIsDetailOpen}
+                order={selectedOrder}
+            />
         </div>
     );
 }
