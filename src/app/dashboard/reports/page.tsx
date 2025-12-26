@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   BarChart3,
   PieChart,
@@ -62,13 +64,21 @@ interface SalesStats {
     firstPaymentAmount: number;
     secondPaymentAmount: number;
   };
+  transferStats: {
+    outgoingTransferAmount: number; // 내가 발주(분배유입)
+    incomingTransferAmount: number; // 내가 수주(분배수익)
+    outgoingTransferCount: number;
+    incomingTransferCount: number;
+  };
 }
 
 export default function StatsDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [dateRange, setDateRange] = useState('month'); // 'week', 'month', 'quarter', 'year'
   const [selectedBranch, setSelectedBranch] = useState('all');
+  const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd')); // 일일 리포트용 날짜
   const [stats, setStats] = useState<SalesStats | null>(null);
+  const [comparisonStats, setComparisonStats] = useState<{ yesterday: number; lastMonth: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { orders, loading: ordersLoading } = useOrders();
@@ -115,7 +125,12 @@ export default function StatsDashboard() {
     const filteredOrders = orders.filter(order => {
       const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
       const isInDateRange = orderDate >= from && orderDate <= to;
-      const isInBranch = selectedBranch === 'all' || order.branchId === selectedBranch;
+
+      // 해당 지점이 발주했거나 수주한 주문인 경우 포함
+      const isOriginalBranch = order.branchId === selectedBranch;
+      const isProcessBranch = order.transferInfo?.isTransferred && order.transferInfo?.processBranchId === selectedBranch;
+      const isInBranch = selectedBranch === 'all' || isOriginalBranch || isProcessBranch;
+
       return isInDateRange && isInBranch && order.status !== 'canceled';
     });
 
@@ -124,93 +139,99 @@ export default function StatsDashboard() {
     const totalOrders = filteredOrders.length;
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-    // 지점별 매출 (누락 방지를 위해 지점명 텍스트 기준 그룹화)
+    // 지점별/상품별/결제수단별/일별 집계 통합 처리
     const branchSalesMap = new Map();
-    filteredOrders.forEach(order => {
-      // branchName을 우선 사용하고, 없으면 ID로 찾아서 이름 가져오기
-      let branchName = order.branchName;
-
-      // branchName이 없는 경우 branchId로 조회 시도
-      if (!branchName && order.branchId) {
-        const branch = branches.find(b => b.id === order.branchId);
-        if (branch) branchName = branch.name;
-      }
-
-      branchName = branchName || '지점 미지정';
-
-      // Map의 키를 branchName으로 사용
-      const existing = branchSalesMap.get(branchName) || {
-        branchId: order.branchId || 'unknown',
-        branchName: branchName,
-        sales: 0,
-        orders: 0
-      };
-
-      existing.sales += order.summary.total;
-      existing.orders += 1;
-      branchSalesMap.set(branchName, existing);
-    });
-
-    // 상품별 매출
     const productSalesMap = new Map();
-    filteredOrders.forEach(order => {
-      order.items.forEach(item => {
-        const product = products.find(p => p.id === item.id);
-        if (product) {
-          const existing = productSalesMap.get(item.id) || {
-            productId: item.id,
-            productName: product.name,
-            sales: 0,
-            quantity: 0
-          };
-          existing.sales += item.price * item.quantity;
-          existing.quantity += item.quantity;
-          productSalesMap.set(item.id, existing);
-        }
-      });
-    });
-
-    // 결제수단별 매출
     const paymentMethodMap = new Map();
-    filteredOrders.forEach(order => {
-      if (order.payment.isSplitPayment) {
-        // 분할결제인 경우
-        if (order.payment.firstPaymentMethod) {
-          const method = order.payment.firstPaymentMethod;
-          const existing = paymentMethodMap.get(method) || { method, sales: 0, orders: 0 };
-          existing.sales += order.payment.firstPaymentAmount || 0;
-          existing.orders += 1;
-          paymentMethodMap.set(method, existing);
-        }
-        if (order.payment.secondPaymentMethod) {
-          const method = order.payment.secondPaymentMethod;
-          const existing = paymentMethodMap.get(method) || { method, sales: 0, orders: 0 };
-          existing.sales += order.payment.secondPaymentAmount || 0;
-          existing.orders += 1;
-          paymentMethodMap.set(method, existing);
-        }
-      } else {
-        // 일반 결제인 경우
-        const method = order.payment.method;
-        const existing = paymentMethodMap.get(method) || { method, sales: 0, orders: 0 };
-        existing.sales += order.summary.total;
-        existing.orders += 1;
-        paymentMethodMap.set(method, existing);
-      }
-    });
-
-    // 일별 매출
     const dailySalesMap = new Map();
+
     filteredOrders.forEach(order => {
+      const totalAmount = order.summary.total;
+      const transfer = order.transferInfo?.isTransferred && (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+        ? order.transferInfo
+        : null;
+      const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
+
       const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
       const dateKey = format(orderDate, 'yyyy-MM-dd');
-      const existing = dailySalesMap.get(dateKey) || { date: dateKey, sales: 0, orders: 0 };
-      existing.sales += order.summary.total;
-      existing.orders += 1;
-      dailySalesMap.set(dateKey, existing);
+
+      // 1. 발주 지점 지분 정산
+      const orderBranchId = order.branchId;
+      const orderBranchName = order.branchName || '지점 미지정';
+      const orderBranchSales = Math.round(totalAmount * (split.orderBranch / 100));
+
+      // 2. 수주 지점 지분 정산
+      const processBranchId = transfer?.processBranchId;
+      const processBranchName = transfer?.processBranchName;
+      const processBranchSales = Math.round(totalAmount * (split.processBranch / 100));
+
+      // 지점별 매출 맵 업데이트
+      if (selectedBranch === 'all' || orderBranchId === selectedBranch) {
+        const b = branchSalesMap.get(orderBranchName) || { branchId: orderBranchId, branchName: orderBranchName, sales: 0, orders: 0 };
+        b.sales += orderBranchSales;
+        b.orders += 1;
+        branchSalesMap.set(orderBranchName, b);
+      }
+
+      if (processBranchId && (selectedBranch === 'all' || processBranchId === selectedBranch)) {
+        if (processBranchSales > 0 || (selectedBranch !== 'all' && processBranchId === selectedBranch)) {
+          const b = branchSalesMap.get(processBranchName) || { branchId: processBranchId, branchName: processBranchName, sales: 0, orders: 0 };
+          b.sales += processBranchSales;
+          b.orders += 1;
+          branchSalesMap.set(processBranchName, b);
+        }
+      }
+
+      // 현재 컨텍스트(선택된 지점)에서의 실질 수익 계산 (일별/상품별/결제수단별 집계용)
+      let contextSales = 0;
+      let participated = false;
+
+      if (selectedBranch === 'all') {
+        contextSales = totalAmount; // 전체 보기 시에는 100%
+        participated = true;
+      } else {
+        if (orderBranchId === selectedBranch) {
+          contextSales += orderBranchSales;
+          participated = true;
+        }
+        if (processBranchId === selectedBranch) {
+          contextSales += processBranchSales;
+          participated = true;
+        }
+      }
+
+      if (participated) {
+        // 일별 매출
+        const d = dailySalesMap.get(dateKey) || { date: dateKey, sales: 0, orders: 0 };
+        d.sales += contextSales;
+        d.orders += 1;
+        dailySalesMap.set(dateKey, d);
+
+        // 상품별 매출
+        order.items.forEach(item => {
+          const product = products.find(p => p.id === item.id);
+          if (product) {
+            const p = productSalesMap.get(item.id) || { productId: item.id, productName: product.name, sales: 0, quantity: 0 };
+            const itemOriginalSales = item.price * item.quantity;
+            const itemContextSales = selectedBranch === 'all' ? itemOriginalSales : Math.round(itemOriginalSales * (contextSales / (totalAmount || 1)));
+            p.sales += itemContextSales;
+            p.quantity += item.quantity;
+            productSalesMap.set(item.id, p);
+          }
+        });
+
+        // 결제수단별 매출
+        const method = order.payment.method;
+        if (method) {
+          const pm = paymentMethodMap.get(method) || { method, sales: 0, orders: 0 };
+          pm.sales += contextSales;
+          pm.orders += 1;
+          paymentMethodMap.set(method, pm);
+        }
+      }
     });
 
-    // 분할결제 통계
+    // 분할결제 통계 (단순 건수/전체금액 기록 - 필터링된 주문 기준)
     const splitPaymentOrders = filteredOrders.filter(order => order.payment.isSplitPayment);
     const splitPaymentStats = {
       totalSplitPayments: splitPaymentOrders.length,
@@ -219,15 +240,59 @@ export default function StatsDashboard() {
       secondPaymentAmount: splitPaymentOrders.reduce((sum, order) => sum + (order.payment.secondPaymentAmount || 0), 0)
     };
 
+    // 이관 통계 계산 (분배율 반영)
+    let outgoingTransferAmount = 0;
+    let incomingTransferAmount = 0;
+    let outgoingTransferCount = 0;
+    let incomingTransferCount = 0;
+
+    filteredOrders.forEach(order => {
+      const isTransferred = order.transferInfo?.isTransferred;
+      if (!isTransferred) return;
+
+      const transferStatus = order.transferInfo?.status;
+      if (transferStatus !== 'accepted' && transferStatus !== 'completed') return;
+
+      const orderBranchId = order.transferInfo?.originalBranchId;
+      const processBranchId = order.transferInfo?.processBranchId;
+      const amountSplit = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+      const totalAmount = order.summary.total;
+
+      // 내가 발주 지점인 경우 (outgoing)
+      if (orderBranchId === order.branchId) {
+        outgoingTransferCount++;
+        // 발주지점 매출 = 전체금액 * (발주분배율 / 100)
+        // 사용자가 100:0 이라고 했으므로 기본은 100% 다 가져감
+        outgoingTransferAmount += Math.round(totalAmount * (amountSplit.orderBranch / 100));
+      }
+      // 내가 수주 지점인 경우 (incoming)
+      else if (processBranchId === order.branchId) {
+        incomingTransferCount++;
+        // 수주지점 매출 = 전체금액 * (수주분배율 / 100)
+        // 기본 0% 라면 매출에 잡히지 않음
+        incomingTransferAmount += Math.round(totalAmount * (amountSplit.processBranch / 100));
+      }
+    });
+
+    // 최종 실질 매출 계산 (이미 분배율이 적용된 집계 데이터의 합)
+    let netTotalSales = 0;
+    dailySalesMap.forEach(d => { netTotalSales += d.sales; });
+
     return {
-      totalSales,
+      totalSales: netTotalSales,
       totalOrders,
-      averageOrderValue,
+      averageOrderValue: totalOrders > 0 ? netTotalSales / totalOrders : 0,
       branchSales: Array.from(branchSalesMap.values()).sort((a, b) => b.sales - a.sales),
       productSales: Array.from(productSalesMap.values()).sort((a, b) => b.sales - a.sales).slice(0, 10),
       paymentMethodSales: Array.from(paymentMethodMap.values()).sort((a, b) => b.sales - a.sales),
       dailySales: Array.from(dailySalesMap.values()).sort((a, b) => a.date.localeCompare(b.date)),
-      splitPaymentStats
+      splitPaymentStats,
+      transferStats: {
+        outgoingTransferAmount,
+        incomingTransferAmount,
+        outgoingTransferCount,
+        incomingTransferCount
+      }
     };
   };
 
@@ -236,9 +301,19 @@ export default function StatsDashboard() {
     if (!ordersLoading && !branchesLoading && !productsLoading) {
       const newStats = calculateStats();
       setStats(newStats);
+
+      // 어제 매출 비교 로직 추가
+      const yesterday = subDays(new Date(), 1);
+      const yesterdayOrders = orders.filter(order => {
+        const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
+        return format(orderDate, 'yyyy-MM-dd') === format(yesterday, 'yyyy-MM-dd') && order.status !== 'canceled';
+      });
+      const yesterdaySales = yesterdayOrders.reduce((sum, order) => sum + order.summary.total, 0);
+      setComparisonStats({ yesterday: yesterdaySales, lastMonth: 0 }); // 단순화를 위해 어제 매출만 계산
+
       setLoading(false);
     }
-  }, [orders, branches, products, dateRange, selectedBranch]);
+  }, [orders, branches, products, dateRange, selectedBranch, reportDate]);
 
   // 결제수단 한글 변환
   const getPaymentMethodText = (method: string) => {
@@ -308,13 +383,15 @@ export default function StatsDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">총 매출</CardTitle>
+              <CardTitle className="text-sm font-medium">실질 매출</CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">₩{stats.totalSales.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                총 {stats.totalOrders}건의 주문
+                어제 대비: <span className={stats.totalSales >= (comparisonStats?.yesterday || 0) ? "text-green-600 font-bold" : "text-red-600 font-bold"}>
+                  {comparisonStats?.yesterday ? `${(((stats.totalSales - comparisonStats.yesterday) / comparisonStats.yesterday) * 100).toFixed(1)}%` : '-'}
+                </span>
               </p>
             </CardContent>
           </Card>
@@ -448,6 +525,7 @@ export default function StatsDashboard() {
             </Card>
           </div>
         </TabsContent>
+
 
         <TabsContent value="sales" className="mt-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

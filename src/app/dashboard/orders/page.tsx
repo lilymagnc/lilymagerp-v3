@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart, CheckSquare, Square, ArrowRightLeft, Package } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart, CheckSquare, Square, ArrowRightLeft, Package, Target } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -871,6 +871,12 @@ export default function OrdersPage() {
             <Link href="/dashboard/transfers">
               <ArrowRightLeft className="mr-2 h-4 w-4" />
               주문이관 관리
+            </Link>
+          </Button>
+          <Button variant="default" className="bg-purple-600 hover:bg-purple-700" asChild>
+            <Link href="/dashboard/orders/daily-settlement">
+              <Target className="mr-2 h-4 w-4" />
+              일일 마감 정산
             </Link>
           </Button>
         </div>

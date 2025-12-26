@@ -202,7 +202,20 @@ export function YearEndExportDialog() {
             const data = doc.data();
             const date = data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate);
             const monthKey = `${date.getMonth() + 1}월`;
-            const amount = data.summary?.total || data.total || 0;
+
+            let amount = data.summary?.total || 0;
+
+            // 이관된 주문인 경우 분배율 적용 (여기서는 전체 매출 관점이므로 발주지점 기준으로 계산)
+            // 지점별 합계와 일관성을 위해 각 주문의 '실질 매출'을 합산
+            if (data.transferInfo?.isTransferred && (data.transferInfo.status === 'accepted' || data.transferInfo.status === 'completed')) {
+                const split = data.transferInfo.amountSplit || { orderBranch: 100, processBranch: 0 };
+                // 월별 전체 매출은 시스템 전체 관점이므로 전체 금액을 유지하되, 
+                // 지점별 합산과 맞추기 위해 여기서는 단순 합산이 아닌 분배된 금액의 합 방식을 고려할 수도 있음.
+                // 일반적인 월별 매출은 주문 발생액 전체로 보는 경우가 많으므로 그대로 유지하거나, 
+                // 사용자의 의도에 따라 지점별 실질 매출의 합으로 표현.
+                // 여기서는 지점별 합계와 맞추기 위해 지점별 실질 매출의 합으로 계산 (어차피 합은 전체와 동일)
+            }
+
             monthly[monthKey] = (monthly[monthKey] || 0) + amount;
         });
         return Object.entries(monthly).map(([month, sales]) => ({ "월": month, "매출액": sales }));
@@ -212,11 +225,28 @@ export function YearEndExportDialog() {
         const branch: Record<string, number> = {};
         docs.forEach(doc => {
             const data = doc.data();
-            const branchName = data.branchName || "미지정";
-            const amount = data.summary?.total || data.total || 0;
-            branch[branchName] = (branch[branchName] || 0) + amount;
+            const originalBranchName = data.branchName || "미지정";
+            const totalAmount = data.summary?.total || 0;
+
+            if (data.transferInfo?.isTransferred && (data.transferInfo.status === 'accepted' || data.transferInfo.status === 'completed')) {
+                const split = data.transferInfo.amountSplit || { orderBranch: 100, processBranch: 0 };
+                const processBranchName = data.transferInfo.processBranchName;
+
+                // 발주지점 매출 가산
+                const orderBranchSales = Math.round(totalAmount * (split.orderBranch / 100));
+                branch[originalBranchName] = (branch[originalBranchName] || 0) + orderBranchSales;
+
+                // 수주지점 매출 가산 (있을 경우만)
+                if (processBranchName) {
+                    const processBranchSales = Math.round(totalAmount * (split.processBranch / 100));
+                    branch[processBranchName] = (branch[processBranchName] || 0) + processBranchSales;
+                }
+            } else {
+                // 일반 주문
+                branch[originalBranchName] = (branch[originalBranchName] || 0) + totalAmount;
+            }
         });
-        return Object.entries(branch).map(([name, sales]) => ({ "지점명": name, "매출액": sales }));
+        return Object.entries(branch).map(([name, sales]) => ({ "지점명": name, "실질매출액": sales }));
     };
 
     // 연도 옵션 생성 (최근 5년)

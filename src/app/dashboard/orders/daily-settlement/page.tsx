@@ -1,0 +1,305 @@
+"use client";
+
+import React, { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Calendar, Target, DollarSign, ArrowRightLeft, RefreshCw, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { format, subDays, addDays, startOfDay, endOfDay } from "date-fns";
+import { useOrders, Order } from "@/hooks/use-orders";
+import { useBranches } from "@/hooks/use-branches";
+import { useAuth } from "@/hooks/use-auth";
+import { useProducts } from "@/hooks/use-products";
+import { Timestamp } from "firebase/firestore";
+import { PageHeader } from "@/components/page-header";
+import Link from 'next/link';
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+export default function DailySettlementPage() {
+    const { orders, loading: ordersLoading } = useOrders();
+    const { branches, loading: branchesLoading } = useBranches();
+    const { products, loading: productsLoading } = useProducts();
+    const { user } = useAuth();
+
+    const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [selectedBranch, setSelectedBranch] = useState<string>('all');
+
+    const isAdmin = user?.role === '본사 관리자';
+    const userBranch = user?.franchise;
+
+    // 현재 보고 있는 기준 지점
+    const currentTargetBranch = isAdmin ? selectedBranch : userBranch;
+
+    const loading = ordersLoading || branchesLoading || productsLoading;
+
+    // 정산 데이터 계산
+    const stats = useMemo(() => {
+        if (!orders.length) return null;
+
+        const selectedDate = new Date(reportDate);
+        const from = startOfDay(selectedDate);
+        const to = endOfDay(selectedDate);
+
+        // 해당 일자의 주문 필터링
+        const dailyOrders = orders.filter(order => {
+            const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
+            const isInDate = orderDate >= from && orderDate <= to;
+            const isCanceled = order.status === 'canceled';
+
+            if (!isInDate || isCanceled) return false;
+
+            // 전체 보기거나, 내가 관여한 주문인 경우
+            if (currentTargetBranch === 'all') return true;
+
+            const isOriginalBranch = order.branchName === currentTargetBranch;
+            const isProcessBranch = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentTargetBranch;
+
+            return isOriginalBranch || isProcessBranch;
+        });
+
+        // 시간 내림차순 정렬
+        dailyOrders.sort((a, b) => {
+            const dateA = a.orderDate instanceof Date ? a.orderDate : a.orderDate.toDate();
+            const dateB = b.orderDate instanceof Date ? b.orderDate : b.orderDate.toDate();
+            return dateB.getTime() - dateA.getTime();
+        });
+
+        let totalPayment = 0;   // 기준 지점의 총 결제액 (발주 기준)
+        let outgoingSettle = 0; // 발주 정산액 (내 지분)
+        let incomingSettle = 0; // 수주 정산액 (내 지분)
+        let netSales = 0;       // 실질 매출 합계
+
+        dailyOrders.forEach(order => {
+            const total = order.summary.total;
+            const isTransferred = order.transferInfo?.isTransferred;
+            const transferStatus = order.transferInfo?.status;
+            const isValidTransfer = isTransferred && (transferStatus === 'accepted' || transferStatus === 'completed');
+
+            const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+
+            if (currentTargetBranch === 'all') {
+                // 전체 보기일 때는 모든 주문의 100%를 보여줌 (중복 없이)
+                totalPayment += total;
+                netSales += total;
+                outgoingSettle += total;
+            } else {
+                // 특정 지점 보기일 때
+                const isOriginal = order.branchName === currentTargetBranch;
+                const isProcess = isValidTransfer && order.transferInfo?.processBranchName === currentTargetBranch;
+
+                if (isOriginal) {
+                    totalPayment += total;
+                    const share = isValidTransfer ? Math.round(total * (split.orderBranch / 100)) : total;
+                    outgoingSettle += share;
+                    netSales += share;
+                }
+
+                if (isProcess) {
+                    const share = Math.round(total * (split.processBranch / 100));
+                    incomingSettle += share;
+                    netSales += share;
+                }
+            }
+        });
+
+        return {
+            dailyOrders,
+            totalPayment,
+            outgoingSettle,
+            incomingSettle,
+            netSales,
+            orderCount: dailyOrders.length
+        };
+    }, [orders, reportDate, currentTargetBranch]);
+
+    const handlePrevDay = () => setReportDate(prev => format(subDays(new Date(prev), 1), 'yyyy-MM-dd'));
+    const handleNextDay = () => setReportDate(prev => format(addDays(new Date(prev), 1), 'yyyy-MM-dd'));
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
+
+    return (
+        <div className="container mx-auto p-4 space-y-6">
+            <PageHeader
+                title="일일 마감 정산"
+                description={`${currentTargetBranch === 'all' ? '전체' : currentTargetBranch} 지점의 일일 매출 및 이관 정산 내역입니다.`}
+            >
+                <div className="flex flex-wrap items-center gap-2">
+                    {isAdmin && (
+                        <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="지점 선택" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">전체 지점</SelectItem>
+                                {branches.map(b => (
+                                    <SelectItem key={b.id} value={b.name}>{b.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                    <div className="flex items-center gap-1">
+                        <Button variant="outline" size="icon" onClick={handlePrevDay}><ChevronLeft className="h-4 w-4" /></Button>
+                        <Input
+                            type="date"
+                            value={reportDate}
+                            onChange={(e) => setReportDate(e.target.value)}
+                            className="w-[150px]"
+                        />
+                        <Button variant="outline" size="icon" onClick={handleNextDay}><ChevronRight className="h-4 w-4" /></Button>
+                    </div>
+                    <Button variant="outline" asChild>
+                        <Link href="/dashboard/orders">
+                            주문현황 돌아가기
+                        </Link>
+                    </Button>
+                </div>
+            </PageHeader>
+
+            {/* 요약 카드 */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="bg-blue-50/50">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-blue-600 font-medium">총 결제 금액 (발주 기준)</CardDescription>
+                        <CardTitle className="text-2xl font-bold flex items-baseline gap-2">
+                            ₩{stats?.totalPayment.toLocaleString()}
+                            <span className="text-sm font-normal text-muted-foreground">({stats?.orderCount || 0}건)</span>
+                        </CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>발주 매출 (내 지분)</CardDescription>
+                        <CardTitle className="text-2xl font-bold">₩{stats?.outgoingSettle.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardDescription>수주 수익 (이관 지분)</CardDescription>
+                        <CardTitle className="text-2xl font-bold">₩{stats?.incomingSettle.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+                <Card className="bg-primary/5 border-primary/20">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="text-primary font-bold">최종 실질 매출</CardDescription>
+                        <CardTitle className="text-2xl font-bold text-primary">₩{stats?.netSales.toLocaleString()}</CardTitle>
+                    </CardHeader>
+                </Card>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        주문 내역 상세
+                    </CardTitle>
+                    <CardDescription>{reportDate} 주문 현황 및 정산 분배 정보</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead className="w-[50px]">번호</TableHead>
+                                <TableHead>주문시간/번호</TableHead>
+                                <TableHead>고객명</TableHead>
+                                <TableHead>결제수단</TableHead>
+                                <TableHead>전체금액</TableHead>
+                                <TableHead>실질 수익</TableHead>
+                                <TableHead>이관/정산 정보</TableHead>
+                                <TableHead>상태</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {stats?.dailyOrders.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                                        해당 일자의 주문 내역이 없습니다.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                stats?.dailyOrders.map((order, index) => {
+                                    const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+                                    let myShare = 0;
+                                    let info = "일반 주문";
+
+                                    const isOriginal = order.branchName === currentTargetBranch;
+                                    const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentTargetBranch;
+
+                                    if (currentTargetBranch === 'all') {
+                                        myShare = order.summary.total;
+                                        if (order.transferInfo?.isTransferred) {
+                                            info = `이관 (${order.branchName} → ${order.transferInfo.processBranchName})`;
+                                        }
+                                    } else {
+                                        if (order.transferInfo?.isTransferred) {
+                                            if (isOriginal) {
+                                                myShare = Math.round(order.summary.total * (split.orderBranch / 100));
+                                                info = `📤 발주 (${split.orderBranch}%)`;
+                                            } else if (isProcess) {
+                                                myShare = Math.round(order.summary.total * (split.processBranch / 100));
+                                                info = `📥 수주 (${split.processBranch}%)`;
+                                            }
+                                        } else {
+                                            myShare = order.summary.total;
+                                        }
+                                    }
+
+                                    const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
+
+                                    return (
+                                        <TableRow key={order.id}>
+                                            <TableCell className="text-center text-xs text-muted-foreground">{index + 1}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-blue-600 font-medium">{format(orderDate, 'HH:mm:ss')}</span>
+                                                    <span className="font-mono text-xs">{(order as any).orderNumber || order.id.slice(0, 8)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>{order.orderer.name}</TableCell>
+                                            <TableCell className="text-xs">{order.payment.method}</TableCell>
+                                            <TableCell className="text-muted-foreground line-through text-[11px]">₩{order.summary.total.toLocaleString()}</TableCell>
+                                            <TableCell className="font-bold text-blue-600">₩{myShare.toLocaleString()}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[11px] font-medium">{info}</span>
+                                                    {order.transferInfo?.isTransferred && (
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            {order.transferInfo.originalBranchName} ↔ {order.transferInfo.processBranchName}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge variant={order.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
+                                                    {order.status === 'completed' ? '완료' : '진행중'}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <div className="bg-gray-50 p-4 rounded-lg border text-sm text-muted-foreground">
+                <h4 className="font-bold text-gray-700 mb-2">💡 정산 안내</h4>
+                <ul className="list-disc list-inside space-y-1">
+                    <li><strong>실질 매출:</strong> 각 주문에서 선택된 지점이 가져가는 지분(%)을 합산한 금액입니다.</li>
+                    <li><strong>이관 주문 (📤 발주):</strong> 타 지점에 작업을 맡긴 경우, 설정된 분배율에 따라 수익이 잡힙니다.</li>
+                    <li><strong>이관 주문 (📥 수주):</strong> 타 지점의 주문을 받아 작업만 한 경우, 설정된 수익분율에 따라 수익이 잡힙니다.</li>
+                    <li>취소된 주문은 정산에 포함되지 않습니다.</li>
+                </ul>
+            </div>
+        </div>
+    );
+}
