@@ -135,7 +135,7 @@ export function useOrders() {
       if (user?.franchise && user?.role !== '본사 관리자') {
         // 현재 지점의 주문과 이관받은 주문을 모두 조회
         // 이는 클라이언트 사이드에서 필터링하므로 모든 주문을 가져옴
-        console.log('지점 사용자 주문 조회:', user.franchise);
+
       }
 
       // 타임아웃 설정을 더 길게 설정
@@ -345,7 +345,7 @@ export function useOrders() {
           );
           await Promise.all(updatePromises);
 
-          console.log(`${calendarSnapshot.docs.length}개의 캘린더 이벤트가 완료 상태로 변경되었습니다.`);
+
         } catch (calendarError) {
           console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
           // 캘린더 이벤트 상태 변경 실패는 주문 상태 변경을 막지 않음
@@ -386,11 +386,11 @@ export function useOrders() {
                     updatedAt: serverTimestamp()
                   });
 
-                  console.log('발주지점 원본 주문도 완료 상태로 업데이트되었습니다.');
+
                 }
               }
 
-              console.log('이관 상태가 완료로 업데이트되었습니다.');
+
             }
           }
         } catch (transferError) {
@@ -433,26 +433,13 @@ export function useOrders() {
           updateData['payment.secondPaymentDate'] = serverTimestamp();
         }
 
-        console.log('Payment Status Update Debug:', {
-          orderId: orderId,
-          isSplitPayment: orderData?.payment?.isSplitPayment,
-          currentStatus: orderData?.payment?.status,
-          newStatus: newStatus,
-          completedAt: 'serverTimestamp() - 매출은 완결 날짜 기준',
-          updateData: updateData
-        });
+
       } else if (newStatus === 'pending') {
         // 미결로 변경 시 completedAt을 null로 설정하여 제거
         // 이렇게 해야 나중에 다시 완결 처리할 때 새로운 날짜가 설정됨
         updateData['payment.completedAt'] = null;
 
-        console.log('Payment Status Update Debug:', {
-          orderId: orderId,
-          currentStatus: orderData?.payment?.status,
-          newStatus: newStatus,
-          completedAt: 'null - 미결 상태로 변경',
-          updateData: updateData
-        });
+
       }
 
       await updateDoc(orderRef, updateData);
@@ -541,10 +528,7 @@ export function useOrders() {
 
         if (customerId) {
           await deductCustomerPoints(customerId, pointsEarned);
-          console.log('적립 포인트 차감 완료:', {
-            customerId: customerId,
-            pointsEarned: pointsEarned
-          });
+
         }
       }
 
@@ -635,7 +619,7 @@ export function useOrders() {
 
         if (customerId) {
           await refundCustomerPoints(customerId, pointsUsed);
-          console.log('주문 삭제 - 사용 포인트 환불 완료:', pointsUsed);
+
         } else {
           console.warn('주문 삭제 - 고객을 찾을 수 없어 포인트 환불 불가:', {
             ordererContact: orderData.orderer.contact,
@@ -664,7 +648,7 @@ export function useOrders() {
 
         if (customerId) {
           await deductCustomerPoints(customerId, pointsEarned);
-          console.log('주문 삭제 - 적립 포인트 차감 완료:', pointsEarned);
+
         }
       }
 
@@ -680,7 +664,7 @@ export function useOrders() {
           batch.delete(doc.ref);
         });
         await batch.commit();
-        console.log(`${transfersSnapshot.size}개의 이관 기록이 삭제되었습니다.`);
+
       }
 
       // 주문 삭제
@@ -801,7 +785,7 @@ export function useOrders() {
         );
         await Promise.all(updatePromises);
 
-        console.log(`${calendarSnapshot.docs.length}개의 캘린더 이벤트가 완료 상태로 변경되었습니다.`);
+
       } catch (calendarError) {
         console.error('캘린더 이벤트 상태 변경 중 오류:', calendarError);
         // 캘린더 이벤트 상태 변경 실패는 배송완료 처리를 막지 않음

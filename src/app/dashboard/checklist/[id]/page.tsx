@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  CheckSquare, 
-  Calendar, 
-  CalendarDays, 
-  Building, 
+import {
+  CheckSquare,
+  Calendar,
+  CalendarDays,
+  Building,
   ArrowLeft,
   Edit,
   Download,
@@ -51,7 +51,7 @@ export default function ChecklistDetailPage() {
   const { userRole, isHQManager } = useUserRole();
   const { getChecklist, getTemplate, toggleItem, updateChecklist, updateTemplate } = useChecklist();
   const { toast } = useToast();
-  
+
   const [checklist, setChecklist] = useState<ChecklistRecord | null>(null);
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,9 +84,9 @@ export default function ChecklistDetailPage() {
             router.push('/dashboard/checklist');
             return;
           }
-          
+
           setChecklist(checklistData);
-          
+
           // 템플릿도 함께 로드
           const templateData = await getTemplate(checklistData.branchId);
           if (templateData) {
@@ -122,30 +122,30 @@ export default function ChecklistDetailPage() {
 
     try {
       await toggleItem(checklist.id, itemId, checked);
-      
+
       // 로컬 상태 업데이트
       setChecklist(prev => {
         if (!prev) return null;
-        
-        const updatedItems = prev.items.map(item => 
+
+        const updatedItems = prev.items.map(item =>
           item.itemId === itemId ? { ...item, checked } : item
         );
-        
+
         // 필수 항목만으로 완료율 계산
         const requiredItems = template?.items.filter(item => item.required && item.category === checklist.category) || [];
         const requiredItemIds = requiredItems.map(item => item.id);
-        
-        const completedRequiredItems = updatedItems.filter(item => 
+
+        const completedRequiredItems = updatedItems.filter(item =>
           item.checked && requiredItemIds.includes(item.itemId)
         ).length;
-        
+
         const totalRequiredItems = requiredItemIds.length;
         const completionRate = totalRequiredItems > 0 ? (completedRequiredItems / totalRequiredItems) * 100 : 0;
-        
+
         let status: 'pending' | 'completed' | 'partial' = 'pending';
         if (completionRate === 100) status = 'completed';
         else if (completionRate > 0) status = 'partial';
-        
+
         return {
           ...prev,
           items: updatedItems,
@@ -216,15 +216,15 @@ export default function ChecklistDetailPage() {
 
   const calculateCompletionRate = useCallback(() => {
     if (!checklist || !template) return 0;
-    
+
     // 필수 항목만으로 완료율 계산
     const requiredItems = template.items.filter(item => item.required && item.category === checklist.category);
     const requiredItemIds = requiredItems.map(item => item.id);
-    
-    const completedRequiredItems = checklist.items.filter(item => 
+
+    const completedRequiredItems = checklist.items.filter(item =>
       item.checked && requiredItemIds.includes(item.itemId)
     ).length;
-    
+
     const totalRequiredItems = requiredItemIds.length;
     return totalRequiredItems > 0 ? (completedRequiredItems / totalRequiredItems) * 100 : 0;
   }, [checklist, template]);
@@ -248,7 +248,7 @@ export default function ChecklistDetailPage() {
   // 편집 관련 함수들
   const handleEditClick = useCallback(() => {
     if (!checklist) return;
-    
+
     setEditForm({
       openWorker: checklist.openWorker || '',
       closeWorker: checklist.closeWorker || '',
@@ -262,7 +262,7 @@ export default function ChecklistDetailPage() {
 
   const handleEditSave = useCallback(async () => {
     if (!checklist) return;
-    
+
     try {
       await updateChecklist(checklist.id, {
         openWorker: editForm.openWorker,
@@ -272,7 +272,7 @@ export default function ChecklistDetailPage() {
         weather: editForm.weather,
         specialEvents: editForm.specialEvents
       });
-      
+
       // 로컬 상태 업데이트
       setChecklist(prev => {
         if (!prev) return null;
@@ -286,7 +286,7 @@ export default function ChecklistDetailPage() {
           specialEvents: editForm.specialEvents
         };
       });
-      
+
       setEditDialogOpen(false);
       toast({
         title: "편집 완료",
@@ -307,9 +307,9 @@ export default function ChecklistDetailPage() {
   if (loading) {
     return (
       <div className="space-y-8">
-        <PageHeader 
-          title="체크리스트 상세" 
-          description="체크리스트를 확인하세요." 
+        <PageHeader
+          title="체크리스트 상세"
+          description="체크리스트를 확인하세요."
         />
         <div className="animate-pulse space-y-4">
           <Card>
@@ -332,9 +332,9 @@ export default function ChecklistDetailPage() {
   if (!checklist) {
     return (
       <div className="space-y-8">
-        <PageHeader 
-          title="체크리스트 상세" 
-          description="체크리스트를 확인하세요." 
+        <PageHeader
+          title="체크리스트 상세"
+          description="체크리스트를 확인하세요."
         />
         <Card>
           <CardContent className="p-8 text-center">
@@ -351,9 +351,9 @@ export default function ChecklistDetailPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader 
-        title="체크리스트 상세" 
-        description="체크리스트를 확인하세요." 
+      <PageHeader
+        title="체크리스트 상세"
+        description="체크리스트를 확인하세요."
       />
 
       {/* 체크리스트 헤더 */}
@@ -375,7 +375,7 @@ export default function ChecklistDetailPage() {
                   </Badge>
                 </div>
                 <p className="text-sm text-gray-600">
-                  지점: {checklist.branchName || '지점명 없음'} | 
+                  지점: {checklist.branchName || '지점명 없음'} |
                   작성일: {format(checklist.completedAt.toDate(), 'yyyy년 M월 d일 HH:mm', { locale: ko })}
                 </p>
               </div>
@@ -473,15 +473,14 @@ export default function ChecklistDetailPage() {
               if (!item) return null;
 
               return (
-                <div 
+                <div
                   key={record.itemId}
-                  className={`flex items-start gap-4 p-4 border rounded-lg transition-colors ${
-                    record.checked ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
-                  }`}
+                  className={`flex items-start gap-4 p-4 border rounded-lg transition-colors ${record.checked ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+                    }`}
                 >
                   <Checkbox
                     checked={record.checked}
-                    onCheckedChange={(checked) => 
+                    onCheckedChange={(checked) =>
                       handleItemToggle(record.itemId, checked as boolean)
                     }
                     className="mt-1"
@@ -522,22 +521,22 @@ export default function ChecklistDetailPage() {
 
       {/* 액션 버튼 */}
       <div className="flex justify-between">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => router.back()}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           뒤로 가기
         </Button>
         <div className="flex gap-2">
-          <Button 
+          <Button
             variant="outline"
             onClick={handleEditClick}
           >
             <Edit className="h-4 w-4 mr-2" />
             편집
           </Button>
-          <Button 
+          <Button
             variant="outline"
             onClick={() => router.push('/dashboard/checklist/template')}
             className="border-orange-200 text-orange-700 hover:bg-orange-50"
@@ -545,11 +544,12 @@ export default function ChecklistDetailPage() {
             <GripVertical className="h-4 w-4 mr-2" />
             템플릿 편집
           </Button>
-          <Button 
+          <Button
             variant="outline"
             onClick={() => {
               // 엑셀 다운로드 기능 (향후 구현)
-              console.log('Download checklist:', checklist.id);
+              // 엑셀 다운로드 기능 (향후 구현)
+
             }}
           >
             <Download className="h-4 w-4 mr-2" />
@@ -567,7 +567,7 @@ export default function ChecklistDetailPage() {
               체크리스트 정보를 수정하세요. 변경사항은 즉시 저장됩니다.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid gap-6 py-4">
             {/* 담당자 정보 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

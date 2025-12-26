@@ -22,7 +22,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     // Firebase Auth가 초기화되었는지 확인
     if (!auth) {
       console.error('Firebase Auth is not initialized');
@@ -34,9 +34,9 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-    
+
     try {
-      console.log('Attempting login with:', { email, authInitialized: !!auth });
+
       await signInWithEmailAndPassword(auth, email, password);
       // 로그인 성공 시 lastLogin 업데이트
       try {
@@ -52,7 +52,7 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Login error details:', error);
       let errorMessage = '로그인에 실패했습니다.';
-      
+
       // Firebase Auth 오류 코드에 따른 메시지
       if (error.code) {
         switch (error.code) {
@@ -78,7 +78,7 @@ export default function LoginPage() {
             errorMessage = `로그인 오류: ${error.message}`;
         }
       }
-      
+
       toast({
         variant: 'destructive',
         title: '로그인 실패',
@@ -92,14 +92,14 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="mx-auto w-full max-w-sm">
         <div className="flex justify-center py-6">
-            <Image 
-              src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg" 
-              alt="Logo" 
-              width={200} 
-              height={50}
-              className="w-48 h-auto"
-              priority 
-            />
+          <Image
+            src="https://ecimg.cafe24img.com/pg1472b45444056090/lilymagflower/web/upload/category/logo/v2_d13ecd48bab61a0269fab4ecbe56ce07_lZMUZ1lORo_top.jpg"
+            alt="Logo"
+            width={200}
+            height={50}
+            className="w-48 h-auto"
+            priority
+          />
         </div>
         <CardContent>
           <form onSubmit={handleLogin} className="grid gap-4">
@@ -117,10 +117,10 @@ export default function LoginPage() {
             <div className="grid gap-2">
               <Label htmlFor="password">비밀번호</Label>
               <div className="relative">
-                <Input 
-                  id="password" 
-                  type={showPassword ? "text" : "password"} 
-                  required 
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pr-10"

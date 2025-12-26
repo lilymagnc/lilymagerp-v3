@@ -150,7 +150,7 @@ export function useBranches() {
       const missingBranches = initialBranches.filter(b => !existingNames.has(b.name));
 
       if (missingBranches.length > 0) {
-        console.log(`복구할 지점: ${missingBranches.map(b => b.name).join(', ')}`);
+
         const batch = writeBatch(db);
 
         missingBranches.forEach(branchData => {

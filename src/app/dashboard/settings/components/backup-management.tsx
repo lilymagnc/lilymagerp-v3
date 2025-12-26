@@ -77,7 +77,7 @@ export default function BackupManagement() {
       });
 
       if (oldAutoBackups.length > 0) {
-        console.log(`오래된 자동 백업 ${oldAutoBackups.length}개를 정리합니다...`);
+
 
         // 배치 삭제 실행 (Firestore 배치 쓰기 사용)
         const batch = writeBatch(db);
@@ -88,7 +88,7 @@ export default function BackupManagement() {
 
         await batch.commit();
 
-        console.log('오래된 자동 백업 삭제 완료');
+
         toast({
           title: "자동 정리 완료",
           description: `1주일이 지난 자동 백업 ${oldAutoBackups.length}개를 삭제했습니다.`,

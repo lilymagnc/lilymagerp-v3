@@ -99,12 +99,12 @@ class StorageManager {
       };
     } catch (error) {
       console.error(`${provider} 업로드 실패:`, error);
-      
+
       // Auto 모드에서 실패 시 다른 제공자로 재시도
       if (this.config.provider === 'auto') {
         const fallbackProvider = provider === 'firebase' ? 'cloudinary' : 'firebase';
-        console.log(`${fallbackProvider}로 재시도 중...`);
-        
+
+
         try {
           const tempManager = new StorageManager({
             ...this.config,
@@ -116,7 +116,7 @@ class StorageManager {
           throw new Error('파일 업로드에 실패했습니다.');
         }
       }
-      
+
       throw error;
     }
   }
@@ -133,7 +133,7 @@ class StorageManager {
             publicId = pathParts.join('/').split('.')[0]; // 확장자 제거
           }
         }
-        
+
         if (publicId) {
           await deleteFromCloudinary(publicId);
         }

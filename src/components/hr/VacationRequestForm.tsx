@@ -24,7 +24,7 @@ const VacationRequestForm = () => {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // TODO: Add logic to submit the form data to the server
-    console.log('Form Data Submitted:', formData);
+
     alert('휴가 신청이 완료되었습니다.');
   };
 

@@ -26,19 +26,19 @@ const initializeFirebase = () => {
     // 앱이 이미 초기화되었는지 확인
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
-      console.log('Firebase app initialized successfully');
+
     } else {
       app = getApp();
-      console.log('Using existing Firebase app');
+      // console.log('Using existing Firebase app');
     }
 
     // Auth 초기화
     auth = getAuth(app);
-    console.log('Firebase Auth initialized');
+
 
     // Storage 초기화
     storage = getStorage(app);
-    console.log('Firebase Storage initialized');
+
 
     // Firestore 초기화 - 더 안정적인 설정
     try {
@@ -47,11 +47,11 @@ const initializeFirebase = () => {
         cacheSizeBytes: 50 * 1024 * 1024, // 캐시 크기 증가 (50MB)
         ignoreUndefinedProperties: true, // undefined 속성 무시
       });
-      console.log('Firestore initialized with custom settings');
+
     } catch (error) {
       console.warn('Firestore initialization failed, falling back to default:', error);
       db = getFirestore(app);
-      console.log('Firestore initialized with default settings');
+
     }
 
     // 개발 환경에서 에뮬레이터 연결 (선택사항)

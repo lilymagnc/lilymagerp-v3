@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  query,
+  where,
+  orderBy,
   onSnapshot,
   serverTimestamp,
   Timestamp
@@ -33,7 +33,7 @@ export function useRealtimeNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const { user } = useAuth();
   const { branches } = useBranches();
 
@@ -51,7 +51,7 @@ export function useRealtimeNotifications() {
     setError(null);
 
     const notificationsRef = collection(db, 'notifications');
-    
+
     // 사용자별 알림 필터링
     let q = query(
       notificationsRef,
@@ -79,7 +79,7 @@ export function useRealtimeNotifications() {
             ...doc.data()
           } as Notification);
         });
-        
+
         setNotifications(notificationList);
         setLoading(false);
 
@@ -121,9 +121,9 @@ export function useRealtimeNotifications() {
       return false;
     }
 
-    const template = settings.orderTransferSettings.notificationTemplate || 
-                   "{발주지점}지점으로부터 주문이 이관되었습니다.";
-    
+    const template = settings.orderTransferSettings.notificationTemplate ||
+      "{발주지점}지점으로부터 주문이 이관되었습니다.";
+
     const message = template
       .replace('{발주지점}', orderBranchName)
       .replace('{수주지점}', processBranchName)
@@ -131,7 +131,7 @@ export function useRealtimeNotifications() {
 
     // 수주지점의 사용자들에게 알림을 보내기 위해 지점 ID를 사용
     const processBranch = branches.find(b => b.name === processBranchName);
-    
+
     return await createNotification({
       title: '주문 이관 알림',
       message,
@@ -159,7 +159,7 @@ export function useRealtimeNotifications() {
 
     // 수주지점의 사용자들에게 취소 알림을 보내기 위해 지점 ID를 사용
     const processBranch = branches.find(b => b.name === processBranchName);
-    
+
     return await createNotification({
       title: '주문 이관 취소 알림',
       message,
@@ -194,7 +194,7 @@ export function useRealtimeNotifications() {
           isRead: true
         })
       );
-      
+
       await Promise.all(updatePromises);
       return true;
     } catch (error) {
@@ -208,14 +208,14 @@ export function useRealtimeNotifications() {
     try {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const expiredNotifications = notifications.filter(
         notification => notification.createdAt.toDate() < thirtyDaysAgo
       );
 
       // 실제 삭제는 서버 사이드에서 처리하는 것이 좋습니다
       // 여기서는 클라이언트에서만 필터링
-      console.log(`${expiredNotifications.length}개의 만료된 알림이 있습니다.`);
+
       return true;
     } catch (error) {
       console.error('만료된 알림 정리 오류:', error);

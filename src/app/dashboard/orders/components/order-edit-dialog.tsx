@@ -15,15 +15,15 @@ import { Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useOrders } from "@/hooks/use-orders";
 import { useSettings } from "@/hooks/use-settings";
-import { 
-  User, 
-  Phone, 
-  Mail, 
-  Building, 
-  MapPin, 
-  Calendar, 
-  Clock, 
-  Package, 
+import {
+  User,
+  Phone,
+  Mail,
+  Building,
+  MapPin,
+  Calendar,
+  Clock,
+  Package,
   MessageSquare,
   FileText,
   CreditCard,
@@ -53,7 +53,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
   const { settings } = useSettings();
   const [isLoading, setIsLoading] = useState(false);
   const [editableDeliveryFee, setEditableDeliveryFee] = useState(0);
-  
+
   // 폼 상태
   const [formData, setFormData] = useState({
     orderer: {
@@ -85,15 +85,29 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
   // 주문 데이터가 변경될 때 폼 초기화
   useEffect(() => {
     if (order) {
+      // 날짜 데이터 처리 (Timestamp 또는 문자열)
+      let initialDate = '';
+      const rawDate = order.pickupInfo?.date || order.deliveryInfo?.date;
+
+      if (rawDate) {
+        if (rawDate instanceof Timestamp) {
+          initialDate = format(rawDate.toDate(), 'yyyy-MM-dd');
+        } else if (rawDate instanceof Date) {
+          initialDate = format(rawDate, 'yyyy-MM-dd');
+        } else {
+          initialDate = rawDate;
+        }
+      }
+
       setFormData({
         orderer: {
           name: order.orderer.name || '',
           contact: order.orderer.contact || '',
-          companyName: order.orderer.company || '',
+          company: order.orderer.company || '',
           email: order.orderer.email || ''
         },
         receiptType: order.receiptType || 'store_pickup',
-        pickupDate: order.pickupInfo?.date || order.deliveryInfo?.date || '',
+        pickupDate: initialDate,
         pickupTime: order.pickupInfo?.time || order.deliveryInfo?.time || '',
         recipient: {
           name: order.pickupInfo?.pickerName || order.deliveryInfo?.recipientName || '',
@@ -115,7 +129,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
         paymentStatus: order.payment?.status || 'pending',
         paymentMethod: order.payment?.method || 'card'
       });
-      
+
       // 기존 배송비를 초기값으로 설정
       setEditableDeliveryFee(order.summary?.deliveryFee || 0);
     }
@@ -157,7 +171,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
   const handleItemChange = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map((item, i) => 
+      items: prev.items.map((item, i) =>
         i === index ? { ...item, [field]: value } : item
       )
     }));
@@ -180,18 +194,18 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
   const calculateTotal = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const deliveryFee = formData.receiptType === 'delivery_reservation' ? editableDeliveryFee : 0;
-    
+
     // 기존 주문의 할인 정보 사용
     const discountAmount = order?.summary?.discountAmount || 0;
     const discountRate = order?.summary?.discountRate || 0;
     const pointsUsed = order?.summary?.pointsUsed || 0;
     const pointsEarned = order?.summary?.pointsEarned || 0;
-    
+
     // 할인 적용된 금액 계산
     const discountedSubtotal = subtotal - discountAmount;
     const finalSubtotal = discountedSubtotal - pointsUsed;
     const total = finalSubtotal + deliveryFee;
-    
+
     return {
       subtotal,
       discountAmount,
@@ -229,12 +243,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
         return;
       }
 
-             // 픽업/배송 날짜 시간 결합
-       let pickupDate = null;
-       if (formData.pickupDate && formData.pickupTime) {
-         const dateTime = new Date(`${formData.pickupDate}T${formData.pickupTime}`);
-         pickupDate = Timestamp.fromDate(dateTime);
-       }
+
 
       const updatedOrder = {
         orderer: {
@@ -257,16 +266,16 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
           method: formData.paymentMethod,
           status: formData.paymentStatus
         },
-                 summary: {
-           ...order.summary,
-           subtotal: calculateTotal().subtotal,
-           discountAmount: calculateTotal().discountAmount,
-           discountRate: calculateTotal().discountRate,
-           deliveryFee: calculateTotal().deliveryFee,
-           pointsUsed: calculateTotal().pointsUsed,
-           pointsEarned: calculateTotal().pointsEarned,
-           total: calculateTotal().total
-         },
+        summary: {
+          ...order.summary,
+          subtotal: calculateTotal().subtotal,
+          discountAmount: calculateTotal().discountAmount,
+          discountRate: calculateTotal().discountRate,
+          deliveryFee: calculateTotal().deliveryFee,
+          pointsUsed: calculateTotal().pointsUsed,
+          pointsEarned: calculateTotal().pointsEarned,
+          total: calculateTotal().total
+        },
         pickupInfo: (formData.receiptType === 'store_pickup' || formData.receiptType === 'pickup_reservation') ? {
           date: formData.pickupDate,
           time: formData.pickupTime,
@@ -284,12 +293,12 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
       };
 
       await updateOrder(order.id, updatedOrder);
-      
+
       toast({
         title: "성공",
         description: "주문이 성공적으로 수정되었습니다.",
       });
-      
+
       onOpenChange(false);
     } catch (error) {
       toast({
@@ -305,7 +314,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
   if (!order) return null;
 
   const totals = calculateTotal();
-  
+
 
 
   return (
@@ -385,47 +394,47 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                             <div className="space-y-2">
-                 <Label>수령 방법</Label>
-                 <div className="flex flex-row gap-4">
-                   <div className="flex items-center space-x-2">
-                     <input
-                       type="radio"
-                       id="receipt-store-pickup"
-                       name="receiptType"
-                       value="store_pickup"
-                       checked={formData.receiptType === 'store_pickup'}
-                       onChange={(e) => handleInputChange('receiptType', '', e.target.value)}
-                       className="h-4 w-4"
-                     />
-                     <Label htmlFor="receipt-store-pickup">매장픽업 (즉시)</Label>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <input
-                       type="radio"
-                       id="receipt-pickup-reservation"
-                       name="receiptType"
-                       value="pickup_reservation"
-                       checked={formData.receiptType === 'pickup_reservation'}
-                       onChange={(e) => handleInputChange('receiptType', '', e.target.value)}
-                       className="h-4 w-4"
-                     />
-                     <Label htmlFor="receipt-pickup-reservation">픽업예약</Label>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <input
-                       type="radio"
-                       id="receipt-delivery-reservation"
-                       name="receiptType"
-                       value="delivery_reservation"
-                       checked={formData.receiptType === 'delivery_reservation'}
-                       onChange={(e) => handleInputChange('receiptType', '', e.target.value)}
-                       className="h-4 w-4"
-                     />
-                     <Label htmlFor="receipt-delivery-reservation">배송예약</Label>
-                   </div>
-                 </div>
-               </div>
+              <div className="space-y-2">
+                <Label>수령 방법</Label>
+                <div className="flex flex-row gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="receipt-store-pickup"
+                      name="receiptType"
+                      value="store_pickup"
+                      checked={formData.receiptType === 'store_pickup'}
+                      onChange={(e) => handleInputChange('receiptType', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="receipt-store-pickup">매장픽업 (즉시)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="receipt-pickup-reservation"
+                      name="receiptType"
+                      value="pickup_reservation"
+                      checked={formData.receiptType === 'pickup_reservation'}
+                      onChange={(e) => handleInputChange('receiptType', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="receipt-pickup-reservation">픽업예약</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="receipt-delivery-reservation"
+                      name="receiptType"
+                      value="delivery_reservation"
+                      checked={formData.receiptType === 'delivery_reservation'}
+                      onChange={(e) => handleInputChange('receiptType', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="receipt-delivery-reservation">배송예약</Label>
+                  </div>
+                </div>
+              </div>
 
               {(formData.receiptType === 'pickup_reservation' || formData.receiptType === 'delivery_reservation') && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -599,8 +608,8 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="message-type">메시지 타입</Label>
-                  <Select 
-                    value={formData.message.type} 
+                  <Select
+                    value={formData.message.type}
                     onValueChange={(value) => handleInputChange('message', 'type', value)}
                   >
                     <SelectTrigger>
@@ -658,198 +667,198 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
             </CardContent>
           </Card>
 
-                     {/* 주문 상태 */}
-           <Card>
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
-                 <Clock className="h-4 w-4" />
-                 주문 상태
-               </CardTitle>
-             </CardHeader>
-             <CardContent className="space-y-4">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                   <Label htmlFor="order-status">주문 상태</Label>
-                   <Select 
-                     value={formData.status} 
-                     onValueChange={(value) => handleInputChange('status', '', value)}
-                   >
-                     <SelectTrigger>
-                       <SelectValue />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="processing">처리중</SelectItem>
-                       <SelectItem value="completed">완료</SelectItem>
-                       <SelectItem value="canceled">취소</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="payment-status">결제 상태</Label>
-                   <Select 
-                     value={formData.paymentStatus} 
-                     onValueChange={(value) => handleInputChange('paymentStatus', '', value)}
-                   >
-                     <SelectTrigger>
-                       <SelectValue />
-                     </SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="pending">미결</SelectItem>
-                       <SelectItem value="paid">완결</SelectItem>
-                       <SelectItem value="completed">완결</SelectItem>
-                     </SelectContent>
-                   </Select>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
+          {/* 주문 상태 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                주문 상태
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="order-status">주문 상태</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => handleInputChange('status', '', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="processing">처리중</SelectItem>
+                      <SelectItem value="completed">완료</SelectItem>
+                      <SelectItem value="canceled">취소</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payment-status">결제 상태</Label>
+                  <Select
+                    value={formData.paymentStatus}
+                    onValueChange={(value) => handleInputChange('paymentStatus', '', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">미결</SelectItem>
+                      <SelectItem value="paid">완결</SelectItem>
+                      <SelectItem value="completed">완결</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-           {/* 결제 방법 */}
-           <Card>
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
-                 <CreditCard className="h-4 w-4" />
-                 결제 방법
-               </CardTitle>
-             </CardHeader>
-             <CardContent className="space-y-4">
-               <div className="space-y-2">
-                 <Label>결제 수단</Label>
-                 <div className="flex flex-row gap-4 flex-wrap">
-                                       <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="payment-card"
-                        name="paymentMethod"
-                        value="card"
-                        checked={formData.paymentMethod === 'card'}
-                        onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor="payment-card">카드</Label>
-                    </div>
-                                       <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id="payment-cash"
-                        name="paymentMethod"
-                        value="cash"
-                        checked={formData.paymentMethod === 'cash'}
-                        onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor="payment-cash">현금</Label>
-                    </div>
-                   <div className="flex items-center space-x-2">
-                     <input
-                       type="radio"
-                       id="payment-transfer"
-                       name="paymentMethod"
-                       value="transfer"
-                       checked={formData.paymentMethod === 'transfer'}
-                       onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
-                       className="h-4 w-4"
-                     />
-                     <Label htmlFor="payment-transfer">계좌이체</Label>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <input
-                       type="radio"
-                       id="payment-mainpay"
-                       name="paymentMethod"
-                       value="mainpay"
-                       checked={formData.paymentMethod === 'mainpay'}
-                       onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
-                       className="h-4 w-4"
-                     />
-                     <Label htmlFor="payment-mainpay">메인페이</Label>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <input
-                       type="radio"
-                       id="payment-shopping-mall"
-                       name="paymentMethod"
-                       value="shopping_mall"
-                       checked={formData.paymentMethod === 'shopping_mall'}
-                       onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
-                       className="h-4 w-4"
-                     />
-                     <Label htmlFor="payment-shopping-mall">쇼핑몰</Label>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <input
-                       type="radio"
-                       id="payment-epay"
-                       name="paymentMethod"
-                       value="epay"
-                       checked={formData.paymentMethod === 'epay'}
-                       onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
-                       className="h-4 w-4"
-                     />
-                     <Label htmlFor="payment-epay">이페이</Label>
-                   </div>
-                 </div>
-               </div>
-             </CardContent>
-           </Card>
+          {/* 결제 방법 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                결제 방법
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>결제 수단</Label>
+                <div className="flex flex-row gap-4 flex-wrap">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="payment-card"
+                      name="paymentMethod"
+                      value="card"
+                      checked={formData.paymentMethod === 'card'}
+                      onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="payment-card">카드</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="payment-cash"
+                      name="paymentMethod"
+                      value="cash"
+                      checked={formData.paymentMethod === 'cash'}
+                      onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="payment-cash">현금</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="payment-transfer"
+                      name="paymentMethod"
+                      value="transfer"
+                      checked={formData.paymentMethod === 'transfer'}
+                      onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="payment-transfer">계좌이체</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="payment-mainpay"
+                      name="paymentMethod"
+                      value="mainpay"
+                      checked={formData.paymentMethod === 'mainpay'}
+                      onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="payment-mainpay">메인페이</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="payment-shopping-mall"
+                      name="paymentMethod"
+                      value="shopping_mall"
+                      checked={formData.paymentMethod === 'shopping_mall'}
+                      onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="payment-shopping-mall">쇼핑몰</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="payment-epay"
+                      name="paymentMethod"
+                      value="epay"
+                      checked={formData.paymentMethod === 'epay'}
+                      onChange={(e) => handleInputChange('paymentMethod', '', e.target.value)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="payment-epay">이페이</Label>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                     {/* 주문 요약 */}
-           <Card>
-             <CardHeader>
-               <CardTitle className="flex items-center gap-2">
-                 <CreditCard className="h-4 w-4" />
-                 주문 요약
-               </CardTitle>
-             </CardHeader>
-             <CardContent>
-               <div className="space-y-3">
-                 <div className="flex justify-between">
-                   <span className="text-sm text-muted-foreground">상품 금액</span>
-                   <span className="text-sm">₩{totals.subtotal.toLocaleString()}</span>
-                 </div>
-                 
-                 {/* 할인율 적용 */}
-                 {totals.discountRate > 0 && (
-                   <div className="flex justify-between text-green-600">
-                     <span className="text-sm">할인 ({totals.discountRate}%)</span>
-                     <span className="text-sm">-₩{totals.discountAmount.toLocaleString()}</span>
-                   </div>
-                 )}
-                 
-                 {/* 포인트 사용 */}
-                 {totals.pointsUsed > 0 && (
-                   <div className="flex justify-between text-blue-600">
-                     <span className="text-sm">포인트 사용</span>
-                     <span className="text-sm">-₩{totals.pointsUsed.toLocaleString()}</span>
-                   </div>
-                 )}
-                 
-                 {/* 배송비 */}
-                 {totals.deliveryFee > 0 && (
-                   <div className="flex justify-between">
-                     <span className="text-sm text-muted-foreground">배송비</span>
-                     <span className="text-sm">₩{totals.deliveryFee.toLocaleString()}</span>
-                   </div>
-                 )}
-                 
-                 <Separator />
-                 
-                 {/* 총 결제금액 */}
-                 <div className="flex justify-between font-medium">
-                   <span>총 결제금액</span>
-                   <span>₩{totals.total.toLocaleString()}</span>
-                 </div>
-                 
-                 {/* 포인트 적립 */}
-                 {totals.pointsEarned > 0 && (
-                   <div className="flex justify-between text-blue-600">
-                     <span className="text-sm">적립 포인트</span>
-                     <span className="text-sm">+{totals.pointsEarned.toLocaleString()} P</span>
-                   </div>
-                 )}
-               </div>
-             </CardContent>
-           </Card>
+          {/* 주문 요약 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                주문 요약
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">상품 금액</span>
+                  <span className="text-sm">₩{totals.subtotal.toLocaleString()}</span>
+                </div>
+
+                {/* 할인율 적용 */}
+                {totals.discountRate > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span className="text-sm">할인 ({totals.discountRate}%)</span>
+                    <span className="text-sm">-₩{totals.discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
+
+                {/* 포인트 사용 */}
+                {totals.pointsUsed > 0 && (
+                  <div className="flex justify-between text-blue-600">
+                    <span className="text-sm">포인트 사용</span>
+                    <span className="text-sm">-₩{totals.pointsUsed.toLocaleString()}</span>
+                  </div>
+                )}
+
+                {/* 배송비 */}
+                {totals.deliveryFee > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">배송비</span>
+                    <span className="text-sm">₩{totals.deliveryFee.toLocaleString()}</span>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* 총 결제금액 */}
+                <div className="flex justify-between font-medium">
+                  <span>총 결제금액</span>
+                  <span>₩{totals.total.toLocaleString()}</span>
+                </div>
+
+                {/* 포인트 적립 */}
+                {totals.pointsEarned > 0 && (
+                  <div className="flex justify-between text-blue-600">
+                    <span className="text-sm">적립 포인트</span>
+                    <span className="text-sm">+{totals.pointsEarned.toLocaleString()} P</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <DialogFooter className="flex gap-2">

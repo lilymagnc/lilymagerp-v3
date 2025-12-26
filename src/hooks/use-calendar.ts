@@ -49,7 +49,7 @@ export function useCalendar() {
     try {
       setLoading(true);
       const eventsRef = collection(db, 'calendarEvents');
-      
+
       // 사용자 권한에 따른 쿼리 조건
       let q;
       if (user.role === '본사 관리자') {
@@ -126,12 +126,12 @@ export function useCalendar() {
       };
 
       await addDoc(collection(db, 'calendarEvents'), eventData);
-      
+
       toast({
         title: '일정 추가 완료',
         description: '일정이 성공적으로 추가되었습니다.'
       });
-      
+
       await fetchEvents();
     } catch (error) {
       console.error('Error creating event:', error);
@@ -170,12 +170,12 @@ export function useCalendar() {
       }
 
       await updateDoc(eventRef, updateData);
-      
+
       toast({
         title: '일정 수정 완료',
         description: '일정이 성공적으로 수정되었습니다.'
       });
-      
+
       await fetchEvents();
     } catch (error) {
       console.error('Error updating event:', error);
@@ -199,17 +199,17 @@ export function useCalendar() {
     }
 
     try {
-      console.log('삭제 시작:', eventId);
+
       await deleteDoc(doc(db, 'calendarEvents', eventId));
-      console.log('Firebase에서 삭제 완료:', eventId);
-      
+
+
       toast({
         title: '일정 삭제 완료',
         description: '일정이 성공적으로 삭제되었습니다.'
       });
-      
+
       await fetchEvents();
-      console.log('이벤트 목록 새로고침 완료');
+
     } catch (error) {
       console.error('Error deleting event:', error);
       toast({

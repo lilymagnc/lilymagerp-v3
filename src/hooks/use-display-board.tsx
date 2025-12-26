@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  doc, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  query,
+  where,
+  orderBy,
   onSnapshot,
   serverTimestamp,
   Timestamp
@@ -31,7 +31,7 @@ export function useDisplayBoard() {
   const [displayItems, setDisplayItems] = useState<DisplayBoardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const { settings } = useSettings();
 
   // 전광판 아이템 실시간 구독
@@ -62,7 +62,7 @@ export function useDisplayBoard() {
             ...doc.data()
           } as DisplayBoardItem);
         });
-        
+
         setDisplayItems(items);
         setLoading(false);
       },
@@ -80,7 +80,7 @@ export function useDisplayBoard() {
   const createDisplayItem = useCallback(async (itemData: Omit<DisplayBoardItem, 'id' | 'createdAt' | 'expiresAt'>) => {
     try {
       const displayBoardRef = collection(db, 'display_board');
-      
+
       // 표시 시간 설정 (기본 30분)
       const displayDuration = settings?.orderTransferSettings?.displayBoardDuration || 30;
       const expiresAt = new Date();
@@ -107,18 +107,10 @@ export function useDisplayBoard() {
     transferReason: string,
     status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled'
   ) => {
-    console.log('전광판 아이템 생성 시작:', {
-      transferId,
-      orderBranchName,
-      processBranchName,
-      orderAmount,
-      transferReason,
-      status,
-      displayBoardEnabled: settings?.orderTransferSettings?.displayBoardEnabled
-    });
-    
+
+
     if (!settings?.orderTransferSettings?.displayBoardEnabled) {
-      console.log('전광판이 비활성화되어 있음');
+
       return false;
     }
 
@@ -131,8 +123,8 @@ export function useDisplayBoard() {
       status,
       isActive: true
     });
-    
-    console.log('전광판 아이템 생성 결과:', result);
+
+
     return result;
   }, [createDisplayItem, settings?.orderTransferSettings?.displayBoardEnabled]);
 
@@ -165,7 +157,7 @@ export function useDisplayBoard() {
       );
 
       await Promise.all(deactivatePromises);
-      console.log(`${expiredItems.length}개의 만료된 전광판 아이템을 비활성화했습니다.`);
+
       return true;
     } catch (error) {
       console.error('만료된 전광판 아이템 정리 오류:', error);

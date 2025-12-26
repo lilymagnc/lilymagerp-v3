@@ -283,7 +283,7 @@ export default function DashboardPage() {
       }
 
       // 주문 데이터로 매출 계산
-      console.log(`🔍 총 ${allOrders.length}개의 주문을 처리 중...`);
+
       let paidOrdersCount = 0;
       let completedOrdersCount = 0;
       let pendingOrdersCount = 0;
@@ -340,7 +340,7 @@ export default function DashboardPage() {
         }
       });
 
-      console.log(`📊 Payment Status 통계: paid=${paidOrdersCount}, completed=${completedOrdersCount}, pending=${pendingOrdersCount}`);
+
 
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByDate).map(([date, branchSales]) => {
@@ -707,7 +707,7 @@ export default function DashboardPage() {
       }
 
       // 주문 데이터로 매출 계산
-      console.log(`🔍 지점 ${userBranch}의 총 ${userBranchOrders.length}개의 주문을 처리 중...`);
+
       let paidOrdersCount = 0;
       let completedOrdersCount = 0;
       let pendingOrdersCount = 0;
@@ -762,7 +762,7 @@ export default function DashboardPage() {
         }
       });
 
-      console.log(`📊 지점 ${userBranch} Payment Status 통계: paid=${paidOrdersCount}, completed=${completedOrdersCount}, pending=${pendingOrdersCount}`);
+
 
       // 차트 데이터 형식으로 변환
       return Object.entries(salesByWeek).map(([week, { sales, start, end }]) => {
