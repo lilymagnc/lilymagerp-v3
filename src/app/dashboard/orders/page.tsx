@@ -1336,13 +1336,14 @@ export default function OrdersPage() {
                   </Button>
                 </TableHead>
                 <TableHead>주문일</TableHead>
+                <TableHead>픽업/배송일</TableHead>
                 <TableHead>주문자/회사명</TableHead>
                 <TableHead>상품명</TableHead>
                 <TableHead>출고지점</TableHead>
                 <TableHead>결제수단</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead className="text-right">금액</TableHead>
-                <TableHead className="text-right">작업</TableHead>
+                <TableHead className="text-right flex-shrink-0 w-16">작업</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1350,6 +1351,7 @@ export default function OrdersPage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-4 w-6" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>
@@ -1395,7 +1397,32 @@ export default function OrdersPage() {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        {order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}
+                        <div className="flex flex-col">
+                          <span className="text-xs">{order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}</span>
+                          <span className="text-[10px] text-muted-foreground">{order.orderDate && format((order.orderDate as Timestamp).toDate(), 'HH:mm')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const info = order.receiptType === 'delivery_reservation' ? order.deliveryInfo : order.pickupInfo;
+                          if (!info || !info.date) return <span className="text-muted-foreground">-</span>;
+                          return (
+                            <div className="flex flex-col">
+                              <span className={cn(
+                                "text-xs font-medium italic",
+                                order.status === 'processing' ? "text-red-600" : "text-blue-600"
+                              )}>
+                                {info.date}
+                              </span>
+                              <span className={cn(
+                                "text-[10px] font-medium",
+                                order.status === 'processing' ? "text-red-500" : "text-blue-500"
+                              )}>
+                                {info.time || ''}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="max-w-xs">
                         <div className="truncate" title={getOrdererDisplay(order.orderer)}>
