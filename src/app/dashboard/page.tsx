@@ -1632,7 +1632,7 @@ export default function DashboardPage() {
                 <SelectContent>
                   <SelectItem value="전체">전체 지점</SelectItem>
                   {availableBranches.map((branch) => (
-                    <SelectItem key={branch.name} value={branch.name}>
+                    <SelectItem key={branch.id} value={branch.name}>
                       {branch.name}
                     </SelectItem>
                   ))}
@@ -1794,7 +1794,7 @@ export default function DashboardPage() {
                     <Tooltip content={<CustomTooltip />} />
                     {availableBranches.map((branch, index) => (
                       <Bar
-                        key={branch.name}
+                        key={branch.id}
                         dataKey={branch.name}
                         stackId="a"
                         radius={[4, 4, 0, 0]}
@@ -1864,7 +1864,7 @@ export default function DashboardPage() {
                   <Tooltip content={<CustomTooltip />} />
                   {availableBranches.map((branch, index) => (
                     <Bar
-                      key={branch.name}
+                      key={branch.id}
                       dataKey={branch.name}
                       stackId="a"
                       radius={[4, 4, 0, 0]}
@@ -1934,7 +1934,7 @@ export default function DashboardPage() {
                 <Tooltip content={<CustomTooltip />} />
                 {availableBranches.map((branch, index) => (
                   <Bar
-                    key={branch.name}
+                    key={branch.id}
                     dataKey={branch.name}
                     stackId="a"
                     radius={[4, 4, 0, 0]}

@@ -174,12 +174,21 @@ export function useBranches() {
         });
       }
 
-      branchesData.sort((a, b) => {
+      // 이름 중복 제거 (이름이 같은 지점이 여러 개일 경우 첫 번째 항목만 유지)
+      const uniqueBranchesMap = new Map();
+      branchesData.forEach(branch => {
+        if (!uniqueBranchesMap.has(branch.name)) {
+          uniqueBranchesMap.set(branch.name, branch);
+        }
+      });
+      const uniqueBranchesData = Array.from(uniqueBranchesMap.values()) as Branch[];
+
+      uniqueBranchesData.sort((a, b) => {
         if (a.type === '본사') return -1;
         if (b.type === '본사') return 1;
         return a.name.localeCompare(b.name);
       });
-      setBranches(branchesData);
+      setBranches(uniqueBranchesData);
     } catch (error) {
       toast({
         variant: 'destructive',
