@@ -21,7 +21,7 @@ const BulletinBoard = () => {
   const [boardData, setBoardData] = useState<string[]>([]);
   const [weatherLine, setWeatherLine] = useState("🌤️ 날씨 정보 로딩 중...");
   const { user } = useAuth();
-  const { orders = [] } = useOrders(); 
+  const { orders = [] } = useOrders();
   const { events = [] } = useCalendar();
 
   // Effect for fetching weather based on location
@@ -72,11 +72,11 @@ const BulletinBoard = () => {
         const upcomingDeliveries = relevantOrders
           .filter(o => (o.deliveryInfo?.date === todayString || o.deliveryInfo?.date === tomorrowString) && o.status !== 'completed')
           .sort((a, b) => (a.deliveryInfo?.time || '').localeCompare(b.deliveryInfo?.time || ''))
-          .map(o => `🚚 ${o.deliveryInfo?.time || '시간미정'} 배송: ${o.orderer?.name || '정보없음'}`);
+          .map(o => `🚚 [${o.deliveryInfo?.date === todayString ? '오늘' : '내일'}] ${o.deliveryInfo?.time || '시간미정'} 배송: ${o.orderer?.name || '정보없음'}`);
         const upcomingPickups = relevantOrders
           .filter(o => (o.pickupInfo?.date === todayString || o.pickupInfo?.date === tomorrowString) && o.status !== 'completed')
           .sort((a, b) => (a.pickupInfo?.time || '').localeCompare(b.pickupInfo?.time || ''))
-          .map(o => `📦 ${o.pickupInfo?.time || '시간미정'} 픽업: ${o.orderer?.name || '정보없음'}`);
+          .map(o => `📦 [${o.pickupInfo?.date === todayString ? '오늘' : '내일'}] ${o.pickupInfo?.time || '시간미정'} 픽업: ${o.orderer?.name || '정보없음'}`);
         finalData.push(...upcomingDeliveries, ...upcomingPickups);
       }
 
@@ -88,15 +88,15 @@ const BulletinBoard = () => {
           const endDate = event.endDate ? startOfDay(event.endDate) : startDate;
           const hasStarted = isEqual(today, startDate) || isAfter(today, startDate);
           const hasNotEnded = isEqual(today, endDate) || isBefore(today, endDate);
-          
+
           // 공지 대상 필터링
           if (user?.role === '본사 관리자') {
             // 본사 관리자는 모든 공지를 볼 수 있음
             return hasStarted && hasNotEnded;
           } else {
             // 지점 사용자는 전체 공지와 자신의 지점 공지만 볼 수 있음
-            return hasStarted && hasNotEnded && 
-                   (event.branchName === '전체' || event.branchName === user?.franchise);
+            return hasStarted && hasNotEnded &&
+              (event.branchName === '전체' || event.branchName === user?.franchise);
           }
         })
         .map(event => `📢 ${event.title}`);
@@ -120,7 +120,7 @@ const BulletinBoard = () => {
       <div className="absolute w-max flex flex-row items-center animate-scroll-left">
         {displayData.map((item, index) => (
           <React.Fragment key={index}>
-            <p 
+            <p
               className="text-white text-2xl font-bold whitespace-nowrap px-6"
               dangerouslySetInnerHTML={{
                 __html: item.replace(/(오늘|내일|배송|픽업|건)/g, '<span class="text-yellow-300">$1</span>')
