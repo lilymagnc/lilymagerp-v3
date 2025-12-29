@@ -247,10 +247,11 @@ export default function PickupDeliveryPage() {
       // 처리중인 주문을 먼저 표시
       if (a.status === 'processing' && b.status !== 'processing') return -1;
       if (a.status !== 'processing' && b.status === 'processing') return 1;
-      // 픽업 예정일 기준 정렬
+
+      // 같은 상태 내에서는 최근 날짜(픽업 예정일)가 먼저 오도록 내림차순 정렬
       const aDate = a.pickupInfo?.date || '';
       const bDate = b.pickupInfo?.date || '';
-      return aDate.localeCompare(bDate);
+      return bDate.localeCompare(aDate);
     });
   }, [orders, selectedBranch, searchTerm, isAdmin, userBranch, startDate, endDate, dateFilterType]);
 
@@ -300,10 +301,11 @@ export default function PickupDeliveryPage() {
       // 처리중인 주문을 먼저 표시
       if (a.status === 'processing' && b.status !== 'processing') return -1;
       if (a.status !== 'processing' && b.status === 'processing') return 1;
-      // 배송 예정일 기준 정렬
+
+      // 같은 상태 내에서는 최근 날짜(배송 예정일)가 먼저 오도록 내림차순 정렬
       const aDate = a.deliveryInfo?.date || '';
       const bDate = b.deliveryInfo?.date || '';
-      return aDate.localeCompare(bDate);
+      return bDate.localeCompare(aDate);
     });
   }, [orders, selectedBranch, searchTerm, isAdmin, userBranch, startDate, endDate, dateFilterType]);
   // 배송 주문 필터링 (배송비 관리용 - 완료 전 주문도 포함)

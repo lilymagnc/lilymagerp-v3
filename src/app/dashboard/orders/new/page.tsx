@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
-import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, ChevronDown, ChevronUp, Loader2, Plus } from "lucide-react";
+import { MinusCircle, PlusCircle, Trash2, Store, Search, Calendar as CalendarIcon, ChevronDown, ChevronUp, Loader2, Plus, Star } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch, initialBranches } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -181,7 +181,24 @@ export default function NewOrderPage() {
     // 선택한 지점의 상품만 표시 (본사 관리자도 선택한 지점만)
     return allProducts.filter(p => p.branch === selectedBranch.name);
   }, [allProducts, selectedBranch]);
-  const mainCategories = useMemo(() => [...new Set(branchProducts.map(p => p.mainCategory).filter(Boolean))], [branchProducts]);
+  const mainCategories = useMemo(() => {
+    const categories = [...new Set(branchProducts.map(p => p.mainCategory).filter(Boolean))];
+    const preferredOrder = ['플랜트', '플라워', '자재', '기타상품', '어버이날상품'];
+
+    return categories.sort((a, b) => {
+      const indexA = preferredOrder.indexOf(a);
+      const indexB = preferredOrder.indexOf(b);
+
+      // 둘 다 우선순위 목록에 있는 경우
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      // b만 목록에 있는 경우 a를 뒤로
+      if (indexA === -1 && indexB !== -1) return 1;
+      // a만 목록에 있는 경우 a를 앞으로
+      if (indexA !== -1 && indexB === -1) return -1;
+      // 둘 다 없는 경우 가나다순
+      return a.localeCompare(b);
+    });
+  }, [branchProducts]);
   const midCategories = useMemo(() => {
     if (!selectedMainCategory) return [];
     return [...new Set(branchProducts.filter(p => p.mainCategory === selectedMainCategory).map(p => p.midCategory).filter(Boolean))];
@@ -206,6 +223,44 @@ export default function NewOrderPage() {
       return orderDate.getTime() === today.getTime();
     })
   }, [orders, selectedBranch]);
+
+  // 지점별 자주 나가는 상품 10가지 계산 (부족분은 해당 지점 상품으로 채움)
+  const topProducts = useMemo(() => {
+    if (!branchProducts.length || !selectedBranch) return [];
+
+    const productCounts: Record<string, number> = {};
+    orders.forEach(order => {
+      // 해당 지점의 주문만 필터링 (ID 또는 이름 일치)
+      if (order.branchId === selectedBranch.id || order.branchName === selectedBranch.name) {
+        order.items.forEach(item => {
+          if (item.id) {
+            productCounts[item.id] = (productCounts[item.id] || 0) + item.quantity;
+          }
+        });
+      }
+    });
+
+    // 1. 해당 지점에서 실제 판매량이 있는 상품들
+    const soldProducts = Object.entries(productCounts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([id]) => branchProducts.find(p => p.id === id))
+      .filter((p): p is Product => p !== undefined);
+
+    // 2. 해당 지점의 전체 가용 상품 목록 구성
+    const allAvailable = [...soldProducts];
+
+    // 10개가 안 될 경우 해당 지점의 다른 상품들로 보충
+    if (allAvailable.length < 10) {
+      const remaining = branchProducts
+        .filter(p => !allAvailable.find(ap => ap.id === p.id))
+        // 재고 있는 상품 우선 정렬
+        .sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0));
+      allAvailable.push(...remaining);
+    }
+
+    // 최종 10개만 반환 (지점별 맞춤 배열)
+    return allAvailable.slice(0, 10);
+  }, [branchProducts, orders, selectedBranch]);
   // 사용자 역할에 따른 자동 지점 선택
   useEffect(() => {
     if (user && branches.length > 0 && !selectedBranch) {
@@ -877,6 +932,28 @@ export default function NewOrderPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {topProducts.length > 0 && selectedBranch && (
+                          <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <span className="text-xs font-bold text-primary flex items-center gap-1.5 px-1">
+                              <Star className="h-3.5 w-3.5 fill-primary" /> {selectedBranch.name} 인기 상품 (Top 10)
+                            </span>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                              {topProducts.map(p => (
+                                <Button
+                                  key={`top-${p.docId}`}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-auto py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] leading-tight hover:bg-white hover:text-primary hover:border-primary transition-all bg-white/50"
+                                  onClick={() => handleAddProduct(p.docId)}
+                                  disabled={p.stock === 0}
+                                >
+                                  <span className="font-semibold text-slate-700 truncate w-full text-center">{p.name}</span>
+                                  <span className="text-[10px] text-slate-500 font-medium">₩{p.price.toLocaleString()}</span>
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           {productsLoading ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
