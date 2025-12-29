@@ -17,6 +17,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
 import { useBranches } from '@/hooks/use-branches';
 import { useSettings } from '@/hooks/use-settings';
@@ -31,6 +32,23 @@ import {
   TransferStats,
   TransferPermissions
 } from '@/types/order-transfer';
+
+// Supabase 이관 동기화 도우미 함수
+export const syncTransferToSupabase = async (transfer: OrderTransfer) => {
+  try {
+    const { error } = await supabase.from('order_transfers').upsert({
+      id: transfer.id,
+      order_id: transfer.originalOrderId,
+      from_branch: transfer.orderBranchName,
+      to_branch: transfer.processBranchName,
+      status: transfer.status,
+      raw_data: transfer
+    });
+    if (error) console.error('Supabase Transfer Sync Error:', error);
+  } catch (err) {
+    console.error('Supabase Transfer Sync Exception:', err);
+  }
+};
 
 export function useOrderTransfers() {
   const [transfers, setTransfers] = useState<OrderTransfer[]>([]);

@@ -2,12 +2,30 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from './use-toast';
 import { PartnerFormValues } from '@/app/dashboard/partners/components/partner-form';
 export interface Partner extends PartnerFormValues {
   id: string;
   createdAt: string;
 }
+
+// Supabase 거래처 동기화 도우미 함수
+export const syncPartnerToSupabase = async (partner: Partner) => {
+  try {
+    const p = partner as any;
+    const { error } = await supabase.from('partners').upsert({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      contact: p.phone || p.contact || '',
+      raw_data: p
+    });
+    if (error) console.error('Supabase Partner Sync Error:', error);
+  } catch (err) {
+    console.error('Supabase Partner Sync Exception:', err);
+  }
+};
 export function usePartners() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,11 +35,11 @@ export function usePartners() {
       setLoading(true);
       const partnersCollection = collection(db, 'partners');
       const partnersData = (await getDocs(partnersCollection)).docs.map(doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         return {
           id: doc.id,
           ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString()),
         } as Partner;
       });
       setPartners(partnersData);
@@ -46,9 +64,12 @@ export function usePartners() {
         ...data,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, 'partners'), partnerWithTimestamp);
+      const docRef = await addDoc(collection(db, 'partners'), partnerWithTimestamp);
       toast({ title: "성공", description: "새 거래처가 추가되었습니다." });
       await fetchPartners();
+
+      // Supabase 동기화
+      syncPartnerToSupabase({ id: docRef.id, ...data } as any);
     } catch (error) {
       console.error("Error adding partner:", error);
       toast({ variant: 'destructive', title: '오류', description: '거래처 추가 중 오류가 발생했습니다.' });
@@ -63,6 +84,9 @@ export function usePartners() {
       await setDoc(partnerDocRef, data, { merge: true });
       toast({ title: "성공", description: "거래처 정보가 수정되었습니다." });
       await fetchPartners();
+
+      // Supabase 동기화
+      syncPartnerToSupabase({ id, ...data } as any);
     } catch (error) {
       console.error("Error updating partner:", error);
       toast({ variant: 'destructive', title: '오류', description: '거래처 정보 수정 중 오류가 발생했습니다.' });
@@ -76,6 +100,9 @@ export function usePartners() {
       await deleteDoc(doc(db, 'partners', id));
       toast({ title: "성공", description: "거래처 정보가 삭제되었습니다." });
       await fetchPartners();
+
+      // Supabase 삭제
+      await supabase.from('partners').delete().eq('id', id);
     } catch (error) {
       console.error("Error deleting partner:", error);
       toast({ variant: 'destructive', title: '오류', description: '거래처 삭제 중 오류가 발생했습니다.' });
@@ -112,9 +139,9 @@ export function usePartners() {
           getDocs(contactPersonQuery)
         ]);
         // 중복 조건: 거래처명이 같거나, 연락처가 같거나, 담당자가 같으면 중복
-        const isDuplicate = !nameSnapshot.empty || 
-                           (!partnerData.contact && !contactSnapshot.empty) || 
-                           (!partnerData.contactPerson && !contactPersonSnapshot.empty);
+        const isDuplicate = !nameSnapshot.empty ||
+          (!partnerData.contact && !contactSnapshot.empty) ||
+          (!partnerData.contactPerson && !contactPersonSnapshot.empty);
         if (isDuplicate) {
           duplicateCount++;
           return; // 중복 데이터는 저장하지 않음
@@ -130,14 +157,14 @@ export function usePartners() {
     }));
     setLoading(false);
     if (errorCount > 0) {
-      toast({ 
-        variant: 'destructive', 
-        title: '일부 처리 오류', 
-        description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
+      toast({
+        variant: 'destructive',
+        title: '일부 처리 오류',
+        description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.`
       });
     }
-    toast({ 
-      title: '처리 완료', 
+    toast({
+      title: '처리 완료',
       description: `성공: 신규 거래처 ${newCount}개 추가, 중복 데이터 ${duplicateCount}개 제외.`
     });
     await fetchPartners();

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, doc, addDoc, updateDoc, deleteDoc, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query, where, orderBy, getDocs, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
 
@@ -36,6 +37,25 @@ export interface CreateCalendarEventData {
   isAllDay?: boolean;
 }
 
+// Supabase 일정 동기화 도우미 함수
+export const syncEventToSupabase = async (event: CalendarEvent) => {
+  try {
+    const { error } = await supabase.from('calendar_events').upsert({
+      id: event.id,
+      title: event.title,
+      start_date: event.startDate.toISOString(),
+      end_date: event.endDate?.toISOString() || null,
+      type: event.type,
+      status: event.status,
+      branch_name: event.branchName,
+      raw_data: event
+    });
+    if (error) console.error('Supabase Event Sync Error:', error);
+  } catch (err) {
+    console.error('Supabase Event Sync Exception:', err);
+  }
+};
+
 export function useCalendar() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +88,7 @@ export function useCalendar() {
       const eventsData: CalendarEvent[] = [];
 
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data() as any;
         eventsData.push({
           id: doc.id,
           type: data.type,
@@ -125,7 +145,6 @@ export function useCalendar() {
         createdByBranch: user.franchise // 작성자 지점 저장
       };
 
-      await addDoc(collection(db, 'calendarEvents'), eventData);
 
       toast({
         title: '일정 추가 완료',
@@ -133,6 +152,10 @@ export function useCalendar() {
       });
 
       await fetchEvents();
+
+      // Supabase 동기화
+      const docRef = await addDoc(collection(db, 'calendarEvents'), eventData);
+      syncEventToSupabase({ id: docRef.id, ...data, startDate: data.startDate, createdAt: new Date(), updatedAt: new Date(), createdBy: user.uid } as any);
     } catch (error) {
       console.error('Error creating event:', error);
       toast({
@@ -177,6 +200,20 @@ export function useCalendar() {
       });
 
       await fetchEvents();
+
+      // Supabase 동기화 (Background)
+      const updatedDoc = await getDoc(eventRef);
+      if (updatedDoc.exists()) {
+        const d = updatedDoc.data();
+        syncEventToSupabase({
+          id: eventId,
+          ...d,
+          startDate: d.startDate.toDate(),
+          endDate: d.endDate?.toDate(),
+          createdAt: d.createdAt.toDate(),
+          updatedAt: d.updatedAt.toDate()
+        } as any);
+      }
     } catch (error) {
       console.error('Error updating event:', error);
       toast({
@@ -201,7 +238,7 @@ export function useCalendar() {
     try {
 
       await deleteDoc(doc(db, 'calendarEvents', eventId));
-
+      console.log('Firebase에서 삭제 완료:', eventId);
 
       toast({
         title: '일정 삭제 완료',
@@ -210,6 +247,9 @@ export function useCalendar() {
 
       await fetchEvents();
 
+      // Supabase 삭제
+      await supabase.from('calendar_events').delete().eq('id', eventId);
+      console.log('이벤트 목록 새로고침 완료');
     } catch (error) {
       console.error('Error deleting event:', error);
       toast({

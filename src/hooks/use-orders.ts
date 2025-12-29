@@ -1,10 +1,12 @@
 
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc, deleteDoc, limit, startAt, endAt } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
+import { subDays, startOfDay } from 'date-fns';
 // Simplified version for the form
 interface OrderItemForm {
   id: string;
@@ -87,6 +89,30 @@ export interface OrderData {
   request: string;
   source?: 'excel_upload' | 'manual'; // 출처 표시
 }
+
+// Supabase 동기화 도우미 함수
+export const syncOrderToSupabase = async (order: Order) => {
+  try {
+    const { error } = await supabase.from('orders').upsert({
+      id: order.id,
+      branch_id: order.branchId,
+      branch_name: order.branchName,
+      order_date: order.orderDate instanceof Timestamp ? order.orderDate.toDate().toISOString() : order.orderDate,
+      status: order.status,
+      orderer_name: order.orderer.name,
+      orderer_contact: order.orderer.contact,
+      total_amount: order.summary.total,
+      payment_status: order.payment.status,
+      payment_method: order.payment.method,
+      receipt_type: order.receiptType,
+      raw_data: order,
+      updated_at: new Date().toISOString()
+    });
+    if (error) console.error('Supabase Sync Error:', error);
+  } catch (err) {
+    console.error('Supabase Sync Exception:', err);
+  }
+};
 export interface Order extends Omit<OrderData, 'orderDate'> {
   id: string;
   orderDate: Timestamp;
@@ -119,44 +145,37 @@ export function useOrders() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (days: number = 90) => {
     try {
       setLoading(true);
 
-      // Firebase 연결 상태 확인
       if (!db) {
         throw new Error('Firebase Firestore is not initialized');
       }
 
       const ordersCollection = collection(db, 'orders');
-      let q = query(ordersCollection, orderBy("orderDate", "desc"));
 
-      // 지점 사용자의 경우 자신의 지점 주문과 이관받은 주문을 모두 조회
-      if (user?.franchise && user?.role !== '본사 관리자') {
-        // 현재 지점의 주문과 이관받은 주문을 모두 조회
-        // 이는 클라이언트 사이드에서 필터링하므로 모든 주문을 가져옴
+      // 날짜 필터 추가 (최근 N일)
+      const startDate = Timestamp.fromDate(subDays(startOfDay(new Date()), days));
 
-      }
+      let q = query(
+        ordersCollection,
+        where("orderDate", ">=", startDate),
+        orderBy("orderDate", "desc")
+      );
 
-      // 타임아웃 설정을 더 길게 설정
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), 30000)
       );
 
-      const queryPromise = getDocs(q);
-      const querySnapshot = await Promise.race([queryPromise, timeoutPromise]) as any;
-
-
+      const querySnapshot = await Promise.race([getDocs(q), timeoutPromise]) as any;
 
       const ordersData = querySnapshot.docs.map((doc: any) => {
         const data = doc.data();
-        // Legacy data migration: convert old receiptType values to new ones
         let receiptType = data.receiptType;
-        if (receiptType === 'pickup') {
-          receiptType = 'pickup_reservation';
-        } else if (receiptType === 'delivery') {
-          receiptType = 'delivery_reservation';
-        }
+        if (receiptType === 'pickup') receiptType = 'pickup_reservation';
+        else if (receiptType === 'delivery') receiptType = 'delivery_reservation';
+
         return {
           id: doc.id,
           ...data,
@@ -164,9 +183,6 @@ export function useOrders() {
         } as Order;
       });
 
-
-
-      // 중복 제거 (ID 기준) - 혹시 모를 중복 방지
       const uniqueOrdersMap = new Map();
       ordersData.forEach((order: any) => {
         uniqueOrdersMap.set(order.id, order);
@@ -176,11 +192,57 @@ export function useOrders() {
       setOrders(uniqueOrders);
     } catch (error) {
       console.error('주문 데이터 로딩 오류:', error);
-      // 주문 정보 로딩 오류는 조용히 처리하되, 콘솔에는 로그 남김
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
+
+  // 특정 기간 주문 조회 (비용 효율적)
+  const fetchOrdersByRange = useCallback(async (start: Date, end: Date) => {
+    try {
+      setLoading(true);
+      const ordersCollection = collection(db, 'orders');
+      const q = query(
+        ordersCollection,
+        where("orderDate", ">=", Timestamp.fromDate(start)),
+        where("orderDate", "<=", Timestamp.fromDate(end)),
+        orderBy("orderDate", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      const ordersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Order[];
+      setOrders(ordersData);
+      return ordersData;
+    } catch (error) {
+      console.error('Range 주문 로딩 오류:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 명시적으로 전체 주문 조회 (주의: 읽기 비용 발생)
+  const fetchAllOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const ordersCollection = collection(db, 'orders');
+      const q = query(ordersCollection, orderBy("orderDate", "desc"));
+      const querySnapshot = await getDocs(q);
+      const ordersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Order[];
+      setOrders(ordersData);
+      return ordersData;
+    } catch (error) {
+      console.error('전체 주문 로딩 오류:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
@@ -308,6 +370,11 @@ export function useOrders() {
       });
 
       await fetchOrders();
+
+      // Supabase 동기화 (Background)
+      const newOrder = { id: orderDocRef.id, ...finalOrderPayload } as any;
+      syncOrderToSupabase(newOrder);
+
       return orderDocRef.id; // 주문 ID 반환
     } catch (error) {
       toast({
@@ -404,6 +471,13 @@ export function useOrders() {
         description: `주문 상태가 '${newStatus}'(으)로 변경되었습니다.`,
       });
       await fetchOrders();
+
+      // Supabase 상태 동기화
+      try {
+        await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
+      } catch (sbErr) {
+        console.error('Supabase Status Update Error:', sbErr);
+      }
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -810,7 +884,20 @@ export function useOrders() {
     }
   };
 
-  return { orders, loading, addOrder, fetchOrders, updateOrderStatus, updatePaymentStatus, updateOrder, cancelOrder, deleteOrder, completeDelivery };
+  return {
+    orders,
+    loading,
+    addOrder,
+    fetchOrders,
+    fetchOrdersByRange,
+    fetchAllOrders,
+    updateOrderStatus,
+    updatePaymentStatus,
+    updateOrder,
+    cancelOrder,
+    deleteOrder,
+    completeDelivery
+  };
 }
 // 주문자 정보로 고객 등록/업데이트 함수
 const registerCustomerFromOrder = async (orderData: OrderData) => {

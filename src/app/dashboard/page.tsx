@@ -16,10 +16,18 @@ import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useOrders } from "@/hooks/use-orders";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isToday } from "date-fns";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO, isToday, startOfYear } from "date-fns";
 import { ko } from "date-fns/locale";
 import { getWeatherInfo, getWeatherEmoji, WeatherInfo } from "@/lib/weather-service";
 import BulletinBoard from '@/components/dashboard/bulletin-board';
+import {
+  getSupabaseDashboardStats,
+  getSupabaseDailySales,
+  getSupabaseBranchSales,
+  getSupabaseWeeklySales,
+  getSupabaseMonthlySales,
+  getSupabaseRecentOrders
+} from "@/lib/supabase-stats";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -143,7 +151,7 @@ export default function DashboardPage() {
   const [weeklyStartDate, setWeeklyStartDate] = useState(format(new Date(Date.now() - 56 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'));
   const [weeklyEndDate, setWeeklyEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  const [monthlyStartDate, setMonthlyStartDate] = useState(format(new Date(new Date().getFullYear(), new Date().getMonth() - 11, 1), 'yyyy-MM-dd'));
+  const [monthlyStartDate, setMonthlyStartDate] = useState(format(new Date(new Date().getFullYear(), 0, 1), 'yyyy-MM-dd'));
   const [monthlyEndDate, setMonthlyEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   // 기존 날짜 상태 (다른 용도로 사용)
@@ -246,13 +254,11 @@ export default function DashboardPage() {
       const end = endDate || new Date();
       const start = startDate || (() => {
         const date = new Date();
-        date.setDate(date.getDate() - 13); // 기본 14일간
+        date.setDate(date.getDate() - 13);
         return date;
       })();
 
-      // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
-      const startOfDay = new Date(start);
-      startOfDay.setHours(0, 0, 0, 0);
+      const data = await getSupabaseDailySales(start.toISOString(), end.toISOString());
 
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
@@ -269,10 +275,10 @@ export default function DashboardPage() {
       const salesByDate: { [key: string]: { [branchName: string]: number } } = {};
 
       // 선택된 기간 날짜 초기화
-      const daysDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.ceil((endOfDay.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       for (let i = 0; i <= daysDiff; i++) {
-        const date = new Date(startOfDay);
-        date.setDate(startOfDay.getDate() + i);
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
         const dateKey = format(date, 'yyyy-MM-dd');
         salesByDate[dateKey] = {};
 
@@ -347,12 +353,11 @@ export default function DashboardPage() {
         const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
         const dateObj = parseISO(date);
         const weekday = koreanWeekdays[dateObj.getDay()];
-
         return {
           date: `${format(dateObj, 'M/d')} (${weekday})`,
-          totalSales,
-          branchSales,
-          ...branchSales // 각 지점별 매출을 개별 속성으로 추가
+          totalSales: totalSales,
+          branchSales: branchSales,
+          ...branchSales
         };
       });
     } catch (error) {
@@ -367,87 +372,18 @@ export default function DashboardPage() {
       const end = endDate || new Date();
       const start = startDate || (() => {
         const date = new Date();
-        date.setDate(date.getDate() - 13); // 기본 14일간
+        date.setDate(date.getDate() - 13);
         return date;
       })();
 
-      // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
-      const startOfDay = new Date(start);
-      startOfDay.setHours(0, 0, 0, 0);
+      const data = await getSupabaseDailySales(start.toISOString(), end.toISOString(), userBranch || undefined);
 
-      const endOfDay = new Date(end);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
-
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-
-      // 자신의 지점 주문만 필터링
-      const userBranchOrders = allOrders.filter((order: any) =>
-        order.branchName === userBranch
-      );
-
-      // 날짜별로 매출 계산
-      const salesByDate: { [key: string]: number } = {};
-
-      // 선택된 기간 날짜 초기화
-      const daysDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24));
-      for (let i = 0; i <= daysDiff; i++) {
-        const date = new Date(startOfDay);
-        date.setDate(startOfDay.getDate() + i);
-        const dateKey = format(date, 'yyyy-MM-dd');
-        salesByDate[dateKey] = 0;
-      }
-
-      // 주문 데이터로 매출 계산
-      userBranchOrders.forEach((order: any) => {
-        const total = order.summary?.total || order.total || 0;
-
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
-          let revenueDate;
-          if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
-          } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
-          }
-
-          const dateKey = format(revenueDate, 'yyyy-MM-dd');
-
-          if (salesByDate[dateKey] !== undefined) {
-            salesByDate[dateKey] += total;
-          }
-        }
-      });
-
-      // 차트 데이터 형식으로 변환
-      return Object.entries(salesByDate).map(([date, sales]) => {
-        const dateObj = parseISO(date);
+      return data.map(item => {
+        const dateObj = parseISO(item.date);
         const weekday = koreanWeekdays[dateObj.getDay()];
-
         return {
           date: `${format(dateObj, 'M/d')} (${weekday})`,
-          sales
+          sales: item.totalSales
         };
       });
     } catch (error) {
@@ -456,68 +392,25 @@ export default function DashboardPage() {
     }
   };
 
-  // 기존 함수는 유지 (다른 차트에서 사용)
+  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase로 전환
   const generateRealDailySales = async (date: string) => {
     try {
       const selectedDateObj = parseISO(date);
-      const startDate = startOfDay(selectedDateObj);
-      const endDate = endOfDay(selectedDateObj);
+      const start = startOfDay(selectedDateObj).toISOString();
+      const end = endOfDay(selectedDateObj).toISOString();
 
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
-
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const data = await getSupabaseDailySales(start, end, currentFilteredBranch || undefined);
 
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
+      branchNames.forEach(name => salesByBranch[name] = 0);
 
-      // 각 매장별 매출 계산
-      branchNames.forEach(branchName => {
-        salesByBranch[branchName] = 0;
-      });
-
-      // 클라이언트 사이드에서 결제 완료일 기준으로 필터링 및 매출 계산
-      allOrders.forEach((order: any) => {
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          // 결제 완료일 기준으로 매출 계산
-          let revenueDate;
-          if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
-          } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
+      data.forEach(item => {
+        Object.entries(item.branches).forEach(([branchName, sales]) => {
+          if (salesByBranch.hasOwnProperty(branchName)) {
+            salesByBranch[branchName] += Number(sales);
           }
-
-          // 선택된 날짜 범위에 해당하는지 확인
-          if (revenueDate >= startDate && revenueDate <= endDate) {
-            const branchName = order.branchName || '지점 미지정';
-
-            // 지점 필터링 적용
-            if (!currentFilteredBranch || branchName === currentFilteredBranch) {
-              if (salesByBranch.hasOwnProperty(branchName)) {
-                salesByBranch[branchName] += order.summary?.total || order.total || 0;
-              }
-            }
-          }
-        }
+        });
       });
 
       return branchNames.map((branchName, index) => ({
@@ -526,157 +419,69 @@ export default function DashboardPage() {
         color: getBranchColor(index)
       }));
     } catch (error) {
-      console.error("Error generating daily sales:", error);
+      console.error("Error generating daily sales from Supabase:", error);
       return [];
     }
   };
 
-  // 본사 관리자용: 선택된 기간 지점별 매출 비율 차트 데이터 생성
+  // 본사 관리자용: 선택된 기간 주간 매출 차트 데이터 생성
   const generateAdminWeeklySales = async (startDate?: Date, endDate?: Date) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
         const date = new Date();
-        date.setDate(date.getDate() - 56); // 기본 8주간 (8 * 7 = 56일)
+        date.setDate(date.getDate() - 56); // Exactly 8 weeks
         return date;
       })();
 
-      // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
-      const startOfDay = new Date(start);
-      startOfDay.setHours(0, 0, 0, 0);
+      const data = await getSupabaseWeeklySales(start.toISOString(), end.toISOString());
 
-      const endOfDay = new Date(end);
-      endOfDay.setHours(23, 59, 59, 999);
+      const result = [];
+      let currentDate = startOfWeek(start, { weekStartsOn: 1 });
 
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
+      while (currentDate <= end) {
+        const weekKey = format(currentDate, 'yyyy-MM-dd');
+        const weekData = data.find(item => item.weekKey === weekKey);
 
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const weekEnd = new Date(currentDate);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const weekStartLabel = format(currentDate, 'M월 d일');
+        const weekEndLabel = format(weekEnd, 'M월 d일');
 
-      // 주별로 데이터 그룹화
-      const salesByWeek: {
-        [key: string]: {
-          branchSales: { [branchName: string]: number };
-          start: Date;
-          end: Date;
-        };
-      } = {};
-
-      // 선택된 기간 주차 초기화
-      const weeksDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24 * 7));
-      for (let i = 0; i <= weeksDiff; i++) {
-        const baseDate = new Date(startOfDay);
-        baseDate.setDate(startOfDay.getDate() + (i * 7));
-        const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
-        const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
-        const weekKey = format(weekStart, 'yyyy-\'W\'ww');
-        salesByWeek[weekKey] = {
-          branchSales: {},
-          start: weekStart,
-          end: weekEnd,
-        };
-
-        // 각 지점별 매출 초기화
-        availableBranches.forEach(branch => {
-          salesByWeek[weekKey].branchSales[branch.name] = 0;
-        });
-      }
-
-      // 주문 데이터로 매출 계산
-      allOrders.forEach((order: any) => {
-        const total = order.summary?.total || order.total || 0;
-        const branchName = order.branchName || '지점 미지정';
-
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
-          let revenueDate;
-          if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
-          } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
-          }
-
-          const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
-          const weekKey = format(revenueWeekStart, 'yyyy-\'W\'ww');
-          const weekEntry = salesByWeek[weekKey];
-
-          if (weekEntry) {
-            if (weekEntry.branchSales.hasOwnProperty(branchName)) {
-              weekEntry.branchSales[branchName] += total;
-            } else {
-              // 지점이 availableBranches에 없지만 해당 주에 데이터가 있는 경우
-              weekEntry.branchSales[branchName] = total;
-            }
-          }
-        }
-      });
-
-      // 차트 데이터 형식으로 변환
-      return Object.entries(salesByWeek).map(([week, { branchSales, start, end }]) => {
-        const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
-        const weekStartLabel = format(start, 'M월 d일');
-        const weekEndLabel = format(end, 'M월 d일');
-
-        return {
-          week: week.replace('W', '주차 '),
-          totalSales,
-          branchSales,
+        result.push({
+          week: format(currentDate, 'M/d 시작'),
+          totalSales: weekData ? weekData.totalSales : 0,
+          branchSales: weekData ? weekData.branches : {},
           weekStart: weekStartLabel,
           weekEnd: weekEndLabel,
           weekRange: `${weekStartLabel} ~ ${weekEndLabel}`,
-          ...branchSales // 각 지점별 매출을 개별 속성으로 추가
-        };
-      });
+          ...(weekData ? weekData.branches : {})
+        });
+
+        currentDate.setDate(currentDate.getDate() + 7);
+      }
+
+      return result;
     } catch (error) {
       console.error("Error generating admin weekly sales:", error);
       return [];
     }
   };
 
-  // 가맹점/지점 직원용: 선택된 기간 자신의 지점 매출 차트 데이터 생성
+  // 가맹점/지점 직원용: 선택된 기간 주간 매출 차트 데이터 생성
   const generateBranchWeeklySales = async (startDate?: Date, endDate?: Date) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
         const date = new Date();
-        date.setDate(date.getDate() - 56); // 기본 8주간 (8 * 7 = 56일)
+        date.setDate(date.getDate() - 56); // Exactly 8 weeks
         return date;
       })();
 
-      // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
-      const startOfDay = new Date(start);
-      startOfDay.setHours(0, 0, 0, 0);
 
-      const endOfDay = new Date(end);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
-
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 
       // 자신의 지점 주문만 필터링
-      const userBranchOrders = allOrders.filter((order: any) =>
+      const userBranchOrders = orders.filter((order: any) =>
         order.branchName === userBranch
       );
 
@@ -692,10 +497,10 @@ export default function DashboardPage() {
       } = {};
 
       // 선택된 기간 주차 초기화
-      const weeksDiff = Math.ceil((endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60 * 24 * 7));
+      const weeksDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 7));
       for (let i = 0; i <= weeksDiff; i++) {
-        const baseDate = new Date(startOfDay);
-        baseDate.setDate(startOfDay.getDate() + (i * 7));
+        const baseDate = new Date(start);
+        baseDate.setDate(start.getDate() + (i * 7));
         const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
         const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
         const weekKey = format(weekStart, 'yyyy-\'W\'ww');
@@ -783,67 +588,26 @@ export default function DashboardPage() {
     }
   };
 
-  // 기존 함수는 유지 (다른 차트에서 사용)
+  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase로 전환
   const generateRealWeeklySales = async (weekString: string) => {
     try {
       const [year, week] = weekString.split('-W');
-      const startDate = startOfWeek(new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7));
-      const endDate = endOfWeek(startDate);
+      const startDateObj = startOfWeek(new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7), { weekStartsOn: 1 });
+      const start = startDateObj.toISOString();
+      const end = endOfWeek(startDateObj, { weekStartsOn: 1 }).toISOString();
 
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
-
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const data = await getSupabaseWeeklySales(start, end, currentFilteredBranch || undefined);
 
       const branchNames = availableBranches.map(b => b.name);
       const salesByBranch: { [key: string]: number } = {};
+      branchNames.forEach(name => salesByBranch[name] = 0);
 
-      branchNames.forEach(branchName => {
-        salesByBranch[branchName] = 0;
-      });
-
-      // 클라이언트 사이드에서 결제 완료일 기준으로 필터링 및 매출 계산
-      allOrders.forEach((order: any) => {
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          // 결제 완료일 기준으로 매출 계산
-          let revenueDate;
-          if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
-          } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
+      data.forEach(item => {
+        Object.entries(item.branches).forEach(([branchName, sales]) => {
+          if (salesByBranch.hasOwnProperty(branchName)) {
+            salesByBranch[branchName] += Number(sales);
           }
-
-          // 선택된 주간 범위에 해당하는지 확인
-          if (revenueDate >= startDate && revenueDate <= endDate) {
-            const branchName = order.branchName || '지점 미지정';
-
-            // 지점 필터링 적용
-            if (!currentFilteredBranch || branchName === currentFilteredBranch) {
-              if (salesByBranch.hasOwnProperty(branchName)) {
-                salesByBranch[branchName] += order.summary?.total || order.total || 0;
-              }
-            }
-          }
-        }
+        });
       });
 
       return branchNames.map((branchName, index) => ({
@@ -852,255 +616,118 @@ export default function DashboardPage() {
         color: getBranchColor(index)
       }));
     } catch (error) {
-      console.error("Error generating weekly sales:", error);
+      console.error("Error generating weekly sales from Supabase:", error);
       return [];
     }
   };
 
-  // 본사 관리자용: 선택된 기간 지점별 매출 비율 차트 데이터 생성
+  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase로 전환
+  const generateRealMonthlySales = async (monthString: string) => {
+    try {
+      const [year, month] = monthString.split('-');
+      const startDateObj = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
+      const start = startDateObj.toISOString();
+      const end = endOfMonth(startDateObj).toISOString();
+
+      const data = await getSupabaseMonthlySales(start, end, currentFilteredBranch || undefined);
+
+      const branchNames = availableBranches.map(b => b.name);
+      const salesByBranch: { [key: string]: number } = {};
+      branchNames.forEach(name => salesByBranch[name] = 0);
+
+      data.forEach(item => {
+        Object.entries(item.branches).forEach(([branchName, sales]) => {
+          if (salesByBranch.hasOwnProperty(branchName)) {
+            salesByBranch[branchName] += Number(sales);
+          }
+        });
+      });
+
+      return branchNames.map((branchName, index) => ({
+        branch: branchName,
+        sales: salesByBranch[branchName],
+        color: getBranchColor(index)
+      }));
+    } catch (error) {
+      console.error("Error generating monthly sales from Supabase:", error);
+      return [];
+    }
+  };
+
+  // 본사 관리자용: 선택된 기간 월간 매출 차트 데이터 생성
   const generateAdminMonthlySales = async (startDate?: Date, endDate?: Date) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
         const date = new Date();
-        date.setMonth(date.getMonth() - 11); // 기본 12개월간
-        date.setDate(1); // 월 첫째 날로 설정
+        date.setMonth(0); // January
+        date.setDate(1);
         return date;
       })();
 
-      // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
-      const startOfDay = new Date(start);
-      startOfDay.setHours(0, 0, 0, 0);
+      const data = await getSupabaseMonthlySales(start.toISOString(), end.toISOString());
 
-      const endOfDay = new Date(end);
-      endOfDay.setHours(23, 59, 59, 999);
+      // 모든 월을 포함하는 결과 배열 생성
+      const result = [];
+      const currentDate = new Date(start);
+      currentDate.setDate(1); // 달의 시작일로 설정
 
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
+      while (currentDate <= end) {
+        const monthKey = format(currentDate, 'yyyy-MM');
+        const monthLabel = format(currentDate, 'M월');
+        const monthData = data.find(item => item.month === monthKey);
 
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-
-
-
-      // 월별로 데이터 그룹화
-      const salesByMonth: { [key: string]: { [branchName: string]: number } } = {};
-
-      // 선택된 기간 월 초기화
-      const monthsDiff = (endOfDay.getFullYear() - startOfDay.getFullYear()) * 12 + (endOfDay.getMonth() - startOfDay.getMonth());
-      for (let i = 0; i <= monthsDiff; i++) {
-        const monthDate = new Date(startOfDay);
-        monthDate.setMonth(startOfDay.getMonth() + i);
-        const monthKey = format(monthDate, 'yyyy-MM');
-        salesByMonth[monthKey] = {};
-
-        // 각 지점별 매출 초기화
-        availableBranches.forEach(branch => {
-          salesByMonth[monthKey][branch.name] = 0;
+        result.push({
+          month: monthLabel,
+          totalSales: monthData ? monthData.totalSales : 0,
+          branchSales: monthData ? monthData.branches : {},
+          ...(monthData ? monthData.branches : {})
         });
+
+        currentDate.setMonth(currentDate.getMonth() + 1);
       }
 
-      // 주문 데이터로 매출 계산
-      allOrders.forEach((order: any) => {
-        const total = order.summary?.total || order.total || 0;
-        const branchName = order.branchName || '지점 미지정';
-
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
-          let revenueDate;
-          if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
-          } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
-          }
-
-          const monthKey = format(revenueDate, 'yyyy-MM');
-
-          if (salesByMonth[monthKey] && salesByMonth[monthKey].hasOwnProperty(branchName)) {
-            salesByMonth[monthKey][branchName] += total;
-          } else if (salesByMonth[monthKey]) {
-            // 지점이 availableBranches에 없지만 해당 월에 데이터가 있는 경우
-            salesByMonth[monthKey][branchName] = total;
-          }
-        }
-      });
-
-      // 차트 데이터 형식으로 변환
-      return Object.entries(salesByMonth).map(([month, branchSales]) => {
-        const totalSales = Object.values(branchSales).reduce((sum, sales) => sum + sales, 0);
-
-        return {
-          month: format(parseISO(month + '-01'), 'M월'),
-          totalSales,
-          branchSales,
-          ...branchSales // 각 지점별 매출을 개별 속성으로 추가
-        };
-      });
+      return result;
     } catch (error) {
       console.error("Error generating admin monthly sales:", error);
       return [];
     }
   };
 
-  // 가맹점/지점 직원용: 선택된 기간 자신의 지점 매출 차트 데이터 생성
+  // 가맹점/지점 직원용: 선택된 기간 월간 매출 차트 데이터 생성
   const generateBranchMonthlySales = async (startDate?: Date, endDate?: Date) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
         const date = new Date();
-        date.setMonth(date.getMonth() - 11); // 기본 12개월간
-        date.setDate(1); // 월 첫째 날로 설정
+        date.setMonth(0); // January
+        date.setDate(1);
         return date;
       })();
 
-      // 날짜 범위를 정확히 설정 (시작일 00:00:00 ~ 종료일 23:59:59)
-      const startOfDay = new Date(start);
-      startOfDay.setHours(0, 0, 0, 0);
+      const data = await getSupabaseMonthlySales(start.toISOString(), end.toISOString(), userBranch || undefined);
 
-      const endOfDay = new Date(end);
-      endOfDay.setHours(23, 59, 59, 999);
+      // 모든 월을 포함하는 결과 배열 생성
+      const result = [];
+      const currentDate = new Date(start);
+      currentDate.setDate(1);
 
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
+      while (currentDate <= end) {
+        const monthKey = format(currentDate, 'yyyy-MM');
+        const monthLabel = format(currentDate, 'M월');
+        const monthData = data.find(item => item.month === monthKey);
 
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        result.push({
+          month: monthLabel,
+          sales: monthData ? monthData.totalSales : 0
+        });
 
-      // 자신의 지점 주문만 필터링
-      const userBranchOrders = allOrders.filter((order: any) =>
-        order.branchName === userBranch
-      );
-
-
-
-      // 월별로 매출 계산
-      const salesByMonth: { [key: string]: number } = {};
-
-      // 선택된 기간 월 초기화
-      const monthsDiff = (endOfDay.getFullYear() - startOfDay.getFullYear()) * 12 + (endOfDay.getMonth() - startOfDay.getMonth());
-      for (let i = 0; i <= monthsDiff; i++) {
-        const monthDate = new Date(startOfDay);
-        monthDate.setMonth(startOfDay.getMonth() + i);
-        const monthKey = format(monthDate, 'yyyy-MM');
-        salesByMonth[monthKey] = 0;
+        currentDate.setMonth(currentDate.getMonth() + 1);
       }
 
-      // 주문 데이터로 매출 계산
-      userBranchOrders.forEach((order: any) => {
-        const total = order.summary?.total || order.total || 0;
-
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
-          let revenueDate;
-          if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
-          } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
-          }
-
-          const monthKey = format(revenueDate, 'yyyy-MM');
-
-          if (salesByMonth[monthKey] !== undefined) {
-            salesByMonth[monthKey] += total;
-          }
-        }
-      });
-
-      // 차트 데이터 형식으로 변환
-      return Object.entries(salesByMonth).map(([month, sales]) => ({
-        month: format(parseISO(month + '-01'), 'M월'),
-        sales
-      }));
+      return result;
     } catch (error) {
       console.error("Error generating branch monthly sales:", error);
-      return [];
-    }
-  };
-
-  // 기존 함수는 유지 (다른 차트에서 사용)
-  const generateRealMonthlySales = async (monthString: string) => {
-    try {
-      const [year, month] = monthString.split('-');
-      const startDate = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
-      const endDate = endOfMonth(startDate);
-
-      // 단순화된 쿼리 - 날짜만 필터링
-      const ordersQuery = query(
-        collection(db, "orders"),
-        where("orderDate", ">=", Timestamp.fromDate(startDate)),
-        where("orderDate", "<=", Timestamp.fromDate(endDate))
-      );
-
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-
-      // 클라이언트 사이드에서 지점 필터링
-      const orders = currentFilteredBranch
-        ? allOrders.filter(order => order.branchName === currentFilteredBranch)
-        : allOrders;
-
-      const branchNames = availableBranches.map(b => b.name);
-      const salesByBranch: { [key: string]: number } = {};
-
-      branchNames.forEach(branchName => {
-        salesByBranch[branchName] = 0;
-      });
-
-      orders.forEach((order: any) => {
-        const branchName = order.branchName || '지점 미지정';
-        const total = order.summary?.total || order.total || 0;
-
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
-        if (order.payment?.status === 'paid' || order.payment?.status === 'completed') {
-          if (salesByBranch.hasOwnProperty(branchName)) {
-            salesByBranch[branchName] += total;
-          }
-        }
-      });
-
-      return branchNames.map((branchName, index) => ({
-        branch: branchName,
-        sales: salesByBranch[branchName],
-        color: getBranchColor(index)
-      }));
-    } catch (error) {
-      console.error("Error generating monthly sales:", error);
       return [];
     }
   };
@@ -1244,226 +871,59 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchDashboardData() {
+      if (!user || branches.length === 0) return;
+
       setLoading(true);
       try {
+        const branchFilter = currentFilteredBranch || undefined;
 
+        // 1. 대시보드 통계 가져오기 (올해 기준)
+        const yearStart = startOfYear(new Date()).toISOString();
+        const now = new Date().toISOString();
+        const yearStats = await getSupabaseDashboardStats(yearStart, now, branchFilter);
 
-        // 주문 데이터 가져오기 (필터링 적용) - 단순화된 쿼리
-        let ordersQuery = collection(db, "orders");
+        // 주간 주문 건수 (별도로 계산하거나 DashboardStats 확장이 필요하지만, 여기서는 주간 데이터를 따로 가져옴)
+        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
+        const weekStats = await getSupabaseDashboardStats(weekStart, now, branchFilter);
 
-        const ordersSnapshot = await getDocs(ordersQuery);
-        const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-
-
-
-        // 클라이언트 사이드에서 필터링
-        const orders = currentFilteredBranch
-          ? allOrders.filter(order => order.branchName === currentFilteredBranch)
-          : allOrders;
-
-
-
-        // 최근 주문 (실제 데이터) - 단순화된 쿼리
-        let recentOrdersQuery = query(
-          collection(db, "orders"),
-          orderBy("orderDate", "desc"),
-          limit(50)
-        );
-
-        const recentOrdersSnapshot = await getDocs(recentOrdersQuery);
-        const allRecentOrders = recentOrdersSnapshot.docs.map(doc => {
-          const orderData = doc.data() as any;
-
-          // 상품명 추출 로직
-          let productNames = '상품 정보 없음';
-          if (orderData.items && Array.isArray(orderData.items)) {
-            const names = orderData.items.map((item: any) => item.name || item.productName || '상품명 없음');
-            productNames = names.length > 0 ? names.join(', ') : '상품 정보 없음';
-          } else if (orderData.products && Array.isArray(orderData.products)) {
-            const names = orderData.products.map((product: any) => product.name || product.productName || '상품명 없음');
-            productNames = names.length > 0 ? names.join(', ') : '상품 정보 없음';
-          }
-
-          return {
-            id: doc.id,
-            orderer: orderData.orderer || { name: '주문자 정보 없음' },
-            orderDate: orderData.orderDate,
-            total: orderData.summary?.total || orderData.total || 0,
-            status: orderData.status || 'pending',
-            branchName: orderData.branchName || '지점 미지정',
-            productNames: productNames
-          };
+        setStats({
+          totalRevenue: yearStats.totalRevenue,
+          newCustomers: yearStats.newCustomers,
+          weeklyOrders: weekStats.orderCount,
+          pendingOrders: yearStats.pendingOrders,
+          pendingPaymentCount: yearStats.pendingPaymentCount,
+          pendingPaymentAmount: yearStats.pendingPaymentAmount
         });
 
-        // 클라이언트 사이드에서 필터링
-        const recentOrdersData = currentFilteredBranch
-          ? allRecentOrders.filter(order => order.branchName === currentFilteredBranch).slice(0, 10)
-          : allRecentOrders.slice(0, 10);
+        // 2. 최근 주문 가져오기
+        const recentOrdersData = await getSupabaseRecentOrders(branchFilter, 10);
+        setRecentOrders(recentOrdersData);
 
-        // 중복 제거 (ID 기준)
-        const uniqueRecentOrdersMap = new Map();
-        recentOrdersData.forEach(order => {
-          uniqueRecentOrdersMap.set(order.id, order);
-        });
-        const uniqueRecentOrders = Array.from(uniqueRecentOrdersMap.values());
+        // 3. 차트 데이터 가져오기
+        const dailyData = isAdmin && !branchFilter
+          ? await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate))
+          : await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
+        setDailySales(dailyData);
 
-        setRecentOrders(uniqueRecentOrders);
+        const weeklyData = isAdmin && !branchFilter
+          ? await generateAdminWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate))
+          : await generateBranchWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate));
+        setWeeklySales(weeklyData);
 
-        // 기본 통계 (필터링 적용)
-        // 년 매출 계산 (현재 년도의 매출만) - 결제완료일 기준으로 계산 (당일매출 통계카드)
-        const currentYear = new Date().getFullYear();
-        const yearlyRevenue = orders.filter((order: any) => {
-          // 완결처리된 주문만 포함
-          if (order.payment?.status !== 'paid' && order.payment?.status !== 'completed') {
-            return false;
-          }
-
-          // 결제완료일 기준으로 매출 계산
-          let revenueDate;
-          if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
-          } else {
-            // 결제 완료일이 없는 경우 주문일 기준
-            const orderDate = order.orderDate;
-            if (!orderDate) return false;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
-          }
-
-          // 결제완료일(또는 주문일)이 현재 년도인지 확인
-          if (revenueDate.getFullYear() !== currentYear) {
-            return false;
-          }
-
-          return true;
-        }).reduce((acc, order: any) => acc + (order.summary?.total || order.total || 0), 0);
-
-        const pendingOrders = orders.filter((order: any) => order.status === 'pending' || order.status === 'processing').length;
-
-        // 주간 주문 건수 계산 (이번 주 월요일부터 일요일까지)
-        const currentWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // 월요일부터 시작
-        const currentWeekEnd = endOfWeek(new Date(), { weekStartsOn: 1 }); // 일요일까지
-        const weeklyOrders = orders.filter((order: any) => {
-          const orderDate = order.orderDate;
-          if (!orderDate) return false;
-
-          let orderDateObj;
-          if (orderDate.toDate) {
-            orderDateObj = orderDate.toDate();
-          } else {
-            orderDateObj = new Date(orderDate);
-          }
-
-          return orderDateObj >= currentWeekStart && orderDateObj <= currentWeekEnd;
-        }).length;
-
-
-
-        // 고객 수 (필터링 적용) - 단순화된 쿼리
-        let customersQuery = collection(db, "customers");
-        const customersSnapshot = await getDocs(customersQuery);
-        const allCustomers = customersSnapshot.docs;
-
-        // 클라이언트 사이드에서 필터링
-        const customers = currentFilteredBranch ? allCustomers.filter(doc => {
-          const data = doc.data();
-          return data.branch === currentFilteredBranch;
-        }) : allCustomers;
-        const newCustomers = customers.length;
-
-        // 미결 주문 통계 계산
-        const pendingPaymentOrders = orders.filter((order: any) =>
-          order.payment?.status === 'pending'
-        );
-        const pendingPaymentCount = pendingPaymentOrders.length;
-        const pendingPaymentAmount = pendingPaymentOrders.reduce((acc, order: any) =>
-          acc + (order.summary?.total || order.total || 0), 0
-        );
-
-        const statsData = {
-          totalRevenue: yearlyRevenue, // 총 매출을 년 매출로 변경
-          newCustomers,
-          weeklyOrders, // 주간 주문 건수로 변경
-          pendingOrders,
-          pendingPaymentCount,
-          pendingPaymentAmount
-        };
-
-
-        setStats(statsData);
+        const monthlyData = isAdmin && !branchFilter
+          ? await generateAdminMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate))
+          : await generateBranchMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate));
+        setMonthlySales(monthlyData);
 
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        // 오류 발생 시 기본값 설정
-        setStats({
-          totalRevenue: 0,
-          newCustomers: 0,
-          weeklyOrders: 0, // 주간 주문 건수로 변경
-          pendingOrders: 0,
-          pendingPaymentCount: 0,
-          pendingPaymentAmount: 0
-        });
-        setRecentOrders([]);
+        console.error("Error fetching dashboard data from Supabase:", error);
       } finally {
         setLoading(false);
       }
     }
 
-    if (branches.length > 0 && user) {
-      fetchDashboardData().then(async () => {
-        try {
-
-          // 권한별 차트 데이터 생성
-          if (isAdmin) {
-            if (currentFilteredBranch) {
-              // 본사 관리자가 특정 지점 선택 시: 해당 지점의 매출 차트
-              const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
-              setDailySales(branchDailyData);
-            } else {
-              // 본사 관리자: 선택된 기간 지점별 매출 비율
-              const adminDailyData = await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
-              setDailySales(adminDailyData);
-            }
-          } else {
-            // 가맹점/지점 직원: 선택된 기간 자신의 지점 매출
-            const branchDailyData = await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
-            setDailySales(branchDailyData);
-
-          }
-
-          // 권한별 주간/월간 차트 데이터 생성
-          if (isAdmin) {
-            // 본사 관리자: 선택된 기간 지점별 매출 비율
-            const adminWeeklyData = await generateAdminWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate));
-            const adminMonthlyData = await generateAdminMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate));
-            setWeeklySales(adminWeeklyData);
-            setMonthlySales(adminMonthlyData);
-          } else {
-            // 가맹점/지점 직원: 선택된 기간 자신의 지점 매출
-            const branchWeeklyData = await generateBranchWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate));
-            const branchMonthlyData = await generateBranchMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate));
-            setWeeklySales(branchWeeklyData);
-            setMonthlySales(branchMonthlyData);
-          }
-        } catch (error) {
-          console.error("차트 데이터 생성 오류:", error);
-        }
-      });
-    }
-  }, [branches, user, currentFilteredBranch]);
+    fetchDashboardData();
+  }, [user, branches, currentFilteredBranch, dailyStartDate, dailyEndDate, weeklyStartDate, weeklyEndDate, monthlyStartDate, monthlyEndDate]);
 
   const formatCurrency = (value: number) => `₩${value.toLocaleString()}`;
 

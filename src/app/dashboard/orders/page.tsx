@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart, CheckSquare, Square, ArrowRightLeft, Package, Target } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, MessageSquareText, Upload, Download, FileText, DollarSign, TrendingUp, ShoppingCart, CheckSquare, Square, ArrowRightLeft, Package, Target, RefreshCw } from "lucide-react";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,7 +35,8 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export default function OrdersPage() {
-  const { orders, loading, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
+  const { orders, loading, fetchOrders, fetchAllOrders, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
+  const [isFullDataLoaded, setIsFullDataLoaded] = useState(false);
   const { branches, loading: branchesLoading } = useBranches();
   const { createTransfer, getTransferPermissions } = useOrderTransfers();
   const { user } = useAuth();
@@ -119,6 +120,24 @@ export default function OrdersPage() {
       }
     }
   }, [searchParams, orders, router]);
+
+  // 전체 내역 불러오기 핸들러
+  const handleLoadFullData = async () => {
+    try {
+      await fetchAllOrders();
+      setIsFullDataLoaded(true);
+      toast({
+        title: "전체 내역 로드 완료",
+        description: "과거 내역을 포함한 모든 주문 데이터를 불러왔습니다."
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "로드 실패",
+        description: "전체 내역을 불러오는 중 오류가 발생했습니다."
+      });
+    }
+  };
 
   // 일괄 삭제 관련 함수들
   const handleSelectOrder = (orderId: string) => {
@@ -852,7 +871,17 @@ export default function OrdersPage() {
         title="주문 현황"
         description={`모든 주문 내역을 확인하고 관리하세요.${!isAdmin ? ` (${userBranch})` : ''}`}
       >
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {!isFullDataLoaded && (
+            <Button
+              variant="outline"
+              onClick={handleLoadFullData}
+              className="border-purple-200 text-purple-700 hover:bg-purple-50"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              과거 내역 포함 불러오기
+            </Button>
+          )}
           <Button asChild>
             <Link href="/dashboard/orders/new">
               <PlusCircle className="mr-2 h-4 w-4" />

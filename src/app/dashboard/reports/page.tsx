@@ -81,10 +81,21 @@ export default function StatsDashboard() {
   const [comparisonStats, setComparisonStats] = useState<{ yesterday: number; lastMonth: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { orders, loading: ordersLoading } = useOrders();
+  const { orders, loading: ordersLoading, fetchOrders } = useOrders();
   const { branches, loading: branchesLoading } = useBranches();
   const { products, loading: productsLoading } = useProducts();
   const { customers, loading: customersLoading } = useCustomers();
+
+  // 날짜 범위 변경 시 데이터 요청 최적화 (비용 절감)
+  useEffect(() => {
+    if (dateRange === 'year') {
+      fetchOrders(365);
+    } else if (dateRange === 'quarter') {
+      fetchOrders(90);
+    } else {
+      fetchOrders(31); // 1개월
+    }
+  }, [dateRange, fetchOrders]);
 
   // 날짜 범위 계산
   const getDateRange = () => {

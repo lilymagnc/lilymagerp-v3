@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, deleteDoc, addDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from './use-toast';
 import type { BranchFormValues } from '@/app/dashboard/branches/components/branch-form';
 export interface DeliveryFee {
@@ -131,6 +132,22 @@ export const initialBranches: Omit<Branch, 'id'>[] = [
     surcharges: { mediumItem: 2000, largeItem: 5000 }
   },
 ];
+
+// Supabase 지점 동기화 도우미 함수
+export const syncBranchToSupabase = async (branch: Branch) => {
+  try {
+    const { error } = await supabase.from('branches').upsert({
+      id: branch.id,
+      name: branch.name,
+      location: branch.address,
+      contact: branch.phone,
+      raw_data: branch
+    });
+    if (error) console.error('Supabase Branch Sync Error:', error);
+  } catch (err) {
+    console.error('Supabase Branch Sync Exception:', err);
+  }
+};
 export function useBranches() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,12 +223,15 @@ export function useBranches() {
     try {
       setLoading(true);
       const branchesCollection = collection(db, 'branches');
-      await addDoc(branchesCollection, branch);
+      const docRef = await addDoc(branchesCollection, branch);
       toast({
         title: '성공',
         description: '새 지점이 성공적으로 추가되었습니다.',
       });
       await fetchBranches();
+
+      // Supabase 동기화
+      syncBranchToSupabase({ id: docRef.id, ...branch } as any);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -232,6 +252,9 @@ export function useBranches() {
         description: '지점 정보가 성공적으로 수정되었습니다.',
       });
       await fetchBranches();
+
+      // Supabase 동기화
+      syncBranchToSupabase({ id: branchId, ...branch } as any);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -252,6 +275,9 @@ export function useBranches() {
         description: '지점이 성공적으로 삭제되었습니다.',
       });
       await fetchBranches();
+
+      // Supabase 삭제
+      await supabase.from('branches').delete().eq('id', branchId);
     } catch (error) {
       toast({
         variant: 'destructive',

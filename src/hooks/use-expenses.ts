@@ -1,15 +1,15 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
+import {
+  collection,
+  doc,
+  getDocs,
+  addDoc,
+  updateDoc,
   deleteDoc,
-  query, 
-  where, 
-  orderBy, 
+  query,
+  where,
+  orderBy,
   limit,
   serverTimestamp,
   runTransaction,
@@ -17,19 +17,47 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase'; // Import Supabase
 import { useToast } from './use-toast';
-import { 
+import {
   ExpenseStatus,
   ExpenseCategory,
   generateExpenseNumber,
   getRequiredApprovalLevel
 } from '@/types/expense';
-import type { 
+import type {
   ExpenseRequest,
   CreateExpenseRequestData,
   ProcessApprovalData,
   ProcessPaymentData
 } from '@/types/expense';
+
+// Supabase 동기화 함수
+export const syncExpenseToSupabase = async (expense: Partial<ExpenseRequest> & { id: string }) => {
+  try {
+    const { error } = await supabase.from('expense_requests').upsert({
+      id: expense.id,
+      request_number: expense.requestNumber,
+      branch_id: expense.branchId,
+      branch_name: expense.branchName,
+      requester_name: expense.requesterName,
+      status: expense.status,
+      total_amount: expense.totalAmount,
+      created_at: expense.createdAt instanceof Timestamp ? expense.createdAt.toDate().toISOString() : new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      raw_data: expense // 전체 데이터를 raw_data에 저장
+    });
+
+    if (error) {
+      // 만약 expense_requests 테이블이 없다면 에러가 날 수 있음. 
+      // 조용히 실패하거나 콘솔에만 로그. 
+      console.error('Supabase expense sync error:', error);
+    }
+  } catch (err) {
+    console.error('Supabase expense sync exception:', err);
+  }
+};
+
 export function useExpenses() {
   const [expenses, setExpenses] = useState<ExpenseRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,6 +172,10 @@ export function useExpenses() {
         updatedAt: serverTimestamp() as Timestamp
       };
       const docRef = await addDoc(collection(db, 'expenseRequests'), expenseRequest);
+
+      // Supabase Sync
+      await syncExpenseToSupabase({ id: docRef.id, ...expenseRequest });
+
       toast({
         title: '비용 신청 생성 완료',
         description: '비용 신청이 성공적으로 생성되었습니다.'
@@ -174,6 +206,13 @@ export function useExpenses() {
         description: '비용 신청이 승인 대기 상태로 변경되었습니다.'
       });
       await fetchExpenses();
+
+      // Supabase Sync
+      const updatedDoc = await getDocs(query(collection(db, 'expenseRequests'), where('__name__', '==', requestId)));
+      if (!updatedDoc.empty) {
+        const docData = { id: updatedDoc.docs[0].id, ...updatedDoc.docs[0].data() };
+        await syncExpenseToSupabase(docData as any);
+      }
     } catch (error) {
       console.error('Error submitting expense request:', error);
       toast({
@@ -238,6 +277,13 @@ export function useExpenses() {
         description: `비용 신청이 ${data.action === 'approve' ? '승인' : '반려'}되었습니다.`
       });
       await fetchExpenses();
+
+      // Supabase Sync
+      const updatedDoc = await getDocs(query(collection(db, 'expenseRequests'), where('__name__', '==', data.requestId)));
+      if (!updatedDoc.empty) {
+        const docData = { id: updatedDoc.docs[0].id, ...updatedDoc.docs[0].data() };
+        await syncExpenseToSupabase(docData as any);
+      }
     } catch (error) {
       console.error('Error processing approval:', error);
       toast({
@@ -264,6 +310,13 @@ export function useExpenses() {
         description: '비용 지급이 완료되었습니다.'
       });
       await fetchExpenses();
+
+      // Supabase Sync
+      const updatedDoc = await getDocs(query(collection(db, 'expenseRequests'), where('__name__', '==', data.requestId)));
+      if (!updatedDoc.empty) {
+        const docData = { id: updatedDoc.docs[0].id, ...updatedDoc.docs[0].data() };
+        await syncExpenseToSupabase(docData as any);
+      }
     } catch (error) {
       console.error('Error processing payment:', error);
       toast({
@@ -275,7 +328,7 @@ export function useExpenses() {
   }, [toast, fetchExpenses]);
   // 비용 신청 수정
   const updateExpenseRequest = useCallback(async (
-    requestId: string, 
+    requestId: string,
     data: Partial<CreateExpenseRequestData>
   ) => {
     try {
@@ -301,6 +354,13 @@ export function useExpenses() {
         description: '비용 신청이 성공적으로 수정되었습니다.'
       });
       await fetchExpenses();
+
+      // Supabase Sync
+      const updatedDoc = await getDocs(query(collection(db, 'expenseRequests'), where('__name__', '==', requestId)));
+      if (!updatedDoc.empty) {
+        const docData = { id: updatedDoc.docs[0].id, ...updatedDoc.docs[0].data() };
+        await syncExpenseToSupabase(docData as any);
+      }
     } catch (error) {
       console.error('Error updating expense request:', error);
       toast({

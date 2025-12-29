@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, orderBy, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
 export interface Customer extends CustomerFormValues {
@@ -35,6 +36,26 @@ export interface Customer extends CustomerFormValues {
   // 주 거래 지점 (가장 많이 주문한 지점)
   primaryBranch?: string;
 }
+
+// Supabase 고객 동기화 도우미 함수
+export const syncCustomerToSupabase = async (customer: Customer) => {
+  try {
+    const { error } = await supabase.from('customers').upsert({
+      id: customer.id,
+      name: customer.name,
+      contact: customer.contact,
+      branch: customer.branch,
+      points: customer.points || 0,
+      total_spent: customer.totalSpent || 0,
+      order_count: customer.orderCount || 0,
+      raw_data: customer,
+      updated_at: new Date().toISOString()
+    });
+    if (error) console.error('Supabase Customer Sync Error:', error);
+  } catch (err) {
+    console.error('Supabase Customer Sync Exception:', err);
+  }
+};
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +65,7 @@ export function useCustomers() {
   useEffect(() => {
     setLoading(true);
     const customersCollection = collection(db, 'customers');
-    
+
     const unsubscribe = onSnapshot(customersCollection, (querySnapshot) => {
       try {
         // 삭제되지 않은 고객만 필터링 (클라이언트 사이드에서 처리)
@@ -191,6 +212,10 @@ export function useCustomers() {
         toast({ title: "성공", description: "새 고객이 추가되었습니다." });
       }
       await fetchCustomers();
+
+      // Supabase 동기화 (Background)
+      const updatedCustomer = await findCustomerByContact(contact);
+      if (updatedCustomer) syncCustomerToSupabase(updatedCustomer);
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
       if (process.env.NODE_ENV === 'development') {
@@ -208,6 +233,12 @@ export function useCustomers() {
       await setDoc(customerDocRef, data, { merge: true });
       toast({ title: "성공", description: "고객 정보가 수정되었습니다." });
       await fetchCustomers();
+
+      // Supabase 동기화 (Background)
+      const docSnap = await getDoc(customerDocRef);
+      if (docSnap.exists()) {
+        syncCustomerToSupabase({ id, ...docSnap.data() } as any);
+      }
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
       if (process.env.NODE_ENV === 'development') {
@@ -224,7 +255,7 @@ export function useCustomers() {
     try {
       const customerRef = doc(db, 'customers', customerId);
       const customerDoc = await getDoc(customerRef);
-      
+
       if (!customerDoc.exists()) {
         throw new Error('Customer not found');
       }
@@ -252,6 +283,12 @@ export function useCustomers() {
 
       await addDoc(collection(db, 'pointHistory'), pointHistoryData);
 
+      // Supabase 동기화 (Background)
+      const updatedDoc = await getDoc(customerRef);
+      if (updatedDoc.exists()) {
+        syncCustomerToSupabase({ id: customerId, ...updatedDoc.data() } as any);
+      }
+
       return { success: true, difference };
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
@@ -268,6 +305,13 @@ export function useCustomers() {
       await updateDoc(customerDocRef, { isDeleted: true });
       toast({ title: "성공", description: "고객 정보가 삭제되었습니다." });
       await fetchCustomers();
+
+      // Supabase 동기화 (삭제 마킹)
+      try {
+        await supabase.from('customers').delete().eq('id', id);
+      } catch (e) {
+        console.error('Supabase Delete Error:', e);
+      }
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
       if (process.env.NODE_ENV === 'development') {
@@ -291,7 +335,7 @@ export function useCustomers() {
           // 필수 필드 검증 - 한글/영문 헤더 모두 지원
           const hasName = row.name || row.고객명;
           const hasContact = row.contact || row.연락처;
-          
+
           if (!hasName || !hasContact) {
             skippedCount++;
             continue;
@@ -323,18 +367,18 @@ export function useCustomers() {
           // 지점 처리 로직
           const excelBranch = String(row.branch || row.지점 || '').trim();
           let finalBranch = excelBranch;
-          
+
           // 엑셀에 지점 정보가 없으면 selectedBranch 사용 (단, "all"이 아닌 경우만)
           if (!finalBranch && selectedBranch && selectedBranch !== "all") {
             finalBranch = selectedBranch;
           }
-          
+
           // 지점 정보가 여전히 없으면 건너뛰기
           if (!finalBranch) {
             skippedCount++;
             continue;
           }
-          
+
           customerData.branch = finalBranch;
 
           // 생성일 처리 (한글 헤더 추가 지원)
@@ -353,7 +397,7 @@ export function useCustomers() {
 
           // 중복 체크: 이름과 연락처가 모두 같을 경우 중복 처리
           const duplicateQuery = query(
-            collection(db, "customers"), 
+            collection(db, "customers"),
             where("name", "==", customerData.name),
             where("contact", "==", customerData.contact)
           );
@@ -364,7 +408,7 @@ export function useCustomers() {
             // 기존 고객이면 정보 업데이트 (포인트 포함)
             const existingCustomer = existingCustomers[0];
             const updateData: any = {};
-            
+
             // 새로운 정보가 있으면 업데이트
             if (customerData.type) updateData.type = customerData.type;
             if (customerData.companyName) updateData.companyName = customerData.companyName;
@@ -379,7 +423,7 @@ export function useCustomers() {
             if (customerData.firstVisitDate) updateData.firstVisitDate = customerData.firstVisitDate;
             if (customerData.otherAnniversaryName) updateData.otherAnniversaryName = customerData.otherAnniversaryName;
             if (customerData.otherAnniversary) updateData.otherAnniversary = customerData.otherAnniversary;
-            
+
             // 지점 정보 업데이트
             if (customerData.branch) {
               updateData[`branches.${customerData.branch}`] = {
@@ -429,18 +473,18 @@ export function useCustomers() {
       }
 
       if (errorCount > 0) {
-        toast({ 
-          variant: 'destructive', 
-          title: '일부 처리 오류', 
-          description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.` 
+        toast({
+          variant: 'destructive',
+          title: '일부 처리 오류',
+          description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.`
         });
       }
 
-      toast({ 
-        title: '처리 완료', 
+      toast({
+        title: '처리 완료',
         description
       });
-      
+
       await fetchCustomers();
     } catch (error) {
       toast({
@@ -504,6 +548,10 @@ export function useCustomers() {
           points: newPoints,
           lastUpdated: serverTimestamp(),
         });
+
+        // Supabase 동기화 (Background)
+        syncCustomerToSupabase({ ...customer, points: newPoints } as any);
+
         return newPoints;
       }
       return 0;
@@ -526,6 +574,10 @@ export function useCustomers() {
           points: newPoints,
           lastUpdated: serverTimestamp(),
         });
+
+        // Supabase 동기화 (Background)
+        syncCustomerToSupabase({ ...customer, points: newPoints } as any);
+
         return newPoints;
       }
       return 0;
@@ -539,13 +591,13 @@ export function useCustomers() {
   }, [findCustomerByContact]);
 
 
-  return { 
-    customers, 
-    loading, 
-    addCustomer, 
-    updateCustomer, 
+  return {
+    customers,
+    loading,
+    addCustomer,
+    updateCustomer,
     updateCustomerPoints,
-    deleteCustomer, 
+    deleteCustomer,
     bulkAddCustomers,
     findCustomersByContact,
     findCustomerByContact,
