@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, doc, addDoc, updateDoc, deleteDoc, query, where, orderBy, getDocs, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { supabase } from '@/lib/supabase';
+
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
 
@@ -37,24 +37,7 @@ export interface CreateCalendarEventData {
   isAllDay?: boolean;
 }
 
-// Supabase 일정 동기화 도우미 함수
-export const syncEventToSupabase = async (event: CalendarEvent) => {
-  try {
-    const { error } = await supabase.from('calendar_events').upsert({
-      id: event.id,
-      title: event.title,
-      start_date: event.startDate.toISOString(),
-      end_date: event.endDate?.toISOString() || null,
-      type: event.type,
-      status: event.status,
-      branch_name: event.branchName,
-      raw_data: event
-    });
-    if (error) console.error('Supabase Event Sync Error:', error);
-  } catch (err) {
-    console.error('Supabase Event Sync Exception:', err);
-  }
-};
+
 
 export function useCalendar() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -153,9 +136,7 @@ export function useCalendar() {
 
       await fetchEvents();
 
-      // Supabase 동기화
       const docRef = await addDoc(collection(db, 'calendarEvents'), eventData);
-      syncEventToSupabase({ id: docRef.id, ...data, startDate: data.startDate, createdAt: new Date(), updatedAt: new Date(), createdBy: user.uid } as any);
     } catch (error) {
       console.error('Error creating event:', error);
       toast({
@@ -201,19 +182,7 @@ export function useCalendar() {
 
       await fetchEvents();
 
-      // Supabase 동기화 (Background)
-      const updatedDoc = await getDoc(eventRef);
-      if (updatedDoc.exists()) {
-        const d = updatedDoc.data();
-        syncEventToSupabase({
-          id: eventId,
-          ...d,
-          startDate: d.startDate.toDate(),
-          endDate: d.endDate?.toDate(),
-          createdAt: d.createdAt.toDate(),
-          updatedAt: d.updatedAt.toDate()
-        } as any);
-      }
+
     } catch (error) {
       console.error('Error updating event:', error);
       toast({
@@ -247,8 +216,7 @@ export function useCalendar() {
 
       await fetchEvents();
 
-      // Supabase 삭제
-      await supabase.from('calendar_events').delete().eq('id', eventId);
+
       console.log('이벤트 목록 새로고침 완료');
     } catch (error) {
       console.error('Error deleting event:', error);

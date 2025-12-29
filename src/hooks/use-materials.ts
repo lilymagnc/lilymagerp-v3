@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, where, orderBy, limit, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { supabase } from '@/lib/supabase';
+
 import { useToast } from './use-toast';
 import type { Material as MaterialData } from "@/app/dashboard/materials/components/material-table";
 import type { MaterialFormValues } from '@/app/dashboard/materials/components/material-form';
@@ -21,22 +21,7 @@ const initialMaterials: Omit<Material, 'docId' | 'status'>[] = [
     { id: "M00006", name: "유칼립투스", mainCategory: "생화", midCategory: "기타", price: 3000, supplier: "플라워팜", stock: 50, size: "1단", color: "Green", branch: "릴리맥광화문점" },
 ];
 
-// Supabase 자재 동기화 도우미 함수
-export const syncMaterialToSupabase = async (material: Material) => {
-    try {
-        const { error } = await supabase.from('materials').upsert({
-            doc_id: material.docId,
-            id: material.id,
-            name: material.name,
-            stock: material.stock,
-            branch: material.branch,
-            raw_data: material
-        });
-        if (error) console.error('Supabase Material Sync Error:', error);
-    } catch (err) {
-        console.error('Supabase Material Sync Exception:', err);
-    }
-};
+
 
 export function useMaterials() {
     const [materials, setMaterials] = useState<Material[]>([]);
@@ -212,8 +197,7 @@ export function useMaterials() {
             toast({ title: "성공", description: `새 자재가 '${data.branch}' 지점에 추가되었습니다.` });
             await fetchMaterials();
 
-            // Supabase 동기화
-            syncMaterialToSupabase({ docId: docRef.id, id: newId, ...data } as any);
+
         } catch (error) {
             console.error("Error adding material:", error);
             toast({ variant: 'destructive', title: '오류', description: '자재 추가 중 오류가 발생했습니다.' });
@@ -230,8 +214,7 @@ export function useMaterials() {
             toast({ title: "성공", description: "자재 정보가 수정되었습니다." });
             await fetchMaterials();
 
-            // Supabase 동기화
-            syncMaterialToSupabase({ docId, id: materialId, ...data } as any);
+
         } catch (error) {
             console.error("Error updating material:", error);
             toast({ variant: 'destructive', title: '오류', description: '자재 수정 중 오류가 발생했습니다.' });
@@ -248,8 +231,7 @@ export function useMaterials() {
             await fetchMaterials();
             toast({ title: "성공", description: "자재가 삭제되었습니다." });
 
-            // Supabase 삭제
-            await supabase.from('materials').delete().eq('doc_id', docId);
+
         } catch (error) {
             console.error("Error deleting material:", error);
             toast({ variant: 'destructive', title: '오류', description: '자재 삭제 중 오류가 발생했습니다.' });

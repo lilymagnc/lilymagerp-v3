@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, writeBatch, query, orderBy, limit, setDoc, where, deleteDoc, getDoc, serverTimestamp, runTransaction, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { supabase } from '@/lib/supabase';
+
 import { useToast } from './use-toast';
 import type { ProductFormValues } from '@/app/dashboard/products/components/product-form';
 export interface Product {
@@ -23,27 +23,7 @@ export interface Product {
   status: string; // required로 변경
 }
 
-// Supabase 상품 동기화 도우미 함수
-export const syncProductToSupabase = async (product: Product) => {
-  try {
-    const { error } = await supabase.from('products').upsert({
-      doc_id: product.docId,
-      id: product.id,
-      name: product.name,
-      main_category: product.mainCategory,
-      mid_category: product.midCategory,
-      price: product.price,
-      stock: product.stock,
-      branch: product.branch,
-      status: product.status,
-      raw_data: product,
-      updated_at: new Date().toISOString()
-    });
-    if (error) console.error('Supabase Product Sync Error:', error);
-  } catch (err) {
-    console.error('Supabase Product Sync Exception:', err);
-  }
-};
+
 // 초기 샘플 데이터 추가
 const initialProducts: Omit<Product, 'docId' | 'status'>[] = [
   { id: "P90001", name: "샘플상품지우지마세요", mainCategory: "의류", midCategory: "상의", price: 45000, supplier: "공급업체1", stock: 10, size: "M", color: "White", branch: "릴리맥광화문점" },
@@ -183,8 +163,7 @@ export function useProducts() {
       toast({ title: "성공", description: `새 상품이 '${data.branch}' 지점에 추가되었습니다.` });
       await fetchProducts();
 
-      // Supabase 동기화 (Background)
-      syncProductToSupabase({ docId: docRef.id, id: productId, ...data, status: getStatus(data.stock) } as any);
+
     } catch (error) {
       console.error("Error adding product:", error);
       toast({ variant: 'destructive', title: '오류', description: '상품 추가 중 오류가 발생했습니다.' });
@@ -200,8 +179,7 @@ export function useProducts() {
       toast({ title: "성공", description: "상품 정보가 수정되었습니다." });
       await fetchProducts();
 
-      // Supabase 동기화 (Background)
-      syncProductToSupabase({ docId, ...data, status: getStatus(data.stock) } as any);
+
     } catch (error) {
       console.error("Error updating product:", error);
       toast({ variant: 'destructive', title: '오류', description: '상품 수정 중 오류가 발생했습니다.' });
@@ -216,8 +194,7 @@ export function useProducts() {
       toast({ title: "성공", description: "상품이 삭제되었습니다." });
       await fetchProducts();
 
-      // Supabase 삭제
-      await supabase.from('products').delete().eq('doc_id', docId);
+
     } catch (error) {
       console.error("Error deleting product:", error);
       toast({ variant: 'destructive', title: '오류', description: '상품 삭제 중 오류가 발생했습니다.' });
@@ -501,28 +478,7 @@ export function useProducts() {
       });
       await fetchProducts();
 
-      // Supabase 동기화
-      syncProductToSupabase({
-        docId: productDocRef.id,
-        id: productId,
-        ...productData,
-        stock: newStock,
-        status: getStatus(newStock)
-      } as any);
 
-      // Supabase 재고 히스토리 추가
-      await supabase.from('stock_history').insert({
-        doc_id: historyDocRef.id,
-        item_id: productId,
-        item_name: productName,
-        type: 'manual_update',
-        quantity: newStock - currentStock,
-        resulting_stock: newStock,
-        branch: branch,
-        operator: userEmail,
-        created_at: new Date().toISOString(),
-        raw_data: { from_stock: currentStock, to_stock: newStock }
-      });
     } catch (error) {
       console.error("Error updating stock:", error);
       toast({

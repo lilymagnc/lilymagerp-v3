@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from './use-toast';
-import { supabase } from '@/lib/supabase';
+
 export interface Category {
   id: string;
   name: string;
@@ -13,23 +13,7 @@ export interface Category {
 }
 
 // Supabase 동기화
-export const syncCategoryToSupabase = async (category: any) => {
-  try {
-    const { error } = await supabase.from('categories').upsert({
-      id: category.id,
-      name: category.name,
-      type: category.type,
-      parent_category: category.parentCategory || null,
-      created_at: category.createdAt instanceof Timestamp ? category.createdAt.toDate().toISOString() : new Date().toISOString()
-    });
 
-    if (error) {
-      console.error('Supabase category sync error:', error);
-    }
-  } catch (error) {
-    console.error('Supabase category sync error:', error);
-  }
-};
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -82,8 +66,7 @@ export function useCategories() {
       };
       const docRef = await addDoc(collection(db, 'categories'), categoryData);
 
-      // Supabase Sync
-      await syncCategoryToSupabase({ id: docRef.id, ...categoryData });
+
       await fetchCategories();
       return true;
     } catch (error) {

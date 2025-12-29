@@ -20,14 +20,7 @@ import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, end
 import { ko } from "date-fns/locale";
 import { getWeatherInfo, getWeatherEmoji, WeatherInfo } from "@/lib/weather-service";
 import BulletinBoard from '@/components/dashboard/bulletin-board';
-import {
-  getSupabaseDashboardStats,
-  getSupabaseDailySales,
-  getSupabaseBranchSales,
-  getSupabaseWeeklySales,
-  getSupabaseMonthlySales,
-  getSupabaseRecentOrders
-} from "@/lib/supabase-stats";
+
 
 interface DashboardStats {
   totalRevenue: number;
@@ -134,6 +127,7 @@ export default function DashboardPage() {
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [allOrdersCache, setAllOrdersCache] = useState<any[]>([]);
 
   // 주문 상세보기 다이얼로그 상태
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -249,7 +243,7 @@ export default function DashboardPage() {
   };
 
   // 본사 관리자용: 선택된 기간 지점별 매출 비율 차트 데이터 생성
-  const generateAdminDailySales = async (startDate?: Date, endDate?: Date) => {
+  const generateAdminDailySales = async (startDate?: Date, endDate?: Date, ordersData: any[] = allOrdersCache) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
@@ -258,16 +252,11 @@ export default function DashboardPage() {
         return date;
       })();
 
-      const data = await getSupabaseDailySales(start.toISOString(), end.toISOString());
-
       const endOfDay = new Date(end);
       endOfDay.setHours(23, 59, 59, 999);
 
-      // 모든 주문 데이터 조회 (결제완료일 기준으로 필터링하기 위해)
-      const ordersQuery = query(collection(db, "orders"));
-
-      const ordersSnapshot = await getDocs(ordersQuery);
-      const allOrders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      // 캐시된 주문 데이터 사용
+      const allOrders = ordersData;
 
 
 
@@ -367,7 +356,7 @@ export default function DashboardPage() {
   };
 
   // 가맹점/지점 직원용: 선택된 기간 자신의 지점 매출 차트 데이터 생성
-  const generateBranchDailySales = async (startDate?: Date, endDate?: Date) => {
+  const generateBranchDailySales = async (startDate?: Date, endDate?: Date, ordersData: any[] = allOrdersCache) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
@@ -376,14 +365,66 @@ export default function DashboardPage() {
         return date;
       })();
 
-      const data = await getSupabaseDailySales(start.toISOString(), end.toISOString(), userBranch || undefined);
+      // Admin 로직을 재사용하되 지점 필터링 적용
+      // 하지만 차트 형식이 다르므로(단일 라인 vs 멀티 바), 데이터를 가공해야 함
 
-      return data.map(item => {
-        const dateObj = parseISO(item.date);
+      const salesByDate: { [key: string]: number } = {};
+
+      // 선택된 기간 날짜 초기화
+      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      for (let i = 0; i <= daysDiff; i++) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + i);
+        const dateKey = format(date, 'yyyy-MM-dd');
+        salesByDate[dateKey] = 0;
+      }
+
+      const userBranchOrders = ordersData.filter((order: any) => order.branchName === userBranch);
+
+      userBranchOrders.forEach((order: any) => {
+        const total = order.summary?.total || order.total || 0;
+        const paymentStatus = order.payment?.status;
+
+        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (paymentStatus === 'paid' || paymentStatus === 'completed') {
+          // 완결처리된 주문: 결제 완료일 기준
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            // Firestore Timestamp인 경우
+            if (order.payment.completedAt.toDate) {
+              revenueDate = order.payment.completedAt.toDate();
+            } else if (order.payment.completedAt instanceof Date) {
+              revenueDate = order.payment.completedAt;
+            } else {
+              revenueDate = new Date(order.payment.completedAt);
+            }
+          } else {
+            // 결제 완료일이 없는 경우 주문일 기준
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+
+            if (orderDate.toDate) {
+              revenueDate = orderDate.toDate();
+            } else if (orderDate instanceof Date) {
+              revenueDate = orderDate;
+            } else {
+              revenueDate = new Date(orderDate);
+            }
+          }
+
+          const dateKey = format(revenueDate, 'yyyy-MM-dd');
+          if (salesByDate.hasOwnProperty(dateKey)) {
+            salesByDate[dateKey] += total;
+          }
+        }
+      });
+
+      return Object.entries(salesByDate).map(([date, sales]) => {
+        const dateObj = parseISO(date);
         const weekday = koreanWeekdays[dateObj.getDay()];
         return {
           date: `${format(dateObj, 'M/d')} (${weekday})`,
-          sales: item.totalSales
+          sales: sales
         };
       });
     } catch (error) {
@@ -392,40 +433,15 @@ export default function DashboardPage() {
     }
   };
 
-  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase로 전환
+  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase 제거됨
   const generateRealDailySales = async (date: string) => {
-    try {
-      const selectedDateObj = parseISO(date);
-      const start = startOfDay(selectedDateObj).toISOString();
-      const end = endOfDay(selectedDateObj).toISOString();
-
-      const data = await getSupabaseDailySales(start, end, currentFilteredBranch || undefined);
-
-      const branchNames = availableBranches.map(b => b.name);
-      const salesByBranch: { [key: string]: number } = {};
-      branchNames.forEach(name => salesByBranch[name] = 0);
-
-      data.forEach(item => {
-        Object.entries(item.branches).forEach(([branchName, sales]) => {
-          if (salesByBranch.hasOwnProperty(branchName)) {
-            salesByBranch[branchName] += Number(sales);
-          }
-        });
-      });
-
-      return branchNames.map((branchName, index) => ({
-        branch: branchName,
-        sales: salesByBranch[branchName],
-        color: getBranchColor(index)
-      }));
-    } catch (error) {
-      console.error("Error generating daily sales from Supabase:", error);
-      return [];
-    }
+    console.warn("generateRealDailySales is deprecated/removed.");
+    return [];
   };
 
+
   // 본사 관리자용: 선택된 기간 주간 매출 차트 데이터 생성
-  const generateAdminWeeklySales = async (startDate?: Date, endDate?: Date) => {
+  const generateAdminWeeklySales = async (startDate?: Date, endDate?: Date, ordersData: any[] = allOrdersCache) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
@@ -434,34 +450,72 @@ export default function DashboardPage() {
         return date;
       })();
 
-      const data = await getSupabaseWeeklySales(start.toISOString(), end.toISOString());
+      const endOfDay = new Date(end);
+      endOfDay.setHours(23, 59, 59, 999);
 
-      const result = [];
-      let currentDate = startOfWeek(start, { weekStartsOn: 1 });
+      // 주별로 매출 계산
+      const salesByWeek: { [key: string]: { sales: number; branches: { [key: string]: number }; start: Date; end: Date } } = {};
 
-      while (currentDate <= end) {
-        const weekKey = format(currentDate, 'yyyy-MM-dd');
-        const weekData = data.find(item => item.weekKey === weekKey);
+      const weeksDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 7));
+      for (let i = 0; i <= weeksDiff; i++) {
+        const baseDate = new Date(start);
+        baseDate.setDate(start.getDate() + (i * 7));
+        const weekStart = startOfWeek(baseDate, { weekStartsOn: 1 });
+        const weekEnd = endOfWeek(baseDate, { weekStartsOn: 1 });
+        const weekKey = format(weekStart, 'yyyy-\'W\'ww');
+        salesByWeek[weekKey] = {
+          sales: 0,
+          branches: {},
+          start: weekStart,
+          end: weekEnd,
+        };
+        availableBranches.forEach(b => salesByWeek[weekKey].branches[b.name] = 0);
+      }
 
-        const weekEnd = new Date(currentDate);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        const weekStartLabel = format(currentDate, 'M월 d일');
-        const weekEndLabel = format(weekEnd, 'M월 d일');
+      ordersData.forEach((order: any) => {
+        const total = order.summary?.total || order.total || 0;
+        const branchName = order.branchName || '지점 미지정';
+        const paymentStatus = order.payment?.status;
 
-        result.push({
-          week: format(currentDate, 'M/d 시작'),
-          totalSales: weekData ? weekData.totalSales : 0,
-          branchSales: weekData ? weekData.branches : {},
+        if (paymentStatus === 'paid' || paymentStatus === 'completed') {
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            if (order.payment.completedAt.toDate) revenueDate = order.payment.completedAt.toDate();
+            else if (order.payment.completedAt instanceof Date) revenueDate = order.payment.completedAt;
+            else revenueDate = new Date(order.payment.completedAt);
+          } else {
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            if (orderDate.toDate) revenueDate = orderDate.toDate();
+            else if (orderDate instanceof Date) revenueDate = orderDate;
+            else revenueDate = new Date(orderDate);
+          }
+
+          const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
+          const weekKey = format(revenueWeekStart, 'yyyy-\'W\'ww');
+          if (salesByWeek[weekKey]) {
+            salesByWeek[weekKey].sales += total;
+            if (salesByWeek[weekKey].branches[branchName] !== undefined) {
+              salesByWeek[weekKey].branches[branchName] += total;
+            }
+          }
+        }
+      });
+
+      return Object.entries(salesByWeek).map(([week, data]) => {
+        const weekStartLabel = format(data.start, 'M월 d일');
+        const weekEndLabel = format(data.end, 'M월 d일');
+
+        return {
+          week: week.replace('W', '주차 '),
+          totalSales: data.sales,
+          branchSales: data.branches,
           weekStart: weekStartLabel,
           weekEnd: weekEndLabel,
           weekRange: `${weekStartLabel} ~ ${weekEndLabel}`,
-          ...(weekData ? weekData.branches : {})
-        });
-
-        currentDate.setDate(currentDate.getDate() + 7);
-      }
-
-      return result;
+          ...data.branches
+        };
+      });
     } catch (error) {
       console.error("Error generating admin weekly sales:", error);
       return [];
@@ -469,7 +523,7 @@ export default function DashboardPage() {
   };
 
   // 가맹점/지점 직원용: 선택된 기간 주간 매출 차트 데이터 생성
-  const generateBranchWeeklySales = async (startDate?: Date, endDate?: Date) => {
+  const generateBranchWeeklySales = async (startDate?: Date, endDate?: Date, ordersData: any[] = allOrdersCache) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
@@ -478,10 +532,8 @@ export default function DashboardPage() {
         return date;
       })();
 
-
-
       // 자신의 지점 주문만 필터링
-      const userBranchOrders = orders.filter((order: any) =>
+      const userBranchOrders = ordersData.filter((order: any) =>
         order.branchName === userBranch
       );
 
@@ -588,74 +640,20 @@ export default function DashboardPage() {
     }
   };
 
-  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase로 전환
+  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase 제거됨
   const generateRealWeeklySales = async (weekString: string) => {
-    try {
-      const [year, week] = weekString.split('-W');
-      const startDateObj = startOfWeek(new Date(parseInt(year), 0, 1 + (parseInt(week) - 1) * 7), { weekStartsOn: 1 });
-      const start = startDateObj.toISOString();
-      const end = endOfWeek(startDateObj, { weekStartsOn: 1 }).toISOString();
-
-      const data = await getSupabaseWeeklySales(start, end, currentFilteredBranch || undefined);
-
-      const branchNames = availableBranches.map(b => b.name);
-      const salesByBranch: { [key: string]: number } = {};
-      branchNames.forEach(name => salesByBranch[name] = 0);
-
-      data.forEach(item => {
-        Object.entries(item.branches).forEach(([branchName, sales]) => {
-          if (salesByBranch.hasOwnProperty(branchName)) {
-            salesByBranch[branchName] += Number(sales);
-          }
-        });
-      });
-
-      return branchNames.map((branchName, index) => ({
-        branch: branchName,
-        sales: salesByBranch[branchName],
-        color: getBranchColor(index)
-      }));
-    } catch (error) {
-      console.error("Error generating weekly sales from Supabase:", error);
-      return [];
-    }
+    console.warn("generateRealWeeklySales is deprecated/removed.");
+    return [];
   };
 
-  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase로 전환
+  // 기존 함수는 유지 (다른 차트에서 사용) - Supabase 제거됨
   const generateRealMonthlySales = async (monthString: string) => {
-    try {
-      const [year, month] = monthString.split('-');
-      const startDateObj = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
-      const start = startDateObj.toISOString();
-      const end = endOfMonth(startDateObj).toISOString();
-
-      const data = await getSupabaseMonthlySales(start, end, currentFilteredBranch || undefined);
-
-      const branchNames = availableBranches.map(b => b.name);
-      const salesByBranch: { [key: string]: number } = {};
-      branchNames.forEach(name => salesByBranch[name] = 0);
-
-      data.forEach(item => {
-        Object.entries(item.branches).forEach(([branchName, sales]) => {
-          if (salesByBranch.hasOwnProperty(branchName)) {
-            salesByBranch[branchName] += Number(sales);
-          }
-        });
-      });
-
-      return branchNames.map((branchName, index) => ({
-        branch: branchName,
-        sales: salesByBranch[branchName],
-        color: getBranchColor(index)
-      }));
-    } catch (error) {
-      console.error("Error generating monthly sales from Supabase:", error);
-      return [];
-    }
+    console.warn("generateRealMonthlySales is deprecated/removed.");
+    return [];
   };
 
   // 본사 관리자용: 선택된 기간 월간 매출 차트 데이터 생성
-  const generateAdminMonthlySales = async (startDate?: Date, endDate?: Date) => {
+  const generateAdminMonthlySales = async (startDate?: Date, endDate?: Date, ordersData: any[] = allOrdersCache) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
@@ -665,29 +663,58 @@ export default function DashboardPage() {
         return date;
       })();
 
-      const data = await getSupabaseMonthlySales(start.toISOString(), end.toISOString());
-
-      // 모든 월을 포함하는 결과 배열 생성
-      const result = [];
+      const salesByMonth: { [key: string]: { sales: number; branches: { [key: string]: number }; start: Date } } = {};
       const currentDate = new Date(start);
-      currentDate.setDate(1); // 달의 시작일로 설정
+      currentDate.setDate(1);
 
       while (currentDate <= end) {
         const monthKey = format(currentDate, 'yyyy-MM');
-        const monthLabel = format(currentDate, 'M월');
-        const monthData = data.find(item => item.month === monthKey);
-
-        result.push({
-          month: monthLabel,
-          totalSales: monthData ? monthData.totalSales : 0,
-          branchSales: monthData ? monthData.branches : {},
-          ...(monthData ? monthData.branches : {})
-        });
-
+        salesByMonth[monthKey] = {
+          sales: 0,
+          branches: {},
+          start: new Date(currentDate)
+        };
+        availableBranches.forEach(b => salesByMonth[monthKey].branches[b.name] = 0);
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
 
-      return result;
+      ordersData.forEach((order: any) => {
+        const total = order.summary?.total || order.total || 0;
+        const branchName = order.branchName || '지점 미지정';
+        const paymentStatus = order.payment?.status;
+
+        if (paymentStatus === 'paid' || paymentStatus === 'completed') {
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            if (order.payment.completedAt.toDate) revenueDate = order.payment.completedAt.toDate();
+            else if (order.payment.completedAt instanceof Date) revenueDate = order.payment.completedAt;
+            else revenueDate = new Date(order.payment.completedAt);
+          } else {
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            if (orderDate.toDate) revenueDate = orderDate.toDate();
+            else if (orderDate instanceof Date) revenueDate = orderDate;
+            else revenueDate = new Date(orderDate);
+          }
+
+          const monthKey = format(revenueDate, 'yyyy-MM');
+          if (salesByMonth[monthKey]) {
+            salesByMonth[monthKey].sales += total;
+            if (salesByMonth[monthKey].branches[branchName] !== undefined) {
+              salesByMonth[monthKey].branches[branchName] += total;
+            }
+          }
+        }
+      });
+
+      return Object.entries(salesByMonth).map(([monthKey, data]) => {
+        return {
+          month: format(data.start, 'M월'),
+          totalSales: data.sales,
+          branchSales: data.branches,
+          ...data.branches
+        };
+      });
     } catch (error) {
       console.error("Error generating admin monthly sales:", error);
       return [];
@@ -695,7 +722,7 @@ export default function DashboardPage() {
   };
 
   // 가맹점/지점 직원용: 선택된 기간 월간 매출 차트 데이터 생성
-  const generateBranchMonthlySales = async (startDate?: Date, endDate?: Date) => {
+  const generateBranchMonthlySales = async (startDate?: Date, endDate?: Date, ordersData: any[] = allOrdersCache) => {
     try {
       const end = endDate || new Date();
       const start = startDate || (() => {
@@ -705,27 +732,51 @@ export default function DashboardPage() {
         return date;
       })();
 
-      const data = await getSupabaseMonthlySales(start.toISOString(), end.toISOString(), userBranch || undefined);
-
-      // 모든 월을 포함하는 결과 배열 생성
-      const result = [];
+      const salesByMonth: { [key: string]: number } = {};
       const currentDate = new Date(start);
       currentDate.setDate(1);
 
       while (currentDate <= end) {
         const monthKey = format(currentDate, 'yyyy-MM');
-        const monthLabel = format(currentDate, 'M월');
-        const monthData = data.find(item => item.month === monthKey);
-
-        result.push({
-          month: monthLabel,
-          sales: monthData ? monthData.totalSales : 0
-        });
-
+        salesByMonth[monthKey] = 0;
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
 
-      return result;
+      const userBranchOrders = ordersData.filter((order: any) => order.branchName === userBranch);
+
+      userBranchOrders.forEach((order: any) => {
+        const total = order.summary?.total || order.total || 0;
+        const paymentStatus = order.payment?.status;
+
+        if (paymentStatus === 'paid' || paymentStatus === 'completed') {
+          let revenueDate;
+          if (order.payment?.completedAt) {
+            if (order.payment.completedAt.toDate) revenueDate = order.payment.completedAt.toDate();
+            else if (order.payment.completedAt instanceof Date) revenueDate = order.payment.completedAt;
+            else revenueDate = new Date(order.payment.completedAt);
+          } else {
+            const orderDate = order.orderDate;
+            if (!orderDate) return;
+            if (orderDate.toDate) revenueDate = orderDate.toDate();
+            else if (orderDate instanceof Date) revenueDate = orderDate;
+            else revenueDate = new Date(orderDate);
+          }
+
+          const monthKey = format(revenueDate, 'yyyy-MM');
+          if (salesByMonth.hasOwnProperty(monthKey)) {
+            salesByMonth[monthKey] += total;
+          }
+        }
+      });
+
+
+      return Object.entries(salesByMonth).map(([monthKey, sales]) => {
+        const [year, month] = monthKey.split('-');
+        return {
+          month: `${parseInt(month)}월`,
+          sales: sales
+        };
+      });
     } catch (error) {
       console.error("Error generating branch monthly sales:", error);
       return [];
@@ -877,46 +928,123 @@ export default function DashboardPage() {
       try {
         const branchFilter = currentFilteredBranch || undefined;
 
-        // 1. 대시보드 통계 가져오기 (올해 기준)
-        const yearStart = startOfYear(new Date()).toISOString();
-        const now = new Date().toISOString();
-        const yearStats = await getSupabaseDashboardStats(yearStart, now, branchFilter);
+        // Fetch All Orders from Firestore
+        const q = query(collection(db, "orders"), orderBy("orderDate", "desc"));
+        const snapshot = await getDocs(q);
+        const allFetchedOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 
-        // 주간 주문 건수 (별도로 계산하거나 DashboardStats 확장이 필요하지만, 여기서는 주간 데이터를 따로 가져옴)
-        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString();
-        const weekStats = await getSupabaseDashboardStats(weekStart, now, branchFilter);
+        setAllOrdersCache(allFetchedOrders);
 
-        setStats({
-          totalRevenue: yearStats.totalRevenue,
-          newCustomers: yearStats.newCustomers,
-          weeklyOrders: weekStats.orderCount,
-          pendingOrders: yearStats.pendingOrders,
-          pendingPaymentCount: yearStats.pendingPaymentCount,
-          pendingPaymentAmount: yearStats.pendingPaymentAmount
+        // Filter for Dashboard Stats
+        const now = new Date();
+        const yearStart = startOfYear(now);
+        const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+
+        let totalRevenue = 0;
+        let newCustomers = 0;
+        let weeklyOrders = 0;
+        let pendingOrders = 0;
+        let pendingPaymentCount = 0;
+        let pendingPaymentAmount = 0;
+
+        const targetOrders = branchFilter
+          ? allFetchedOrders.filter(o => o.branchName === branchFilter)
+          : allFetchedOrders;
+
+        targetOrders.forEach(order => {
+          const total = order.summary?.total || order.total || 0;
+          const paymentStatus = order.payment?.status;
+          let orderDate = order.orderDate;
+          if (orderDate?.toDate) orderDate = orderDate.toDate();
+          else if (typeof orderDate === 'string') orderDate = new Date(orderDate);
+
+          // Pending Orders (Processing/Pending status)
+          if (order.status === 'processing' || order.status === 'pending') {
+            pendingOrders++;
+          }
+
+          // Pending Payment
+          if (paymentStatus === 'pending') {
+            pendingPaymentCount++;
+            pendingPaymentAmount += total;
+          }
+
+          // Revenue (Paid/Completed)
+          if (paymentStatus === 'paid' || paymentStatus === 'completed' || paymentStatus === '완결') {
+            let revenueDate = orderDate;
+            if (order.payment?.completedAt) {
+              if (order.payment.completedAt.toDate) revenueDate = order.payment.completedAt.toDate();
+              else revenueDate = new Date(order.payment.completedAt);
+            }
+
+            if (revenueDate >= yearStart) {
+              totalRevenue += total;
+            }
+          }
+
+          // Weekly Orders
+          if (orderDate >= weekStart) {
+            weeklyOrders++;
+          }
         });
 
-        // 2. 최근 주문 가져오기
-        const recentOrdersData = await getSupabaseRecentOrders(branchFilter, 10);
+        // Recent Orders
+        const recentOrdersData = targetOrders.slice(0, 10).map(order => {
+          let productNames = '상품 정보 없음';
+          const items = order.items || order.products || [];
+          if (Array.isArray(items) && items.length > 0) {
+            productNames = items.map((item: any) => item.name || item.productName || '상품명 없음').join(', ');
+          }
+
+          return {
+            id: order.id,
+            orderer: order.orderer || { name: '정보 없음' },
+            orderDate: order.orderDate,
+            total: order.summary?.total || order.total || 0,
+            status: order.status,
+            branchName: order.branchName,
+            productNames
+          } as Order;
+        });
         setRecentOrders(recentOrdersData);
 
-        // 3. 차트 데이터 가져오기
+        // Fetch Customers count
+        if (isAdmin && !branchFilter) {
+          const custSnap = await getDocs(collection(db, 'customers'));
+          newCustomers = custSnap.size;
+        } else {
+          const custQ = query(collection(db, 'customers'), where('branch', '==', branchFilter || userBranch));
+          const custSnap = await getDocs(custQ);
+          newCustomers = custSnap.size;
+        }
+
+        setStats({
+          totalRevenue,
+          newCustomers,
+          weeklyOrders,
+          pendingOrders,
+          pendingPaymentCount,
+          pendingPaymentAmount
+        });
+
+        // Generate Charts using the fetched data
         const dailyData = isAdmin && !branchFilter
-          ? await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate))
-          : await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate));
+          ? await generateAdminDailySales(new Date(dailyStartDate), new Date(dailyEndDate), allFetchedOrders)
+          : await generateBranchDailySales(new Date(dailyStartDate), new Date(dailyEndDate), allFetchedOrders);
         setDailySales(dailyData);
 
         const weeklyData = isAdmin && !branchFilter
-          ? await generateAdminWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate))
-          : await generateBranchWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate));
+          ? await generateAdminWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate), allFetchedOrders)
+          : await generateBranchWeeklySales(new Date(weeklyStartDate), new Date(weeklyEndDate), allFetchedOrders);
         setWeeklySales(weeklyData);
 
         const monthlyData = isAdmin && !branchFilter
-          ? await generateAdminMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate))
-          : await generateBranchMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate));
+          ? await generateAdminMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate), allFetchedOrders)
+          : await generateBranchMonthlySales(new Date(monthlyStartDate), new Date(monthlyEndDate), allFetchedOrders);
         setMonthlySales(monthlyData);
 
       } catch (error) {
-        console.error("Error fetching dashboard data from Supabase:", error);
+        console.error("Error fetching dashboard data:", error);
       } finally {
         setLoading(false);
       }

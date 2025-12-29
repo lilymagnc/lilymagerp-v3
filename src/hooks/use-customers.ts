@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc, orderBy, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { supabase } from '@/lib/supabase';
+
 import { useToast } from './use-toast';
 import { CustomerFormValues } from '@/app/dashboard/customers/components/customer-form';
 export interface Customer extends CustomerFormValues {
@@ -38,24 +38,7 @@ export interface Customer extends CustomerFormValues {
 }
 
 // Supabase 고객 동기화 도우미 함수
-export const syncCustomerToSupabase = async (customer: Customer) => {
-  try {
-    const { error } = await supabase.from('customers').upsert({
-      id: customer.id,
-      name: customer.name,
-      contact: customer.contact,
-      branch: customer.branch,
-      points: customer.points || 0,
-      total_spent: customer.totalSpent || 0,
-      order_count: customer.orderCount || 0,
-      raw_data: customer,
-      updated_at: new Date().toISOString()
-    });
-    if (error) console.error('Supabase Customer Sync Error:', error);
-  } catch (err) {
-    console.error('Supabase Customer Sync Exception:', err);
-  }
-};
+
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,9 +196,7 @@ export function useCustomers() {
       }
       await fetchCustomers();
 
-      // Supabase 동기화 (Background)
-      const updatedCustomer = await findCustomerByContact(contact);
-      if (updatedCustomer) syncCustomerToSupabase(updatedCustomer);
+
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
       if (process.env.NODE_ENV === 'development') {
@@ -234,11 +215,7 @@ export function useCustomers() {
       toast({ title: "성공", description: "고객 정보가 수정되었습니다." });
       await fetchCustomers();
 
-      // Supabase 동기화 (Background)
-      const docSnap = await getDoc(customerDocRef);
-      if (docSnap.exists()) {
-        syncCustomerToSupabase({ id, ...docSnap.data() } as any);
-      }
+
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
       if (process.env.NODE_ENV === 'development') {
@@ -283,11 +260,7 @@ export function useCustomers() {
 
       await addDoc(collection(db, 'pointHistory'), pointHistoryData);
 
-      // Supabase 동기화 (Background)
-      const updatedDoc = await getDoc(customerRef);
-      if (updatedDoc.exists()) {
-        syncCustomerToSupabase({ id: customerId, ...updatedDoc.data() } as any);
-      }
+
 
       return { success: true, difference };
     } catch (error) {
@@ -306,12 +279,7 @@ export function useCustomers() {
       toast({ title: "성공", description: "고객 정보가 삭제되었습니다." });
       await fetchCustomers();
 
-      // Supabase 동기화 (삭제 마킹)
-      try {
-        await supabase.from('customers').delete().eq('id', id);
-      } catch (e) {
-        console.error('Supabase Delete Error:', e);
-      }
+
     } catch (error) {
       // 개발 환경에서만 콘솔에 출력
       if (process.env.NODE_ENV === 'development') {
@@ -549,8 +517,7 @@ export function useCustomers() {
           lastUpdated: serverTimestamp(),
         });
 
-        // Supabase 동기화 (Background)
-        syncCustomerToSupabase({ ...customer, points: newPoints } as any);
+
 
         return newPoints;
       }
@@ -575,8 +542,7 @@ export function useCustomers() {
           lastUpdated: serverTimestamp(),
         });
 
-        // Supabase 동기화 (Background)
-        syncCustomerToSupabase({ ...customer, points: newPoints } as any);
+
 
         return newPoints;
       }

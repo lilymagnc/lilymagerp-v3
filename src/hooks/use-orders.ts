@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc, deleteDoc, limit, startAt, endAt } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { supabase } from '@/lib/supabase';
+
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
 import { subDays, startOfDay } from 'date-fns';
@@ -90,29 +90,7 @@ export interface OrderData {
   source?: 'excel_upload' | 'manual'; // 출처 표시
 }
 
-// Supabase 동기화 도우미 함수
-export const syncOrderToSupabase = async (order: Order) => {
-  try {
-    const { error } = await supabase.from('orders').upsert({
-      id: order.id,
-      branch_id: order.branchId,
-      branch_name: order.branchName,
-      order_date: order.orderDate instanceof Timestamp ? order.orderDate.toDate().toISOString() : order.orderDate,
-      status: order.status,
-      orderer_name: order.orderer.name,
-      orderer_contact: order.orderer.contact,
-      total_amount: order.summary.total,
-      payment_status: order.payment.status,
-      payment_method: order.payment.method,
-      receipt_type: order.receiptType,
-      raw_data: order,
-      updated_at: new Date().toISOString()
-    });
-    if (error) console.error('Supabase Sync Error:', error);
-  } catch (err) {
-    console.error('Supabase Sync Exception:', err);
-  }
-};
+
 export interface Order extends Omit<OrderData, 'orderDate'> {
   id: string;
   orderDate: Timestamp;
@@ -371,9 +349,7 @@ export function useOrders() {
 
       await fetchOrders();
 
-      // Supabase 동기화 (Background)
-      const newOrder = { id: orderDocRef.id, ...finalOrderPayload } as any;
-      syncOrderToSupabase(newOrder);
+
 
       return orderDocRef.id; // 주문 ID 반환
     } catch (error) {
@@ -472,12 +448,7 @@ export function useOrders() {
       });
       await fetchOrders();
 
-      // Supabase 상태 동기화
-      try {
-        await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
-      } catch (sbErr) {
-        console.error('Supabase Status Update Error:', sbErr);
-      }
+
     } catch (error) {
       toast({
         variant: 'destructive',

@@ -198,7 +198,7 @@ export default function SettingsPage() {
           <TabsTrigger value="order-transfer">주문 이관</TabsTrigger>
           <TabsTrigger value="backup">백업 관리</TabsTrigger>
           <TabsTrigger value="data-cleanup">데이터 초기화</TabsTrigger>
-          <TabsTrigger value="migration">마이그레이션</TabsTrigger>
+
         </TabsList>
         {/* 일반 설정 */}
         <TabsContent value="general" className="space-y-4">
@@ -1102,36 +1102,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        {/* 마이그레이션 */}
-        <TabsContent value="migration" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="h-5 w-5" />
-                Supabase 데이터 마이그레이션
-              </CardTitle>
-              <CardDescription>
-                Firebase의 데이터를 Supabase로 마이그레이션합니다.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-4">
-                <h4 className="font-semibold text-yellow-800 mb-1">⚠️ 주의사항</h4>
-                <p className="text-sm text-yellow-700">
-                  데이터 마이그레이션은 시스템 부하를 유발할 수 있습니다. 업무 시간이 아닌 때에 진행하는 것을 권장합니다.
-                </p>
-              </div>
-              <div className="flex justify-start">
-                <Link href="/dashboard/settings/supabase" passHref>
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <Database className="mr-2 h-4 w-4" />
-                    마이그레이션 페이지로 이동
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+
       </Tabs>
       {/* 액션 버튼 */}
       <div className="flex justify-end gap-4">

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { supabase } from '@/lib/supabase';
+
 import { useToast } from './use-toast';
 import { PartnerFormValues } from '@/app/dashboard/partners/components/partner-form';
 export interface Partner extends PartnerFormValues {
@@ -10,22 +10,7 @@ export interface Partner extends PartnerFormValues {
   createdAt: string;
 }
 
-// Supabase 거래처 동기화 도우미 함수
-export const syncPartnerToSupabase = async (partner: Partner) => {
-  try {
-    const p = partner as any;
-    const { error } = await supabase.from('partners').upsert({
-      id: p.id,
-      name: p.name,
-      type: p.type,
-      contact: p.phone || p.contact || '',
-      raw_data: p
-    });
-    if (error) console.error('Supabase Partner Sync Error:', error);
-  } catch (err) {
-    console.error('Supabase Partner Sync Exception:', err);
-  }
-};
+
 export function usePartners() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,8 +53,7 @@ export function usePartners() {
       toast({ title: "성공", description: "새 거래처가 추가되었습니다." });
       await fetchPartners();
 
-      // Supabase 동기화
-      syncPartnerToSupabase({ id: docRef.id, ...data } as any);
+
     } catch (error) {
       console.error("Error adding partner:", error);
       toast({ variant: 'destructive', title: '오류', description: '거래처 추가 중 오류가 발생했습니다.' });
@@ -85,8 +69,7 @@ export function usePartners() {
       toast({ title: "성공", description: "거래처 정보가 수정되었습니다." });
       await fetchPartners();
 
-      // Supabase 동기화
-      syncPartnerToSupabase({ id, ...data } as any);
+
     } catch (error) {
       console.error("Error updating partner:", error);
       toast({ variant: 'destructive', title: '오류', description: '거래처 정보 수정 중 오류가 발생했습니다.' });
@@ -101,8 +84,7 @@ export function usePartners() {
       toast({ title: "성공", description: "거래처 정보가 삭제되었습니다." });
       await fetchPartners();
 
-      // Supabase 삭제
-      await supabase.from('partners').delete().eq('id', id);
+
     } catch (error) {
       console.error("Error deleting partner:", error);
       toast({ variant: 'destructive', title: '오류', description: '거래처 삭제 중 오류가 발생했습니다.' });
