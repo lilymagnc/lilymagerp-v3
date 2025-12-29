@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Target, DollarSign, ArrowRightLeft, RefreshCw, ChevronLeft, ChevronRight, FileText, XCircle } from "lucide-react";
+import { Calendar, Target, DollarSign, ArrowRightLeft, RefreshCw, ChevronLeft, ChevronRight, FileText, XCircle, Download } from "lucide-react";
 import { format, subDays, addDays, startOfDay, endOfDay } from "date-fns";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { useBranches } from "@/hooks/use-branches";
@@ -18,6 +18,7 @@ import Link from 'next/link';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OrderDetailDialog } from "../components/order-detail-dialog";
+import { exportDailySettlementToExcel } from "@/lib/excel-export";
 
 export default function DailySettlementPage() {
     const { orders, loading: ordersLoading } = useOrders();
@@ -79,8 +80,13 @@ export default function DailySettlementPage() {
             if (!isBeforeToday || isCanceled) return false;
 
             // 결제 완료일 확인 (payment.completedAt 또는 payment.secondPaymentDate)
-            const completedAt = (order.payment as any).completedAt?.toDate();
-            const secondPaymentDate = (order.payment as any).secondPaymentDate?.toDate();
+            const completedAt = (order.payment as any).completedAt instanceof Timestamp
+                ? (order.payment as any).completedAt.toDate()
+                : ((order.payment as any).completedAt ? new Date((order.payment as any).completedAt) : null);
+
+            const secondPaymentDate = (order.payment as any).secondPaymentDate instanceof Timestamp
+                ? (order.payment as any).secondPaymentDate.toDate()
+                : ((order.payment as any).secondPaymentDate ? new Date((order.payment as any).secondPaymentDate) : null);
 
             const isCompletedToday = completedAt && completedAt >= from && completedAt <= to;
             const isSecondPaidToday = secondPaymentDate && secondPaymentDate >= from && secondPaymentDate <= to;
@@ -101,6 +107,10 @@ export default function DailySettlementPage() {
         let netSales = 0;       // 실질 매출 합계
         let prevOrderPaymentTotal = 0; // 이월 주문 수금액
 
+        let pendingAmountToday = 0;
+        const pendingOrdersToday: Order[] = [];
+        const paidOrdersToday: Order[] = [];
+
         // 결제수단별 집계
         const paymentStats = {
             card: { count: 0, amount: 0 },
@@ -110,9 +120,7 @@ export default function DailySettlementPage() {
         };
 
         const updatePaymentStats = (order: Order) => {
-            const isPaid = order.payment?.status === 'paid' || order.payment?.status === 'completed';
-            if (!isPaid) return; // 미결 주문은 수금 통계에서 제외
-
+            // 호출 시점에서 이미 '유효한 결제'임이 확인되었다고 가정함
             const method = order.payment.method;
             const total = order.summary.total;
             if (method === 'card') {
@@ -136,17 +144,43 @@ export default function DailySettlementPage() {
             const transferStatus = order.transferInfo?.status;
             const isValidTransfer = isTransferred && (transferStatus === 'accepted' || transferStatus === 'completed');
 
-            const isPaid = order.payment?.status === 'paid' || order.payment?.status === 'completed';
+            // 실제 결제 상태 확인
+            const isPaidGlobal = order.payment?.status === 'paid' || order.payment?.status === 'completed';
+
+            // 결제 시점 확인
+            const completedAt = (order.payment as any).completedAt instanceof Timestamp
+                ? (order.payment as any).completedAt.toDate()
+                : ((order.payment as any).completedAt ? new Date((order.payment as any).completedAt) : null);
+
+            const secondPaymentDate = (order.payment as any).secondPaymentDate instanceof Timestamp
+                ? (order.payment as any).secondPaymentDate.toDate()
+                : ((order.payment as any).secondPaymentDate ? new Date((order.payment as any).secondPaymentDate) : null);
+
+            // 유효 결제일: to (오늘의 마감시간)보다 작거나 같아야 함
+            let isPaidEffective = false;
+            if (isPaidGlobal) {
+                if (completedAt) {
+                    isPaidEffective = completedAt <= to;
+                } else if (secondPaymentDate) {
+                    isPaidEffective = secondPaymentDate <= to;
+                } else {
+                    // Timestamp 정보가 없는 경우 (구 데이터 또는 즉시완료 건)
+                    isPaidEffective = true;
+                }
+            }
 
             const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
 
-            updatePaymentStats(order);
-
             if (currentTargetBranch === 'all') {
                 totalPayment += total;
-                if (isPaid) {
+                if (isPaidEffective) {
                     netSales += total;
                     outgoingSettle += total;
+                    updatePaymentStats(order);
+                    paidOrdersToday.push(order);
+                } else {
+                    pendingOrdersToday.push(order);
+                    pendingAmountToday += total;
                 }
             } else {
                 const isOriginal = order.branchName === currentTargetBranch;
@@ -154,37 +188,38 @@ export default function DailySettlementPage() {
 
                 if (isOriginal) {
                     totalPayment += total;
-                    if (isPaid) {
+                    if (isPaidEffective) {
                         const share = isValidTransfer ? Math.round(total * (split.orderBranch / 100)) : total;
                         outgoingSettle += share;
                         netSales += share;
+                        updatePaymentStats(order);
+                        paidOrdersToday.push(order);
+                    } else {
+                        pendingOrdersToday.push(order);
+                        const share = isValidTransfer ? Math.round(total * (split.orderBranch / 100)) : total;
+                        pendingAmountToday += share;
                     }
                 }
 
                 if (isProcess) {
-                    if (isPaid) {
+                    if (isPaidEffective) {
                         const share = Math.round(total * (split.processBranch / 100));
                         incomingSettle += share;
                         netSales += share;
+                        if (!paidOrdersToday.includes(order)) paidOrdersToday.push(order);
                     }
+                    else if (!pendingOrdersToday.includes(order)) { // 중복 방지
+                        pendingOrdersToday.push(order);
+                        // 수주 지점은 미결 금액 집계 제외 (기존 로직 유지)
+                    }
+                }
+
+                // 수주 지점의 결제 수단 집계 (기존 로직 유지)
+                if (!isOriginal && isProcess && isPaidEffective) {
+                    updatePaymentStats(order);
                 }
             }
         });
-
-        // 금일 미결 주문 필터링
-        const pendingOrdersToday = dailyOrders.filter(order => order.payment?.status === 'pending');
-        const pendingAmountToday = pendingOrdersToday.reduce((sum, order) => {
-            if (currentTargetBranch === 'all') return sum + order.summary.total;
-
-            const isOriginal = order.branchName === currentTargetBranch;
-            const isValidTransfer = order.transferInfo?.isTransferred && (order.transferInfo?.status === 'accepted' || order.transferInfo?.status === 'completed');
-            const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
-
-            if (isOriginal) {
-                return sum + (isValidTransfer ? Math.round(order.summary.total * (split.orderBranch / 100)) : order.summary.total);
-            }
-            return sum;
-        }, 0);
 
         // 이월 주문 결제 처리
         previousOrderPayments.forEach(order => {
@@ -215,6 +250,7 @@ export default function DailySettlementPage() {
 
         return {
             dailyOrders,
+            paidOrdersToday,
             previousOrderPayments,
             pendingOrdersToday,
             totalPayment,
@@ -261,6 +297,16 @@ export default function DailySettlementPage() {
                             </SelectContent>
                         </Select>
                     )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportDailySettlementToExcel(reportDate, currentTargetBranch, stats)}
+                        className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        disabled={!stats}
+                    >
+                        <Download className="mr-2 h-4 w-4" />
+                        엑셀 다운로드
+                    </Button>
                     <div className="flex items-center gap-1">
                         <Button variant="outline" size="icon" onClick={handlePrevDay}><ChevronLeft className="h-4 w-4" /></Button>
                         <Input
@@ -394,14 +440,14 @@ export default function DailySettlementPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {stats?.dailyOrders.length === 0 ? (
+                            {stats?.paidOrdersToday.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                                        해당 일자의 주문 내역이 없습니다.
+                                        해당 일자의 정산 완료(결제됨)된 주문 내역이 없습니다.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                stats?.dailyOrders.map((order, index) => {
+                                stats?.paidOrdersToday.map((order, index) => {
                                     const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
                                     let myShare = 0;
                                     let info = "일반 주문";
@@ -594,13 +640,14 @@ export default function DailySettlementPage() {
                                 <TableHead>전체금액</TableHead>
                                 <TableHead>미결금액</TableHead>
                                 <TableHead>이관 정보</TableHead>
+                                <TableHead>추후 결제 여부</TableHead>
                                 <TableHead>상태</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {stats?.pendingOrdersToday.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                                         오늘 발생한 미결제 내역이 없습니다.
                                     </TableCell>
                                 </TableRow>
@@ -620,6 +667,20 @@ export default function DailySettlementPage() {
                                     }
 
                                     const orderDate = order.orderDate instanceof Date ? order.orderDate : order.orderDate.toDate();
+
+                                    // 현재 시점 기준 결제 상태 확인
+                                    const currentPaymentStatus = order.payment.status;
+                                    const isCurrentlyPaid = currentPaymentStatus === 'paid' || currentPaymentStatus === 'completed';
+
+                                    const completedAtTime = (order.payment as any).completedAt instanceof Timestamp
+                                        ? (order.payment as any).completedAt.toDate()
+                                        : ((order.payment as any).completedAt ? new Date((order.payment as any).completedAt) : null);
+
+                                    const secondPaymentTime = (order.payment as any).secondPaymentDate instanceof Timestamp
+                                        ? (order.payment as any).secondPaymentDate.toDate()
+                                        : ((order.payment as any).secondPaymentDate ? new Date((order.payment as any).secondPaymentDate) : null);
+
+                                    const paidTime = completedAtTime || secondPaymentTime;
 
                                     return (
                                         <TableRow
@@ -647,6 +708,20 @@ export default function DailySettlementPage() {
                                                         <span className="text-[10px] text-muted-foreground">{order.transferInfo.processBranchName}</span>
                                                     </div>
                                                 ) : '일반'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isCurrentlyPaid ? (
+                                                    <div className="flex flex-col">
+                                                        <Badge variant="outline" className="w-fit text-green-600 border-green-200 bg-green-50 mb-1">결제완료</Badge>
+                                                        {paidTime && (
+                                                            <span className="text-[10px] text-muted-foreground text-xs">
+                                                                {format(paidTime, 'MM-dd HH:mm')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-red-500 border-red-200 bg-red-50">미결제</Badge>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge variant={order.status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
