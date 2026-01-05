@@ -224,13 +224,12 @@ export default function NewOrderPage() {
     })
   }, [orders, selectedBranch]);
 
-  // 지점별 자주 나가는 상품 10가지 계산 (부족분은 해당 지점 상품으로 채움)
-  const topProducts = useMemo(() => {
+  // 지점별 자주 나가는 상품 카테고리별 계산 (플라워, 플랜트 각 10개)
+  const topFlowerProducts = useMemo(() => {
     if (!branchProducts.length || !selectedBranch) return [];
 
     const productCounts: Record<string, number> = {};
     orders.forEach(order => {
-      // 해당 지점의 주문만 필터링 (ID 또는 이름 일치)
       if (order.branchId === selectedBranch.id || order.branchName === selectedBranch.name) {
         order.items.forEach(item => {
           if (item.id) {
@@ -240,27 +239,68 @@ export default function NewOrderPage() {
       }
     });
 
-    // 1. 해당 지점에서 실제 판매량이 있는 상품들
-    const soldProducts = Object.entries(productCounts)
-      .sort(([, a], [, b]) => b - a)
-      .map(([id]) => branchProducts.find(p => p.id === id))
-      .filter((p): p is Product => p !== undefined);
+    const flowerProducts = branchProducts.filter(p => p.mainCategory === '플라워');
 
-    // 2. 해당 지점의 전체 가용 상품 목록 구성
-    const allAvailable = [...soldProducts];
+    const soldFlowers = Object.entries(productCounts)
+      .map(([id, count]) => ({ product: flowerProducts.find(p => p.id === id), count }))
+      .filter((x): x is { product: Product; count: number } => x.product !== undefined)
+      .sort((a, b) => b.count - a.count)
+      .map(x => x.product);
 
-    // 10개가 안 될 경우 해당 지점의 다른 상품들로 보충
+    const allAvailable = [...soldFlowers];
+
     if (allAvailable.length < 10) {
-      const remaining = branchProducts
+      const remaining = flowerProducts
         .filter(p => !allAvailable.find(ap => ap.id === p.id))
-        // 재고 있는 상품 우선 정렬
         .sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0));
       allAvailable.push(...remaining);
     }
 
-    // 최종 10개만 반환 (지점별 맞춤 배열)
     return allAvailable.slice(0, 10);
   }, [branchProducts, orders, selectedBranch]);
+
+  const topPlantProducts = useMemo(() => {
+    if (!branchProducts.length || !selectedBranch) return [];
+
+    const productCounts: Record<string, number> = {};
+    orders.forEach(order => {
+      if (order.branchId === selectedBranch.id || order.branchName === selectedBranch.name) {
+        order.items.forEach(item => {
+          if (item.id) {
+            productCounts[item.id] = (productCounts[item.id] || 0) + item.quantity;
+          }
+        });
+      }
+    });
+
+    const plantProducts = branchProducts.filter(p => p.mainCategory === '플랜트');
+
+    const soldPlants = Object.entries(productCounts)
+      .map(([id, count]) => ({ product: plantProducts.find(p => p.id === id), count }))
+      .filter((x): x is { product: Product; count: number } => x.product !== undefined)
+      .sort((a, b) => b.count - a.count)
+      .map(x => x.product);
+
+    const allAvailable = [...soldPlants];
+
+    if (allAvailable.length < 10) {
+      const remaining = plantProducts
+        .filter(p => !allAvailable.find(ap => ap.id === p.id))
+        .sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0));
+      allAvailable.push(...remaining);
+    }
+
+    return allAvailable.slice(0, 10);
+  }, [branchProducts, orders, selectedBranch]);
+
+  // 쇼핑백 상품 필터링
+  const shoppingBagProducts = useMemo(() => {
+    if (!branchProducts.length) return [];
+    return branchProducts.filter(p =>
+      p.name.includes('쇼핑백') ||
+      p.mainCategory === '자재' && p.midCategory?.includes('쇼핑백')
+    ).sort((a, b) => a.price - b.price);
+  }, [branchProducts]);
   // 사용자 역할에 따른 자동 지점 선택
   useEffect(() => {
     if (user && branches.length > 0 && !selectedBranch) {
@@ -932,26 +972,52 @@ export default function NewOrderPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        {topProducts.length > 0 && selectedBranch && (
-                          <div className="space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                            <span className="text-xs font-bold text-primary flex items-center gap-1.5 px-1">
-                              <Star className="h-3.5 w-3.5 fill-primary" /> {selectedBranch.name} 인기 상품 (Top 10)
-                            </span>
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                              {topProducts.map(p => (
-                                <Button
-                                  key={`top-${p.docId}`}
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-auto py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] leading-tight hover:bg-white hover:text-primary hover:border-primary transition-all bg-white/50"
-                                  onClick={() => handleAddProduct(p.docId)}
-                                  disabled={p.stock === 0}
-                                >
-                                  <span className="font-semibold text-slate-700 truncate w-full text-center">{p.name}</span>
-                                  <span className="text-[10px] text-slate-500 font-medium">₩{p.price.toLocaleString()}</span>
-                                </Button>
-                              ))}
-                            </div>
+                        {(topFlowerProducts.length > 0 || topPlantProducts.length > 0) && selectedBranch && (
+                          <div className="space-y-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            {topFlowerProducts.length > 0 && (
+                              <div className="space-y-2">
+                                <span className="text-xs font-bold text-rose-500 flex items-center gap-1.5 px-1">
+                                  <Star className="h-3.5 w-3.5 fill-rose-500" /> 플라워 인기 상품 (Top 10)
+                                </span>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                  {topFlowerProducts.map(p => (
+                                    <Button
+                                      key={`top-flower-${p.docId}`}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-auto py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] leading-tight hover:bg-white hover:text-rose-500 hover:border-rose-500 transition-all bg-white/50"
+                                      onClick={() => handleAddProduct(p.docId)}
+                                      disabled={p.stock === 0}
+                                    >
+                                      <span className="font-semibold text-slate-700 truncate w-full text-center">{p.name}</span>
+                                      <span className="text-[10px] text-slate-500 font-medium">₩{p.price.toLocaleString()}</span>
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {topPlantProducts.length > 0 && (
+                              <div className="space-y-2 pt-2 border-t border-slate-200">
+                                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 px-1">
+                                  <Star className="h-3.5 w-3.5 fill-emerald-600" /> 플랜트 인기 상품 (Top 10)
+                                </span>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                  {topPlantProducts.map(p => (
+                                    <Button
+                                      key={`top-plant-${p.docId}`}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-auto py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] leading-tight hover:bg-white hover:text-emerald-600 hover:border-emerald-600 transition-all bg-white/50"
+                                      onClick={() => handleAddProduct(p.docId)}
+                                      disabled={p.stock === 0}
+                                    >
+                                      <span className="font-semibold text-slate-700 truncate w-full text-center">{p.name}</span>
+                                      <span className="text-[10px] text-slate-500 font-medium">₩{p.price.toLocaleString()}</span>
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                         <div className="flex items-center gap-2">
@@ -1588,6 +1654,24 @@ export default function NewOrderPage() {
                   <span>배송비</span>
                   <span>₩{deliveryFee.toLocaleString()}</span>
                 </div>
+                {shoppingBagProducts.length > 0 && (
+                  <div className="space-y-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <Label className="text-xs font-semibold text-gray-500">쇼핑백 추가</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {shoppingBagProducts.map(p => (
+                        <Button
+                          key={`bag-${p.docId}`}
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-[11px] px-2 bg-white"
+                          onClick={() => handleAddProduct(p.docId)}
+                        >
+                          {p.name.replace('쇼핑백', '').trim() || '기본'} (+{p.price.toLocaleString()})
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <Separator />
                 <div className="space-y-2">
                   <Label htmlFor="used-points">포인트 사용</Label>
