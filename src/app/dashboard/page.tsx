@@ -291,15 +291,6 @@ export default function DashboardPage() {
           : null;
         const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
 
-        // 상태별 카운트
-        if (paymentStatus === 'paid') {
-          paidOrdersCount++;
-        } else if (paymentStatus === 'completed') {
-          completedOrdersCount++;
-        } else if (paymentStatus === 'pending') {
-          pendingOrdersCount++;
-        }
-
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           let revenueDate;
