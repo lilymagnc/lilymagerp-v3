@@ -279,14 +279,17 @@ export default function DashboardPage() {
 
       // 주문 데이터로 매출 계산
 
-      let paidOrdersCount = 0;
-      let completedOrdersCount = 0;
-      let pendingOrdersCount = 0;
-
       allOrders.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const branchName = order.branchName || '지점 미지정';
         const paymentStatus = order.payment?.status;
+
+        // 이관 정보 확인
+        const transfer = order.transferInfo?.isTransferred &&
+          (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+          ? order.transferInfo
+          : null;
+        const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
 
         // 상태별 카운트
         if (paymentStatus === 'paid') {
@@ -299,38 +302,37 @@ export default function DashboardPage() {
 
         // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
+            if (order.payment.completedAt.toDate) revenueDate = order.payment.completedAt.toDate();
+            else if (order.payment.completedAt instanceof Date) revenueDate = order.payment.completedAt;
+            else revenueDate = new Date(order.payment.completedAt);
           } else {
-            // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
+            if (orderDate.toDate) revenueDate = orderDate.toDate();
+            else if (orderDate instanceof Date) revenueDate = orderDate;
+            else revenueDate = new Date(orderDate);
           }
 
           const dateKey = format(revenueDate, 'yyyy-MM-dd');
+          if (!salesByDate[dateKey]) return;
 
-          if (salesByDate[dateKey] && salesByDate[dateKey].hasOwnProperty(branchName)) {
-            salesByDate[dateKey][branchName] += total;
-          } else if (salesByDate[dateKey]) {
-            // 지점이 availableBranches에 없지만 해당 날짜에 데이터가 있는 경우
-            salesByDate[dateKey][branchName] = total;
+          // 1. 발주 지점 지분 반영
+          const orderBranchSales = Math.round(total * (split.orderBranch / 100));
+          if (salesByDate[dateKey].hasOwnProperty(branchName)) {
+            salesByDate[dateKey][branchName] += orderBranchSales;
+          }
+
+          // 2. 수주 지점 지분 반영
+          if (transfer?.processBranchName) {
+            const processBranchName = transfer.processBranchName;
+            const processBranchSales = Math.round(total * (split.processBranch / 100));
+            if (salesByDate[dateKey].hasOwnProperty(processBranchName)) {
+              salesByDate[dateKey][processBranchName] += processBranchSales;
+            } else {
+              salesByDate[dateKey][processBranchName] = processBranchSales;
+            }
           }
         }
       });
@@ -379,42 +381,47 @@ export default function DashboardPage() {
         salesByDate[dateKey] = 0;
       }
 
-      const userBranchOrders = ordersData.filter((order: any) => order.branchName === userBranch);
-
-      userBranchOrders.forEach((order: any) => {
+      allOrdersCache.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const paymentStatus = order.payment?.status;
 
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        // 이관 정보 확인
+        const isOriginal = order.branchName === userBranch;
+        const transfer = order.transferInfo?.isTransferred &&
+          (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+          ? order.transferInfo
+          : null;
+        const isProcess = transfer?.processBranchName === userBranch;
+
+        if (!isOriginal && !isProcess) return;
+
+        const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
+
+        // 완결처리된 주문만 매출에 포함
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
+            if (order.payment.completedAt.toDate) revenueDate = order.payment.completedAt.toDate();
+            else if (order.payment.completedAt instanceof Date) revenueDate = order.payment.completedAt;
+            else revenueDate = new Date(order.payment.completedAt);
           } else {
-            // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
+            if (orderDate.toDate) revenueDate = orderDate.toDate();
+            else if (orderDate instanceof Date) revenueDate = orderDate;
+            else revenueDate = new Date(orderDate);
           }
 
           const dateKey = format(revenueDate, 'yyyy-MM-dd');
           if (salesByDate.hasOwnProperty(dateKey)) {
-            salesByDate[dateKey] += total;
+            let share = 0;
+            if (isOriginal) {
+              share += Math.round(total * (split.orderBranch / 100));
+            }
+            if (isProcess) {
+              share += Math.round(total * (split.processBranch / 100));
+            }
+            salesByDate[dateKey] += share;
           }
         }
       });
@@ -477,6 +484,12 @@ export default function DashboardPage() {
         const branchName = order.branchName || '지점 미지정';
         const paymentStatus = order.payment?.status;
 
+        const transfer = order.transferInfo?.isTransferred &&
+          (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+          ? order.transferInfo
+          : null;
+        const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
+
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -494,9 +507,23 @@ export default function DashboardPage() {
           const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
           const weekKey = format(revenueWeekStart, 'yyyy-\'W\'ww');
           if (salesByWeek[weekKey]) {
-            salesByWeek[weekKey].sales += total;
+            // 발주 지분
+            const orderBranchSales = Math.round(total * (split.orderBranch / 100));
+            salesByWeek[weekKey].sales += orderBranchSales;
             if (salesByWeek[weekKey].branches[branchName] !== undefined) {
-              salesByWeek[weekKey].branches[branchName] += total;
+              salesByWeek[weekKey].branches[branchName] += orderBranchSales;
+            }
+
+            // 수주 지분
+            if (transfer?.processBranchName) {
+              const pName = transfer.processBranchName;
+              const pSales = Math.round(total * (split.processBranch / 100));
+              salesByWeek[weekKey].sales += pSales;
+              if (salesByWeek[weekKey].branches[pName] !== undefined) {
+                salesByWeek[weekKey].branches[pName] += pSales;
+              } else {
+                salesByWeek[weekKey].branches[pName] = pSales;
+              }
             }
           }
         }
@@ -569,44 +596,33 @@ export default function DashboardPage() {
       let completedOrdersCount = 0;
       let pendingOrdersCount = 0;
 
-      userBranchOrders.forEach((order: any) => {
+      ordersData.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const paymentStatus = order.payment?.status;
 
-        // 상태별 카운트
-        if (paymentStatus === 'paid') {
-          paidOrdersCount++;
-        } else if (paymentStatus === 'completed') {
-          completedOrdersCount++;
-        } else if (paymentStatus === 'pending') {
-          pendingOrdersCount++;
-        }
+        const isOriginal = order.branchName === userBranch;
+        const transfer = order.transferInfo?.isTransferred &&
+          (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+          ? order.transferInfo
+          : null;
+        const isProcess = transfer?.processBranchName === userBranch;
 
-        // 완결처리된 주문만 매출에 포함 (미결 주문 제외)
+        if (!isOriginal && !isProcess) return;
+        const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
+
+        // 완결처리된 주문만 매출에 포함
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
-          // 완결처리된 주문: 결제 완료일 기준
           let revenueDate;
           if (order.payment?.completedAt) {
-            // Firestore Timestamp인 경우
-            if (order.payment.completedAt.toDate) {
-              revenueDate = order.payment.completedAt.toDate();
-            } else if (order.payment.completedAt instanceof Date) {
-              revenueDate = order.payment.completedAt;
-            } else {
-              revenueDate = new Date(order.payment.completedAt);
-            }
+            if (order.payment.completedAt.toDate) revenueDate = order.payment.completedAt.toDate();
+            else if (order.payment.completedAt instanceof Date) revenueDate = order.payment.completedAt;
+            else revenueDate = new Date(order.payment.completedAt);
           } else {
-            // 결제 완료일이 없는 경우 주문일 기준
             const orderDate = order.orderDate;
             if (!orderDate) return;
-
-            if (orderDate.toDate) {
-              revenueDate = orderDate.toDate();
-            } else if (orderDate instanceof Date) {
-              revenueDate = orderDate;
-            } else {
-              revenueDate = new Date(orderDate);
-            }
+            if (orderDate.toDate) revenueDate = orderDate.toDate();
+            else if (orderDate instanceof Date) revenueDate = orderDate;
+            else revenueDate = new Date(orderDate);
           }
 
           const revenueWeekStart = startOfWeek(revenueDate, { weekStartsOn: 1 });
@@ -614,7 +630,10 @@ export default function DashboardPage() {
           const weekEntry = salesByWeek[weekKey];
 
           if (weekEntry) {
-            weekEntry.sales += total;
+            let share = 0;
+            if (isOriginal) share += Math.round(total * (split.orderBranch / 100));
+            if (isProcess) share += Math.round(total * (split.processBranch / 100));
+            weekEntry.sales += share;
           }
         }
       });
@@ -683,6 +702,12 @@ export default function DashboardPage() {
         const branchName = order.branchName || '지점 미지정';
         const paymentStatus = order.payment?.status;
 
+        const transfer = order.transferInfo?.isTransferred &&
+          (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+          ? order.transferInfo
+          : null;
+        const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
+
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           let revenueDate;
           if (order.payment?.completedAt) {
@@ -699,9 +724,23 @@ export default function DashboardPage() {
 
           const monthKey = format(revenueDate, 'yyyy-MM');
           if (salesByMonth[monthKey]) {
-            salesByMonth[monthKey].sales += total;
+            // 발주 지분
+            const oSales = Math.round(total * (split.orderBranch / 100));
+            salesByMonth[monthKey].sales += oSales;
             if (salesByMonth[monthKey].branches[branchName] !== undefined) {
-              salesByMonth[monthKey].branches[branchName] += total;
+              salesByMonth[monthKey].branches[branchName] += oSales;
+            }
+
+            // 수주 지분
+            if (transfer?.processBranchName) {
+              const pName = transfer.processBranchName;
+              const pSales = Math.round(total * (split.processBranch / 100));
+              salesByMonth[monthKey].sales += pSales;
+              if (salesByMonth[monthKey].branches[pName] !== undefined) {
+                salesByMonth[monthKey].branches[pName] += pSales;
+              } else {
+                salesByMonth[monthKey].branches[pName] = pSales;
+              }
             }
           }
         }
@@ -744,9 +783,19 @@ export default function DashboardPage() {
 
       const userBranchOrders = ordersData.filter((order: any) => order.branchName === userBranch);
 
-      userBranchOrders.forEach((order: any) => {
+      ordersData.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const paymentStatus = order.payment?.status;
+
+        const isOriginal = order.branchName === userBranch;
+        const transfer = order.transferInfo?.isTransferred &&
+          (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+          ? order.transferInfo
+          : null;
+        const isProcess = transfer?.processBranchName === userBranch;
+
+        if (!isOriginal && !isProcess) return;
+        const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
 
         if (paymentStatus === 'paid' || paymentStatus === 'completed') {
           let revenueDate;
@@ -764,7 +813,10 @@ export default function DashboardPage() {
 
           const monthKey = format(revenueDate, 'yyyy-MM');
           if (salesByMonth.hasOwnProperty(monthKey)) {
-            salesByMonth[monthKey] += total;
+            let share = 0;
+            if (isOriginal) share += Math.round(total * (split.orderBranch / 100));
+            if (isProcess) share += Math.round(total * (split.processBranch / 100));
+            salesByMonth[monthKey] += share;
           }
         }
       });
@@ -958,6 +1010,26 @@ export default function DashboardPage() {
           if (orderDate?.toDate) orderDate = orderDate.toDate();
           else if (typeof orderDate === 'string') orderDate = new Date(orderDate);
 
+          // 이관 정보 확인
+          const transfer = order.transferInfo?.isTransferred &&
+            (order.transferInfo.status === 'accepted' || order.transferInfo.status === 'completed')
+            ? order.transferInfo
+            : null;
+          const split = transfer ? (transfer.amountSplit || { orderBranch: 100, processBranch: 0 }) : { orderBranch: 100, processBranch: 0 };
+
+          const isOriginal = order.branchName === (branchFilter || userBranch);
+          const isProcess = transfer?.processBranchName === (branchFilter || userBranch);
+
+          // 현재 지점의 실질 지분 계산
+          let currentShare = 0;
+          if (!branchFilter && isAdmin) {
+            // 본사 관리자 전체 보기 시에는 전체 금액
+            currentShare = total;
+          } else {
+            if (isOriginal) currentShare += Math.round(total * (split.orderBranch / 100));
+            if (isProcess) currentShare += Math.round(total * (split.processBranch / 100));
+          }
+
           // Pending Orders (Processing/Pending status)
           if (order.status === 'processing' || order.status === 'pending') {
             pendingOrders++;
@@ -966,7 +1038,7 @@ export default function DashboardPage() {
           // Pending Payment
           if (paymentStatus === 'pending') {
             pendingPaymentCount++;
-            pendingPaymentAmount += total;
+            pendingPaymentAmount += currentShare;
           }
 
           // Revenue (Paid/Completed)
@@ -978,7 +1050,7 @@ export default function DashboardPage() {
             }
 
             if (revenueDate >= yearStart) {
-              totalRevenue += total;
+              totalRevenue += currentShare;
             }
           }
 
