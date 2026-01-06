@@ -43,9 +43,9 @@ export default function DailySettlementPage() {
     const stats = useMemo(() => {
         if (!orders.length) return null;
 
-        const selectedDate = new Date(reportDate);
-        const from = startOfDay(selectedDate);
-        const to = endOfDay(selectedDate);
+        // 날짜 필터 생성 (YYYY-MM-DDT00:00:00 형식을 사용하여 로컬 시간 보장)
+        const from = new Date(reportDate + 'T00:00:00');
+        const to = new Date(reportDate + 'T23:59:59.999');
 
         // 해당 일자의 주문 필터링
         const dailyOrders = orders.filter(order => {
@@ -59,7 +59,9 @@ export default function DailySettlementPage() {
             if (currentTargetBranch === 'all') return true;
 
             const isOriginalBranch = order.branchName === currentTargetBranch;
-            const isProcessBranch = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentTargetBranch;
+            const isProcessBranch = order.transferInfo?.isTransferred &&
+                (order.transferInfo?.status === 'accepted' || order.transferInfo?.status === 'completed') &&
+                order.transferInfo?.processBranchName === currentTargetBranch;
 
             return isOriginalBranch || isProcessBranch;
         });
@@ -119,22 +121,21 @@ export default function DailySettlementPage() {
             others: { count: 0, amount: 0 }
         };
 
-        const updatePaymentStats = (order: Order) => {
+        const updatePaymentStats = (order: Order, amount: number) => {
             // 호출 시점에서 이미 '유효한 결제'임이 확인되었다고 가정함
             const method = order.payment.method;
-            const total = order.summary.total;
             if (method === 'card') {
                 paymentStats.card.count++;
-                paymentStats.card.amount += total;
+                paymentStats.card.amount += amount;
             } else if (method === 'cash') {
                 paymentStats.cash.count++;
-                paymentStats.cash.amount += total;
+                paymentStats.cash.amount += amount;
             } else if (method === 'transfer') {
                 paymentStats.transfer.count++;
-                paymentStats.transfer.amount += total;
+                paymentStats.transfer.amount += amount;
             } else {
                 paymentStats.others.count++;
-                paymentStats.others.amount += total;
+                paymentStats.others.amount += amount;
             }
         };
 
@@ -176,7 +177,7 @@ export default function DailySettlementPage() {
                 if (isPaidEffective) {
                     netSales += total;
                     outgoingSettle += total;
-                    updatePaymentStats(order);
+                    updatePaymentStats(order, total);
                     paidOrdersToday.push(order);
                 } else {
                     pendingOrdersToday.push(order);
@@ -192,7 +193,7 @@ export default function DailySettlementPage() {
                         const share = isValidTransfer ? Math.round(total * (split.orderBranch / 100)) : total;
                         outgoingSettle += share;
                         netSales += share;
-                        updatePaymentStats(order);
+                        updatePaymentStats(order, share);
                         paidOrdersToday.push(order);
                     } else {
                         pendingOrdersToday.push(order);
@@ -207,16 +208,13 @@ export default function DailySettlementPage() {
                         incomingSettle += share;
                         netSales += share;
                         if (!paidOrdersToday.includes(order)) paidOrdersToday.push(order);
+                        // 수주 지점의 결제 수단 집계 반영
+                        updatePaymentStats(order, share);
                     }
                     else if (!pendingOrdersToday.includes(order)) { // 중복 방지
                         pendingOrdersToday.push(order);
                         // 수주 지점은 미결 금액 집계 제외 (기존 로직 유지)
                     }
-                }
-
-                // 수주 지점의 결제 수단 집계 (기존 로직 유지)
-                if (!isOriginal && isProcess && isPaidEffective) {
-                    updatePaymentStats(order);
                 }
             }
         });
@@ -224,7 +222,22 @@ export default function DailySettlementPage() {
         // 이월 주문 결제 처리
         previousOrderPayments.forEach(order => {
             const total = order.summary.total;
-            updatePaymentStats(order);
+            const isOriginal = order.branchName === currentTargetBranch;
+            const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentTargetBranch;
+            const split = order.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+
+            let share = 0;
+            if (currentTargetBranch === 'all') {
+                share = total;
+            } else {
+                if (isOriginal) {
+                    share = order.transferInfo?.isTransferred ? Math.round(total * (split.orderBranch / 100)) : total;
+                } else if (isProcess) {
+                    share = Math.round(total * (split.processBranch / 100));
+                }
+            }
+
+            updatePaymentStats(order, share);
 
             if (currentTargetBranch === 'all') {
                 prevOrderPaymentTotal += total;
