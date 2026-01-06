@@ -293,6 +293,45 @@ export default function NewOrderPage() {
     return allAvailable.slice(0, 10);
   }, [branchProducts, orders, selectedBranch]);
 
+  const topWreathProducts = useMemo(() => {
+    if (!branchProducts.length || !selectedBranch) return [];
+
+    const productCounts: Record<string, number> = {};
+    orders.forEach(order => {
+      if (order.branchId === selectedBranch.id || order.branchName === selectedBranch.name) {
+        order.items.forEach(item => {
+          if (item.id) {
+            productCounts[item.id] = (productCounts[item.id] || 0) + item.quantity;
+          }
+        });
+      }
+    });
+
+    // 경조화환 카테고리는 메인카테고리 또는 중분류에서 찾음
+    const wreathProducts = branchProducts.filter(p =>
+      p.mainCategory === '경조화환' ||
+      p.midCategory === '경조화환' ||
+      p.name.includes('화환')
+    );
+
+    const soldWreaths = Object.entries(productCounts)
+      .map(([id, count]) => ({ product: wreathProducts.find(p => p.id === id), count }))
+      .filter((x): x is { product: Product; count: number } => x.product !== undefined)
+      .sort((a, b) => b.count - a.count)
+      .map(x => x.product);
+
+    const allAvailable = [...soldWreaths];
+
+    if (allAvailable.length < 5) {
+      const remaining = wreathProducts
+        .filter(p => !allAvailable.find(ap => ap.id === p.id))
+        .sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0));
+      allAvailable.push(...remaining);
+    }
+
+    return allAvailable.slice(0, 5);
+  }, [branchProducts, orders, selectedBranch]);
+
   // 쇼핑백 상품 필터링
   const shoppingBagProducts = useMemo(() => {
     if (!branchProducts.length) return [];
@@ -972,7 +1011,7 @@ export default function NewOrderPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        {(topFlowerProducts.length > 0 || topPlantProducts.length > 0) && selectedBranch && (
+                        {(topFlowerProducts.length > 0 || topPlantProducts.length > 0 || topWreathProducts.length > 0) && selectedBranch && (
                           <div className="space-y-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
                             {topFlowerProducts.length > 0 && (
                               <div className="space-y-2">
@@ -1008,6 +1047,28 @@ export default function NewOrderPage() {
                                       variant="outline"
                                       size="sm"
                                       className="h-auto py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] leading-tight hover:bg-white hover:text-emerald-600 hover:border-emerald-600 transition-all bg-white/50"
+                                      onClick={() => handleAddProduct(p.docId)}
+                                      disabled={p.stock === 0}
+                                    >
+                                      <span className="font-semibold text-slate-700 truncate w-full text-center">{p.name}</span>
+                                      <span className="text-[10px] text-slate-500 font-medium">₩{p.price.toLocaleString()}</span>
+                                    </Button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {topWreathProducts.length > 0 && (
+                              <div className="space-y-2 pt-2 border-t border-slate-200">
+                                <span className="text-xs font-bold text-blue-600 flex items-center gap-1.5 px-1">
+                                  <Star className="h-3.5 w-3.5 fill-blue-600" /> 경조화환 인기 상품 (Top 5)
+                                </span>
+                                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                  {topWreathProducts.map(p => (
+                                    <Button
+                                      key={`top-wreath-${p.docId}`}
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-auto py-2.5 flex flex-col items-center justify-center gap-1 text-[11px] leading-tight hover:bg-white hover:text-blue-600 hover:border-blue-600 transition-all bg-white/50"
                                       onClick={() => handleAddProduct(p.docId)}
                                       disabled={p.stock === 0}
                                     >
