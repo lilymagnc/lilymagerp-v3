@@ -477,10 +477,21 @@ export default function DailySettlementPage() {
                                         if (order.transferInfo?.isTransferred) {
                                             if (isOriginal) {
                                                 myShare = Math.round(order.summary.total * (split.orderBranch / 100));
-                                                info = `📤 발주 (${split.orderBranch}%)`;
-                                            } else if (isProcess) {
-                                                myShare = Math.round(order.summary.total * (split.processBranch / 100));
-                                                info = `📥 수주 (${split.processBranch}%)`;
+                                            }
+                                            if (isProcess) {
+                                                myShare += Math.round(order.summary.total * (split.processBranch / 100));
+                                            }
+
+                                            // 실제 지분으로 발주/수주 판단
+                                            if (myShare > 0) {
+                                                if (isOriginal && split.orderBranch > 0) {
+                                                    info = `📤 발주 (${split.orderBranch}%)`;
+                                                } else if (isProcess && split.processBranch > 0) {
+                                                    info = `📥 수주 (${split.processBranch}%)`;
+                                                }
+                                            } else {
+                                                // 지분이 0이면 수주로 표시 (전액 다른 지점으로 넘김)
+                                                info = `📥 수주 (0%)`;
                                             }
                                         } else {
                                             myShare = order.summary.total;
@@ -717,7 +728,9 @@ export default function DailySettlementPage() {
                                             <TableCell className="text-xs">
                                                 {order.transferInfo?.isTransferred ? (
                                                     <div className="flex flex-col">
-                                                        <span>{isOriginal ? `📤 발주 (${split.orderBranch}%)` : `📥 수주 (${split.processBranch}%)`}</span>
+                                                        <span>
+                                                            {split.orderBranch > 0 && isOriginal ? `📤 발주 (${split.orderBranch}%)` : `📥 수주 (${split.processBranch}%)`}
+                                                        </span>
                                                         <span className="text-[10px] text-muted-foreground">{order.transferInfo.processBranchName}</span>
                                                     </div>
                                                 ) : '일반'}
