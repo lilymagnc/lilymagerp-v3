@@ -717,7 +717,7 @@ export default function DailySettlementPage() {
                                             <TableCell className="text-xs">
                                                 {order.transferInfo?.isTransferred ? (
                                                     <div className="flex flex-col">
-                                                        <span>{isOriginal ? '📤 발주' : '📥 수주'}</span>
+                                                        <span>{isOriginal ? `📤 발주 (${split.orderBranch}%)` : `📥 수주 (${split.processBranch}%)`}</span>
                                                         <span className="text-[10px] text-muted-foreground">{order.transferInfo.processBranchName}</span>
                                                     </div>
                                                 ) : '일반'}
