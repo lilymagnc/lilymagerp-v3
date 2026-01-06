@@ -372,7 +372,7 @@ export default function DashboardPage() {
         salesByDate[dateKey] = 0;
       }
 
-      allOrdersCache.forEach((order: any) => {
+      ordersData.forEach((order: any) => {
         const total = order.summary?.total || order.total || 0;
         const paymentStatus = order.payment?.status;
 
