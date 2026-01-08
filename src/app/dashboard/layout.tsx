@@ -78,9 +78,13 @@ export default function DashboardLayout({
                             <SidebarMenuButton onClick={() => router.push('/dashboard/sample-albums')}><Images />샘플앨범</SidebarMenuButton>
                         </SidebarMenuItem>
 
+
                         {/* 3. 주문 접수 (모든 사용자) */}
                         <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => router.push('/dashboard/orders/new')}><ShoppingCart />주문 접수</SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => router.push('/dashboard/orders/new-mobile')} className="text-blue-600 bg-blue-50 hover:bg-blue-100"><ShoppingCart className="text-blue-600" />주문 접수 (Beta)</SidebarMenuButton>
                         </SidebarMenuItem>
 
                         {/* 4. 주문 현황 (모든 사용자) */}
