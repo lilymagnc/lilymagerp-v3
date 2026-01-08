@@ -45,6 +45,7 @@ import {
 import { useSettings, defaultSettings } from "@/hooks/use-settings";
 import { useDataCleanup } from "@/hooks/use-data-cleanup";
 import BackupManagement from "./components/backup-management";
+import RebuildStats from "./components/rebuild-stats";
 import { EmailTemplateEditor } from "@/components/email-template-editor";
 
 export default function SettingsPage() {
@@ -198,6 +199,7 @@ export default function SettingsPage() {
           <TabsTrigger value="order-transfer">주문 이관</TabsTrigger>
           <TabsTrigger value="backup">백업 관리</TabsTrigger>
           <TabsTrigger value="data-cleanup">데이터 초기화</TabsTrigger>
+          <TabsTrigger value="performance">성능 최적화</TabsTrigger>
 
         </TabsList>
         {/* 일반 설정 */}
@@ -788,6 +790,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
         {/* 보안 설정 */}
+        {/* 보안 설정 */}
         <TabsContent value="security" className="space-y-4">
           <Card>
             <CardHeader>
@@ -836,6 +839,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
         {/* 할인 설정 */}
         <TabsContent value="discount" className="space-y-4">
           <Card>
@@ -863,6 +867,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
         {/* 데이터 초기화 */}
         <TabsContent value="data-cleanup" className="space-y-4">
           <Card>
@@ -1103,7 +1108,12 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        {/* 성능 최적화 설정 */}
+        <TabsContent value="performance" className="space-y-4">
+          <RebuildStats />
+        </TabsContent>
       </Tabs>
+
       {/* 액션 버튼 */}
       <div className="flex justify-end gap-4">
         <Button variant="outline" onClick={resetToDefaults}>
@@ -1117,4 +1127,5 @@ export default function SettingsPage() {
       </div>
     </div>
   );
-} 
+}
+

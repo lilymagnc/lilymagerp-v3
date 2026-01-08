@@ -17,6 +17,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { updateDailyStats } from '@/lib/stats-utils';
 
 import { useAuth } from '@/hooks/use-auth';
 import { useBranches } from '@/hooks/use-branches';
@@ -375,11 +376,48 @@ export function useOrderTransfers() {
               'transferInfo.notes': transferData.notes
             });
 
-            // 원본 주문 정보 조회하여 전광판에 표시
+            // 원본 주문 정보 조회하여 통계 업데이트 및 전광판 표시
             try {
               const orderDoc = await getDoc(doc(db, 'orders', transferData.originalOrderId));
               if (orderDoc.exists()) {
                 const orderData = orderDoc.data();
+
+                // 통계 업데이트: 발주지점에서 전체 금액 차감 후 분배금액만큼만 재합산, 수주지점에 분배금액 합산
+                const totalAmount = transferData.originalOrderAmount;
+                const orderBranchShare = Math.round(totalAmount * ((transferData.amountSplit?.orderBranch || 100) / 100));
+                const processBranchShare = totalAmount - orderBranchShare;
+
+                // 1. 발주지점: 수주지점분만큼 매출 차액 조정
+                await updateDailyStats(orderData.orderDate, transferData.orderBranchName, {
+                  revenueDelta: -(totalAmount - orderBranchShare),
+                  orderCountDelta: 0,
+                  settledAmountDelta: 0 // 이전 날짜의 정산액을 건드리지 않음
+                });
+
+                // 만약 이미 결제된 주문이라면, 실제 정산액 이동도 현재 날짜 기준으로 처리
+                if (orderData.payment?.status === 'paid' || orderData.payment?.status === 'completed') {
+                  const now = new Date();
+                  // 발주지점에서 결제액 차액만큼 차감 (오늘 기준)
+                  await updateDailyStats(now, transferData.orderBranchName, {
+                    revenueDelta: 0,
+                    orderCountDelta: 0,
+                    settledAmountDelta: -(totalAmount - orderBranchShare)
+                  });
+                  // 수주지점에 결제액 합산 (오늘 기준)
+                  await updateDailyStats(now, transferData.processBranchName, {
+                    revenueDelta: processBranchShare,
+                    orderCountDelta: 0,
+                    settledAmountDelta: processBranchShare
+                  });
+                } else {
+                  // 아직 미결제라면, 나중에 결제될 때 처리되도록 매출만 수주지점에 등록 (주문일 기준)
+                  await updateDailyStats(orderData.orderDate, transferData.processBranchName, {
+                    revenueDelta: processBranchShare,
+                    orderCountDelta: 0,
+                    settledAmountDelta: 0
+                  });
+                }
+
                 const orderInfo = {
                   orderNumber: orderData.orderNumber,
                   deliveryDate: orderData.deliveryInfo?.date || '',

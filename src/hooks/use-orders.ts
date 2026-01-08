@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, addDoc, writeBatch, Timestamp, query, orderBy, runTransaction, where, updateDoc, serverTimestamp, setDoc, getDoc, deleteDoc, limit, startAt, endAt } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { updateDailyStats } from '@/lib/stats-utils';
 
 import { useToast } from './use-toast';
 import { useAuth } from './use-auth';
@@ -123,7 +124,7 @@ export function useOrders() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
-  const fetchOrders = useCallback(async (days: number = 90) => {
+  const fetchOrders = useCallback(async (days: number = 30) => {
     try {
       setLoading(true);
 
@@ -351,6 +352,14 @@ export function useOrders() {
 
 
 
+      // 일별 통계 업데이트 (주문 추가 시)
+      await updateDailyStats(orderDate, orderData.branchName, {
+        revenueDelta: orderData.summary.total,
+        orderCountDelta: 1,
+        settledAmountDelta: (finalOrderPayload.payment.status === 'paid' || finalOrderPayload.payment.status === 'completed')
+          ? orderData.summary.total : 0
+      });
+
       return orderDocRef.id; // 주문 ID 반환
     } catch (error) {
       toast({
@@ -367,7 +376,20 @@ export function useOrders() {
   const updateOrderStatus = async (orderId: string, newStatus: 'processing' | 'completed' | 'canceled') => {
     try {
       const orderRef = doc(db, 'orders', orderId);
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data() as Order;
+
       await updateDoc(orderRef, { status: newStatus });
+
+      // 일별 통계 업데이트 (취소 시)
+      if (newStatus === 'canceled' && orderData.status !== 'canceled') {
+        await updateDailyStats(orderData.orderDate, orderData.branchName, {
+          revenueDelta: -orderData.summary.total,
+          orderCountDelta: -1,
+          settledAmountDelta: (orderData.payment.status === 'paid' || orderData.payment.status === 'completed')
+            ? -orderData.summary.total : 0
+        });
+      }
 
       // 주문이 완료되면 해당하는 캘린더 이벤트 상태를 'completed'로 변경
       if (newStatus === 'completed') {
@@ -488,6 +510,32 @@ export function useOrders() {
       }
 
       await updateDoc(orderRef, updateData);
+
+      // 일별 통계 업데이트 (결제 상태 변경 시)
+      const isNewSettled = newStatus === 'paid' || newStatus === 'completed';
+      const wasSettled = orderData?.payment?.status === 'paid' || orderData?.payment?.status === 'completed';
+
+      if (isNewSettled && !wasSettled) {
+        // 결제 완료 시: '오늘' 날짜 통계에 결제 금액 합산
+        await updateDailyStats(new Date(), orderData.branchName, {
+          revenueDelta: 0,
+          orderCountDelta: 0,
+          settledAmountDelta: orderData.summary.total
+        });
+      } else if (!isNewSettled && wasSettled) {
+        // 결제 취소 시: 기존에 기록된 결제일(completedAt) 기준으로 차감해야 하나, 
+        // 간단히 처리하기 위해 일단 현재 기준 또는 데이터의 완료일 기준 처리
+        const settlementDate = orderData.payment?.completedAt
+          ? (orderData.payment.completedAt as any).toDate()
+          : new Date();
+
+        await updateDailyStats(settlementDate, orderData.branchName, {
+          revenueDelta: 0,
+          orderCountDelta: 0,
+          settledAmountDelta: -orderData.summary.total
+        });
+      }
+
       toast({
         title: '결제 상태 변경 성공',
         description: `결제 상태가 '${newStatus === 'paid' || newStatus === 'completed' ? '완결' : '미결'}'(으)로 변경되었습니다.`,
@@ -505,10 +553,54 @@ export function useOrders() {
     setLoading(true);
     try {
       const orderDocRef = doc(db, 'orders', orderId);
+      const orderDoc = await getDoc(orderDocRef);
+      if (!orderDoc.exists()) throw new Error('주문을 찾을 수 없습니다.');
+
+      const oldOrder = orderDoc.data() as Order;
+
+      // 금액이나 지점, 날짜가 변경되었는지 확인하여 통계 업데이트
+      const oldTotal = oldOrder.summary?.total || 0;
+      const newTotal = data.summary?.total !== undefined ? data.summary.total : oldTotal;
+      const oldStatus = oldOrder.status;
+      const newStatus = data.status || oldStatus;
+
+      // 상태 변경에 따른 매출 변화 계산
+      // (기존이 취소였는데 정상이 되면 +, 기존이 정상인데 취소가 되면 -)
+      let revenueDelta = 0;
+      if (oldStatus !== 'canceled' && newStatus === 'canceled') {
+        revenueDelta = -oldTotal;
+      } else if (oldStatus === 'canceled' && newStatus !== 'canceled') {
+        revenueDelta = newTotal;
+      } else if (oldStatus !== 'canceled' && newStatus !== 'canceled') {
+        revenueDelta = newTotal - oldTotal;
+      }
+
+      const oldSettled = (oldOrder.payment?.status === 'paid' || oldOrder.payment?.status === 'completed') && oldStatus !== 'canceled';
+      const newSettled = (data.payment?.status === 'paid' || data.payment?.status === 'completed' || (data.payment === undefined && oldOrder.payment?.status === 'paid')) && newStatus !== 'canceled';
+
+      let settledDelta = 0;
+      if (!oldSettled && newSettled) {
+        settledDelta = newTotal;
+      } else if (oldSettled && !newSettled) {
+        settledDelta = -oldTotal;
+      } else if (oldSettled && newSettled) {
+        settledDelta = newTotal - oldTotal;
+      }
+
       await setDoc(orderDocRef, data, { merge: true });
+
+      if (revenueDelta !== 0 || settledDelta !== 0) {
+        await updateDailyStats(oldOrder.orderDate, oldOrder.branchName, {
+          revenueDelta,
+          orderCountDelta: 0,
+          settledAmountDelta: settledDelta
+        });
+      }
+
       toast({ title: "성공", description: "주문 정보가 수정되었습니다." });
       await fetchOrders();
     } catch (error) {
+      console.error('Update order error:', error);
       toast({ variant: 'destructive', title: '오류', description: '주문 수정 중 오류가 발생했습니다.' });
     } finally {
       setLoading(false);
@@ -592,6 +684,15 @@ export function useOrders() {
         cancelReason: reason || '고객 요청으로 취소',
         canceledAt: serverTimestamp(),
         updatedAt: serverTimestamp()
+      });
+
+      // 일별 통계 업데이트 (주문 취소 시 - 금액이 0이 되므로 이전 금액만큼 차감)
+      // cancelOrder는 이미 status: 'canceled'로 업데이트하므로 중복 체크 주의
+      await updateDailyStats(orderData.orderDate, orderData.branchName, {
+        revenueDelta: -orderData.summary.total,
+        orderCountDelta: -1,
+        settledAmountDelta: (orderData.payment.status === 'paid' || orderData.payment.status === 'completed')
+          ? -orderData.summary.total : 0
       });
 
       // 배송 예약 주문인 경우 수령자 정보도 처리 (주문 취소 시에는 수령자 정보는 유지하되 주문 횟수만 감소)
@@ -714,6 +815,16 @@ export function useOrders() {
 
       // 주문 삭제
       await deleteDoc(orderRef);
+
+      // 일별 통계 업데이트 (주문 삭제 시)
+      if (orderData.status !== 'canceled') {
+        await updateDailyStats(orderData.orderDate, orderData.branchName, {
+          revenueDelta: -orderData.summary.total,
+          orderCountDelta: -1,
+          settledAmountDelta: (orderData.payment.status === 'paid' || orderData.payment.status === 'completed')
+            ? -orderData.summary.total : 0
+        });
+      }
 
       // 배송 예약 주문인 경우 수령자 정보 처리
       if (orderData.receiptType === 'delivery_reservation' && orderData.deliveryInfo) {

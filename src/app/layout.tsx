@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "Lilymag ERP",
-    description: "플라워샵 주문관리및 가맹점 관리를 위한 ERP 시스템",
+  title: "Lilymag ERP",
+  description: "플라워샵 주문관리및 가맹점 관리를 위한 ERP 시스템",
 };
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" data-scroll-behavior="smooth">
       <head>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

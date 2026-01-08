@@ -1,6 +1,13 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore, getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import {
+  initializeFirestore,
+  getFirestore,
+  connectFirestoreEmulator,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  CACHE_SIZE_UNLIMITED
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Firebase 설정
@@ -40,18 +47,19 @@ const initializeFirebase = () => {
     storage = getStorage(app);
 
 
-    // Firestore 초기화 - 더 안정적인 설정
+    // Firestore 초기화 - 최신 SDK 방식 (Persistence 포함)
     try {
       db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+          // 캐시 크기 설정 (필요시 CACHE_SIZE_UNLIMITED 사용 가능)
+        }),
         experimentalForceLongPolling: true, // 안정성을 위한 설정
-        cacheSizeBytes: 50 * 1024 * 1024, // 캐시 크기 증가 (50MB)
         ignoreUndefinedProperties: true, // undefined 속성 무시
       });
-
     } catch (error) {
       console.warn('Firestore initialization failed, falling back to default:', error);
       db = getFirestore(app);
-
     }
 
     // 개발 환경에서 에뮬레이터 연결 (선택사항)
