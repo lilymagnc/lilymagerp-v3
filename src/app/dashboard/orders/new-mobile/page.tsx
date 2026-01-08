@@ -102,6 +102,7 @@ export default function NewOrderMobilePage() {
 
     // Common Recipient State (used for both Picker and Delivery Recipient)
     const [isSameAsOrderer, setIsSameAsOrderer] = useState(true);
+    const [isRegisterCustomer, setIsRegisterCustomer] = useState(true);
 
     // Sync Orderer to Recipient if checkbox checked
     useEffect(() => {
@@ -310,7 +311,7 @@ export default function NewOrderMobilePage() {
                     email: ""
                 },
                 isAnonymous,
-                registerCustomer: !!selectedCustomer, // Auto register if selected
+                registerCustomer: isRegisterCustomer,
                 payment: {
                     method: paymentMethod,
                     status: paymentStatus,
@@ -409,6 +410,16 @@ export default function NewOrderMobilePage() {
                                 <span className="font-bold" onClick={() => setSelectedCustomer(null)}>x</span>
                             </div>
                         )}
+                        <div className="flex items-start space-x-2 pt-2">
+                            <Checkbox
+                                id="register-customer"
+                                checked={isRegisterCustomer}
+                                onCheckedChange={(c) => setIsRegisterCustomer(!!c)}
+                            />
+                            <Label htmlFor="register-customer" className="text-[11px] leading-tight font-normal text-muted-foreground pt-0.5">
+                                이 주문자 정보를 고객으로 등록/업데이트합니다.<br />(마케팅동의 및 포인트적립 사용 동의)
+                            </Label>
+                        </div>
                     </CardContent>
                 </Card>
 
