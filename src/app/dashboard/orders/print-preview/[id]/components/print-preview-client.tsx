@@ -17,12 +17,12 @@ import type { Order as OrderType } from '@/hooks/use-orders';
 
 // Define the type for serializable order data
 export interface SerializableOrder extends Omit<OrderType, 'orderDate' | 'id'> {
-  id: string;
-  orderDate: string; // ISO string format
+    id: string;
+    orderDate: string; // ISO string format
 }
 
 interface PrintPreviewClientProps {
-  orderId: string;
+    orderId: string;
 }
 
 export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
@@ -45,7 +45,7 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
                 setLoading(true);
                 const docRef = doc(db, 'orders', orderId);
                 const docSnap = await getDoc(docRef);
-                
+
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     let orderDateIso = new Date().toISOString();
@@ -134,11 +134,15 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
             contact: targetBranch.phone,
             account: targetBranch.account || '',
         },
+        transferInfo: order.transferInfo && order.transferInfo.isTransferred ? {
+            originalBranchName: order.transferInfo.originalBranchName || '',
+            processBranchName: order.transferInfo.processBranchName || ''
+        } : undefined
     } : null;
 
     return (
         <div>
-             <style jsx global>{`
+            <style jsx global>{`
                 @media print {
                     @page {
                         size: A4;
@@ -160,7 +164,7 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
                     }
                 }
              `}</style>
-             <div className="max-w-4xl mx-auto no-print">
+            <div className="max-w-4xl mx-auto no-print">
                 <PageHeader
                     title="주문서 인쇄 미리보기"
                     description={`주문 ID: ${order.id}`}
@@ -171,8 +175,8 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
                             목록으로 돌아가기
                         </Button>
                         <Button onClick={() => window.print()} disabled={!printData}>
-                           <Printer className="mr-2 h-4 w-4" />
-                           인쇄하기
+                            <Printer className="mr-2 h-4 w-4" />
+                            인쇄하기
                         </Button>
                     </div>
                 </PageHeader>
@@ -180,7 +184,7 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
             <div id="printable-area">
                 <Card className="shadow-sm print:shadow-none print:border-none max-w-4xl mx-auto">
                     <CardContent className="p-0">
-                         {printData ? <PrintableOrder data={printData} /> : <p>주문 데이터를 불러오는 중입니다...</p>}
+                        {printData ? <PrintableOrder data={printData} /> : <p>주문 데이터를 불러오는 중입니다...</p>}
                     </CardContent>
                 </Card>
             </div>

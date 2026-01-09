@@ -11,6 +11,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { getCachedPhotoBlobUrl } from '@/lib/image-cache';
+import { useEffect } from 'react';
+
+function CachedImage({ src, alt, ...props }: any) {
+  const [currentSrc, setCurrentSrc] = useState(src);
+
+  useEffect(() => {
+    let mounted = true;
+    if (typeof src === 'string' && src.startsWith('http')) {
+      getCachedPhotoBlobUrl(src).then(blobUrl => {
+        if (mounted && blobUrl) {
+          setCurrentSrc(blobUrl);
+        }
+      });
+    }
+    return () => { mounted = false; };
+  }, [src]);
+
+  return <Image src={currentSrc} alt={alt} {...props} />;
+}
 interface PhotoGridProps {
   photos: Photo[];
   loading: boolean;
@@ -19,13 +39,13 @@ interface PhotoGridProps {
   onReorder?: (photos: Photo[]) => void;
   isDraggable?: boolean;
 }
-export function PhotoGrid({ 
-  photos, 
-  loading, 
-  onPhotoClick, 
-  onPhotoDelete, 
-  onReorder, 
-  isDraggable = false 
+export function PhotoGrid({
+  photos,
+  loading,
+  onPhotoClick,
+  onPhotoDelete,
+  onReorder,
+  isDraggable = false
 }: PhotoGridProps) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const formatFileSize = (bytes: number) => {
@@ -93,16 +113,15 @@ export function PhotoGrid({
       {photos.map((photo, index) => (
         <div
           key={photo.id}
-          className={`aspect-square relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer group ${
-            isDraggable ? 'hover:shadow-lg transition-shadow' : ''
-          } ${draggedIndex === index ? 'opacity-50' : ''}`}
+          className={`aspect-square relative bg-gray-100 rounded-lg overflow-hidden cursor-pointer group ${isDraggable ? 'hover:shadow-lg transition-shadow' : ''
+            } ${draggedIndex === index ? 'opacity-50' : ''}`}
           draggable={isDraggable}
           onDragStart={(e) => handleDragStart(e, index)}
           onDragOver={handleDragOver}
           onDrop={(e) => handleDrop(e, index)}
           onClick={() => onPhotoClick(index)}
         >
-          <Image
+          <CachedImage
             src={photo.previewUrl || photo.originalUrl}
             alt={photo.filename}
             fill

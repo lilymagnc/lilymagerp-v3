@@ -40,7 +40,7 @@ interface OrderItem extends Product {
 type OrderType = "store" | "phone" | "naver" | "kakao" | "etc";
 type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
 type MessageType = "card" | "ribbon";
-type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
+type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay" | "kakao" | "apple";
 type PaymentStatus = "pending" | "paid" | "completed" | "split_payment";
 declare global {
   interface Window {
@@ -138,6 +138,41 @@ export default function NewOrderPage() {
     }
     return `${String(adjustedHours).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
   };
+
+
+  // Helper: Phone Number Formatting
+  const formatPhoneNumber = (value: string) => {
+    const raw = value.replace(/[^0-9]/g, '');
+    let result = '';
+
+    if (raw.startsWith('02')) {
+      // Seoul: 02-XXXX-XXXX or 02-XXX-XXXX
+      if (raw.length < 3) {
+        return raw;
+      } else if (raw.length < 6) {
+        result = `${raw.slice(0, 2)}-${raw.slice(2)}`;
+      } else if (raw.length < 10) {
+        // 02-123-4567
+        result = `${raw.slice(0, 2)}-${raw.slice(2, 5)}-${raw.slice(5)}`;
+      } else {
+        // 02-1234-5678
+        result = `${raw.slice(0, 2)}-${raw.slice(2, 6)}-${raw.slice(6, 10)}`;
+      }
+    } else {
+      // Others
+      if (raw.length < 4) {
+        return raw;
+      } else if (raw.length < 7) {
+        result = `${raw.slice(0, 3)}-${raw.slice(3)}`;
+      } else if (raw.length < 11) {
+        result = `${raw.slice(0, 3)}-${raw.slice(3, 6)}-${raw.slice(6)}`;
+      } else {
+        result = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`;
+      }
+    }
+    return result;
+  };
+
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
   const [scheduleTime, setScheduleTime] = useState(getInitialTime());
   const [pickerName, setPickerName] = useState("");
@@ -499,16 +534,7 @@ export default function NewOrderPage() {
       setSelectedCustomer(null);
     }
   };
-  const formatPhoneNumber = (value: string) => {
-    if (!value) return value;
-    const phoneNumber = value.replace(/[^\d]/g, '');
-    const phoneNumberLength = phoneNumber.length;
-    if (phoneNumberLength < 4) return phoneNumber;
-    if (phoneNumberLength < 8) {
-      return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3)}`;
-    }
-    return `${phoneNumber.slice(0, 3)}-${phoneNumber.slice(3, 7)}-${phoneNumber.slice(7, 11)}`;
-  }
+
   const handleGenericContactChange = (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
     const formattedPhoneNumber = formatPhoneNumber(e.target.value);
     setter(formattedPhoneNumber);
@@ -1400,7 +1426,7 @@ export default function NewOrderPage() {
                             name="orderer-contact"
                             placeholder="010-1234-5678"
                             value={ordererContact}
-                            onChange={(e) => handleGenericContactChange(e, setOrdererContact)}
+                            onChange={(e) => handleGenericContactChange({ ...e, target: { ...e.target, value: formatPhoneNumber(e.target.value) } }, setOrdererContact)}
                           />
                         </div>
                         <div className="space-y-2">

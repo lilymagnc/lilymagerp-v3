@@ -5,6 +5,7 @@ import { Photo } from '@/types/album';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import Image from 'next/image';
+import { getCachedPhotoBlobUrl } from '@/lib/image-cache';
 interface PhotoViewerProps {
   photos: Photo[];
   currentIndex: number;
@@ -13,13 +14,13 @@ interface PhotoViewerProps {
   onNext: () => void;
   onPrevious: () => void;
 }
-export function PhotoViewer({ 
-  photos, 
-  currentIndex, 
-  isOpen, 
-  onClose, 
-  onNext, 
-  onPrevious 
+export function PhotoViewer({
+  photos,
+  currentIndex,
+  isOpen,
+  onClose,
+  onNext,
+  onPrevious
 }: PhotoViewerProps) {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -27,6 +28,16 @@ export function PhotoViewer({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const currentPhoto = photos[currentIndex];
+  const [displayUrl, setDisplayUrl] = useState(currentPhoto?.originalUrl);
+
+  useEffect(() => {
+    setDisplayUrl(currentPhoto?.originalUrl); // Reset to original initially
+    if (currentPhoto?.originalUrl && currentPhoto.originalUrl.startsWith('http')) {
+      getCachedPhotoBlobUrl(currentPhoto.originalUrl).then(blobUrl => {
+        if (blobUrl) setDisplayUrl(blobUrl);
+      });
+    }
+  }, [currentPhoto]);
   // 키보드 이벤트 처리
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -143,7 +154,7 @@ export function PhotoViewer({
             </div>
           </div>
           {/* 메인 이미지 영역 */}
-          <div 
+          <div
             className="flex-1 flex items-center justify-center overflow-hidden cursor-move"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -158,7 +169,7 @@ export function PhotoViewer({
               }}
             >
               <Image
-                src={currentPhoto.originalUrl}
+                src={displayUrl || ''}
                 alt={currentPhoto.filename}
                 width={currentPhoto.width}
                 height={currentPhoto.height}

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Minus, Plus, Trash2, Store, Search, Calendar as CalendarIcon, ChevronRight, User, MapPin, CreditCard, ShoppingBag, X } from "lucide-react";
+import { Minus, Plus, Trash2, Store, Search, Calendar as CalendarIcon, ChevronRight, User, MapPin, CreditCard, ShoppingBag, X, ChevronUp, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches, Branch } from "@/hooks/use-branches";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -38,7 +38,7 @@ interface OrderItem extends Product {
 }
 
 type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
-type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
+type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay" | "kakao" | "apple";
 type PaymentStatus = "pending" | "paid" | "completed" | "split_payment";
 type MessageType = "card" | "ribbon";
 
@@ -119,6 +119,40 @@ export default function NewOrderMobilePage() {
     const [customerSearchResults, setCustomerSearchResults] = useState<Customer[]>([]);
     const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+
+    // Helper: Phone Number Formatting
+    const formatPhoneNumber = (value: string) => {
+        const raw = value.replace(/[^0-9]/g, '');
+        let result = '';
+
+        if (raw.startsWith('02')) {
+            // Seoul: 02-XXXX-XXXX or 02-XXX-XXXX
+            if (raw.length < 3) {
+                return raw;
+            } else if (raw.length < 6) {
+                result = `${raw.slice(0, 2)}-${raw.slice(2)}`;
+            } else if (raw.length < 10) {
+                // 02-123-4567
+                result = `${raw.slice(0, 2)}-${raw.slice(2, 5)}-${raw.slice(5)}`;
+            } else {
+                // 02-1234-5678
+                result = `${raw.slice(0, 2)}-${raw.slice(2, 6)}-${raw.slice(6, 10)}`;
+            }
+        } else {
+            // Others
+            if (raw.length < 4) {
+                return raw;
+            } else if (raw.length < 7) {
+                result = `${raw.slice(0, 3)}-${raw.slice(3)}`;
+            } else if (raw.length < 11) {
+                result = `${raw.slice(0, 3)}-${raw.slice(3, 6)}-${raw.slice(6)}`;
+            } else {
+                result = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`;
+            }
+        }
+        return result;
+    };
 
     // --- DERIVED STATE ---
     const isAdmin = user?.role === '본사 관리자';
@@ -401,7 +435,7 @@ export default function NewOrderMobilePage() {
                             </div>
                             <div className="flex-[1.5]">
                                 <Label className="text-xs text-muted-foreground">연락처</Label>
-                                <Input value={ordererContact} onChange={e => setOrdererContact(e.target.value)} type="tel" className="h-9" />
+                                <Input value={ordererContact} onChange={e => setOrdererContact(formatPhoneNumber(e.target.value))} type="tel" className="h-9" />
                             </div>
                         </div>
                         {selectedCustomer && (
@@ -419,6 +453,21 @@ export default function NewOrderMobilePage() {
                             <Label htmlFor="register-customer" className="text-[11px] leading-tight font-normal text-muted-foreground pt-0.5">
                                 이 주문자 정보를 고객으로 등록/업데이트합니다.<br />(마케팅동의 및 포인트적립 사용 동의)
                             </Label>
+                        </div>
+                        <div className="flex items-start space-x-2 pt-2 mt-1 border-t border-dashed">
+                            <Checkbox
+                                id="is-anonymous"
+                                checked={isAnonymous}
+                                onCheckedChange={(c) => setIsAnonymous(!!c)}
+                            />
+                            <div className="grid gap-0.5">
+                                <Label htmlFor="is-anonymous" className="text-xs font-medium leading-none pt-0.5">
+                                    익명으로 보내기
+                                </Label>
+                                <p className="text-[10px] text-muted-foreground">
+                                    체크 시 인수증 및 리본/카드에 주문자 이름이 노출되지 않습니다.
+                                </p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -540,7 +589,7 @@ export default function NewOrderMobilePage() {
                                         <Input
                                             value={recipientContact}
                                             onChange={e => {
-                                                setRecipientContact(e.target.value);
+                                                setRecipientContact(formatPhoneNumber(e.target.value));
                                                 setIsSameAsOrderer(false);
                                             }}
                                             type="tel"
@@ -564,9 +613,43 @@ export default function NewOrderMobilePage() {
                                         </div>
                                         <Input value={deliveryAddressDetail} onChange={e => setDeliveryAddressDetail(e.target.value)} placeholder="상세주소" className="mt-2 h-9 text-xs" />
                                     </div>
-                                    <div className="bg-orange-50 p-2 rounded text-xs text-orange-800 flex justify-between items-center">
-                                        <span>배송비</span>
-                                        <span className="font-bold">{orderSummary.deliveryFee.toLocaleString()}원</span>
+                                    <div className="bg-orange-50 p-2 rounded text-xs text-orange-800 space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <span className="flex items-center gap-2">
+                                                <span>배송비</span>
+                                                {deliveryFeeType === 'auto' && selectedDistrict && (
+                                                    <span className="text-[10px] text-orange-600/80">({selectedDistrict})</span>
+                                                )}
+                                            </span>
+                                            <div className="flex items-center space-x-1">
+                                                <Label htmlFor="manual-delivery-fee" className="text-[10px] font-normal cursor-pointer text-orange-700">직접 입력</Label>
+                                                <Switch
+                                                    id="manual-delivery-fee"
+                                                    className="scale-75 origin-right"
+                                                    checked={deliveryFeeType === 'manual'}
+                                                    onCheckedChange={(c) => {
+                                                        setDeliveryFeeType(c ? 'manual' : 'auto');
+                                                        if (c) setManualDeliveryFee(orderSummary.deliveryFee);
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {deliveryFeeType === 'manual' ? (
+                                            <div className="flex justify-end items-center gap-1">
+                                                <Input
+                                                    type="number"
+                                                    value={manualDeliveryFee}
+                                                    onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
+                                                    className="h-8 w-24 text-right bg-white text-orange-900 border-orange-200 focus-visible:ring-orange-300 shadow-sm"
+                                                />
+                                                <span className="font-bold">원</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-end">
+                                                <span className="font-bold">{orderSummary.deliveryFee.toLocaleString()}원</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -659,14 +742,25 @@ export default function NewOrderMobilePage() {
 
                         <div>
                             <Label className="text-xs font-medium mb-2 block">결제 수단</Label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {["card", "cash", "transfer", "mainpay", "epay", "shopping_mall"].map((m) => (
+                            <div className="grid grid-cols-4 gap-2">
+                                {["card", "cash", "transfer", "shopping_mall"].map((m) => (
                                     <div key={m}
-                                        className={cn("border rounded p-2 text-center text-xs font-medium cursor-pointer transition-colors",
+                                        className={cn("border rounded p-2 text-center text-xs font-medium cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis px-1",
                                             paymentMethod === m ? "bg-primary text-white border-primary" : "bg-white hover:bg-gray-50")}
                                         onClick={() => setPaymentMethod(m as PaymentMethod)}
                                     >
-                                        {m === 'card' ? '카드' : m === 'cash' ? '현금' : m === 'transfer' ? '이체' : m === 'mainpay' ? '메인' : m === 'epay' ? '이페이' : '쇼핑몰'}
+                                        {m === 'card' ? '카드' : m === 'cash' ? '현금' : m === 'transfer' ? '이체' : '쇼핑몰'}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 mt-2">
+                                {["mainpay", "epay", "kakao", "apple"].map((m) => (
+                                    <div key={m}
+                                        className={cn("border rounded p-2 text-center text-xs font-medium cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis px-1",
+                                            paymentMethod === m ? "bg-primary text-white border-primary" : "bg-white hover:bg-gray-50")}
+                                        onClick={() => setPaymentMethod(m as PaymentMethod)}
+                                    >
+                                        {m === 'mainpay' ? '메인' : m === 'epay' ? '이페이' : m === 'kakao' ? '카카오' : '애플'}
                                     </div>
                                 ))}
                             </div>
@@ -684,14 +778,78 @@ export default function NewOrderMobilePage() {
             </div>
 
             {/* Sticky Bottom Footer */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-20 safe-area-bottom">
-                <div className="flex justify-between items-end mb-2">
-                    <span className="text-sm text-gray-500">총 결제금액</span>
-                    <span className="text-xl font-bold text-primary">{orderSummary.finalTotal.toLocaleString()}원</span>
+            {/* Sticky Bottom Footer */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 safe-area-bottom transition-all duration-300 ease-in-out">
+                {/* Summary Toggle Header */}
+                <div
+                    className="flex justify-center items-center py-1 cursor-pointer hover:bg-gray-50 border-b border-transparent hover:border-gray-100"
+                    onClick={() => setIsSummaryOpen(!isSummaryOpen)}
+                >
+                    <div className="w-10 h-1 bg-gray-200 rounded-full mb-1" />
                 </div>
-                <Button className="w-full h-12 text-lg font-bold" onClick={handleSubmit} disabled={isSubmitting}>
-                    {isSubmitting ? "처리중..." : "주문 접수하기"}
-                </Button>
+
+                {/* Expandable Content */}
+                <div className={cn(
+                    "overflow-hidden transition-all duration-300 px-4",
+                    isSummaryOpen ? "max-h-[60vh] overflow-y-auto py-2" : "max-h-0"
+                )}>
+                    <div className="space-y-2 text-sm text-gray-600 pb-4">
+                        <div className="font-semibold text-gray-900 mb-2">주문 내역</div>
+
+                        {/* Products */}
+                        {orderItems.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-start">
+                                <span className="truncate flex-1 pr-4">
+                                    {item.name} <span className="text-xs text-gray-400">x{item.quantity}</span>
+                                </span>
+                                <span>{(item.price * item.quantity).toLocaleString()}원</span>
+                            </div>
+                        ))}
+
+                        <Separator className="my-2" />
+
+                        {/* Fees & Discounts */}
+                        <div className="flex justify-between text-gray-500">
+                            <span>상품 합계</span>
+                            <span>{orderSummary.subtotal.toLocaleString()}원</span>
+                        </div>
+
+                        {orderSummary.deliveryFee > 0 && (
+                            <div className="flex justify-between">
+                                <span>배송비</span>
+                                <span>+{orderSummary.deliveryFee.toLocaleString()}원</span>
+                            </div>
+                        )}
+
+                        {orderSummary.discountAmount > 0 && (
+                            <div className="flex justify-between text-green-600">
+                                <span>할인</span>
+                                <span>-{orderSummary.discountAmount.toLocaleString()}원</span>
+                            </div>
+                        )}
+
+                        {orderSummary.actualUsedPoints > 0 && (
+                            <div className="flex justify-between text-blue-600">
+                                <span>포인트 사용</span>
+                                <span>-{orderSummary.actualUsedPoints.toLocaleString()}원</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Always Visible Total & Button */}
+                <div className="p-4 pt-2 bg-white">
+                    <div className="flex justify-between items-end mb-3" onClick={() => setIsSummaryOpen(!isSummaryOpen)}>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-600">총 결제금액</span>
+                            {isSummaryOpen ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronUp className="h-4 w-4 text-gray-400" />}
+                        </div>
+                        <span className="text-xl font-bold text-primary">{orderSummary.finalTotal.toLocaleString()}원</span>
+                    </div>
+                    <Button className="w-full h-12 text-lg font-bold shadow-md" onClick={handleSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? "처리중..." : "주문 접수하기"}
+                    </Button>
+                </div>
             </div>
 
 

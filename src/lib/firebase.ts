@@ -6,6 +6,7 @@ import {
   connectFirestoreEmulator,
   persistentLocalCache,
   persistentMultipleTabManager,
+  memoryLocalCache,
   CACHE_SIZE_UNLIMITED
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -34,31 +35,33 @@ const initializeFirebase = () => {
     if (!getApps().length) {
       app = initializeApp(firebaseConfig);
 
+      // Auth 초기화
+      auth = getAuth(app);
+      // Storage 초기화
+      storage = getStorage(app);
+
+      // Firestore 초기화 - 최신 SDK 방식
+      try {
+        const isDev = process.env.NODE_ENV === 'development';
+        db = initializeFirestore(app, {
+          localCache: isDev
+            ? memoryLocalCache()
+            : persistentLocalCache({
+              tabManager: persistentMultipleTabManager(),
+            }),
+          experimentalForceLongPolling: true,
+          ignoreUndefinedProperties: true,
+        });
+      } catch (error) {
+        console.warn('Firestore initialization failed, falling back to default:', error);
+        db = getFirestore(app);
+      }
+
     } else {
       app = getApp();
-      // console.log('Using existing Firebase app');
-    }
-
-    // Auth 초기화
-    auth = getAuth(app);
-
-
-    // Storage 초기화
-    storage = getStorage(app);
-
-
-    // Firestore 초기화 - 최신 SDK 방식 (Persistence 포함)
-    try {
-      db = initializeFirestore(app, {
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager(),
-          // 캐시 크기 설정 (필요시 CACHE_SIZE_UNLIMITED 사용 가능)
-        }),
-        experimentalForceLongPolling: true, // 안정성을 위한 설정
-        ignoreUndefinedProperties: true, // undefined 속성 무시
-      });
-    } catch (error) {
-      console.warn('Firestore initialization failed, falling back to default:', error);
+      auth = getAuth(app);
+      storage = getStorage(app);
+      // 이미 초기화된 경우 getFirestore 사용 (재초기화 방지)
       db = getFirestore(app);
     }
 

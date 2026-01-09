@@ -110,7 +110,7 @@ export function useRealtimeNotifications() {
     }
   }, []);
 
-  // 주문 이관 알림 생성
+  // 주문 이관 알림 생성 (신청 시)
   const createOrderTransferNotification = useCallback(async (
     orderBranchName: string,
     processBranchName: string,
@@ -121,26 +121,36 @@ export function useRealtimeNotifications() {
       return false;
     }
 
-    const template = settings.orderTransferSettings.notificationTemplate ||
-      "{발주지점}지점으로부터 주문이 이관되었습니다.";
-
-    const message = template
-      .replace('{발주지점}', orderBranchName)
-      .replace('{수주지점}', processBranchName)
-      .replace('{주문번호}', orderNumber);
-
-    // 수주지점의 사용자들에게 알림을 보내기 위해 지점 ID를 사용
+    // 1. 수주지점 (받는 곳) 알림
     const processBranch = branches.find(b => b.name === processBranchName);
+    const processMsg = `${orderBranchName}지점에서 주문이관 신청을 하였습니다`;
 
-    return await createNotification({
-      title: '주문 이관 알림',
-      message,
+    const noti1 = createNotification({
+      title: '주문 이관 신청',
+      message: processMsg,
       type: 'order_transfer',
       isRead: false,
       relatedId: transferId,
       branchId: processBranch?.id || '',
-      userId: '' // 지점별 알림이므로 userId는 비워둠
+      userId: ''
     });
+
+    // 2. 발주지점 (보내는 곳) 알림 - 확인용
+    const orderBranch = branches.find(b => b.name === orderBranchName);
+    const orderMsg = `${processBranchName}지점으로 주문이관 신청을 했습니다.`;
+
+    const noti2 = createNotification({
+      title: '주문 이관 신청 완료',
+      message: orderMsg,
+      type: 'order_transfer',
+      isRead: false,
+      relatedId: transferId,
+      branchId: orderBranch?.id || '',
+      userId: ''
+    });
+
+    await Promise.all([noti1, noti2]);
+    return true;
   }, [createNotification, settings?.orderTransferSettings, branches]);
 
   // 주문 이관 취소 알림 생성
@@ -226,6 +236,93 @@ export function useRealtimeNotifications() {
   // 읽지 않은 알림 개수
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
+
+
+  // 주문 이관 완료 알림 생성
+  const createOrderTransferCompleteNotification = useCallback(async (
+    processBranchName: string, // 이관 수행한 지점 (수주지점)
+    orderBranchName: string,   // 알림 받을 지점 (발주지점)
+    messageContent: string,    // 메시지 내용 (선택적)
+    transferId: string
+  ) => {
+    if (settings?.orderTransferSettings?.autoNotification === false) {
+      return false;
+    }
+
+    // 1. 발주지점 (신청했던 곳) 알림 - 배송 완료 통보
+    const orderBranch = branches.find(b => b.name === orderBranchName);
+    const orderMsg = `${processBranchName}지점으로 주문이관된 상품의 배송이 완료처리 되었습니다.`;
+
+    const noti1 = createNotification({
+      title: '이관 주문 완료',
+      message: orderMsg,
+      type: 'order_complete',
+      isRead: false,
+      relatedId: transferId,
+      branchId: orderBranch?.id || '',
+      userId: ''
+    });
+
+    // 2. 수주지점 (완료 처리한 곳) 알림 - 처리 확인
+    const processBranch = branches.find(b => b.name === processBranchName);
+    const processMsg = `이관된 주문의 배송이 완료되어 ${orderBranchName}지점으로 알림을 보냅니다.`;
+
+    const noti2 = createNotification({
+      title: '이관 주문 완료 처리됨',
+      message: processMsg,
+      type: 'order_complete',
+      isRead: false,
+      relatedId: transferId,
+      branchId: processBranch?.id || '',
+      userId: ''
+    });
+
+    await Promise.all([noti1, noti2]);
+    return true;
+  }, [createNotification, settings?.orderTransferSettings, branches]);
+
+  // 주문 이관 수락 알림 생성 (발주/수주 지점 모두에게)
+  const createOrderTransferAcceptedNotification = useCallback(async (
+    processBranchName: string, // 수락한 지점 (수주지점)
+    orderBranchName: string,   // 요청한 지점 (발주지점)
+    transferId: string
+  ) => {
+    if (settings?.orderTransferSettings?.autoNotification === false) {
+      return false;
+    }
+
+    // 1. 발주지점 (신청했던 곳) 알림
+    const orderBranch = branches.find(b => b.name === orderBranchName);
+    const orderMsg = `${processBranchName}지점에서 이관된 주문을 수락하였습니다`;
+
+    const noti1 = createNotification({
+      title: '이관 요청 수락됨',
+      message: orderMsg,
+      type: 'order_transfer',
+      isRead: false,
+      relatedId: transferId,
+      branchId: orderBranch?.id || '',
+      userId: ''
+    });
+
+    // 2. 수주지점 (수락한 곳) 알림
+    const processBranch = branches.find(b => b.name === processBranchName);
+    const processMsg = `${processBranchName}지점의 이관주문이 수락되었습니다. 상품을 제작하여 배송해주세요`;
+
+    const noti2 = createNotification({
+      title: '이관 주문 수락함',
+      message: processMsg,
+      type: 'order_transfer',
+      isRead: false,
+      relatedId: transferId,
+      branchId: processBranch?.id || '',
+      userId: ''
+    });
+
+    await Promise.all([noti1, noti2]);
+    return true;
+  }, [createNotification, settings?.orderTransferSettings, branches]);
+
   return {
     notifications,
     loading,
@@ -233,9 +330,12 @@ export function useRealtimeNotifications() {
     unreadCount,
     createNotification,
     createOrderTransferNotification,
+    createOrderTransferAcceptedNotification,
+    createOrderTransferCompleteNotification,
     createOrderTransferCancelNotification,
     markAsRead,
     markAllAsRead,
     cleanupExpiredNotifications
+
   };
 }

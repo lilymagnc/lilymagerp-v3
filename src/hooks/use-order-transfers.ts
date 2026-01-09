@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   collection,
   doc,
@@ -42,13 +42,14 @@ export function useOrderTransfers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  const [lastDoc, setLastDoc] = useState<any>(null);
+  const lastDocRef = useRef<any>(null);
+  const isFetchingRef = useRef<boolean>(false);
 
   const { user } = useAuth();
   const { branches } = useBranches();
   const { settings } = useSettings();
   const { toast } = useToast();
-  const { createOrderTransferNotification, createOrderTransferCancelNotification } = useRealtimeNotifications();
+  const { createOrderTransferNotification, createOrderTransferCancelNotification, createOrderTransferCompleteNotification, createOrderTransferAcceptedNotification } = useRealtimeNotifications();
   const { createOrderTransferDisplay } = useDisplayBoard();
 
   // 권한 확인 함수
@@ -82,8 +83,12 @@ export function useOrderTransfers() {
   }, [user]);
 
   // 이관 목록 조회
-  const fetchTransfers = useCallback(async (filter?: TransferFilter, pageSize: number = 20) => {
+  const fetchTransfers = useCallback(async (loadMore: boolean = false, filter?: TransferFilter, pageSize: number = 20) => {
+    // 이미 로딩 중이면 중복 요청 방지
+    if (isFetchingRef.current) return;
+
     try {
+      isFetchingRef.current = true;
       setLoading(true);
       setError(null);
 
@@ -111,8 +116,8 @@ export function useOrderTransfers() {
       }
 
       // 페이지네이션
-      if (lastDoc) {
-        q = query(q, startAfter(lastDoc));
+      if (loadMore && lastDocRef.current) {
+        q = query(q, startAfter(lastDocRef.current));
       }
 
       q = query(q, limit(pageSize));
@@ -127,7 +132,8 @@ export function useOrderTransfers() {
       if (snapshot.docs.length < pageSize) {
         setHasMore(false);
       } else {
-        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+        setHasMore(true);
+        lastDocRef.current = snapshot.docs[snapshot.docs.length - 1];
       }
 
       // 클라이언트 사이드 필터링
@@ -142,8 +148,15 @@ export function useOrderTransfers() {
       }
 
       setTransfers(prev =>
-        lastDoc ? [...prev, ...filteredTransfersData] : filteredTransfersData
+        loadMore ? [...prev, ...filteredTransfersData] : filteredTransfersData
       );
+
+      // 첫 페이지 로드 시 lastDoc 초기화는 위에서 처리됨 (loadMore false일 때 lastDocRef 사용 안 함, 그리고 새로 셋팅됨)
+      if (!loadMore && snapshot.docs.length > 0) {
+        lastDocRef.current = snapshot.docs[snapshot.docs.length - 1];
+      } else if (!loadMore) {
+        lastDocRef.current = null;
+      }
 
     } catch (err) {
       console.error('이관 목록 조회 오류:', err);
@@ -155,8 +168,9 @@ export function useOrderTransfers() {
       });
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [user, branches, lastDoc, getTransferPermissions, toast]);
+  }, [user, branches, getTransferPermissions, toast]);
 
   // 이관 요청 생성
   const createTransfer = useCallback(async (
@@ -270,7 +284,7 @@ export function useOrderTransfers() {
       });
 
       // 목록 새로고침
-      await fetchTransfers();
+      await fetchTransfers(false);
 
       return transferRef.id;
 
@@ -332,6 +346,39 @@ export function useOrderTransfers() {
       } else if (statusUpdate.status === 'completed') {
         updateData.completedAt = serverTimestamp();
         updateData.completedBy = user?.uid;
+
+        // 원본 주문 정보 가져오기
+        const transferDoc = await getDocs(query(
+          collection(db, 'order_transfers'),
+          where('__name__', '==', transferId)
+        ));
+
+        if (!transferDoc.empty) {
+          const transferData = transferDoc.docs[0].data();
+
+          // 원본 주문 상태를 'completed'로 업데이트 및 이관 정보 업데이트
+          await updateDoc(doc(db, 'orders', transferData.originalOrderId), {
+            status: 'completed',
+            'transferInfo.status': 'completed',
+            'transferInfo.completedAt': serverTimestamp(),
+            'transferInfo.completedBy': user?.uid
+          });
+
+          // 발주지점에 알림 전송 (완료 알림)
+          // use-realtime-notifications 훅에 'createOrderTransferCompleteNotification' 함수가 필요함.
+          // 현재는 없으므로 일반적인 알림 생성 로직을 사용하거나 추가해야 함.
+          // 여기서 useRealtimeNotifications 에 createTransferCompleteNoti를 추가하는게 좋음.
+          // 하지만 지금은 createOrderTransferNotification 재사용 또는 유사한 방식으로 처리.
+          // NOTE: 알림 유형을 구분할 수 있으면 좋음.
+
+
+          await createOrderTransferCompleteNotification(
+            transferData.processBranchName,
+            transferData.orderBranchName,
+            "이관된 주문이 완료되었습니다.",
+            transferId
+          );
+        }
       } else if (statusUpdate.status === 'cancelled') {
         updateData.cancelledAt = serverTimestamp();
         updateData.cancelledBy = user?.uid;
@@ -436,6 +483,13 @@ export function useOrderTransfers() {
                   'accepted',
                   orderInfo
                 );
+
+                // 이관 수락 알림 전송 (발주/수주 지점 모두에게)
+                await createOrderTransferAcceptedNotification(
+                  transferData.processBranchName,
+                  transferData.orderBranchName,
+                  transferId
+                );
               }
             } catch (error) {
               console.error('주문 정보 조회 실패:', error);
@@ -466,7 +520,7 @@ export function useOrderTransfers() {
       });
 
       // 목록 새로고침
-      await fetchTransfers();
+      await fetchTransfers(false);
 
     } catch (err) {
       console.error('이관 상태 업데이트 오류:', err);
@@ -553,7 +607,7 @@ export function useOrderTransfers() {
       });
 
       // 목록 새로고침
-      await fetchTransfers();
+      await fetchTransfers(false);
 
     } catch (err) {
       console.error('이관 취소 오류:', err);
@@ -611,7 +665,7 @@ export function useOrderTransfers() {
       });
 
       // 목록 새로고침
-      await fetchTransfers();
+      await fetchTransfers(false);
 
     } catch (err) {
       console.error('이관 기록 삭제 오류:', err);
@@ -671,7 +725,7 @@ export function useOrderTransfers() {
       }
 
       // 목록 새로고침
-      await fetchTransfers();
+      await fetchTransfers(false);
 
     } catch (err) {
       console.error('고아 이관 기록 정리 오류:', err);
@@ -773,7 +827,7 @@ export function useOrderTransfers() {
   // 초기 로드
   useEffect(() => {
     if (user && branches.length > 0) {
-      fetchTransfers();
+      fetchTransfers(false);
     }
   }, [user, branches, fetchTransfers]);
 

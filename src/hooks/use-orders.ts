@@ -44,16 +44,16 @@ export interface OrderData {
   orderType: "store" | "phone" | "naver" | "kakao" | "etc";
   receiptType: "store_pickup" | "pickup_reservation" | "delivery_reservation";
   payment: {
-    method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay";
+    method: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay" | "kakao" | "apple";
     status: PaymentStatus;
     completedAt?: Timestamp; // 완결처리 시 기록되는 시간
     isSplitPayment?: boolean; // 분할결제 여부
     firstPaymentAmount?: number; // 선결제 금액
     firstPaymentDate?: Timestamp; // 선결제 날짜 (주문 날짜)
-    firstPaymentMethod?: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay"; // 선결제 수단
+    firstPaymentMethod?: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay" | "kakao" | "apple"; // 선결제 수단
     secondPaymentAmount?: number; // 후결제 금액
     secondPaymentDate?: Timestamp; // 후결제 날짜 (완결처리 날짜)
-    secondPaymentMethod?: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay"; // 후결제 수단
+    secondPaymentMethod?: "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay" | "kakao" | "apple"; // 후결제 수단
   };
   pickupInfo: {
     date: string;
