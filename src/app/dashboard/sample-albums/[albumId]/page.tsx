@@ -58,7 +58,7 @@ export default function AlbumDetailPage() {
     setDownloadProgress(0);
 
     try {
-      const urls = photos.map(p => p.originalUrl).filter(Boolean);
+      const urls = photos.flatMap(p => [p.originalUrl, p.previewUrl]).filter(Boolean) as string[];
       await cacheAlbumPhotos(urls, (current, total) => {
         setDownloadProgress(Math.round((current / total) * 100));
       });
