@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
-import { PlusCircle, Printer, Search, Download, FileUp, ScanLine } from "lucide-react";
+import { PlusCircle, Printer, Search, Download, FileUp, ScanLine, Layers, Package, AlertTriangle, XCircle } from "lucide-react";
 import { MaterialTable } from "./components/material-table";
 import { MaterialForm, MaterialFormValues } from "./components/material-form";
 import { useToast } from "@/hooks/use-toast";
@@ -34,11 +34,38 @@ export default function MaterialsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { branches } = useBranches();
-  const { materials, loading: materialsLoading, addMaterial, updateMaterial, deleteMaterial, bulkAddMaterials, fetchMaterials, updateMaterialIds } = useMaterials();
+  const {
+    materials,
+    loading: materialsLoading,
+    hasMore,
+    stats,
+    loadMore,
+    addMaterial,
+    updateMaterial,
+    deleteMaterial,
+    bulkAddMaterials,
+    fetchMaterials,
+    updateMaterialIds
+  } = useMaterials();
 
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise;
+
+  // 필터가 변경될 때마다 데이터를 다시 가져옴
+  useEffect(() => {
+    // 지점 직원의 경우 초기 branch 설정을 반영하기 위해
+    let branchToFetch = selectedBranch;
+    if (!isAdmin && userBranch && selectedBranch === "all") {
+      branchToFetch = userBranch;
+    }
+
+    fetchMaterials({
+      branch: branchToFetch,
+      mainCategory: selectedMainCategory,
+      midCategory: selectedMidCategory,
+    });
+  }, [fetchMaterials, selectedBranch, selectedMainCategory, selectedMidCategory, isAdmin, userBranch]);
 
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
@@ -56,40 +83,34 @@ export default function MaterialsPage() {
     }
   }, [isAdmin, userBranch, selectedBranch]);
 
-  const mainCategories = useMemo(() => [...new Set(materials.map(m => m.mainCategory))], [materials]);
+  const mainCategories = useMemo(() => {
+    const cats = [...new Set(materials.map(m => m.mainCategory))];
+    return cats.filter(Boolean);
+  }, [materials]);
+
   const midCategories = useMemo(() => {
-    if (selectedMainCategory === "all") {
-      return [...new Set(materials.map(m => m.midCategory))];
+    let filtered = materials;
+    if (selectedMainCategory !== "all") {
+      filtered = materials.filter(m => m.mainCategory === selectedMainCategory);
     }
-    return [...new Set(materials.filter(m => m.mainCategory === selectedMainCategory).map(m => m.midCategory))];
+    const cats = [...new Set(filtered.map(m => m.midCategory))];
+    return cats.filter(Boolean);
   }, [materials, selectedMainCategory]);
 
   const filteredMaterials = useMemo(() => {
-    let filtered = materials.filter(material => 
-      material && 
-      typeof material === 'object' && 
-      material.name && 
-      material.docId
-    );
+    // 이미 fetchMaterials에서 필터링이 완료된 상태이므로 검색어 필터링만 수행
+    let filtered = materials;
 
-    // 검색어 필터링
     if (searchTerm) {
-      filtered = filtered.filter(material => 
-        (material.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (material.id?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(material =>
+        (material.name?.toLowerCase() || '').includes(searchLower) ||
+        (material.id?.toLowerCase() || '').includes(searchLower)
       );
     }
 
-    // 카테고리 필터링
-    if (selectedMainCategory !== "all") {
-      filtered = filtered.filter(material => material.mainCategory === selectedMainCategory);
-    }
-    if (selectedMidCategory !== "all") {
-      filtered = filtered.filter(material => material.midCategory === selectedMidCategory);
-    }
-
     return filtered;
-  }, [materials, searchTerm, selectedBranch, selectedMainCategory, selectedMidCategory, isAdmin, userBranch, user]);
+  }, [materials, searchTerm]);
 
   const handleAdd = () => {
     setSelectedMaterial(null);
@@ -124,7 +145,7 @@ export default function MaterialsPage() {
       });
       return;
     }
-    const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) => 
+    const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) =>
       ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, stock })
     );
     downloadXLSX(dataToExport, "materials_list");
@@ -153,6 +174,13 @@ export default function MaterialsPage() {
     await fetchMaterials();
   };
 
+  const currentFilters = useMemo(() => ({
+    branch: selectedBranch,
+    mainCategory: selectedMainCategory,
+    midCategory: selectedMidCategory,
+    pageSize: 50
+  }), [selectedBranch, selectedMainCategory, selectedMidCategory]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -160,7 +188,7 @@ export default function MaterialsPage() {
         description={!isAdmin ? `${userBranch} 지점의 자재 정보를 관리합니다.` : "자재 정보를 관리하고 재고를 추적하세요."}
       >
         <div className="flex gap-2">
-          <Button 
+          <Button
             variant="outline"
             onClick={() => router.push('/dashboard/barcode-scanner')}
           >
@@ -173,7 +201,7 @@ export default function MaterialsPage() {
                 <PlusCircle className="mr-2 h-4 w-4" />
                 자재 추가
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={updateMaterialIds}
                 disabled={materialsLoading}
@@ -184,6 +212,53 @@ export default function MaterialsPage() {
           )}
         </div>
       </PageHeader>
+
+      {/* 요약 통계 카드 섹션 */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border-t-4 border-t-primary shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">전체 자재 종류</CardTitle>
+            <Layers className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalTypes}종</div>
+            <p className="text-xs text-muted-foreground mt-1">현재 필터링된 자재 가짓수</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-t-4 border-t-blue-500 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">재고 총 수량</CardTitle>
+            <Package className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalStock.toLocaleString()}개</div>
+            <p className="text-xs text-muted-foreground mt-1">모든 자재의 합산 재고</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-t-4 border-t-yellow-500 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">재고 부족</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats.lowStock}건</div>
+            <p className="text-xs text-muted-foreground mt-1">재고 10개 미만 품목</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-t-4 border-t-red-500 shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">품절 항목</CardTitle>
+            <XCircle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.outOfStock}건</div>
+            <p className="text-xs text-muted-foreground mt-1">현재 재고가 없는 품목</p>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -264,7 +339,7 @@ export default function MaterialsPage() {
               <Printer className="mr-2 h-4 w-4" />
               선택 항목 라벨 출력
             </Button>
-            
+
             {/* 본사 관리자만 접근 가능한 기능들 */}
             {isHeadOfficeAdmin && (
               <ImportButton
@@ -289,25 +364,33 @@ export default function MaterialsPage() {
         </CardContent>
       </Card>
 
-      {materialsLoading ? (
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
+      <div className="space-y-4">
         <MaterialTable
           materials={filteredMaterials}
           onSelectionChange={setSelectedMaterials}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onRefresh={handleRefresh} // 새로고침 함수 전달
+          onRefresh={handleRefresh}
         />
-      )}
+
+        {hasMore && (
+          <div className="flex justify-center pt-2">
+            <Button
+              variant="outline"
+              onClick={() => loadMore(currentFilters)}
+              disabled={materialsLoading}
+              className="w-full max-w-xs shadow-sm hover:bg-accent"
+            >
+              {materialsLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                  로딩 중...
+                </div>
+              ) : "자재 더 보기"}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <MaterialForm
         isOpen={isFormOpen}
