@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBranches } from "@/hooks/use-branches";
 import { useMaterials } from "@/hooks/use-materials";
+import { useCategories } from "@/hooks/use-categories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { downloadXLSX } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -45,8 +47,10 @@ export default function MaterialsPage() {
     deleteMaterial,
     bulkAddMaterials,
     fetchMaterials,
-    updateMaterialIds
+    updateMaterialIds,
+    rebuildCategories
   } = useMaterials();
+  const { getMainCategories, getMidCategories, fetchCategories } = useCategories();
 
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
   const isAdmin = user?.role === '본사 관리자';
@@ -84,32 +88,20 @@ export default function MaterialsPage() {
   }, [isAdmin, userBranch, selectedBranch]);
 
   const mainCategories = useMemo(() => {
-    const cats = [...new Set(materials.map(m => m.mainCategory))];
-    return cats.filter(Boolean);
-  }, [materials]);
+    return getMainCategories();
+  }, [getMainCategories]);
 
   const midCategories = useMemo(() => {
-    let filtered = materials;
-    if (selectedMainCategory !== "all") {
-      filtered = materials.filter(m => m.mainCategory === selectedMainCategory);
-    }
-    const cats = [...new Set(filtered.map(m => m.midCategory))];
-    return cats.filter(Boolean);
-  }, [materials, selectedMainCategory]);
+    return getMidCategories(selectedMainCategory === "all" ? undefined : selectedMainCategory);
+  }, [getMidCategories, selectedMainCategory]);
 
   const filteredMaterials = useMemo(() => {
     // 이미 fetchMaterials에서 필터링이 완료된 상태이므로 검색어 필터링만 수행
-    let filtered = materials;
-
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(material =>
-        (material.name?.toLowerCase() || '').includes(searchLower) ||
-        (material.id?.toLowerCase() || '').includes(searchLower)
-      );
-    }
-
-    return filtered;
+    if (!searchTerm) return materials;
+    return materials.filter(material =>
+      (material.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (material.id?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    );
   }, [materials, searchTerm]);
 
   const handleAdd = () => {
@@ -123,7 +115,7 @@ export default function MaterialsPage() {
   };
 
   const handleFormSubmit = async (data: MaterialFormValues) => {
-    if (selectedMaterial?.docId) {
+    if (selectedMaterial) {
       await updateMaterial(selectedMaterial.docId, selectedMaterial.id, data);
     } else {
       await addMaterial(data);
@@ -139,24 +131,17 @@ export default function MaterialsPage() {
   const handleDownloadCurrentList = () => {
     if (filteredMaterials.length === 0) {
       toast({
-        variant: "destructive",
-        title: "내보낼 데이터 없음",
-        description: "현재 필터에 맞는 자재 데이터가 없습니다.",
+        variant: 'destructive',
+        title: '오류',
+        description: '다운로드할 데이터가 없습니다.',
       });
       return;
     }
-    const dataToExport = filteredMaterials.map(({ id, name, mainCategory, midCategory, price, supplier, stock, size, color, branch }) =>
-      ({ id, name, mainCategory, midCategory, branch, supplier, price, size, color, stock })
-    );
-    downloadXLSX(dataToExport, "materials_list");
-    toast({
-      title: "목록 다운로드 성공",
-      description: `현재 필터링된 ${dataToExport.length}개 자재 정보가 XLSX 파일로 다운로드되었습니다.`,
-    });
+    downloadXLSX(filteredMaterials, `자재목록_${new Date().toLocaleDateString()}`);
   };
 
   const handleImport = async (data: any[]) => {
-    await bulkAddMaterials(data, selectedBranch);
+    await bulkAddMaterials(data, selectedBranch === 'all' ? '' : selectedBranch);
   };
 
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
@@ -172,6 +157,11 @@ export default function MaterialsPage() {
 
   const handleRefresh = async () => {
     await fetchMaterials();
+  };
+
+  const handleRebuildCategories = async () => {
+    await rebuildCategories();
+    await fetchCategories();
   };
 
   const currentFilters = useMemo(() => ({
@@ -207,6 +197,14 @@ export default function MaterialsPage() {
                 disabled={materialsLoading}
               >
                 ID 업데이트
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleRebuildCategories}
+                disabled={materialsLoading}
+              >
+                <Layers className="mr-2 h-4 w-4" />
+                카테고리 동기화
               </Button>
             </>
           )}
@@ -262,29 +260,30 @@ export default function MaterialsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>자재 검색 및 필터</CardTitle>
+          <CardTitle>검색 및 필터</CardTitle>
           <CardDescription>
-            자재명이나 ID로 검색하고 카테고리별로 필터링할 수 있습니다.
+            자재 이름이나 ID로 검색하고 카테고리별로 필터링할 수 있습니다.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="자재명 또는 ID로 검색..."
+                placeholder="자재 이름 또는 ID 검색..."
+                className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
               />
             </div>
             {isAdmin && (
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                <SelectTrigger className="w-full sm:w-[200px] text-foreground">
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="지점 선택" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">모든 지점</SelectItem>
-                  {availableBranches.map((branch) => (
+                  {branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.name}>
                       {branch.name}
                     </SelectItem>
@@ -329,7 +328,6 @@ export default function MaterialsPage() {
               <Download className="mr-2 h-4 w-4" />
               현재 목록 다운로드
             </Button>
-            {/* 바코드 라벨 출력 버튼 (모든 사용자) */}
             <Button
               variant="outline"
               size="sm"
@@ -340,7 +338,6 @@ export default function MaterialsPage() {
               선택 항목 라벨 출력
             </Button>
 
-            {/* 본사 관리자만 접근 가능한 기능들 */}
             {isHeadOfficeAdmin && (
               <ImportButton
                 onImport={handleImport}

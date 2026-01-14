@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, writeBatch, serverTimestamp, runTransaction, query, where, limit, deleteDoc, getDoc, startAfter, getCountFromServer, getAggregateFromServer, sum } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, writeBatch, serverTimestamp, runTransaction, query, where, limit, deleteDoc, getDoc, startAfter, getCountFromServer, getAggregateFromServer, sum, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 import { useToast } from './use-toast';
@@ -39,11 +39,9 @@ export function useMaterials() {
                 q = query(q, where('branch', '==', branch));
             }
 
-            // 1. 전체 자재 종류 수 (기본 색인으로 가능)
             const countSnapshot = await getCountFromServer(q);
             const totalTypes = countSnapshot.data().count;
 
-            // 2. 재고 총량 합계 (기본 색인으로 가능)
             const stockSumSnapshot = await getAggregateFromServer(q, {
                 totalInventory: sum('stock')
             });
@@ -55,7 +53,6 @@ export function useMaterials() {
                 outOfStock: 0
             };
 
-            // 복합 색인이 필요한 복잡한 통계는 별도 try-catch로 감싸서 전체가 죽지 않게 함
             try {
                 const lowStockQ = query(q, where('stock', '>', 0), where('stock', '<', 10));
                 const lowSnap = await getCountFromServer(lowStockQ);
@@ -98,7 +95,6 @@ export function useMaterials() {
                 q = query(q, where('midCategory', '==', filters.midCategory));
             }
 
-            // 색인 오류 방지를 위해 서버 측 정렬(orderBy)을 제거합니다.
             const pageSize = filters?.pageSize || 50;
             q = query(q, limit(pageSize));
 
@@ -115,14 +111,13 @@ export function useMaterials() {
                     ...doc.data(),
                     status: getStatus(doc.data().stock)
                 } as Material))
-                // 클라이언트 측에서 정렬 수행 (서버 부하 및 색인 오류 방지)
                 .sort((a, b) => (a.id && b.id) ? a.id.localeCompare(b.id) : 0);
 
             setMaterials(materialsData);
 
         } catch (error) {
             console.error("Error fetching materials: ", error);
-            toast({ variant: 'destructive', title: '오류', description: '자재 정보를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.' });
+            toast({ variant: 'destructive', title: '오류', description: '자재 정보를 불러오는 중 오류가 발생했습니다.' });
         } finally {
             setLoading(false);
         }
@@ -150,7 +145,6 @@ export function useMaterials() {
                 q = query(q, where('midCategory', '==', filters.midCategory));
             }
 
-            // startAfter를 사용하려면 쿼리 구조가 이전과 완전히 동일해야 하므로 limit만 적용
             q = query(q, startAfter(lastDoc), limit(filters?.pageSize || 50));
 
             const querySnapshot = await getDocs(q);
@@ -174,6 +168,19 @@ export function useMaterials() {
             setLoading(false);
         }
     };
+
+    const generateNewId = async () => {
+        const q = query(collection(db, "materials"), orderBy("id", "desc"), limit(1));
+        const querySnapshot = await getDocs(q);
+        let lastIdNumber = 0;
+        if (!querySnapshot.empty) {
+            const lastId = querySnapshot.docs[0].data().id;
+            if (lastId && lastId.startsWith('M')) {
+                lastIdNumber = parseInt(lastId.replace('M', ''), 10);
+            }
+        }
+        return `M${String(lastIdNumber + 1).padStart(5, '0')}`;
+    }
 
     const updateMaterialIds = async () => {
         try {
@@ -205,12 +212,33 @@ export function useMaterials() {
         }
     }
 
+    const syncCategory = async (main: string, mid: string) => {
+        try {
+            const catsRef = collection(db, 'categories');
+            const mainQuery = query(catsRef, where('name', '==', main), where('type', '==', 'main'));
+            const mainSnap = await getDocs(mainQuery);
+            if (mainSnap.empty) {
+                await addDoc(catsRef, { name: main, type: 'main', createdAt: serverTimestamp() });
+            }
+
+            const midQuery = query(catsRef, where('name', '==', mid), where('type', '==', 'mid'), where('parentCategory', '==', main));
+            const midSnap = await getDocs(midQuery);
+            if (midSnap.empty) {
+                await addDoc(catsRef, { name: mid, type: 'mid', parentCategory: main, createdAt: serverTimestamp() });
+            }
+        } catch (e) {
+            console.error("Category sync error:", e);
+        }
+    };
+
     const addMaterial = async (data: MaterialFormValues) => {
         setLoading(true);
         try {
+            const newId = await generateNewId();
             const docRef = doc(collection(db, "materials"));
-            await setDoc(docRef, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-            toast({ title: "성공", description: `새 자재가 '${data.branch}' 지점에 추가되었습니다.` });
+            await setDoc(docRef, { ...data, id: newId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+            await syncCategory(data.mainCategory, data.midCategory);
+            toast({ title: "성공", description: `새 자재가 추가되었습니다.` });
             await fetchMaterials();
         } catch (error) {
             console.error("Error adding material:", error);
@@ -223,7 +251,8 @@ export function useMaterials() {
         setLoading(true);
         try {
             const docRef = doc(db, "materials", docId);
-            await setDoc(docRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+            await setDoc(docRef, { ...data, id: materialId, updatedAt: serverTimestamp() }, { merge: true });
+            await syncCategory(data.mainCategory, data.midCategory);
             toast({ title: "성공", description: "자재 정보가 수정되었습니다." });
             await fetchMaterials();
         } catch (error) {
@@ -328,9 +357,86 @@ export function useMaterials() {
 
     const bulkAddMaterials = async (data: any[], currentBranch: string) => {
         setLoading(true);
-        // ... (필요 시 벌크 추가 로직 구현)
-        await fetchMaterials();
-        setLoading(false);
+        try {
+            const batch = writeBatch(db);
+            const materialsRef = collection(db, 'materials');
+            const catsRef = collection(db, 'categories');
+
+            const catsSnap = await getDocs(catsRef);
+            const existingCats = new Set(catsSnap.docs.map(d => {
+                const data = d.data();
+                return data.type === 'main' ? `main:${data.name}` : `mid:${data.parentCategory}>${data.name}`;
+            }));
+
+            for (const item of data) {
+                const newDocRef = doc(materialsRef);
+                const materialId = await generateNewId();
+                const materialData = {
+                    ...item,
+                    id: materialId,
+                    branch: currentBranch || item.branch,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                batch.set(newDocRef, materialData);
+
+                if (item.mainCategory && !existingCats.has(`main:${item.mainCategory}`)) {
+                    const cRef = doc(catsRef);
+                    batch.set(cRef, { name: item.mainCategory, type: 'main', createdAt: serverTimestamp() });
+                    existingCats.add(`main:${item.mainCategory}`);
+                }
+                if (item.mainCategory && item.midCategory && !existingCats.has(`mid:${item.mainCategory}>${item.midCategory}`)) {
+                    const cRef = doc(catsRef);
+                    batch.set(cRef, { name: item.midCategory, type: 'mid', parentCategory: item.mainCategory, createdAt: serverTimestamp() });
+                    existingCats.add(`mid:${item.mainCategory}>${item.midCategory}`);
+                }
+            }
+
+            await batch.commit();
+            toast({ title: "성공", description: `${data.length}개의 자재가 등록되었습니다.` });
+            await fetchMaterials();
+        } catch (error) {
+            console.error("Bulk add error:", error);
+            toast({ variant: 'destructive', title: '오류', description: '대량 등록 중 오류가 발생했습니다.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const rebuildCategories = async () => {
+        try {
+            setLoading(true);
+            const materialsRef = collection(db, 'materials');
+            const catsRef = collection(db, 'categories');
+
+            const allMaterials = await getDocs(materialsRef);
+            const mainCats = new Set<string>();
+            const midCats = new Set<string>();
+
+            allMaterials.docs.forEach(d => {
+                const data = d.data();
+                if (data.mainCategory) mainCats.add(data.mainCategory);
+                if (data.mainCategory && data.midCategory) midCats.add(`${data.mainCategory}>${data.midCategory}`);
+            });
+
+            for (const cat of mainCats) {
+                const q = query(catsRef, where('name', '==', cat), where('type', '==', 'main'));
+                const snap = await getDocs(q);
+                if (snap.empty) await addDoc(catsRef, { name: cat, type: 'main', createdAt: serverTimestamp() });
+            }
+            for (const catKey of midCats) {
+                const [parent, name] = catKey.split('>');
+                const q = query(catsRef, where('name', '==', name), where('type', '==', 'mid'), where('parentCategory', '==', parent));
+                const snap = await getDocs(q);
+                if (snap.empty) await addDoc(catsRef, { name, type: 'mid', parentCategory: parent, createdAt: serverTimestamp() });
+            }
+
+            toast({ title: "카테고리 복구 완료", description: "모든 자재를 바탕으로 카테고리 목록을 재구축했습니다." });
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return {
@@ -347,6 +453,7 @@ export function useMaterials() {
         updateMaterial,
         deleteMaterial,
         bulkAddMaterials,
-        updateMaterialIds
+        updateMaterialIds,
+        rebuildCategories
     };
 }
