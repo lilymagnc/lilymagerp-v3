@@ -28,6 +28,10 @@ export interface OrderPrintData {
         originalBranchName: string;
         processBranchName: string;
     };
+    outsourceInfo?: {
+        partnerName: string;
+        partnerPrice: number;
+    };
 }
 interface PrintableOrderProps {
     data: OrderPrintData | null;
@@ -68,6 +72,11 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                             </div>
                             <h1 className="text-2xl font-bold mt-2">
                                 릴리맥 플라워앤가든 {title}
+                                {data.outsourceInfo && (
+                                    <span className="text-sm font-normal ml-2">
+                                        ({data.outsourceInfo.partnerName} - ₩{data.outsourceInfo.partnerPrice.toLocaleString()})
+                                    </span>
+                                )}
                                 {data.transferInfo && (
                                     <span className="text-sm font-normal ml-2">
                                         (주문이관 : {data.transferInfo.originalBranchName} -&gt; {data.transferInfo.processBranchName})

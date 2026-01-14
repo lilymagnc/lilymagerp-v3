@@ -6,7 +6,7 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images, DollarSign, Target, BarChart3, Package, Receipt, Settings, Database, Percent, ArrowRightLeft } from 'lucide-react';
+import { LayoutDashboard, Boxes, ShoppingCart, Users, UserCog, LogOut, ClipboardList, Store, BookUser, Hammer, History, Briefcase, MapPin, Truck, Images, DollarSign, Target, BarChart3, Package, Receipt, Settings, Database, Percent, ArrowRightLeft, ExternalLink } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import React from 'react';
@@ -90,6 +90,11 @@ export default function DashboardLayout({
                         {/* 4. 주문 현황 (모든 사용자) */}
                         <SidebarMenuItem>
                             <SidebarMenuButton onClick={() => router.push('/dashboard/orders')}><ClipboardList />주문 현황</SidebarMenuButton>
+                        </SidebarMenuItem>
+
+                        {/* 외부 발주 관리 (모든 사용자) */}
+                        <SidebarMenuItem>
+                            <SidebarMenuButton onClick={() => router.push('/dashboard/outsource')} className="text-blue-600"><ExternalLink className="text-blue-600" />외부 발주 관리</SidebarMenuButton>
                         </SidebarMenuItem>
 
 

@@ -37,6 +37,7 @@ const partnerSchema = z.object({
   bankAccount: z.string().optional(),
   items: z.string().optional(),
   memo: z.string().optional(),
+  defaultMarginPercent: z.number().min(0).max(100).optional(),
 });
 export type PartnerFormValues = z.infer<typeof partnerSchema>
 interface PartnerFormProps {
@@ -57,6 +58,7 @@ const defaultValues: PartnerFormValues = {
   bankAccount: "",
   items: "",
   memo: "",
+  defaultMarginPercent: 20,
 }
 export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: PartnerFormProps) {
   const form = useForm<PartnerFormValues>({
@@ -110,97 +112,115 @@ export function PartnerForm({ isOpen, onOpenChange, onSubmit, partner }: Partner
                   </FormItem>
                 )}
               />
-            </div>
-             <FormField
+              <FormField
                 control={form.control}
-                name="items"
+                name="defaultMarginPercent"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>주요 품목</FormLabel>
+                    <FormLabel>기본 마진율 (%)</FormLabel>
                     <FormControl>
-                      <Input placeholder="장미, 카네이션 (쉼표로 구분)" {...field} />
+                      <Input
+                        type="number"
+                        placeholder="20"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
+            <FormField
+              control={form.control}
+              name="items"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>주요 품목</FormLabel>
+                  <FormControl>
+                    <Input placeholder="장미, 카네이션 (쉼표로 구분)" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <Separator className="my-6" />
             <p className="text-sm font-semibold">담당자 정보</p>
             <Separator />
             <div className="grid grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="contactPerson"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>담당자명</FormLabel>
-                        <FormControl>
-                        <Input placeholder="김철수" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>연락처</FormLabel>
-                        <FormControl>
-                        <Input placeholder="010-1234-5678" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            </div>
-            <FormField
+              <FormField
                 control={form.control}
-                name="email"
+                name="contactPerson"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>이메일</FormLabel>
+                    <FormLabel>담당자명</FormLabel>
                     <FormControl>
-                      <Input placeholder="partner@example.com" {...field} />
+                      <Input placeholder="김철수" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <>
-                <Separator className="my-6" />
-                <p className="text-sm font-semibold">사업자 정보 (세금계산서 발행용)</p>
-                <Separator />
-                <FormField control={form.control} name="ceoName" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>대표자명</FormLabel>
-                        <FormControl><Input placeholder="홍길동" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                  )}/>
-                <FormField control={form.control} name="businessNumber" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>사업자등록번호</FormLabel>
-                        <FormControl><Input placeholder="123-45-67890" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                  )}/>
-                <FormField control={form.control} name="address" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>사업장 주소</FormLabel>
-                        <FormControl><Textarea placeholder="상세 주소 입력" {...field} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}/>
-                 <FormField control={form.control} name="bankAccount" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>계좌 정보</FormLabel>
-                        <FormControl><Input placeholder="은행명, 계좌번호, 예금주" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                  )}/>
-              </>
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>연락처</FormLabel>
+                    <FormControl>
+                      <Input placeholder="010-1234-5678" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>이메일</FormLabel>
+                  <FormControl>
+                    <Input placeholder="partner@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <>
+              <Separator className="my-6" />
+              <p className="text-sm font-semibold">사업자 정보 (세금계산서 발행용)</p>
+              <Separator />
+              <FormField control={form.control} name="ceoName" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>대표자명</FormLabel>
+                  <FormControl><Input placeholder="홍길동" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="businessNumber" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>사업자등록번호</FormLabel>
+                  <FormControl><Input placeholder="123-45-67890" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="address" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>사업장 주소</FormLabel>
+                  <FormControl><Textarea placeholder="상세 주소 입력" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="bankAccount" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>계좌 정보</FormLabel>
+                  <FormControl><Input placeholder="은행명, 계좌번호, 예금주" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </>
             <Separator className="my-6" />
             <FormField
               control={form.control}

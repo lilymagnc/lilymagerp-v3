@@ -24,7 +24,8 @@ import { OrderDetailDialog } from "./components/order-detail-dialog";
 import { OrderEditDialog } from "./components/order-edit-dialog";
 import { ExcelUploadDialog } from "./components/excel-upload-dialog";
 import { OrderTransferDialog } from "@/components/order-transfer-dialog";
-import { Trash2, XCircle, Calendar as CalendarIcon } from "lucide-react";
+import { OrderOutsourceDialog } from "@/components/order-outsource-dialog";
+import { Trash2, XCircle, Calendar as CalendarIcon, ExternalLink } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { exportOrdersToExcel } from "@/lib/excel-export";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +68,10 @@ export default function OrdersPage() {
   // 이관 관련 상태
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [selectedOrderForTransfer, setSelectedOrderForTransfer] = useState<Order | null>(null);
+
+  // 외부 발주 관련 상태
+  const [isOutsourceDialogOpen, setIsOutsourceDialogOpen] = useState(false);
+  const [selectedOrderForOutsource, setSelectedOrderForOutsource] = useState<Order | null>(null);
 
   // 일괄 삭제 관련 상태
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -237,6 +242,12 @@ export default function OrdersPage() {
   const handleTransferClick = (order: Order) => {
     setSelectedOrderForTransfer(order);
     setIsTransferDialogOpen(true);
+  };
+
+  // 외부 발주 버튼 클릭 처리
+  const handleOutsourceClick = (order: Order) => {
+    setSelectedOrderForOutsource(order);
+    setIsOutsourceDialogOpen(true);
   };
   // 취소 다이얼로그 열기
   const openCancelDialog = (order: Order) => {
@@ -1472,10 +1483,20 @@ export default function OrdersPage() {
                                 이관됨
                               </Badge>
                             )}
+                            {order.outsourceInfo?.isOutsourced && (
+                              <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
+                                외부발주
+                              </Badge>
+                            )}
                           </div>
                           {order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && (
                             <div className="text-xs text-gray-500">
                               처리: {order.transferInfo.processBranchName}
+                            </div>
+                          )}
+                          {order.outsourceInfo?.isOutsourced && order.outsourceInfo?.partnerName && (
+                            <div className="text-xs text-orange-500 font-medium">
+                              업체: {order.outsourceInfo.partnerName}
                             </div>
                           )}
                         </div>
@@ -1544,6 +1565,15 @@ export default function OrdersPage() {
                               }}>
                                 <ArrowRightLeft className="mr-2 h-4 w-4" />
                                 지점 이관
+                              </DropdownMenuItem>
+                            )}
+                            {((isAdmin || order.branchName === userBranch) && !order.outsourceInfo?.isOutsourced) && (
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                handleOutsourceClick(order);
+                              }}>
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                외부 발주
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator />
@@ -1673,7 +1703,7 @@ export default function OrdersPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card >
       {selectedOrderForPrint && (
         <MessagePrintDialog
           isOpen={isMessagePrintDialogOpen}
@@ -1681,21 +1711,26 @@ export default function OrdersPage() {
           order={selectedOrderForPrint}
           onSubmit={handleMessagePrintSubmit}
         />
-      )}
-      {selectedOrderForDetail && (
-        <OrderDetailDialog
-          isOpen={isOrderDetailDialogOpen}
-          onOpenChange={setIsOrderDetailDialogOpen}
-          order={selectedOrderForDetail}
-        />
-      )}
-      {selectedOrderForAction && (
-        <OrderEditDialog
-          isOpen={isOrderEditDialogOpen}
-          onOpenChange={setIsOrderEditDialogOpen}
-          order={selectedOrderForAction}
-        />
-      )}
+      )
+      }
+      {
+        selectedOrderForDetail && (
+          <OrderDetailDialog
+            isOpen={isOrderDetailDialogOpen}
+            onOpenChange={setIsOrderDetailDialogOpen}
+            order={selectedOrderForDetail}
+          />
+        )
+      }
+      {
+        selectedOrderForAction && (
+          <OrderEditDialog
+            isOpen={isOrderEditDialogOpen}
+            onOpenChange={setIsOrderEditDialogOpen}
+            order={selectedOrderForAction}
+          />
+        )
+      }
       <ExcelUploadDialog
         isOpen={isExcelUploadDialogOpen}
         onOpenChange={setIsExcelUploadDialogOpen}
@@ -1788,6 +1823,12 @@ export default function OrdersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <OrderOutsourceDialog
+        isOpen={isOutsourceDialogOpen}
+        onClose={() => setIsOutsourceDialogOpen(false)}
+        order={selectedOrderForOutsource}
+        onSuccess={() => fetchOrders()}
+      />
     </>
   );
 }

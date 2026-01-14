@@ -137,6 +137,10 @@ export function PrintPreviewClient({ orderId }: PrintPreviewClientProps) {
         transferInfo: order.transferInfo && order.transferInfo.isTransferred ? {
             originalBranchName: order.transferInfo.originalBranchName || '',
             processBranchName: order.transferInfo.processBranchName || ''
+        } : undefined,
+        outsourceInfo: order.outsourceInfo && order.outsourceInfo.isOutsourced ? {
+            partnerName: order.outsourceInfo.partnerName || '',
+            partnerPrice: order.outsourceInfo.partnerPrice || 0
         } : undefined
     } : null;
 

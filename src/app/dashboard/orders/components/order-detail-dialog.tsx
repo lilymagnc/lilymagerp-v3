@@ -22,7 +22,8 @@ import {
   Truck,
   Home,
   ArrowRightLeft,
-  DollarSign
+  DollarSign,
+  ExternalLink
 } from "lucide-react";
 interface OrderDetailDialogProps {
   isOpen: boolean;
@@ -154,6 +155,11 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                     {order.transferInfo?.isTransferred && (
                       <Badge variant="outline" className="text-xs">
                         이관됨
+                      </Badge>
+                    )}
+                    {order.outsourceInfo?.isOutsourced && (
+                      <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
+                        외부발주
                       </Badge>
                     )}
                   </div>
@@ -506,6 +512,47 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                       <p className="text-sm text-muted-foreground">
                         {order.transferInfo.notes}
                       </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {/* 외부 발주 정보 */}
+          {order.outsourceInfo?.isOutsourced && (
+            <Card className="border-blue-200 bg-blue-50/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-700">
+                  <ExternalLink className="h-4 w-4" />
+                  외부 발주 정보 (재주문)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">수주처 (파트너)</p>
+                      <p className="font-medium text-sm">{order.outsourceInfo.partnerName}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">발주일시</p>
+                      <p className="font-medium text-sm">
+                        {order.outsourceInfo.outsourcedAt && format((order.outsourceInfo.outsourcedAt as Timestamp).toDate(), 'yyyy-MM-dd HH:mm')}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">파트너 입금액</p>
+                      <p className="font-medium text-sm text-blue-700">₩{order.outsourceInfo.partnerPrice.toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">예상 수익액</p>
+                      <p className="font-medium text-sm text-green-700">₩{order.outsourceInfo.profit.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  {order.outsourceInfo.notes && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">전달 사항</p>
+                      <p className="text-sm border-t pt-2 mt-1">{order.outsourceInfo.notes}</p>
                     </div>
                   )}
                 </div>

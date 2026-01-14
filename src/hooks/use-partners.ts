@@ -1,155 +1,149 @@
 "use client";
+
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, addDoc, serverTimestamp, query, where, deleteDoc } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  writeBatch,
+  Timestamp,
+  serverTimestamp
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-
 import { useToast } from './use-toast';
-import { PartnerFormValues } from '@/app/dashboard/partners/components/partner-form';
-export interface Partner extends PartnerFormValues {
-  id: string;
-  createdAt: string;
-}
 
+export interface Partner {
+  id: string;
+  name: string;
+  type?: string;
+  category?: 'wholesale' | 'florist';
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  businessNumber?: string;
+  ceoName?: string;
+  bankAccount?: string;
+  items?: string;
+  memo?: string;
+  branch?: string;
+  defaultMarginPercent?: number; // 신규: 외부 발주 시 기본 마진율
+  createdAt?: any;
+  updatedAt?: any;
+}
 
 export function usePartners() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
   const fetchPartners = useCallback(async () => {
     try {
       setLoading(true);
-      const partnersCollection = collection(db, 'partners');
-      const partnersData = (await getDocs(partnersCollection)).docs.map(doc => {
-        const data = doc.data() as any;
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString()),
-        } as Partner;
-      });
+      const partnersRef = collection(db, 'partners');
+      const q = query(partnersRef, orderBy('name', 'asc'));
+      const querySnapshot = await getDocs(q);
+
+      const partnersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Partner[];
+
       setPartners(partnersData);
     } catch (error) {
-      console.error("Error fetching partners: ", error);
-      toast({
-        variant: 'destructive',
-        title: '오류',
-        description: '거래처 정보를 불러오는 중 오류가 발생했습니다.',
-      });
+      console.error('파트너 목록 조회 오류:', error);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
+
   useEffect(() => {
     fetchPartners();
   }, [fetchPartners]);
-  const addPartner = async (data: PartnerFormValues) => {
-    setLoading(true);
+
+  const addPartner = async (partnerData: Omit<Partner, 'id'>) => {
     try {
-      const partnerWithTimestamp = {
-        ...data,
+      const partnersRef = collection(db, 'partners');
+      const newPartner = {
+        ...partnerData,
+        defaultMarginPercent: partnerData.defaultMarginPercent ?? 20,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
-      const docRef = await addDoc(collection(db, 'partners'), partnerWithTimestamp);
-      toast({ title: "성공", description: "새 거래처가 추가되었습니다." });
+      const docRef = await addDoc(partnersRef, newPartner);
       await fetchPartners();
-
-
+      toast({ title: '성공', description: '새 파트너가 등록되었습니다.' });
+      return docRef.id;
     } catch (error) {
-      console.error("Error adding partner:", error);
-      toast({ variant: 'destructive', title: '오류', description: '거래처 추가 중 오류가 발생했습니다.' });
-    } finally {
-      setLoading(false);
+      console.error('파트너 등록 오류:', error);
+      toast({ variant: 'destructive', title: '오류', description: '파트너 등록 중 오류가 발생했습니다.' });
+      return null;
     }
   };
-  const updatePartner = async (id: string, data: PartnerFormValues) => {
-    setLoading(true);
+
+  const updatePartner = async (id: string, partnerData: Partial<Partner>) => {
     try {
-      const partnerDocRef = doc(db, 'partners', id);
-      await setDoc(partnerDocRef, data, { merge: true });
-      toast({ title: "성공", description: "거래처 정보가 수정되었습니다." });
-      await fetchPartners();
-
-
-    } catch (error) {
-      console.error("Error updating partner:", error);
-      toast({ variant: 'destructive', title: '오류', description: '거래처 정보 수정 중 오류가 발생했습니다.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-  const deletePartner = async (id: string) => {
-    setLoading(true);
-    try {
-      await deleteDoc(doc(db, 'partners', id));
-      toast({ title: "성공", description: "거래처 정보가 삭제되었습니다." });
-      await fetchPartners();
-
-
-    } catch (error) {
-      console.error("Error deleting partner:", error);
-      toast({ variant: 'destructive', title: '오류', description: '거래처 삭제 중 오류가 발생했습니다.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-  const bulkAddPartners = async (data: any[]) => {
-    setLoading(true);
-    let newCount = 0;
-    let updateCount = 0;
-    let duplicateCount = 0;
-    let errorCount = 0;
-    await Promise.all(data.map(async (row) => {
-      try {
-        if (!row.name || !row.type) return;
-        const partnerData = {
-          name: String(row.name),
-          type: String(row.type),
-          contact: String(row.contact || ''),
-          contactPerson: String(row.contactPerson || ''),
-          email: String(row.email || ''),
-          address: String(row.address || ''),
-          branch: String(row.branch || ''),
-          memo: String(row.memo || ''),
-        };
-        // 중복 체크: 거래처명, 연락처, 담당자 중 하나라도 일치하면 중복으로 처리
-        const nameQuery = query(collection(db, "partners"), where("name", "==", partnerData.name));
-        const contactQuery = query(collection(db, "partners"), where("contact", "==", partnerData.contact));
-        const contactPersonQuery = query(collection(db, "partners"), where("contactPerson", "==", partnerData.contactPerson));
-        const [nameSnapshot, contactSnapshot, contactPersonSnapshot] = await Promise.all([
-          getDocs(nameQuery),
-          getDocs(contactQuery),
-          getDocs(contactPersonQuery)
-        ]);
-        // 중복 조건: 거래처명이 같거나, 연락처가 같거나, 담당자가 같으면 중복
-        const isDuplicate = !nameSnapshot.empty ||
-          (!partnerData.contact && !contactSnapshot.empty) ||
-          (!partnerData.contactPerson && !contactPersonSnapshot.empty);
-        if (isDuplicate) {
-          duplicateCount++;
-          return; // 중복 데이터는 저장하지 않음
-        }
-        // 중복이 아닌 경우에만 새로 추가
-        const docRef = doc(collection(db, "partners"));
-        await setDoc(docRef, { ...partnerData, createdAt: serverTimestamp() });
-        newCount++;
-      } catch (error) {
-        console.error("Error processing row:", row, error);
-        errorCount++;
-      }
-    }));
-    setLoading(false);
-    if (errorCount > 0) {
-      toast({
-        variant: 'destructive',
-        title: '일부 처리 오류',
-        description: `${errorCount}개 항목 처리 중 오류가 발생했습니다.`
+      const partnerRef = doc(db, 'partners', id);
+      await updateDoc(partnerRef, {
+        ...partnerData,
+        updatedAt: serverTimestamp()
       });
+      await fetchPartners();
+      toast({ title: '성공', description: '파트너 정보가 수정되었습니다.' });
+    } catch (error) {
+      console.error('파트너 수정 오류:', error);
+      toast({ variant: 'destructive', title: '오류', description: '파트너 수정 중 오류가 발생했습니다.' });
     }
-    toast({
-      title: '처리 완료',
-      description: `성공: 신규 거래처 ${newCount}개 추가, 중복 데이터 ${duplicateCount}개 제외.`
-    });
-    await fetchPartners();
   };
-  return { partners, loading, fetchPartners, addPartner, updatePartner, deletePartner, bulkAddPartners };
+
+  const deletePartner = async (id: string) => {
+    try {
+      const partnerRef = doc(db, 'partners', id);
+      await deleteDoc(partnerRef);
+      await fetchPartners();
+      toast({ title: '성공', description: '파트너가 삭제되었습니다.' });
+    } catch (error) {
+      console.error('파트너 삭제 오류:', error);
+      toast({ variant: 'destructive', title: '오류', description: '파트너 삭제 중 오류가 발생했습니다.' });
+    }
+  };
+
+  const bulkAddPartners = async (partnersData: any[]) => {
+    try {
+      const batch = writeBatch(db);
+      const partnersRef = collection(db, 'partners');
+
+      partnersData.forEach((data) => {
+        const docRef = doc(partnersRef);
+        batch.set(docRef, {
+          ...data,
+          defaultMarginPercent: data.defaultMarginPercent ?? 20,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      await batch.commit();
+      await fetchPartners();
+      return true;
+    } catch (error) {
+      console.error('Bulk add error:', error);
+      throw error;
+    }
+  };
+
+  return {
+    partners,
+    loading,
+    fetchPartners,
+    addPartner,
+    updatePartner,
+    deletePartner,
+    bulkAddPartners
+  };
 }

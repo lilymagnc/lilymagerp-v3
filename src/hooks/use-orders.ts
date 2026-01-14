@@ -117,6 +117,17 @@ export interface Order extends Omit<OrderData, 'orderDate'> {
     completedAt?: Timestamp;
     cancelledAt?: Timestamp;
   };
+  outsourceInfo?: {
+    isOutsourced: boolean;
+    partnerId: string;
+    partnerName: string;
+    partnerPrice: number;
+    profit: number;
+    status: 'pending' | 'accepted' | 'completed' | 'canceled';
+    notes?: string;
+    outsourcedAt: Timestamp;
+    updatedAt?: Timestamp;
+  };
 }
 export type PaymentStatus = "paid" | "pending" | "completed" | "split_payment";
 export function useOrders() {
