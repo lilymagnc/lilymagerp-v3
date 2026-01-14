@@ -24,7 +24,7 @@ function CachedImage({ src, alt, ...props }: any) {
         if (mounted && blobUrl) {
           setCurrentSrc(blobUrl);
         }
-      });
+      }).catch(err => console.warn('Cache load failed', err));
     }
     return () => { mounted = false; };
   }, [src]);

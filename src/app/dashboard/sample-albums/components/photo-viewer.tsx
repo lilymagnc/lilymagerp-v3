@@ -174,6 +174,7 @@ export function PhotoViewer({
                 width={currentPhoto.width}
                 height={currentPhoto.height}
                 className="max-w-[90vw] max-h-[80vh] object-contain"
+                style={{ width: 'auto', height: 'auto' }}
                 priority
               />
             </div>

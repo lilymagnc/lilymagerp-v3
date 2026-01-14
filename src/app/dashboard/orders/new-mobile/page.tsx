@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, memo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 
+// --- TYPES ---
 interface OrderItem extends Product {
     quantity: number;
     isCustomProduct?: boolean;
@@ -48,6 +49,441 @@ declare global {
     }
 }
 
+// --- UTILS ---
+const formatPhoneNumber = (value: string) => {
+    const raw = value.replace(/[^0-9]/g, '');
+    let result = '';
+
+    if (raw.startsWith('02')) {
+        if (raw.length < 3) return raw;
+        if (raw.length < 6) result = `${raw.slice(0, 2)}-${raw.slice(2)}`;
+        else if (raw.length < 10) result = `${raw.slice(0, 2)}-${raw.slice(2, 5)}-${raw.slice(5)}`;
+        else result = `${raw.slice(0, 2)}-${raw.slice(2, 6)}-${raw.slice(6, 10)}`;
+    } else {
+        if (raw.length < 4) return raw;
+        if (raw.length < 7) result = `${raw.slice(0, 3)}-${raw.slice(3)}`;
+        else if (raw.length < 11) result = `${raw.slice(0, 3)}-${raw.slice(3, 6)}-${raw.slice(6)}`;
+        else result = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`;
+    }
+    return result;
+};
+
+// --- SUB-COMPONENTS (Memoized) ---
+
+const BranchSelector = memo(({ isAdmin, branches, selectedBranch, onSelect }: { isAdmin: boolean, branches: Branch[], selectedBranch: Branch | null, onSelect: (b: Branch | null) => void }) => {
+    return (
+        <div className="bg-white p-4 sticky top-0 z-10 shadow-sm border-b">
+            <div className="flex items-center justify-between mb-2">
+                <h1 className="font-bold text-lg">모바일 주문접수(Beta)</h1>
+            </div>
+            {!selectedBranch ? (
+                <Select onValueChange={(v) => {
+                    const b = branches.find(b => b.id === v);
+                    if (b) onSelect(b);
+                }}>
+                    <SelectTrigger className="w-full">
+                        <SelectValue placeholder="지점을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {branches.filter(b => b.type !== '본사').map(b => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            ) : (
+                <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium" onClick={() => isAdmin && onSelect(null)}>
+                    <Store className="h-4 w-4" />
+                    {selectedBranch.name}
+                    {isAdmin && <span className="text-xs text-gray-400 ml-auto">(변경)</span>}
+                </div>
+            )}
+        </div>
+    );
+});
+BranchSelector.displayName = "BranchSelector";
+
+const OrdererSection = memo(({
+    ordererName, setOrdererName,
+    ordererContact, setOrdererContact,
+    selectedCustomer, setSelectedCustomer,
+    isRegisterCustomer, setIsRegisterCustomer,
+    isAnonymous, setIsAnonymous,
+    onOpenSearch
+}: any) => {
+    return (
+        <Card>
+            <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-base flex justify-between items-center">
+                    주문자 정보
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onOpenSearch}>
+                        <Search className="h-3 w-3 mr-1" /> 고객검색
+                    </Button>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-2 space-y-3">
+                <div className="flex gap-2">
+                    <div className="flex-1">
+                        <Label className="text-xs text-muted-foreground">이름</Label>
+                        <Input value={ordererName} onChange={e => setOrdererName(e.target.value)} className="h-9" />
+                    </div>
+                    <div className="flex-[1.5]">
+                        <Label className="text-xs text-muted-foreground">연락처</Label>
+                        <Input value={ordererContact} onChange={e => setOrdererContact(formatPhoneNumber(e.target.value))} type="tel" className="h-9" />
+                    </div>
+                </div>
+                {selectedCustomer && (
+                    <div className="bg-green-50 p-2 rounded text-xs text-green-700 flex justify-between">
+                        <span>보유 포인트: {selectedCustomer.points?.toLocaleString() ?? 0}P</span>
+                        <span className="font-bold cursor-pointer" onClick={() => setSelectedCustomer(null)}>x</span>
+                    </div>
+                )}
+                <div className="flex items-start space-x-2 pt-2">
+                    <Checkbox id="register-customer" checked={isRegisterCustomer} onCheckedChange={(c) => setIsRegisterCustomer(!!c)} />
+                    <Label htmlFor="register-customer" className="text-[11px] leading-tight font-normal text-muted-foreground pt-0.5">
+                        이 주문자 정보를 고객으로 등록/업데이트합니다.<br />(마케팅동의 및 포인트적립 사용 동의)
+                    </Label>
+                </div>
+                <div className="flex items-start space-x-2 pt-2 mt-1 border-t border-dashed">
+                    <Checkbox id="is-anonymous" checked={isAnonymous} onCheckedChange={(c) => setIsAnonymous(!!c)} />
+                    <div className="grid gap-0.5">
+                        <Label htmlFor="is-anonymous" className="text-xs font-medium leading-none pt-0.5">익명으로 보내기</Label>
+                        <p className="text-[10px] text-muted-foreground">체크 시 인수증 및 리본/카드에 주문자 이름이 노출되지 않습니다.</p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+});
+OrdererSection.displayName = "OrdererSection";
+
+const ProductListSection = memo(({ orderItems, updateQuantity, removeProduct, onOpenProductSheet, disabled }: any) => {
+    return (
+        <Card>
+            <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                <CardTitle className="text-base">주문 상품</CardTitle>
+                <Button size="sm" onClick={onOpenProductSheet} disabled={disabled}>+ 상품 추가</Button>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+                {orderItems.length === 0 ? (
+                    <div className="text-center py-6 text-muted-foreground text-sm bg-gray-50 rounded-lg border border-dashed">
+                        상품을 추가해주세요
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {orderItems.map((item: any, idx: number) => (
+                            <div key={item.docId || idx} className="flex items-center justify-between bg-white p-2 rounded border shadow-sm">
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm truncate">{item.name}</div>
+                                    <div className="text-xs text-muted-foreground">{item.price.toLocaleString()}원</div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.docId, -1)}><Minus className="h-3 w-3" /></Button>
+                                    <span className="w-4 text-center text-sm font-medium">{item.quantity}</span>
+                                    <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.docId, 1)}><Plus className="h-3 w-3" /></Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={() => removeProduct(item.docId)}><Trash2 className="h-3 w-3" /></Button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+});
+ProductListSection.displayName = "ProductListSection";
+
+const FulfillmentSection = memo(({
+    receiptType, setReceiptType,
+    scheduleDate, setScheduleDate,
+    scheduleTime, setScheduleTime,
+    recipientName, setRecipientName,
+    recipientContact, setRecipientContact,
+    isSameAsOrderer, setIsSameAsOrderer,
+    deliveryAddress, setDeliveryAddress,
+    deliveryAddressDetail, setDeliveryAddressDetail,
+    handleAddressSearch,
+    deliveryFeeType, setDeliveryFeeType,
+    manualDeliveryFee, setManualDeliveryFee,
+    orderSummary,
+    selectedDistrict
+}: any) => {
+    return (
+        <Card>
+            <Tabs value={receiptType} onValueChange={(v) => setReceiptType(v as ReceiptType)} className="w-full">
+                <TabsList className="grid w-full grid-cols-3 p-1">
+                    <TabsTrigger value="store_pickup" className="text-xs">매장픽업</TabsTrigger>
+                    <TabsTrigger value="pickup_reservation" className="text-xs">픽업예약</TabsTrigger>
+                    <TabsTrigger value="delivery_reservation" className="text-xs">배송예약</TabsTrigger>
+                </TabsList>
+                <div className="p-4 space-y-4">
+                    {receiptType !== 'store_pickup' && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label className="text-xs">날짜</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className={cn("w-full pl-3 text-left font-normal h-9", !scheduleDate && "text-muted-foreground")}>
+                                            {scheduleDate ? format(scheduleDate, "MM-dd") : <span>선택</span>}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <div>
+                                <Label className="text-xs">시간</Label>
+                                <Select value={scheduleTime} onValueChange={setScheduleTime}>
+                                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {Array.from({ length: 30 }, (_, i) => {
+                                            const h = Math.floor(i / 2) + 9;
+                                            const m = i % 2 === 0 ? "00" : "30";
+                                            return `${h}:${m}`;
+                                        }).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    )}
+                    <div className="space-y-3 pt-2 border-t">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-semibold">{receiptType === 'delivery_reservation' ? '받는 분' : '수령인 정보'}</Label>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="same-as-orderer" checked={isSameAsOrderer} onCheckedChange={(c) => setIsSameAsOrderer(!!c)} />
+                                <Label htmlFor="same-as-orderer" className="text-xs font-normal">주문자와 동일</Label>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <Input value={recipientName} onChange={e => { setRecipientName(e.target.value); setIsSameAsOrderer(false); }} placeholder="이름" className="h-9 flex-1" />
+                            <Input value={recipientContact} onChange={e => { setRecipientContact(formatPhoneNumber(e.target.value)); setIsSameAsOrderer(false); }} type="tel" placeholder="연락처" className="h-9 flex-[1.5]" />
+                        </div>
+                    </div>
+                    {receiptType === 'delivery_reservation' && (
+                        <div className="space-y-3 pt-2 border-t">
+                            <div>
+                                <Label className="text-xs">배송지</Label>
+                                <div className="flex gap-2">
+                                    <Input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="주소 입력 or 검색" className="h-9 flex-1 text-xs" />
+                                    <Button variant="outline" size="sm" onClick={handleAddressSearch} className="h-9 px-3"><Search className="h-4 w-4" /></Button>
+                                </div>
+                                <Input value={deliveryAddressDetail} onChange={e => setDeliveryAddressDetail(e.target.value)} placeholder="상세주소" className="mt-2 h-9 text-xs" />
+                            </div>
+                            <div className="bg-orange-50 p-2 rounded text-xs text-orange-800 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="flex items-center gap-2">
+                                        <span>배송비</span>
+                                        {deliveryFeeType === 'auto' && selectedDistrict && <span className="text-[10px] text-orange-600/80">({selectedDistrict})</span>}
+                                    </span>
+                                    <div className="flex items-center space-x-1">
+                                        <Label htmlFor="manual-delivery-fee" className="text-[10px] font-normal cursor-pointer text-orange-700">직접 입력</Label>
+                                        <Switch id="manual-delivery-fee" className="scale-75 origin-right" checked={deliveryFeeType === 'manual'} onCheckedChange={(c) => setDeliveryFeeType(c ? 'manual' : 'auto')} />
+                                    </div>
+                                </div>
+                                {deliveryFeeType === 'manual' ? (
+                                    <div className="flex justify-end items-center gap-1">
+                                        <Input type="number" value={manualDeliveryFee} onChange={e => setManualDeliveryFee(Number(e.target.value))} className="h-8 w-24 text-right bg-white text-orange-900 border-orange-200" />
+                                        <span className="font-bold">원</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-end"><span className="font-bold">{orderSummary.deliveryFee.toLocaleString()}원</span></div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </Tabs>
+        </Card>
+    );
+});
+FulfillmentSection.displayName = "FulfillmentSection";
+
+const MessagePaymentSection = memo(({
+    messageType, setMessageType,
+    messageContent, setMessageContent,
+    canApplyDiscount, selectedDiscountRate, setSelectedDiscountRate,
+    customDiscountRate, setCustomDiscountRate,
+    discountRates, discountAmount,
+    selectedCustomer, usedPoints, setUsedPoints,
+    orderSummary, handleUseAllPoints,
+    paymentMethod, setPaymentMethod,
+    paymentStatus, setPaymentStatus
+}: any) => {
+    return (
+        <Card>
+            <CardContent className="p-4 space-y-4">
+                <div>
+                    <Label className="text-xs font-medium mb-2 block">메시지</Label>
+                    <RadioGroup value={messageType} onValueChange={(v) => setMessageType(v as MessageType)} className="flex gap-4 mb-2">
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="m1" /><Label htmlFor="m1" className="text-xs">카드</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="ribbon" id="m2" /><Label htmlFor="m2" className="text-xs">리본</Label></div>
+                    </RadioGroup>
+                    <Textarea placeholder="내용 입력" className="h-20 text-sm" value={messageContent} onChange={e => setMessageContent(e.target.value)} />
+                </div>
+                <Separator />
+                {canApplyDiscount && (
+                    <div>
+                        <Label className="text-xs font-medium mb-2 block">할인 적용</Label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                            {discountRates.map((rate: any) => (
+                                <Button key={rate.rate} variant={selectedDiscountRate === rate.rate ? "default" : "outline"} size="sm" onClick={() => { setSelectedDiscountRate(rate.rate); setCustomDiscountRate(0); }} className="text-xs h-8">
+                                    {rate.label}
+                                </Button>
+                            ))}
+                            <div className="flex items-center gap-1 border rounded px-2 bg-white">
+                                <Input type="number" placeholder="직접" className="border-0 h-8 w-12 text-center p-0 text-xs focus-visible:ring-0" value={customDiscountRate || ''} onChange={(e) => { const val = Number(e.target.value); setCustomDiscountRate(val); if (val > 0) setSelectedDiscountRate(0); }} />
+                                <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                        </div>
+                        {discountAmount > 0 && <div className="text-right text-xs text-green-600 font-bold mb-2">-{discountAmount.toLocaleString()}원 할인</div>}
+                    </div>
+                )}
+                <Separator />
+                {selectedCustomer && (
+                    <div>
+                        <Label className="text-xs font-medium mb-2 flex justify-between">포인트 사용 <span className="text-muted-foreground font-normal">보유: {selectedCustomer.points?.toLocaleString() ?? 0}P</span></Label>
+                        <div className="flex gap-2">
+                            <Input type="number" value={usedPoints || ''} onChange={(e) => setUsedPoints(Number(e.target.value))} placeholder="사용 포인트" className="h-9 text-right" />
+                            <Button variant="outline" size="sm" onClick={handleUseAllPoints} className="whitespace-nowrap h-9">전액사용</Button>
+                        </div>
+                        {!orderSummary.canUsePoints && selectedCustomer.points > 0 && <p className="text-[10px] text-amber-600 mt-1">※ 5,000원 이상 결제 시 사용 가능</p>}
+                    </div>
+                )}
+                <Separator />
+                <div>
+                    <Label className="text-xs font-medium mb-2 block">결제 수단</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                        {["card", "cash", "transfer", "shopping_mall"].map((m) => (
+                            <div key={m} className={cn("border rounded p-2 text-center text-xs font-medium cursor-pointer transition-colors px-1", paymentMethod === m ? "bg-primary text-white border-primary" : "bg-white hover:bg-gray-50")} onClick={() => setPaymentMethod(m as PaymentMethod)}>
+                                {m === 'card' ? '카드' : m === 'cash' ? '현금' : m === 'transfer' ? '이체' : '쇼핑몰'}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mt-2">
+                        {["mainpay", "epay", "kakao", "apple"].map((m) => (
+                            <div key={m} className={cn("border rounded p-2 text-center text-xs font-medium cursor-pointer transition-colors px-1", paymentMethod === m ? "bg-primary text-white border-primary" : "bg-white hover:bg-gray-50")} onClick={() => setPaymentMethod(m as PaymentMethod)}>
+                                {m === 'mainpay' ? '메인' : m === 'epay' ? '이페이' : m === 'kakao' ? '카카오' : '애플'}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex justify-between items-center bg-gray-100 p-2 rounded">
+                    <span className="text-xs">결제 상태</span>
+                    <Switch checked={paymentStatus === 'paid'} onCheckedChange={(c) => setPaymentStatus(c ? 'paid' : 'pending')} />
+                    <span className={cn("text-xs font-bold", paymentStatus === 'paid' ? "text-green-600" : "text-gray-500")}>
+                        {paymentStatus === 'paid' ? '결제완료' : '미수금'}
+                    </span>
+                </div>
+            </CardContent>
+        </Card>
+    );
+});
+MessagePaymentSection.displayName = "MessagePaymentSection";
+
+// --- CUSTOMER SEARCH SHEET ---
+const CustomerSearchSheet = memo(({ open, onOpenChange, onSelect, customers }: any) => {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<Customer[]>([]);
+
+    const handleSearch = useCallback(debounce((query: string) => {
+        if (query.length < 2) { setSearchResults([]); return; }
+        const searchTerm = query.toLowerCase();
+        const filtered = customers.filter((c: any) =>
+            c.name.toLowerCase().includes(searchTerm) ||
+            c.contact.includes(searchTerm) ||
+            c.companyName?.toLowerCase().includes(searchTerm)
+        );
+        setSearchResults(filtered);
+    }, 300), [customers]);
+
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-xl">
+                <SheetHeader className="p-4 border-b">
+                    <SheetTitle>고객 검색</SheetTitle>
+                    <Input
+                        placeholder="이름 또는 전화번호 검색"
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            handleSearch(e.target.value);
+                        }}
+                        className="mt-2"
+                    />
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto p-4">
+                    {searchResults.map(c => (
+                        <div key={c.id} className="py-2 border-b flex justify-between items-center" onClick={() => { onSelect(c); onOpenChange(false); }}>
+                            <div><div className="font-bold text-sm">{c.name}</div><div className="text-xs text-gray-500">{c.contact}</div></div>
+                            <Badge variant="outline" className="text-xs">{c.points?.toLocaleString() ?? 0}P</Badge>
+                        </div>
+                    ))}
+                    {searchQuery.length >= 2 && searchResults.length === 0 && (
+                        <div className="text-center py-10 text-muted-foreground text-sm">검색 결과가 없습니다</div>
+                    )}
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+});
+CustomerSearchSheet.displayName = "CustomerSearchSheet";
+
+// --- PRODUCT SELECTION SHEET ---
+const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, onAddProduct, orderItems, onOpenCustomProduct }: any) => {
+    const [activeTab, setActiveTab] = useState("flower");
+
+    const getProductQuantity = (docId: string) => {
+        return orderItems.find((item: any) => item.docId === docId)?.quantity || 0;
+    };
+
+    const subtotal = orderItems.reduce((acc: number, i: any) => acc + (i.price * i.quantity), 0);
+
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-xl">
+                <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
+                    <SheetTitle>상품 선택</SheetTitle>
+                    <Button variant="outline" size="sm" onClick={onOpenCustomProduct}>직접 입력</Button>
+                </SheetHeader>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+                    <TabsList className="grid grid-cols-4 mx-4 mt-2">
+                        {['flower', 'plant', 'wreath', 'other'].map(tab => (
+                            <TabsTrigger key={tab} value={tab}>
+                                {tab === 'flower' ? '플라워' : tab === 'plant' ? '플랜트' : tab === 'wreath' ? '화환' : '기타'}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                    <div className="flex-1 overflow-y-auto p-4">
+                        {Object.entries(categorizedProducts).map(([key, products]) => (
+                            <TabsContent key={key} value={key} className="mt-0 grid grid-cols-2 gap-2">
+                                {(products as any[]).map(p => {
+                                    const qty = getProductQuantity(p.docId);
+                                    return (
+                                        <div key={p.docId} className={cn("p-2 border rounded-lg relative cursor-pointer", qty > 0 ? "border-blue-500 bg-blue-50" : "bg-white")} onClick={() => onAddProduct(p)}>
+                                            {qty > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center">{qty}</Badge>}
+                                            <div className="text-sm font-semibold truncate">{p.name}</div>
+                                            <div className="text-xs text-gray-500">{p.price.toLocaleString()}원</div>
+                                        </div>
+                                    );
+                                })}
+                            </TabsContent>
+                        ))}
+                    </div>
+                </Tabs>
+                <div className="p-4 border-t bg-white safe-area-bottom">
+                    <Button className="w-full" onClick={() => onOpenChange(false)}>
+                        선택 완료 (합계: {subtotal.toLocaleString()}원)
+                    </Button>
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+});
+ProductSelectionSheet.displayName = "ProductSelectionSheet";
+
+// --- MAIN PAGE ---
+
 export default function NewOrderMobilePage() {
     const { user } = useAuth();
     const { branches, loading: branchesLoading } = useBranches();
@@ -62,49 +498,57 @@ export default function NewOrderMobilePage() {
     const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
-    // Custom Product
-    const [isCustomProductDialogOpen, setIsCustomProductDialogOpen] = useState(false);
-    const [customProductName, setCustomProductName] = useState("");
-    const [customProductPrice, setCustomProductPrice] = useState("");
-    const [customProductQuantity, setCustomProductQuantity] = useState(1);
-
     // Orderer
     const [ordererName, setOrdererName] = useState("");
     const [ordererContact, setOrdererContact] = useState("");
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [isAnonymous, setIsAnonymous] = useState(false);
+    const [isRegisterCustomer, setIsRegisterCustomer] = useState(true);
 
     // Fulfillment
     const [receiptType, setReceiptType] = useState<ReceiptType>("store_pickup");
     const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
-    const [scheduleTime, setScheduleTime] = useState("10:00"); // Default time
+    const [scheduleTime, setScheduleTime] = useState("10:00");
     const [recipientName, setRecipientName] = useState("");
     const [recipientContact, setRecipientContact] = useState("");
+    const [isSameAsOrderer, setIsSameAsOrderer] = useState(true);
     const [deliveryAddress, setDeliveryAddress] = useState("");
     const [deliveryAddressDetail, setDeliveryAddressDetail] = useState("");
     const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
     const [manualDeliveryFee, setManualDeliveryFee] = useState(0);
     const [deliveryFeeType, setDeliveryFeeType] = useState<"auto" | "manual">("auto");
 
-    // Message
+    // Message & Payment
     const [messageType, setMessageType] = useState<MessageType>("card");
     const [messageContent, setMessageContent] = useState("");
-    const [messageSender, setMessageSender] = useState("");
-
-    // Payment
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
-    // Discount
     const [selectedDiscountRate, setSelectedDiscountRate] = useState<number>(0);
     const [customDiscountRate, setCustomDiscountRate] = useState<number>(0);
-
     const [usedPoints, setUsedPoints] = useState(0);
 
-    // Common Recipient State (used for both Picker and Delivery Recipient)
-    const [isSameAsOrderer, setIsSameAsOrderer] = useState(true);
-    const [isRegisterCustomer, setIsRegisterCustomer] = useState(true);
+    // UI State
+    const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
+    const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
-    // Sync Orderer to Recipient if checkbox checked
+    const [isCustomProductDialogOpen, setIsCustomProductDialogOpen] = useState(false);
+    const [customProductName, setCustomProductName] = useState("");
+    const [customProductPrice, setCustomProductPrice] = useState("");
+    const [customProductQuantity, setCustomProductQuantity] = useState(1);
+
+    // --- LOGIC ---
+    const isAdmin = user?.role === '본사 관리자';
+    const userBranch = user?.franchise;
+
+    useEffect(() => {
+        if (!isAdmin && userBranch && !selectedBranch && branches.length > 0) {
+            const b = branches.find(b => b.name === userBranch);
+            if (b) setSelectedBranch(b);
+        }
+    }, [isAdmin, userBranch, selectedBranch, branches]);
+
     useEffect(() => {
         if (isSameAsOrderer) {
             setRecipientName(ordererName);
@@ -112,53 +556,33 @@ export default function NewOrderMobilePage() {
         }
     }, [isSameAsOrderer, ordererName, ordererContact]);
 
-    // UI State
-    const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
-    const [activeCategoryTab, setActiveCategoryTab] = useState("flower");
-    const [customerSearchQuery, setCustomerSearchQuery] = useState("");
-    const [customerSearchResults, setCustomerSearchResults] = useState<Customer[]>([]);
-    const [isCustomerSheetOpen, setIsCustomerSheetOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+    useEffect(() => {
+        if (receiptType === 'delivery_reservation' && deliveryAddress && selectedBranch?.deliveryFees) {
+            const matched = selectedBranch.deliveryFees.find(df => df.district !== '기타' && deliveryAddress.includes(df.district));
+            if (matched) { setSelectedDistrict(matched.district); setDeliveryFeeType('auto'); }
+        }
+    }, [deliveryAddress, selectedBranch, receiptType]);
 
-    // Helper: Phone Number Formatting
-    const formatPhoneNumber = (value: string) => {
-        const raw = value.replace(/[^0-9]/g, '');
-        let result = '';
-
-        if (raw.startsWith('02')) {
-            // Seoul: 02-XXXX-XXXX or 02-XXX-XXXX
-            if (raw.length < 3) {
-                return raw;
-            } else if (raw.length < 6) {
-                result = `${raw.slice(0, 2)}-${raw.slice(2)}`;
-            } else if (raw.length < 10) {
-                // 02-123-4567
-                result = `${raw.slice(0, 2)}-${raw.slice(2, 5)}-${raw.slice(5)}`;
-            } else {
-                // 02-1234-5678
-                result = `${raw.slice(0, 2)}-${raw.slice(2, 6)}-${raw.slice(6, 10)}`;
-            }
-        } else {
-            // Others
-            if (raw.length < 4) {
-                return raw;
-            } else if (raw.length < 7) {
-                result = `${raw.slice(0, 3)}-${raw.slice(3)}`;
-            } else if (raw.length < 11) {
-                result = `${raw.slice(0, 3)}-${raw.slice(3, 6)}-${raw.slice(6)}`;
-            } else {
-                result = `${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`;
+    const orderSummary = useMemo(() => {
+        const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        const rate = selectedDiscountRate > 0 ? selectedDiscountRate : customDiscountRate;
+        const discountAmount = Math.floor(subtotal * (rate / 100));
+        let deliveryFee = 0;
+        if (receiptType === 'delivery_reservation') {
+            if (deliveryFeeType === 'manual') deliveryFee = manualDeliveryFee;
+            else if (selectedBranch && selectedDistrict) {
+                const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
+                deliveryFee = feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
             }
         }
-        return result;
-    };
+        const discountedSubtotal = subtotal - discountAmount;
+        const maxUsablePoints = selectedCustomer && discountedSubtotal >= 5000 ? Math.min(selectedCustomer.points || 0, discountedSubtotal) : 0;
+        const actualUsedPoints = Math.min(usedPoints, maxUsablePoints);
+        const finalTotal = discountedSubtotal + deliveryFee - actualUsedPoints;
+        const canApply = selectedBranch ? canApplyDiscount(selectedBranch.id, subtotal) : false;
+        return { subtotal, discountAmount, discountRate: rate, deliveryFee, finalTotal, maxUsablePoints, actualUsedPoints, canUsePoints: discountedSubtotal >= 5000, canApply };
+    }, [orderItems, selectedDiscountRate, customDiscountRate, receiptType, deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, usedPoints, selectedCustomer, canApplyDiscount]);
 
-    // --- DERIVED STATE ---
-    const isAdmin = user?.role === '본사 관리자';
-    const userBranch = user?.franchise;
-
-    // Filtered Products
     const branchProducts = useMemo(() => {
         if (!selectedBranch) return [];
         return allProducts.filter(p => p.branch === selectedBranch.name);
@@ -174,804 +598,194 @@ export default function NewOrderMobilePage() {
         };
     }, [branchProducts]);
 
-    // Totals
-    const orderSummary = useMemo(() => {
-        const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
-        // Discount Logic
-        const appliedDiscountRate = selectedDiscountRate > 0 ? selectedDiscountRate : customDiscountRate;
-        const discountAmount = Math.floor(subtotal * (appliedDiscountRate / 100));
-
-        // Delivery Fee logic
-        let deliveryFee = 0;
-        if (receiptType === 'delivery_reservation') {
-            if (deliveryFeeType === 'manual') {
-                deliveryFee = manualDeliveryFee;
-            } else if (selectedBranch && selectedDistrict) {
-                const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
-                deliveryFee = feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
-            }
-        }
-
-        const discountedSubtotal = subtotal - discountAmount;
-
-        // Points Validation
-        const canUsePoints = selectedCustomer && discountedSubtotal >= 5000;
-        const maxUsablePoints = canUsePoints ? Math.min(selectedCustomer.points || 0, discountedSubtotal) : 0;
-        const actualUsedPoints = Math.min(usedPoints, maxUsablePoints);
-
-        const finalTotal = discountedSubtotal + deliveryFee - actualUsedPoints;
-
-        return { subtotal, discountAmount, discountRate: appliedDiscountRate, deliveryFee, finalTotal, maxUsablePoints, actualUsedPoints, canUsePoints };
-    }, [orderItems, selectedDiscountRate, customDiscountRate, receiptType, deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, usedPoints, selectedCustomer]);
-
-
-    // --- EFFECTS ---
-    useEffect(() => {
-        if (!isAdmin && userBranch && !selectedBranch && branches.length > 0) {
-            const userBranchData = branches.find(branch => branch.name === userBranch);
-            if (userBranchData) setSelectedBranch(userBranchData);
-        }
-    }, [isAdmin, userBranch, selectedBranch, branches]);
-
     // --- HANDLERS ---
-    const handleAddProduct = (product: Product) => {
+    const handleUpdateQuantity = useCallback((docId: string, delta: number) => {
+        setOrderItems(prev => prev.map(item => item.docId === docId ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item));
+    }, []);
+
+    const handleRemoveProduct = useCallback((docId: string) => {
+        setOrderItems(prev => prev.filter(i => i.docId !== docId));
+    }, []);
+
+    const handleAddProduct = useCallback((product: Product) => {
         setOrderItems(prev => {
             const existing = prev.find(i => i.docId === product.docId);
-            if (existing) {
-                return prev.map(i => i.docId === product.docId ? { ...i, quantity: i.quantity + 1 } : i);
-            }
+            if (existing) return prev.map(i => i.docId === product.docId ? { ...i, quantity: i.quantity + 1 } : i);
             return [...prev, { ...product, quantity: 1 }];
         });
-        // Remove toast to reduce noise, visual feedback is enough
-        // toast({ description: `${product.name} 추가됨` });
-    };
-
-    const updateQuantity = (docId: string, delta: number) => {
-        setOrderItems(prev => prev.map(item => {
-            if (item.docId === docId) {
-                const newQty = Math.max(1, item.quantity + delta);
-                return { ...item, quantity: newQty };
-            }
-            return item;
-        }));
-    };
-
-    const removeProduct = (docId: string) => {
-        setOrderItems(prev => prev.filter(i => i.docId !== docId));
-    };
-
-    const handleCustomerSearch = useCallback(debounce(async (query: string) => {
-        if (query.length < 2) return;
-        const results = await findCustomersByContact(query); // using contact search for name too effectively? or need separate?
-        // The existing hook findCustomersByContact actually searches by contact mainly. 
-        // Let's reuse the logic from the main page if possible, or just use the filtered list from 'customers'
-        const searchTerm = query.toLowerCase();
-        const filtered = customers.filter(c =>
-            c.name.includes(searchTerm) ||
-            c.contact.includes(searchTerm) ||
-            c.companyName?.includes(searchTerm)
-        );
-        setCustomerSearchResults(filtered);
-    }, 300), [customers]);
-
-    const selectCustomer = (customer: Customer) => {
-        setSelectedCustomer(customer);
-        setOrdererName(customer.name);
-        setOrdererContact(customer.contact);
-        setIsCustomerSheetOpen(false);
-    };
+    }, []);
 
     const handleAddressSearch = () => {
         if (window.daum && window.daum.Postcode) {
             new window.daum.Postcode({
-                oncomplete: function (data: any) {
-                    let fullAddress = data.address;
-                    let extraAddress = '';
+                oncomplete: (data: any) => {
+                    let full = data.address;
                     if (data.addressType === 'R') {
-                        if (data.bname !== '') extraAddress += data.bname;
-                        if (data.buildingName !== '') extraAddress += (extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName);
-                        fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
+                        let extra = '';
+                        if (data.bname !== '') extra += data.bname;
+                        if (data.buildingName !== '') extra += (extra !== '' ? `, ${data.buildingName}` : data.buildingName);
+                        full += (extra !== '' ? ` (${extra})` : '');
                     }
-                    setDeliveryAddress(fullAddress);
-                    setDeliveryAddressDetail('');
-
+                    setDeliveryAddress(full); setDeliveryAddressDetail('');
                     const district = data.sigungu;
-                    if (selectedBranch?.deliveryFees?.some(df => df.district === district)) {
-                        setSelectedDistrict(district);
-                        setDeliveryFeeType('auto');
-                    } else {
-                        setSelectedDistrict("기타");
-                    }
+                    if (selectedBranch?.deliveryFees?.some(df => df.district === district)) { setSelectedDistrict(district); setDeliveryFeeType('auto'); }
+                    else setSelectedDistrict("기타");
                 }
             }).open();
         }
     };
 
-    const handleAddCustomProduct = () => {
-        if (!customProductName || !customProductPrice) return;
-        const price = parseInt(customProductPrice.replace(/[^0-9]/g, "")) || 0;
-        const newItem: OrderItem = {
-            docId: `custom-${Date.now()}`,
-            name: customProductName,
-            price: price,
-            stock: 999,
-            branch: selectedBranch?.name || "",
-            mainCategory: "기타",
-            midCategory: "수동입력",
-            quantity: customProductQuantity,
-            isCustomProduct: true
-        } as any;
-
-        handleAddProduct(newItem);
-        setCustomProductName("");
-        setCustomProductPrice("");
-        setCustomProductQuantity(1);
-        setIsCustomProductDialogOpen(false);
-    };
-
-    const handleUseAllPoints = () => {
-        setUsedPoints(orderSummary.maxUsablePoints);
-    };
-
     const handleSubmit = async () => {
         if (!selectedBranch) return toast({ variant: 'destructive', title: "지점 선택 필요" });
         if (orderItems.length === 0) return toast({ variant: 'destructive', title: "상품을 담아주세요" });
-
         setIsSubmitting(true);
         try {
             const orderPayload: OrderData = {
-                branchId: selectedBranch.id,
-                branchName: selectedBranch.name,
-                orderDate: new Date(),
-                status: 'processing',
-                orderType: 'store', // Defaulting for mobile, maybe add selector later
-                receiptType,
-                items: orderItems,
-                summary: {
-                    subtotal: orderSummary.subtotal,
-                    discountAmount: orderSummary.discountAmount,
-                    discountRate: orderSummary.discountRate,
-                    deliveryFee: orderSummary.deliveryFee,
-                    pointsUsed: orderSummary.actualUsedPoints,
-                    pointsEarned: 0, // Simplified for beta
-                    total: orderSummary.finalTotal,
-                },
-                orderer: {
-                    id: selectedCustomer?.id || "",
-                    name: ordererName,
-                    contact: ordererContact,
-                    company: "", // Simplified
-                    email: ""
-                },
-                isAnonymous,
-                registerCustomer: isRegisterCustomer,
-                payment: {
-                    method: paymentMethod,
-                    status: paymentStatus,
-                    completedAt: (paymentStatus === 'paid' || paymentStatus === 'completed') ? serverTimestamp() as any : undefined,
-                    isSplitPayment: false
-                },
-                pickupInfo: (receiptType !== 'delivery_reservation') ? {
-                    date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '',
-                    time: scheduleTime,
-                    pickerName: recipientName || ordererName, // Use recipientName (Picker) if set, else fallback
-                    pickerContact: recipientContact || ordererContact
-                } : null,
-                deliveryInfo: receiptType === 'delivery_reservation' ? {
-                    date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '',
-                    time: scheduleTime,
-                    recipientName,
-                    recipientContact,
-                    address: `${deliveryAddress} ${deliveryAddressDetail}`,
-                    district: selectedDistrict || ''
-                } : null,
-                message: {
-                    type: messageType,
-                    content: messageSender ? `${messageContent}\n---\n${messageSender}` : messageContent
-                },
-                request: ""
+                branchId: selectedBranch.id, branchName: selectedBranch.name, orderDate: new Date(), status: 'processing', orderType: 'store', receiptType, items: orderItems,
+                summary: { subtotal: orderSummary.subtotal, discountAmount: orderSummary.discountAmount, discountRate: orderSummary.discountRate, deliveryFee: orderSummary.deliveryFee, pointsUsed: orderSummary.actualUsedPoints, pointsEarned: 0, total: orderSummary.finalTotal },
+                orderer: { id: selectedCustomer?.id || "", name: ordererName, contact: ordererContact, company: "", email: "" },
+                isAnonymous, registerCustomer: isRegisterCustomer,
+                payment: { method: paymentMethod, status: paymentStatus, completedAt: (paymentStatus === 'paid' || paymentStatus === 'completed') ? serverTimestamp() as any : undefined, isSplitPayment: false },
+                pickupInfo: (receiptType !== 'delivery_reservation') ? { date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', time: scheduleTime, pickerName: recipientName || ordererName, pickerContact: recipientContact || ordererContact } : null,
+                deliveryInfo: receiptType === 'delivery_reservation' ? { date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', time: scheduleTime, recipientName, recipientContact, address: `${deliveryAddress} ${deliveryAddressDetail}`, district: selectedDistrict || '' } : null,
+                message: { type: messageType, content: messageContent }, request: ""
             };
-
             await addOrder(orderPayload);
             toast({ title: "주문 접수 완료!" });
             router.push('/dashboard/orders');
         } catch (e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: "주문 실패", description: "다시 시도해주세요." });
-        } finally {
-            setIsSubmitting(false);
-        }
+            toast({ variant: 'destructive', title: "주문 실패" });
+        } finally { setIsSubmitting(false); }
     };
 
-    // --- RENDER ---
     return (
         <div className="pb-32 bg-gray-50 min-h-screen">
-            {/* 1. Header & Branch */}
-            <div className="bg-white p-4 sticky top-0 z-10 shadow-sm border-b">
-                <div className="flex items-center justify-between mb-2">
-                    <h1 className="font-bold text-lg">모바일 주문접수(Beta)</h1>
-                    <Button variant="ghost" size="sm" onClick={() => router.back()}><X className="h-5 w-5" /></Button>
-                </div>
-                {!selectedBranch ? (
-                    <Select onValueChange={(v) => {
-                        const b = branches.find(b => b.id === v);
-                        if (b) setSelectedBranch(b);
-                    }}>
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder="지점을 선택하세요" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {branches.filter(b => b.type !== '본사').map(b => (
-                                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                ) : (
-                    <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium" onClick={() => isAdmin && setSelectedBranch(null)}>
-                        <Store className="h-4 w-4" />
-                        {selectedBranch.name}
-                        {isAdmin && <span className="text-xs text-gray-400 ml-auto">(변경)</span>}
-                    </div>
-                )}
-            </div>
+            <BranchSelector isAdmin={isAdmin} branches={branches} selectedBranch={selectedBranch} onSelect={setSelectedBranch} />
 
             <div className="p-4 space-y-4">
-                {/* 2. Orderer Info */}
-                <Card>
-                    <CardHeader className="p-4 pb-2">
-                        <CardTitle className="text-base flex justify-between items-center">
-                            주문자 정보
-                            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setIsCustomerSheetOpen(true)}>
-                                <Search className="h-3 w-3 mr-1" /> 고객검색
-                            </Button>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2 space-y-3">
-                        <div className="flex gap-2">
-                            <div className="flex-1">
-                                <Label className="text-xs text-muted-foreground">이름</Label>
-                                <Input value={ordererName} onChange={e => setOrdererName(e.target.value)} className="h-9" />
-                            </div>
-                            <div className="flex-[1.5]">
-                                <Label className="text-xs text-muted-foreground">연락처</Label>
-                                <Input value={ordererContact} onChange={e => setOrdererContact(formatPhoneNumber(e.target.value))} type="tel" className="h-9" />
-                            </div>
-                        </div>
-                        {selectedCustomer && (
-                            <div className="bg-green-50 p-2 rounded text-xs text-green-700 flex justify-between">
-                                <span>보유 포인트: {selectedCustomer.points?.toLocaleString() ?? 0}P</span>
-                                <span className="font-bold" onClick={() => setSelectedCustomer(null)}>x</span>
-                            </div>
-                        )}
-                        <div className="flex items-start space-x-2 pt-2">
-                            <Checkbox
-                                id="register-customer"
-                                checked={isRegisterCustomer}
-                                onCheckedChange={(c) => setIsRegisterCustomer(!!c)}
-                            />
-                            <Label htmlFor="register-customer" className="text-[11px] leading-tight font-normal text-muted-foreground pt-0.5">
-                                이 주문자 정보를 고객으로 등록/업데이트합니다.<br />(마케팅동의 및 포인트적립 사용 동의)
-                            </Label>
-                        </div>
-                        <div className="flex items-start space-x-2 pt-2 mt-1 border-t border-dashed">
-                            <Checkbox
-                                id="is-anonymous"
-                                checked={isAnonymous}
-                                onCheckedChange={(c) => setIsAnonymous(!!c)}
-                            />
-                            <div className="grid gap-0.5">
-                                <Label htmlFor="is-anonymous" className="text-xs font-medium leading-none pt-0.5">
-                                    익명으로 보내기
-                                </Label>
-                                <p className="text-[10px] text-muted-foreground">
-                                    체크 시 인수증 및 리본/카드에 주문자 이름이 노출되지 않습니다.
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                <OrdererSection
+                    ordererName={ordererName} setOrdererName={setOrdererName}
+                    ordererContact={ordererContact} setOrdererContact={setOrdererContact}
+                    selectedCustomer={selectedCustomer} setSelectedCustomer={setSelectedCustomer}
+                    isRegisterCustomer={isRegisterCustomer} setIsRegisterCustomer={setIsRegisterCustomer}
+                    isAnonymous={isAnonymous} setIsAnonymous={setIsAnonymous}
+                    onOpenSearch={() => setIsCustomerSheetOpen(true)}
+                />
 
-                {/* 3. Products List */}
-                <Card>
-                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-                        <CardTitle className="text-base">주문 상품</CardTitle>
-                        <Button size="sm" onClick={() => setIsProductSheetOpen(true)} disabled={!selectedBranch}>
-                            + 상품 추가
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                        {orderItems.length === 0 ? (
-                            <div className="text-center py-6 text-muted-foreground text-sm bg-gray-50 rounded-lg border border-dashed">
-                                상품을 추가해주세요
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {orderItems.map((item, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-white p-2 rounded border shadow-sm">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-sm truncate">{item.name}</div>
-                                            <div className="text-xs text-muted-foreground">{item.price.toLocaleString()}원</div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.docId, -1)}><Minus className="h-3 w-3" /></Button>
-                                            <span className="w-4 text-center text-sm font-medium">{item.quantity}</span>
-                                            <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => updateQuantity(item.docId, 1)}><Plus className="h-3 w-3" /></Button>
-                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={() => removeProduct(item.docId)}><Trash2 className="h-3 w-3" /></Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <ProductListSection
+                    orderItems={orderItems}
+                    updateQuantity={handleUpdateQuantity}
+                    removeProduct={handleRemoveProduct}
+                    onOpenProductSheet={() => setIsProductSheetOpen(true)}
+                    disabled={!selectedBranch}
+                />
 
-                {/* 4. Fulfillment (Tabs) */}
-                <Card>
-                    <Tabs value={receiptType} onValueChange={(v) => setReceiptType(v as ReceiptType)} className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 p-1">
-                            <TabsTrigger value="store_pickup" className="text-xs">매장픽업</TabsTrigger>
-                            <TabsTrigger value="pickup_reservation" className="text-xs">픽업예약</TabsTrigger>
-                            <TabsTrigger value="delivery_reservation" className="text-xs">배송예약</TabsTrigger>
-                        </TabsList>
+                <FulfillmentSection
+                    receiptType={receiptType} setReceiptType={setReceiptType}
+                    scheduleDate={scheduleDate} setScheduleDate={setScheduleDate}
+                    scheduleTime={scheduleTime} setScheduleTime={setScheduleTime}
+                    recipientName={recipientName} setRecipientName={setRecipientName}
+                    recipientContact={recipientContact} setRecipientContact={setRecipientContact}
+                    isSameAsOrderer={isSameAsOrderer} setIsSameAsOrderer={setIsSameAsOrderer}
+                    deliveryAddress={deliveryAddress} setDeliveryAddress={setDeliveryAddress}
+                    deliveryAddressDetail={deliveryAddressDetail} setDeliveryAddressDetail={setDeliveryAddressDetail}
+                    handleAddressSearch={handleAddressSearch}
+                    deliveryFeeType={deliveryFeeType} setDeliveryFeeType={setDeliveryFeeType}
+                    manualDeliveryFee={manualDeliveryFee} setManualDeliveryFee={setManualDeliveryFee}
+                    orderSummary={orderSummary}
+                    selectedDistrict={selectedDistrict}
+                />
 
-                        <div className="p-4 space-y-4">
-                            {/* Date/Time Common */}
-                            {(receiptType !== 'store_pickup') && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <Label className="text-xs">날짜</Label>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal h-9", !scheduleDate && "text-muted-foreground")}>
-                                                    {scheduleDate ? format(scheduleDate, "MM-dd") : <span>선택</span>}
-                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} disabled={(date) => date < new Date("1900-01-01")} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                    <div>
-                                        <Label className="text-xs">시간</Label>
-                                        <Select value={scheduleTime} onValueChange={setScheduleTime}>
-                                            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                {Array.from({ length: 30 }, (_, i) => {
-                                                    const h = Math.floor(i / 2) + 9;
-                                                    const m = i % 2 === 0 ? "00" : "30";
-                                                    return `${h}:${m}`;
-                                                }).map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Common Receiver Info (For all types) */}
-                            <div className="space-y-3 pt-2 border-t">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-semibold">
-                                        {receiptType === 'delivery_reservation' ? '받는 분' : '수령인 정보'}
-                                    </Label>
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="same-as-orderer"
-                                            checked={isSameAsOrderer}
-                                            onCheckedChange={(c) => {
-                                                setIsSameAsOrderer(c as boolean);
-                                                if (!c) { // if unchecked clear values
-                                                    setRecipientName("");
-                                                    setRecipientContact("");
-                                                } else {
-                                                    setRecipientName(ordererName);
-                                                    setRecipientContact(ordererContact);
-                                                }
-                                            }}
-                                        />
-                                        <Label htmlFor="same-as-orderer" className="text-xs font-normal">주문자와 동일</Label>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <div className="flex-1">
-                                        <Input
-                                            value={recipientName}
-                                            onChange={e => {
-                                                setRecipientName(e.target.value);
-                                                setIsSameAsOrderer(false);
-                                            }}
-                                            placeholder="이름"
-                                            className="h-9"
-                                        />
-                                    </div>
-                                    <div className="flex-[1.5]">
-                                        <Input
-                                            value={recipientContact}
-                                            onChange={e => {
-                                                setRecipientContact(formatPhoneNumber(e.target.value));
-                                                setIsSameAsOrderer(false);
-                                            }}
-                                            type="tel"
-                                            placeholder="연락처"
-                                            className="h-9"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Delivery Address */}
-                            {receiptType === 'delivery_reservation' && (
-                                <div className="space-y-3 pt-2 border-t">
-                                    <div>
-                                        <Label className="text-xs">배송지</Label>
-                                        <div className="flex gap-2">
-                                            <Input value={deliveryAddress} readOnly className="h-9 flex-1 bg-gray-50 text-xs" />
-                                            <Button variant="outline" size="sm" onClick={handleAddressSearch} className="h-9 px-3">
-                                                <Search className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <Input value={deliveryAddressDetail} onChange={e => setDeliveryAddressDetail(e.target.value)} placeholder="상세주소" className="mt-2 h-9 text-xs" />
-                                    </div>
-                                    <div className="bg-orange-50 p-2 rounded text-xs text-orange-800 space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <span className="flex items-center gap-2">
-                                                <span>배송비</span>
-                                                {deliveryFeeType === 'auto' && selectedDistrict && (
-                                                    <span className="text-[10px] text-orange-600/80">({selectedDistrict})</span>
-                                                )}
-                                            </span>
-                                            <div className="flex items-center space-x-1">
-                                                <Label htmlFor="manual-delivery-fee" className="text-[10px] font-normal cursor-pointer text-orange-700">직접 입력</Label>
-                                                <Switch
-                                                    id="manual-delivery-fee"
-                                                    className="scale-75 origin-right"
-                                                    checked={deliveryFeeType === 'manual'}
-                                                    onCheckedChange={(c) => {
-                                                        setDeliveryFeeType(c ? 'manual' : 'auto');
-                                                        if (c) setManualDeliveryFee(orderSummary.deliveryFee);
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {deliveryFeeType === 'manual' ? (
-                                            <div className="flex justify-end items-center gap-1">
-                                                <Input
-                                                    type="number"
-                                                    value={manualDeliveryFee}
-                                                    onChange={(e) => setManualDeliveryFee(Number(e.target.value))}
-                                                    className="h-8 w-24 text-right bg-white text-orange-900 border-orange-200 focus-visible:ring-orange-300 shadow-sm"
-                                                />
-                                                <span className="font-bold">원</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex justify-end">
-                                                <span className="font-bold">{orderSummary.deliveryFee.toLocaleString()}원</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </Tabs>
-                </Card>
-
-                {/* 5. Message & Payment */}
-                <Card>
-                    <CardContent className="p-4 space-y-4">
-                        <div>
-                            <Label className="text-xs font-medium mb-2 block">메시지</Label>
-                            <RadioGroup defaultValue="card" onValueChange={(v) => setMessageType(v as MessageType)} className="flex gap-4 mb-2">
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="m1" /><Label htmlFor="m1" className="text-xs">카드</Label></div>
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="ribbon" id="m2" /><Label htmlFor="m2" className="text-xs">리본</Label></div>
-                            </RadioGroup>
-                            <Textarea placeholder="내용 입력" className="h-20 text-sm" value={messageContent} onChange={e => setMessageContent(e.target.value)} />
-                        </div>
-
-                        <Separator />
-
-                        {/* Discount Section */}
-                        {selectedBranch && canApplyDiscount(selectedBranch.id, orderSummary.subtotal) && (
-                            <div>
-                                <Label className="text-xs font-medium mb-2 block">할인 적용</Label>
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                    {getActiveDiscountRates(selectedBranch.id).map((rate) => (
-                                        <Button
-                                            key={rate.rate}
-                                            variant={selectedDiscountRate === rate.rate ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => {
-                                                setSelectedDiscountRate(rate.rate);
-                                                setCustomDiscountRate(0);
-                                            }}
-                                            className="text-xs h-8"
-                                        >
-                                            {rate.label}
-                                        </Button>
-                                    ))}
-                                    <div className="flex items-center gap-1 border rounded px-2 bg-white">
-                                        <Input
-                                            type="number"
-                                            placeholder="직접"
-                                            className="border-0 h-8 w-12 text-center p-0 text-xs focus-visible:ring-0"
-                                            value={customDiscountRate || ''}
-                                            onChange={(e) => {
-                                                const val = Number(e.target.value);
-                                                setCustomDiscountRate(val);
-                                                if (val > 0) setSelectedDiscountRate(0);
-                                            }}
-                                        />
-                                        <span className="text-xs text-muted-foreground">%</span>
-                                    </div>
-                                </div>
-                                {orderSummary.discountAmount > 0 && (
-                                    <div className="text-right text-xs text-green-600 font-bold mb-2">
-                                        -{orderSummary.discountAmount.toLocaleString()}원 할인
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <Separator />
-
-                        {/* Points Section */}
-                        {selectedCustomer && (
-                            <div>
-                                <Label className="text-xs font-medium mb-2 flex justify-between">
-                                    포인트 사용
-                                    <span className="text-muted-foreground font-normal">보유: {selectedCustomer.points?.toLocaleString() ?? 0}P</span>
-                                </Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        type="number"
-                                        value={usedPoints || ''}
-                                        onChange={(e) => setUsedPoints(Number(e.target.value))}
-                                        placeholder="사용 포인트"
-                                        className="h-9 text-right"
-                                    />
-                                    <Button variant="outline" size="sm" onClick={handleUseAllPoints} className="whitespace-nowrap h-9">전액사용</Button>
-                                </div>
-                                {!orderSummary.canUsePoints && selectedCustomer.points && selectedCustomer.points > 0 && (
-                                    <p className="text-[10px] text-amber-600 mt-1">※ 5,000원 이상 결제 시 사용 가능</p>
-                                )}
-                            </div>
-                        )}
-
-                        <Separator />
-
-                        <div>
-                            <Label className="text-xs font-medium mb-2 block">결제 수단</Label>
-                            <div className="grid grid-cols-4 gap-2">
-                                {["card", "cash", "transfer", "shopping_mall"].map((m) => (
-                                    <div key={m}
-                                        className={cn("border rounded p-2 text-center text-xs font-medium cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis px-1",
-                                            paymentMethod === m ? "bg-primary text-white border-primary" : "bg-white hover:bg-gray-50")}
-                                        onClick={() => setPaymentMethod(m as PaymentMethod)}
-                                    >
-                                        {m === 'card' ? '카드' : m === 'cash' ? '현금' : m === 'transfer' ? '이체' : '쇼핑몰'}
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="grid grid-cols-4 gap-2 mt-2">
-                                {["mainpay", "epay", "kakao", "apple"].map((m) => (
-                                    <div key={m}
-                                        className={cn("border rounded p-2 text-center text-xs font-medium cursor-pointer transition-colors whitespace-nowrap overflow-hidden text-ellipsis px-1",
-                                            paymentMethod === m ? "bg-primary text-white border-primary" : "bg-white hover:bg-gray-50")}
-                                        onClick={() => setPaymentMethod(m as PaymentMethod)}
-                                    >
-                                        {m === 'mainpay' ? '메인' : m === 'epay' ? '이페이' : m === 'kakao' ? '카카오' : '애플'}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between items-center bg-gray-100 p-2 rounded">
-                            <span className="text-xs">결제 상태</span>
-                            <Switch checked={paymentStatus === 'paid'} onCheckedChange={(c) => setPaymentStatus(c ? 'paid' : 'pending')} />
-                            <span className={cn("text-xs font-bold", paymentStatus === 'paid' ? "text-green-600" : "text-gray-500")}>
-                                {paymentStatus === 'paid' ? '결제완료' : '미수금'}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <MessagePaymentSection
+                    messageType={messageType} setMessageType={setMessageType}
+                    messageContent={messageContent} setMessageContent={setMessageContent}
+                    canApplyDiscount={orderSummary.canApply}
+                    selectedDiscountRate={selectedDiscountRate} setSelectedDiscountRate={setSelectedDiscountRate}
+                    customDiscountRate={customDiscountRate} setCustomDiscountRate={setCustomDiscountRate}
+                    discountRates={selectedBranch ? getActiveDiscountRates(selectedBranch.id) : []}
+                    discountAmount={orderSummary.discountAmount}
+                    selectedCustomer={selectedCustomer}
+                    usedPoints={usedPoints} setUsedPoints={setUsedPoints}
+                    orderSummary={orderSummary}
+                    handleUseAllPoints={() => setUsedPoints(orderSummary.maxUsablePoints)}
+                    paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod}
+                    paymentStatus={paymentStatus} setPaymentStatus={setPaymentStatus}
+                />
             </div>
 
-            {/* Sticky Bottom Footer */}
-            {/* Sticky Bottom Footer */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20 safe-area-bottom transition-all duration-300 ease-in-out">
-                {/* Summary Toggle Header */}
-                <div
-                    className="flex justify-center items-center py-1 cursor-pointer hover:bg-gray-50 border-b border-transparent hover:border-gray-100"
-                    onClick={() => setIsSummaryOpen(!isSummaryOpen)}
-                >
-                    <div className="w-10 h-1 bg-gray-200 rounded-full mb-1" />
+            {/* Footer */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t z-20 safe-area-bottom shadow-lg">
+                <div className="flex justify-center items-center py-1 cursor-pointer" onClick={() => setIsSummaryOpen(!isSummaryOpen)}>
+                    <div className="w-10 h-1 bg-gray-200 rounded-full" />
                 </div>
-
-                {/* Expandable Content */}
-                <div className={cn(
-                    "overflow-hidden transition-all duration-300 px-4",
-                    isSummaryOpen ? "max-h-[60vh] overflow-y-auto py-2" : "max-h-0"
-                )}>
-                    <div className="space-y-2 text-sm text-gray-600 pb-4">
-                        <div className="font-semibold text-gray-900 mb-2">주문 내역</div>
-
-                        {/* Products */}
+                <div className={cn("overflow-hidden transition-all duration-300 px-4", isSummaryOpen ? "max-h-[50vh] overflow-y-auto py-2" : "max-h-0")}>
+                    <div className="space-y-1 text-xs text-gray-600 pb-2">
                         {orderItems.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-start">
-                                <span className="truncate flex-1 pr-4">
-                                    {item.name} <span className="text-xs text-gray-400">x{item.quantity}</span>
-                                </span>
+                            <div key={idx} className="flex justify-between">
+                                <span>{item.name} x{item.quantity}</span>
                                 <span>{(item.price * item.quantity).toLocaleString()}원</span>
                             </div>
                         ))}
-
-                        <Separator className="my-2" />
-
-                        {/* Fees & Discounts */}
-                        <div className="flex justify-between text-gray-500">
-                            <span>상품 합계</span>
-                            <span>{orderSummary.subtotal.toLocaleString()}원</span>
-                        </div>
-
-                        {orderSummary.deliveryFee > 0 && (
-                            <div className="flex justify-between">
-                                <span>배송비</span>
-                                <span>+{orderSummary.deliveryFee.toLocaleString()}원</span>
-                            </div>
-                        )}
-
-                        {orderSummary.discountAmount > 0 && (
-                            <div className="flex justify-between text-green-600">
-                                <span>할인</span>
-                                <span>-{orderSummary.discountAmount.toLocaleString()}원</span>
-                            </div>
-                        )}
-
-                        {orderSummary.actualUsedPoints > 0 && (
-                            <div className="flex justify-between text-blue-600">
-                                <span>포인트 사용</span>
-                                <span>-{orderSummary.actualUsedPoints.toLocaleString()}원</span>
-                            </div>
-                        )}
+                        <Separator className="my-1" />
+                        <div className="flex justify-between"><span>합계</span><span>{orderSummary.subtotal.toLocaleString()}원</span></div>
+                        {orderSummary.deliveryFee > 0 && <div className="flex justify-between"><span>배송비</span><span>+{orderSummary.deliveryFee.toLocaleString()}원</span></div>}
+                        {orderSummary.discountAmount > 0 && <div className="flex justify-between text-green-600"><span>할인</span><span>-{orderSummary.discountAmount.toLocaleString()}원</span></div>}
+                        {orderSummary.actualUsedPoints > 0 && <div className="flex justify-between text-blue-600"><span>포인트</span><span>-{orderSummary.actualUsedPoints.toLocaleString()}원</span></div>}
                     </div>
                 </div>
-
-                {/* Always Visible Total & Button */}
-                <div className="p-4 pt-2 bg-white">
-                    <div className="flex justify-between items-end mb-3" onClick={() => setIsSummaryOpen(!isSummaryOpen)}>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-600">총 결제금액</span>
-                            {isSummaryOpen ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronUp className="h-4 w-4 text-gray-400" />}
+                <div className="p-4 pt-0 bg-white">
+                    <div className="flex justify-between items-center mb-2" onClick={() => setIsSummaryOpen(!isSummaryOpen)}>
+                        <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
+                            총 결제금액 {isSummaryOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
                         </div>
-                        <span className="text-xl font-bold text-primary">{orderSummary.finalTotal.toLocaleString()}원</span>
+                        <span className="text-lg font-bold text-primary">{orderSummary.finalTotal.toLocaleString()}원</span>
                     </div>
-                    <Button className="w-full h-12 text-lg font-bold shadow-md" onClick={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? "처리중..." : "주문 접수하기"}
-                    </Button>
+                    <Button className="w-full h-11 font-bold" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? "처리중..." : "주문 접수하기"}</Button>
                 </div>
             </div>
 
-
-            {/* --- SHEETS --- */}
+            {/* Customer Search Sheet */}
+            <CustomerSearchSheet
+                open={isCustomerSheetOpen}
+                onOpenChange={setIsCustomerSheetOpen}
+                onSelect={(c: Customer) => {
+                    setSelectedCustomer(c);
+                    setOrdererName(c.name);
+                    setOrdererContact(c.contact);
+                }}
+                customers={customers}
+            />
 
             {/* Product Selection Sheet */}
-            <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
-                <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-xl">
-                    <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
-                        <div>
-                            <SheetTitle>상품 선택</SheetTitle>
-                            <SheetDescription className="hidden">상품을 선택해주세요</SheetDescription>
-                        </div>
-                        <Dialog open={isCustomProductDialogOpen} onOpenChange={setIsCustomProductDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="secondary" size="sm" className="h-8 text-xs">직접 입력</Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-xs rounded-lg">
-                                <DialogHeader>
-                                    <DialogTitle>수동 상품 추가</DialogTitle>
-                                    <DialogDescription>목록에 없는 상품을 직접 입력합니다.</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-3 py-2">
-                                    <div>
-                                        <Label className="text-xs">상품명</Label>
-                                        <Input value={customProductName} onChange={e => setCustomProductName(e.target.value)} placeholder="예: 장미 꽃다발" />
-                                    </div>
-                                    <div>
-                                        <Label className="text-xs">가격</Label>
-                                        <Input type="number" value={customProductPrice} onChange={e => setCustomProductPrice(e.target.value)} placeholder="0" />
-                                    </div>
-                                    <div>
-                                        <Label className="text-xs">수량</Label>
-                                        <Input type="number" value={customProductQuantity} onChange={e => setCustomProductQuantity(Number(e.target.value))} />
-                                    </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button onClick={handleAddCustomProduct}>추가하기</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    </SheetHeader>
-                    <Tabs defaultValue="flower" value={activeCategoryTab} onValueChange={setActiveCategoryTab} className="flex-1 flex flex-col min-h-0">
-                        <TabsList className="grid grid-cols-4 mx-4 mt-2">
-                            <TabsTrigger value="flower">플라워</TabsTrigger>
-                            <TabsTrigger value="plant">플랜트</TabsTrigger>
-                            <TabsTrigger value="wreath">화환</TabsTrigger>
-                            <TabsTrigger value="other">기타</TabsTrigger>
-                        </TabsList>
+            <ProductSelectionSheet
+                open={isProductSheetOpen}
+                onOpenChange={setIsProductSheetOpen}
+                categorizedProducts={categorizedProducts}
+                onAddProduct={handleAddProduct}
+                orderItems={orderItems}
+                onOpenCustomProduct={() => setIsCustomProductDialogOpen(true)}
+            />
 
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {Object.entries(categorizedProducts).map(([key, products]) => (
-                                <TabsContent key={key} value={key} className="mt-0 grid grid-cols-2 gap-3">
-                                    {products.map(p => {
-                                        const selectedItem = orderItems.find(item => item.docId === p.docId);
-                                        const quantity = selectedItem?.quantity || 0;
-
-                                        return (
-                                            <div key={p.docId}
-                                                className={cn(
-                                                    "flex flex-col border rounded-lg p-3 transition-all relative overflow-hidden",
-                                                    quantity > 0 ? "border-blue-500 bg-blue-50" : "active:bg-gray-50"
-                                                )}
-                                                onClick={() => { handleAddProduct(p); }}
-                                            >
-                                                {quantity > 0 && (
-                                                    <div className="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">
-                                                        {quantity}개 선택됨
-                                                    </div>
-                                                )}
-                                                <span className={cn("font-semibold text-sm truncate", quantity > 0 && "text-blue-700")}>{p.name}</span>
-                                                <span className="text-xs text-gray-500">{p.price.toLocaleString()}원</span>
-                                                <span className="text-[10px] text-gray-400 mt-1">재고: {p.stock}</span>
-                                            </div>
-                                        )
-                                    })}
-                                    {products.length === 0 && <div className="col-span-2 text-center text-gray-400 py-10">상품이 없습니다</div>}
-                                </TabsContent>
-                            ))}
-                        </div>
-                    </Tabs>
-                    {orderItems.length > 0 && (
-                        <div className="p-4 border-t bg-white safe-area-bottom">
-                            <Button className="w-full relative" onClick={() => setIsProductSheetOpen(false)}>
-                                <span className="absolute left-4 bg-white/20 px-2 py-0.5 rounded text-xs">
-                                    {orderItems.length}개 상품
-                                </span>
-                                선택 완료
-                                <span className="absolute right-4 text-xs opacity-90">
-                                    합계: {orderItems.reduce((acc, i) => acc + (i.price * i.quantity), 0).toLocaleString()}원
-                                </span>
-                            </Button>
-                        </div>
-                    )}
-                </SheetContent>
-            </Sheet>
-
-            {/* Customer Search Sheet */}
-            <Sheet open={isCustomerSheetOpen} onOpenChange={setIsCustomerSheetOpen}>
-                <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-xl">
-                    <SheetHeader className="p-4 border-b">
-                        <SheetTitle>고객 검색</SheetTitle>
-                        <SheetDescription className="hidden">고객을 검색해주세요</SheetDescription>
-                        <Input placeholder="이름 또는 전화번호 검색" value={customerSearchQuery} onChange={(e) => {
-                            setCustomerSearchQuery(e.target.value);
-                            handleCustomerSearch(e.target.value);
-                        }} className="mt-2" />
-                    </SheetHeader>
-                    <div className="flex-1 overflow-y-auto p-4">
-                        {customerSearchResults.map(c => (
-                            <div key={c.id} className="py-3 border-b flex justify-between items-center" onClick={() => selectCustomer(c)}>
-                                <div>
-                                    <div className="font-bold">{c.name}</div>
-                                    <div className="text-sm text-gray-500">{c.contact}</div>
-                                </div>
-                                <Badge variant="outline">{c.points?.toLocaleString() ?? 0}P</Badge>
-                            </div>
-                        ))}
+            {/* Custom Product Dialog */}
+            <Dialog open={isCustomProductDialogOpen} onOpenChange={setIsCustomProductDialogOpen}>
+                <DialogContent className="max-w-xs">
+                    <DialogHeader><DialogTitle>수동 상품 추가</DialogTitle></DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <Label className="text-xs">상품명</Label>
+                        <Input value={customProductName} onChange={e => setCustomProductName(e.target.value)} />
+                        <Label className="text-xs">가격</Label>
+                        <Input type="number" value={customProductPrice} onChange={e => setCustomProductPrice(e.target.value)} />
+                        <Label className="text-xs">수량</Label>
+                        <Input type="number" value={customProductQuantity} onChange={e => setCustomProductQuantity(Number(e.target.value))} />
                     </div>
-                </SheetContent>
-            </Sheet>
-
-        </div >
+                    <DialogFooter><Button onClick={() => {
+                        const price = parseInt(customProductPrice) || 0;
+                        const newItem = { docId: `custom-${Date.now()}`, name: customProductName, price, quantity: customProductQuantity, isCustomProduct: true } as any;
+                        setOrderItems(prev => [...prev, newItem]);
+                        setCustomProductName(""); setCustomProductPrice(""); setCustomProductQuantity(1); setIsCustomProductDialogOpen(false);
+                    }}>추가하기</Button></DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 }

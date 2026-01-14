@@ -494,6 +494,20 @@ export default function NewOrderPage() {
       }
     }
   }, [selectedBranch, deliveryFeeType, receiptType]);
+
+  // 수동 입력 시 주소 텍스트에서 '구/군' 정보를 찾아 배송비 지역 자동 설정
+  useEffect(() => {
+    if (receiptType === 'delivery_reservation' && deliveryAddress && selectedBranch?.deliveryFees) {
+      const matchedFee = selectedBranch.deliveryFees.find(df =>
+        df.district !== '기타' && deliveryAddress.includes(df.district)
+      );
+
+      if (matchedFee) {
+        setSelectedDistrict(matchedFee.district);
+        setDeliveryFeeType('auto');
+      }
+    }
+  }, [deliveryAddress, selectedBranch, receiptType]);
   const deliveryFee = useMemo(() => {
     if (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') return 0;
     if (deliveryFeeType === 'manual') {
@@ -1571,7 +1585,13 @@ export default function NewOrderPage() {
                         <div className="space-y-2">
                           <Label htmlFor="delivery-address">배송지</Label>
                           <div className="flex gap-2">
-                            <Input id="delivery-address" name="delivery-address" placeholder="주소 검색 버튼을 클릭하세요" value={deliveryAddress} readOnly />
+                            <Input
+                              id="delivery-address"
+                              name="delivery-address"
+                              placeholder="주소를 입력하거나 검색 버튼을 클릭하세요"
+                              value={deliveryAddress}
+                              onChange={(e) => setDeliveryAddress(e.target.value)}
+                            />
                             <Button type="button" variant="outline" onClick={handleAddressSearch}>
                               <Search className="mr-2 h-4 w-4" /> 주소 검색
                             </Button>

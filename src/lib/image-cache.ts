@@ -20,8 +20,8 @@ export async function cacheAlbumPhotos(
                     // Check if already cached
                     const match = await cache.match(url);
                     if (!match) {
-                        const response = await fetch(url, { mode: 'cors' });
-                        if (response.ok) {
+                        const response = await fetch(url, { mode: 'no-cors' });
+                        if (response.ok || response.type === 'opaque') {
                             await cache.put(url, response);
                         }
                     }
@@ -46,6 +46,8 @@ export async function getCachedPhotoBlobUrl(url: string): Promise<string | null>
         const response = await cache.match(url);
         if (response) {
             const blob = await response.blob();
+            // If blob is opaque (size 0), we can't display it. Return null to use original URL.
+            if (blob.size === 0) return null;
             return URL.createObjectURL(blob);
         }
     } catch (e) {
