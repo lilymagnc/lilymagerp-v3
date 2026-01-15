@@ -30,10 +30,12 @@ import {
     FileText,
     Calendar as CalendarIcon,
     Download,
-    X
+    X,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { useOutsourceOrders } from "@/hooks/use-outsource-orders";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns";
 import { Timestamp } from "firebase/firestore";
 import { OrderDetailDialog } from "../orders/components/order-detail-dialog";
 import {
@@ -48,17 +50,60 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { useBranches } from "@/hooks/use-branches";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function OutsourcePage() {
     const { orders, loading, stats: totalStats, fetchOutsourceOrders, updateOutsourceStatus } = useOutsourceOrders();
+    const { user } = useAuth();
+    const { branches } = useBranches();
+    const isAdmin = user?.role === '본사 관리자';
+
     const [selectedOrder, setSelectedOrder] = React.useState<any>(null);
     const [isDetailOpen, setIsDetailOpen] = React.useState(false);
-    const [startDate, setStartDate] = React.useState<Date | undefined>(undefined);
-    const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
+    const [selectedBranch, setSelectedBranch] = React.useState<string>("all");
+
+    // Initialize to current month
+    const [startDate, setStartDate] = React.useState<Date | undefined>(startOfDay(startOfMonth(new Date())));
+    const [endDate, setEndDate] = React.useState<Date | undefined>(endOfDay(endOfMonth(new Date())));
+
+    // Pagination state
+    const [displayCount, setDisplayCount] = React.useState(50);
+
+    const handleLoadMore = () => {
+        setDisplayCount(prev => prev + 50);
+    };
 
     const handleRowClick = (order: any) => {
         setSelectedOrder(order);
         setIsDetailOpen(true);
+    };
+
+    const handlePreviousMonth = () => {
+        if (!startDate) return;
+        const prevMonth = subMonths(startDate, 1);
+        setStartDate(startOfDay(startOfMonth(prevMonth)));
+        setEndDate(endOfDay(endOfMonth(prevMonth)));
+    };
+
+    const handleNextMonth = () => {
+        if (!startDate) return;
+        const nextMonth = addMonths(startDate, 1);
+        setStartDate(startOfDay(startOfMonth(nextMonth)));
+        setEndDate(endOfDay(endOfMonth(nextMonth)));
+    };
+
+    const handleCurrentMonth = () => {
+        const now = new Date();
+        setStartDate(startOfDay(startOfMonth(now)));
+        setEndDate(endOfDay(endOfMonth(now)));
     };
 
     const filteredOrders = React.useMemo(() => {
@@ -69,9 +114,17 @@ export default function OutsourcePage() {
             if (startDate && outsourcedDate < startOfDay(startDate)) return false;
             if (endDate && outsourcedDate > endOfDay(endDate)) return false;
 
+            // Branch filtering for admin
+            if (isAdmin && selectedBranch !== "all" && order.branchName !== selectedBranch) return false;
+
             return true;
         });
-    }, [orders, startDate, endDate]);
+    }, [orders, startDate, endDate, isAdmin, selectedBranch]);
+
+    // Reset pagination when filter changes
+    React.useEffect(() => {
+        setDisplayCount(50);
+    }, [startDate, endDate, selectedBranch]);
 
     const partnerStats = React.useMemo(() => {
         const statsMap = new Map<string, {
@@ -171,9 +224,20 @@ export default function OutsourcePage() {
                 title="외부 발주 관리"
                 description="외부 파트너(화원/도매)로 발주된 주문과 수익을 한눈에 관리합니다."
             >
-                <Button onClick={() => fetchOutsourceOrders()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> 새로고침
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handlePreviousMonth}>
+                        <ChevronLeft className="h-4 w-4" /> 이전달
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleCurrentMonth}>
+                        이번달
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleNextMonth}>
+                        다음달 <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button onClick={() => fetchOutsourceOrders()}>
+                        <RefreshCw className="mr-2 h-4 w-4" /> 새로고침
+                    </Button>
+                </div>
             </PageHeader>
 
             {/* 필터 섹션 */}
@@ -238,6 +302,26 @@ export default function OutsourcePage() {
                                 </Button>
                             )}
                         </div>
+
+                        {isAdmin && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-slate-500">지점:</span>
+                                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder="전체 지점" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">전체 지점</SelectItem>
+                                        {branches.filter(b => b.type !== '본사').map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.name}>
+                                                {branch.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
                         <div className="ml-auto flex flex-wrap gap-2">
                             <Button variant="outline" size="sm" onClick={handleDownloadStats} disabled={partnerStats.length === 0}>
                                 <TrendingUp className="mr-2 h-4 w-4" /> 업체별 통계 (Excel)
@@ -297,7 +381,9 @@ export default function OutsourcePage() {
                 <Card className="md:col-span-3">
                     <CardHeader>
                         <CardTitle className="text-lg">수주 업체별 통계</CardTitle>
-                        <CardDescription>업체별 수주 건수와 수익 현황입니다.</CardDescription>
+                        <CardDescription>
+                            {startDate ? format(startDate, 'yyyy년 M월') : '전체'} 업체별 수주 건수와 수익 현황입니다.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="relative w-full overflow-auto">
@@ -337,7 +423,9 @@ export default function OutsourcePage() {
                 <Card className="md:col-span-4">
                     <CardHeader>
                         <CardTitle className="text-lg">발주 내역 요약</CardTitle>
-                        <CardDescription>최근 발주된 주문 5건입니다.</CardDescription>
+                        <CardDescription>
+                            {startDate ? format(startDate, 'yyyy년 M월') : ''} 최근 발주된 주문 5건입니다.
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="relative w-full overflow-auto">
@@ -391,7 +479,8 @@ export default function OutsourcePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>발주일</TableHead>
+                                <TableHead>발주일 / 주문일</TableHead>
+                                <TableHead>배송일시</TableHead>
                                 <TableHead>파트너(수주처)</TableHead>
                                 <TableHead>주문자</TableHead>
                                 <TableHead>발주지점</TableHead>
@@ -407,6 +496,7 @@ export default function OutsourcePage() {
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i}>
                                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -419,15 +509,25 @@ export default function OutsourcePage() {
                                 ))
                             ) : filteredOrders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
+                                    <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
                                         내역이 없습니다.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredOrders.map((order) => (
+                                filteredOrders.slice(0, displayCount).map((order) => (
                                     <TableRow key={order.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleRowClick(order)}>
                                         <TableCell className="text-xs">
-                                            {order.outsourceInfo?.outsourcedAt && format((order.outsourceInfo.outsourcedAt as Timestamp).toDate(), 'MM/dd HH:mm')}
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="font-medium text-blue-600">
+                                                    {order.outsourceInfo?.outsourcedAt && format((order.outsourceInfo.outsourcedAt as Timestamp).toDate(), 'MM/dd HH:mm')}
+                                                </span>
+                                                <span className="text-gray-400 text-[10px]">
+                                                    {format((order.orderDate as Timestamp).toDate(), 'MM/dd')}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs">
+                                            {order.deliveryInfo ? `${order.deliveryInfo.date} ${order.deliveryInfo.time}` : '-'}
                                         </TableCell>
                                         <TableCell className="font-medium">{order.outsourceInfo?.partnerName}</TableCell>
                                         <TableCell className="text-xs">{order.orderer.name}</TableCell>
@@ -466,6 +566,15 @@ export default function OutsourcePage() {
                                     </TableRow>
                                 ))
                             )}
+                            {filteredOrders.length > displayCount && !loading && (
+                                <TableRow>
+                                    <TableCell colSpan={10} className="text-center py-4">
+                                        <Button variant="ghost" onClick={handleLoadMore}>
+                                            더 보기 ({Math.min(filteredOrders.length - displayCount, 50)}개 더)
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -476,6 +585,6 @@ export default function OutsourcePage() {
                 onOpenChange={setIsDetailOpen}
                 order={selectedOrder}
             />
-        </div>
+        </div >
     );
 }

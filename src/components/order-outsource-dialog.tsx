@@ -11,12 +11,18 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from "@/components/ui/command";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,7 +31,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Order } from "@/hooks/use-orders";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { Package, DollarSign, Calculator, Info } from "lucide-react";
+import { Package, Calculator, Info, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface OrderOutsourceDialogProps {
     isOpen: boolean;
@@ -44,24 +51,80 @@ export function OrderOutsourceDialog({
     const [partnerPrice, setPartnerPrice] = useState<number>(0);
     const [notes, setNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [openCombobox, setOpenCombobox] = useState(false);
+    const [autoCalc, setAutoCalc] = useState(true);
+
+    // 자주 찾는 파트너 (기본값 설정)
+    const [popularPartnerIds, setPopularPartnerIds] = useState<string[]>([]);
+    const DEFAULT_POPULAR_NAMES = ["노플라워", "채아네", "한성난원", "양지난원", "흑송분재"];
 
     const { partners } = usePartners();
     const { toast } = useToast();
+
+    // 초기 로딩 시 파트너 데이터에서 ID 매핑
+    useEffect(() => {
+        if (partners.length > 0) {
+            // 로컬 스토리지에서 저장된 인기 파트너 확인
+            const saved = localStorage.getItem("popularPartners");
+            if (saved) {
+                setPopularPartnerIds(JSON.parse(saved));
+            } else {
+                // 저장된게 없으면 기본 이름으로 ID 찾기
+                const defaultIds = DEFAULT_POPULAR_NAMES
+                    .map(name => partners.find(p => p.name.includes(name))?.id)
+                    .filter(id => id !== undefined) as string[];
+                setPopularPartnerIds(defaultIds);
+            }
+        }
+    }, [partners]);
+
+    const handlePartnerSelect = (id: string) => {
+        setPartnerId(id);
+        setAutoCalc(true);
+        setOpenCombobox(false);
+
+        // 자주 찾는 업체 리스트 업데이트 (최근 선택한 순서로, 최대 5개)
+        if (id) {
+            setPopularPartnerIds(prev => {
+                const newList = [id, ...prev.filter(pid => pid !== id)].slice(0, 5);
+                localStorage.setItem("popularPartners", JSON.stringify(newList));
+                return newList;
+            });
+        }
+    };
 
     const selectedPartner = useMemo(() =>
         partners.find(p => p.id === partnerId),
         [partners, partnerId]);
 
     const orderTotal = order?.summary?.total || 0;
+    const isEditMode = !!order?.outsourceInfo?.isOutsourced;
 
-    // 파트너 선택 시 기본 마진 적용하여 가이드 가격 계산
+    // Load existing data
     useEffect(() => {
-        if (selectedPartner && orderTotal > 0) {
+        if (isOpen && order) {
+            if (order.outsourceInfo?.isOutsourced) {
+                setPartnerId(order.outsourceInfo.partnerId);
+                setPartnerPrice(order.outsourceInfo.partnerPrice);
+                setNotes(order.outsourceInfo.notes || "");
+                setAutoCalc(false); // Disable auto-calc for initial load
+            } else {
+                setPartnerId("");
+                setPartnerPrice(0);
+                setNotes("");
+                setAutoCalc(true);
+            }
+        }
+    }, [isOpen, order]);
+
+    // Calculate suggested price
+    useEffect(() => {
+        if (selectedPartner && orderTotal > 0 && autoCalc) {
             const margin = selectedPartner.defaultMarginPercent || 20;
             const suggestedPrice = Math.round(orderTotal * (1 - margin / 100));
             setPartnerPrice(suggestedPrice);
         }
-    }, [selectedPartner, orderTotal]);
+    }, [selectedPartner, orderTotal, autoCalc]);
 
     // 수익 계산
     const profit = orderTotal - partnerPrice;
@@ -74,7 +137,7 @@ export function OrderOutsourceDialog({
             toast({
                 variant: "destructive",
                 title: "입력 오류",
-                description: "파트너와 입금액을 정확히 입력해주세요.",
+                description: "파트너와 가격을 정확히 입력해주세요.",
             });
             return;
         }
@@ -83,6 +146,8 @@ export function OrderOutsourceDialog({
             setIsSubmitting(true);
 
             const orderRef = doc(db, "orders", order.id);
+            const currentStatus = order.outsourceInfo?.status || 'pending';
+
             await updateDoc(orderRef, {
                 outsourceInfo: {
                     isOutsourced: true,
@@ -90,17 +155,17 @@ export function OrderOutsourceDialog({
                     partnerName: selectedPartner?.name || "",
                     partnerPrice,
                     profit,
-                    status: 'pending',
+                    status: currentStatus,
                     notes,
-                    outsourcedAt: serverTimestamp(),
+                    outsourcedAt: order.outsourceInfo?.outsourcedAt || serverTimestamp(),
                     updatedAt: serverTimestamp(),
                 },
-                status: 'processing' // 외부 발주 시 자동으로 처리중 상태로 변경
+                status: 'processing' // Ensure order status is processing
             });
 
             toast({
-                title: "외부 발주 완료",
-                description: `${selectedPartner?.name}으로 발주 정보가 등록되었습니다.`,
+                title: isEditMode ? "외부 발주 수정 완료" : "외부 발주 완료",
+                description: `${selectedPartner?.name}으로 발주 정보가 ${isEditMode ? "수정" : "등록"}되었습니다.`,
             });
 
             onSuccess?.();
@@ -125,7 +190,7 @@ export function OrderOutsourceDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Package className="h-5 w-5" />
-                        외부 발주 (재주문) 처리
+                        {isEditMode ? "외부 발주 수정" : "외부 발주 (재주문) 처리"}
                     </DialogTitle>
                     <DialogDescription>
                         다른 화원이나 도매점에 주문을 위탁하고 수익을 관리합니다.
@@ -144,30 +209,81 @@ export function OrderOutsourceDialog({
                         </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                         <Label htmlFor="partner">수주처 (파트너) 선택 *</Label>
-                        <Select value={partnerId} onValueChange={setPartnerId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="발주할 파트너를 선택하세요" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {partners.map((partner) => (
-                                    <SelectItem key={partner.id} value={partner.id}>
-                                        {partner.name} ({partner.defaultMarginPercent}%)
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+
+                        {/* 자주 찾는 업체 버튼 */}
+                        {popularPartnerIds.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                                {popularPartnerIds.map(id => {
+                                    const partner = partners.find(p => p.id === id);
+                                    if (!partner) return null;
+                                    return (
+                                        <Button
+                                            key={id}
+                                            type="button"
+                                            variant={partnerId === id ? "default" : "outline"}
+                                            size="sm"
+                                            onClick={() => handlePartnerSelect(id)}
+                                            className="text-xs h-7"
+                                        >
+                                            {partner.name}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={openCombobox}
+                                    className="w-full justify-between"
+                                >
+                                    {partnerId
+                                        ? partners.find((partner) => partner.id === partnerId)?.name
+                                        : "발주할 파트너를 검색하세요..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[460px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="파트너 이름 검색..." />
+                                    <CommandList>
+                                        <CommandEmpty>검색 결과가 없습니다.</CommandEmpty>
+                                        <CommandGroup>
+                                            {partners.map((partner) => (
+                                                <CommandItem
+                                                    key={partner.id}
+                                                    value={partner.name}
+                                                    onSelect={() => handlePartnerSelect(partner.id)}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            partnerId === partner.id ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {partner.name} ({partner.defaultMarginPercent}%)
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="partnerPrice">파트너 입금액 (매입가) *</Label>
+                        <Label htmlFor="partnerPrice">가격 (매입가) *</Label>
                         <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">₩</span>
                             <Input
                                 id="partnerPrice"
                                 type="number"
-                                className="pl-9"
+                                className="pl-8"
                                 placeholder="지불할 금액 입력"
                                 value={partnerPrice}
                                 onChange={(e) => setPartnerPrice(Number(e.target.value))}
@@ -220,13 +336,13 @@ export function OrderOutsourceDialog({
                             onClick={onClose}
                             disabled={isSubmitting}
                         >
-                            취onClose
+                            취소
                         </Button>
                         <Button
                             type="submit"
                             disabled={isSubmitting || !partnerId || partnerPrice <= 0}
                         >
-                            {isSubmitting ? "처리 중..." : "외부 발주 등록"}
+                            {isSubmitting ? "처리 중..." : (isEditMode ? "외부 발주 수정" : "외부 발주 등록")}
                         </Button>
                     </DialogFooter>
                 </form>
