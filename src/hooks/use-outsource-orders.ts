@@ -15,6 +15,7 @@ import {
 import { db } from '@/lib/firebase';
 import { Order } from './use-orders';
 import { useAuth } from './use-auth';
+import { useSimpleExpenses } from './use-simple-expenses';
 
 export interface OutsourceStats {
     totalCount: number;
@@ -36,6 +37,7 @@ export function useOutsourceOrders() {
     });
 
     const { user } = useAuth();
+    const { deleteExpenseByOrderId } = useSimpleExpenses();
     const isAdmin = user?.role === '본사 관리자';
     const branchName = user?.franchise;
 
@@ -104,6 +106,12 @@ export function useOutsourceOrders() {
                 'outsourceInfo.status': status,
                 'outsourceInfo.updatedAt': serverTimestamp()
             });
+
+            // 발주 취소 시 간편지출 내역 자동 삭제
+            if (status === 'canceled') {
+                await deleteExpenseByOrderId(orderId);
+            }
+
             await fetchOutsourceOrders();
         } catch (error) {
             console.error('외부 발주 상태 업데이트 오류:', error);

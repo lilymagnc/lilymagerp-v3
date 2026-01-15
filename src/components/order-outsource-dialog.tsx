@@ -56,7 +56,7 @@ export function OrderOutsourceDialog({
     const [openCombobox, setOpenCombobox] = useState(false);
     const [autoCalc, setAutoCalc] = useState(true);
 
-    const { addExpense } = useSimpleExpenses();
+    const { addExpense, updateExpenseByOrderId } = useSimpleExpenses();
 
     // 자주 찾는 파트너 (기본값 설정)
     const [popularPartnerIds, setPopularPartnerIds] = useState<string[]>([]);
@@ -167,21 +167,32 @@ export function OrderOutsourceDialog({
                 status: 'processing' // Ensure order status is processing
             });
 
-            // 자동으로 간편지출 관리에 자재비로 등록
-            if (!isEditMode) {
-                const itemsDescription = order.items.map(item => `${item.name}(${item.quantity})`).join(', ');
-                const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+            // 자동으로 간편지출 관리에 자재비로 등록/수정
+            const itemsDescription = order.items.map(item => `${item.name}(${item.quantity})`).join(', ');
+            const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
-                await addExpense({
-                    date: order.orderDate,
-                    amount: partnerPrice,
-                    category: SimpleExpenseCategory.MATERIAL,
-                    subCategory: '생화/자재', // 또는 적절한 서브 카테고리
-                    description: `외부발주: ${itemsDescription}`,
-                    supplier: selectedPartner?.name || "미지정 파트너",
-                    quantity: totalQuantity,
-                    unitPrice: partnerPrice / (totalQuantity || 1),
-                }, order.branchId, order.branchName);
+            const expenseData = {
+                date: order.orderDate,
+                amount: partnerPrice,
+                category: SimpleExpenseCategory.MATERIAL,
+                subCategory: '생화/자재',
+                description: isEditMode ? `외부발주(수정): ${itemsDescription}` : `외부발주: ${itemsDescription}`,
+                supplier: selectedPartner?.name || "미지정 파트너",
+                quantity: totalQuantity,
+                unitPrice: partnerPrice / (totalQuantity || 1),
+                relatedOrderId: order.id,
+            };
+
+            if (!isEditMode) {
+                await addExpense(expenseData, order.branchId, order.branchName);
+            } else {
+                // 수정 모드일 때 기존 지출 내역 업데이트 시도
+                const wasUpdated = await updateExpenseByOrderId(order.id, expenseData);
+
+                // 만약 취소 후 재발주 등의 사유로 지출 내역이 삭제되어 업데이트 실패 시 새로 등록
+                if (!wasUpdated) {
+                    await addExpense(expenseData, order.branchId, order.branchName);
+                }
             }
 
             toast({

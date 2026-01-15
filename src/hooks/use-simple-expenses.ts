@@ -1,15 +1,15 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
   limit,
   Timestamp,
   serverTimestamp
@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useMaterials } from '@/hooks/use-materials';
 import { useProducts } from '@/hooks/use-products';
-import type { 
+import type {
   SimpleExpense,
   CreateSimpleExpenseData,
   FixedCostTemplate,
@@ -140,13 +140,13 @@ export function useSimpleExpenses() {
             // 중복이 있으면 기존 거래처 사용 (지점 정보 업데이트)
             const existingPartner = supplierSnapshot.docs[0];
             const existingData = existingPartner.data();
-            
+
             // 기존 거래처에 현재 지점 정보가 없으면 추가
             if (existingData.branch && existingData.branch !== branchName) {
-              const updatedMemo = existingData.memo 
+              const updatedMemo = existingData.memo
                 ? `${existingData.memo}\n추가 사용 지점: ${branchName}`
                 : `추가 사용 지점: ${branchName}`;
-              
+
               await updateDoc(existingPartner.ref, {
                 memo: updatedMemo,
                 updatedAt: serverTimestamp()
@@ -159,110 +159,110 @@ export function useSimpleExpenses() {
           // 오류가 발생해도 지출 등록은 계속 진행
         }
       }
-             // 자재비인 경우 자재관리에 자동 등록
-       let materialAdded = false;
-       if (data.category === SimpleExpenseCategory.MATERIAL && data.description && data.description.trim() !== '') {
-         try {
-           const materialName = data.description.trim();
-           // 지점별로 구분하여 자재 검색
-           const materialQuery = query(
-             collection(db, "materials"), 
-             where("name", "==", materialName),
-             where("branch", "==", branchName)
-           );
-           const materialSnapshot = await getDocs(materialQuery);
-           if (materialSnapshot.empty) {
-             // 해당 지점에 같은 이름의 자재가 없으면 새로 등록
-             const materialData = {
-               id: `MAT${Date.now()}`, 
-               name: materialName,
-               mainCategory: '기타자재',
-               midCategory: '기타',
-               price: data.unitPrice || 0,
-               supplier: data.supplier || '미지정',
-               stock: data.quantity || 1,
-               size: '기타',
-               color: '기타',
-               branch: branchName,
-               createdAt: serverTimestamp()
-             };
-             await addDoc(collection(db, 'materials'), materialData);
-             materialAdded = true;
-           } else {
-             // 해당 지점에 같은 이름의 자재가 있으면 수량만 업데이트
-             const existingMaterial = materialSnapshot.docs[0];
-             const existingData = existingMaterial.data();
-             const newStock = (existingData.stock || 0) + (data.quantity || 1);
-             await updateDoc(existingMaterial.ref, {
-               stock: newStock,
-               price: data.unitPrice || existingData.price || 0, // 최신 가격으로 업데이트
-               updatedAt: serverTimestamp()
-             });
-             materialAdded = true;
-           }
-         } catch (error) {
-           console.error("자재 추가/업데이트 오류:", error);
-         }
-       }
-       // 제품비인 경우 제품관리에 자동 등록
-       let productAdded = false;
-       if (data.category === SimpleExpenseCategory.OTHER && data.description && data.description.trim() !== '') {
-         try {
-           const productName = data.description.trim();
-           // 같은 이름의 제품이 있는지 확인 (지점 무관)
-           const productQuery = query(
-             collection(db, "products"), 
-             where("name", "==", productName)
-           );
-           const productSnapshot = await getDocs(productQuery);
-           let productId: string;
-           if (!productSnapshot.empty) {
-             // 같은 이름의 제품이 있으면 기존 ID 사용
-             productId = productSnapshot.docs[0].data().id;
-           } else {
-             // 같은 이름의 제품이 없으면 새 ID 생성
-             productId = `P${String(Date.now()).slice(-5)}`;
-           }
-           // 해당 지점에 같은 ID의 제품이 있는지 확인
-           const branchProductQuery = query(
-             collection(db, "products"), 
-             where("id", "==", productId),
-             where("branch", "==", branchName)
-           );
-           const branchProductSnapshot = await getDocs(branchProductQuery);
-           if (branchProductSnapshot.empty) {
-             // 해당 지점에 같은 ID의 제품이 없으면 새로 등록
-             const productData = {
-               id: productId,
-               name: productName,
-               mainCategory: '기타상품',
-               midCategory: '기타',
-               price: data.unitPrice || 0,
-               supplier: data.supplier || '미지정',
-               stock: data.quantity || 1,
-               size: '기타',
-               color: '기타',
-               branch: branchName,
-               createdAt: serverTimestamp()
-             };
-             await addDoc(collection(db, 'products'), productData);
-             productAdded = true;
-           } else {
-             // 해당 지점에 같은 ID의 제품이 있으면 수량만 업데이트
-             const existingProduct = branchProductSnapshot.docs[0];
-             const existingData = existingProduct.data();
-             const newStock = (existingData.stock || 0) + (data.quantity || 1);
-             await updateDoc(existingProduct.ref, {
-               stock: newStock,
-               price: data.unitPrice || existingData.price || 0, // 최신 가격으로 업데이트
-               updatedAt: serverTimestamp()
-             });
-             productAdded = true;
-           }
-         } catch (error) {
-           console.error("제품 추가/업데이트 오류:", error);
-         }
-       }
+      // 자재비인 경우 자재관리에 자동 등록
+      let materialAdded = false;
+      if (data.category === SimpleExpenseCategory.MATERIAL && data.description && data.description.trim() !== '') {
+        try {
+          const materialName = data.description.trim();
+          // 지점별로 구분하여 자재 검색
+          const materialQuery = query(
+            collection(db, "materials"),
+            where("name", "==", materialName),
+            where("branch", "==", branchName)
+          );
+          const materialSnapshot = await getDocs(materialQuery);
+          if (materialSnapshot.empty) {
+            // 해당 지점에 같은 이름의 자재가 없으면 새로 등록
+            const materialData = {
+              id: `MAT${Date.now()}`,
+              name: materialName,
+              mainCategory: '기타자재',
+              midCategory: '기타',
+              price: data.unitPrice || 0,
+              supplier: data.supplier || '미지정',
+              stock: data.quantity || 1,
+              size: '기타',
+              color: '기타',
+              branch: branchName,
+              createdAt: serverTimestamp()
+            };
+            await addDoc(collection(db, 'materials'), materialData);
+            materialAdded = true;
+          } else {
+            // 해당 지점에 같은 이름의 자재가 있으면 수량만 업데이트
+            const existingMaterial = materialSnapshot.docs[0];
+            const existingData = existingMaterial.data();
+            const newStock = (existingData.stock || 0) + (data.quantity || 1);
+            await updateDoc(existingMaterial.ref, {
+              stock: newStock,
+              price: data.unitPrice || existingData.price || 0, // 최신 가격으로 업데이트
+              updatedAt: serverTimestamp()
+            });
+            materialAdded = true;
+          }
+        } catch (error) {
+          console.error("자재 추가/업데이트 오류:", error);
+        }
+      }
+      // 제품비인 경우 제품관리에 자동 등록
+      let productAdded = false;
+      if (data.category === SimpleExpenseCategory.OTHER && data.description && data.description.trim() !== '') {
+        try {
+          const productName = data.description.trim();
+          // 같은 이름의 제품이 있는지 확인 (지점 무관)
+          const productQuery = query(
+            collection(db, "products"),
+            where("name", "==", productName)
+          );
+          const productSnapshot = await getDocs(productQuery);
+          let productId: string;
+          if (!productSnapshot.empty) {
+            // 같은 이름의 제품이 있으면 기존 ID 사용
+            productId = productSnapshot.docs[0].data().id;
+          } else {
+            // 같은 이름의 제품이 없으면 새 ID 생성
+            productId = `P${String(Date.now()).slice(-5)}`;
+          }
+          // 해당 지점에 같은 ID의 제품이 있는지 확인
+          const branchProductQuery = query(
+            collection(db, "products"),
+            where("id", "==", productId),
+            where("branch", "==", branchName)
+          );
+          const branchProductSnapshot = await getDocs(branchProductQuery);
+          if (branchProductSnapshot.empty) {
+            // 해당 지점에 같은 ID의 제품이 없으면 새로 등록
+            const productData = {
+              id: productId,
+              name: productName,
+              mainCategory: '기타상품',
+              midCategory: '기타',
+              price: data.unitPrice || 0,
+              supplier: data.supplier || '미지정',
+              stock: data.quantity || 1,
+              size: '기타',
+              color: '기타',
+              branch: branchName,
+              createdAt: serverTimestamp()
+            };
+            await addDoc(collection(db, 'products'), productData);
+            productAdded = true;
+          } else {
+            // 해당 지점에 같은 ID의 제품이 있으면 수량만 업데이트
+            const existingProduct = branchProductSnapshot.docs[0];
+            const existingData = existingProduct.data();
+            const newStock = (existingData.stock || 0) + (data.quantity || 1);
+            await updateDoc(existingProduct.ref, {
+              stock: newStock,
+              price: data.unitPrice || existingData.price || 0, // 최신 가격으로 업데이트
+              updatedAt: serverTimestamp()
+            });
+            productAdded = true;
+          }
+        } catch (error) {
+          console.error("제품 추가/업데이트 오류:", error);
+        }
+      }
       const expenseData: Omit<SimpleExpense, 'id'> = {
         date: data.date,
         amount: data.amount,
@@ -275,6 +275,8 @@ export function useSimpleExpenses() {
         branchId: branchId, // 지점 ID 명시적 설정
         branchName: branchName, // 지점 이름 명시적 설정
         inventoryUpdates: data.inventoryUpdates || [], // undefined 방지
+        relatedRequestId: data.relatedRequestId,
+        relatedOrderId: data.relatedOrderId,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       };
@@ -334,16 +336,16 @@ export function useSimpleExpenses() {
       }
       // 구매처 자동완성 데이터 업데이트
       await updateSupplierSuggestion(data.supplier, data.category);
-             let description = `${data.description} - ${data.amount.toLocaleString()}원이 등록되었습니다.`;
-       if (supplierAdded) {
-         description += ` 새로운 거래처 "${data.supplier}"가 거래처 관리에 추가되었습니다.`;
-       }
-       if (materialAdded) {
-         description += ` 자재 "${data.description}"이 자재관리에 추가/업데이트되었습니다.`;
-       }
-       if (productAdded) {
-         description += ` 제품 "${data.description}"이 제품관리에 추가/업데이트되었습니다.`;
-       }
+      let description = `${data.description} - ${data.amount.toLocaleString()}원이 등록되었습니다.`;
+      if (supplierAdded) {
+        description += ` 새로운 거래처 "${data.supplier}"가 거래처 관리에 추가되었습니다.`;
+      }
+      if (materialAdded) {
+        description += ` 자재 "${data.description}"이 자재관리에 추가/업데이트되었습니다.`;
+      }
+      if (productAdded) {
+        description += ` 제품 "${data.description}"이 제품관리에 추가/업데이트되었습니다.`;
+      }
       toast({
         title: "지출 등록 완료",
         description: description
@@ -424,6 +426,68 @@ export function useSimpleExpenses() {
       setLoading(false);
     }
   }, [user, toast]);
+  // 주문 ID와 관련된 지출 삭제 (외부발주 취소 시 사용)
+  const deleteExpenseByOrderId = useCallback(async (orderId: string): Promise<boolean> => {
+    if (!user) return false;
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'simpleExpenses'),
+        where('relatedOrderId', '==', orderId)
+      );
+      const snapshot = await getDocs(q);
+      const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+      return true;
+    } catch (error) {
+      console.error('주문 관련 지출 삭제 오류:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  // 주문 ID와 관련된 지출 수정 (외부발주 정보 수정 시 사용)
+  const updateExpenseByOrderId = useCallback(async (
+    orderId: string,
+    data: Partial<CreateSimpleExpenseData>
+  ): Promise<boolean> => {
+    if (!user) return false;
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'simpleExpenses'),
+        where('relatedOrderId', '==', orderId)
+      );
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        // 만약 기존 지출이 없었는데 수정이 들어온 경우 (예: 예전에 수동 삭제했거나)
+        // 새로 생성을 해야 할 수도 있음. 하지만 여기서는 명확하게 update만 담당
+        return false;
+      }
+
+      const updatePromises = snapshot.docs.map(docSnap => {
+        const updateData: any = {
+          ...data,
+          updatedAt: serverTimestamp()
+        };
+        // Date 객체가 넘어올 경우 Timestamp로 변환
+        if (data.date && !(data.date instanceof Timestamp)) {
+          updateData.date = Timestamp.fromDate(data.date as any);
+        }
+        return updateDoc(docSnap.ref, updateData);
+      });
+
+      await Promise.all(updatePromises);
+      return true;
+    } catch (error) {
+      console.error('주문 관련 지출 수정 오류:', error);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
   // 구매처 자동완성 데이터 업데이트
   const updateSupplierSuggestion = useCallback(async (
     supplierName: string,
@@ -470,7 +534,7 @@ export function useSimpleExpenses() {
       })) as unknown as SupplierSuggestion[];
       // 검색어가 있으면 필터링
       if (searchTerm) {
-        suggestions = suggestions.filter(s => 
+        suggestions = suggestions.filter(s =>
           String((s as any).name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
@@ -684,6 +748,8 @@ export function useSimpleExpenses() {
     addExpense,
     updateExpense,
     deleteExpense,
+    deleteExpenseByOrderId,
+    updateExpenseByOrderId,
     fetchSupplierSuggestions,
     fetchFixedCostTemplate,
     saveFixedCostTemplate,
