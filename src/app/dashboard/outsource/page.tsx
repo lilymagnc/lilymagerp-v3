@@ -177,7 +177,7 @@ export default function OutsourcePage() {
             "업체명": s.partnerName,
             "발주건수": s.count,
             "수주총액": s.revenue,
-            "매입가": s.partnerPrice,
+            "발주가": s.partnerPrice,
             "수수료수익": s.profit,
             "수익률": s.revenue > 0 ? `${((s.profit / s.revenue) * 100).toFixed(1)}%` : "0%"
         }));
@@ -205,7 +205,7 @@ export default function OutsourcePage() {
                 order.outsourceInfo?.status === 'accepted' ? '수락' :
                     order.outsourceInfo?.status === 'completed' ? '완료' : '취소',
             "수주총액": order.summary.total,
-            "매입가": order.outsourceInfo?.partnerPrice,
+            "발주가": order.outsourceInfo?.partnerPrice,
             "수익": order.outsourceInfo?.profit
         }));
 
@@ -367,7 +367,7 @@ export default function OutsourcePage() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">총 매입가</CardTitle>
+                        <CardTitle className="text-sm font-medium">총 발주가</CardTitle>
                         <ExternalLink className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -392,7 +392,7 @@ export default function OutsourcePage() {
                                     <TableRow>
                                         <TableHead>업체명</TableHead>
                                         <TableHead className="text-center">건수</TableHead>
-                                        <TableHead className="text-right">매입가</TableHead>
+                                        <TableHead className="text-right">발주가</TableHead>
                                         <TableHead className="text-right">수익</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -434,7 +434,7 @@ export default function OutsourcePage() {
                                     <TableRow>
                                         <TableHead>발주일</TableHead>
                                         <TableHead>업체</TableHead>
-                                        <TableHead className="text-right">매입가</TableHead>
+                                        <TableHead className="text-right">발주가</TableHead>
                                         <TableHead>상태</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -486,7 +486,7 @@ export default function OutsourcePage() {
                                 <TableHead>발주지점</TableHead>
                                 <TableHead>상태</TableHead>
                                 <TableHead className="text-right">수주총액</TableHead>
-                                <TableHead className="text-right">매입가</TableHead>
+                                <TableHead className="text-right">발주가</TableHead>
                                 <TableHead className="text-right text-green-600">수익</TableHead>
                                 <TableHead className="text-right">작업</TableHead>
                             </TableRow>

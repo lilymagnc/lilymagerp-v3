@@ -1,25 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow 
+  TableRow
 } from '@/components/ui/table';
-import { 
-  Download, 
-  Search, 
-  Filter, 
-  Eye, 
+import {
+  Download,
+  Search,
+  Filter,
+  Eye,
   Trash2,
   Building,
   Calendar,
@@ -28,21 +28,24 @@ import {
   X,
   CheckSquare,
   Square,
-  Edit
+  Edit,
+  ChevronDown
 } from 'lucide-react';
 import { useSimpleExpenses } from '@/hooks/use-simple-expenses';
 import { useBranches } from '@/hooks/use-branches';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit as firestoreLimit, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { 
+import { format } from 'date-fns';
+import {
   SIMPLE_EXPENSE_CATEGORY_LABELS,
   formatCurrency,
   getCategoryColor
 } from '@/types/simple-expense';
 import { exportToExcel } from '@/lib/excel-export';
 import { ExpenseDetailDialog } from './expense-detail-dialog';
+import { startOfDay, endOfDay } from 'date-fns';
 
 interface ExpenseListProps {
   refreshTrigger?: number;
@@ -50,16 +53,19 @@ interface ExpenseListProps {
   isHeadquarters?: boolean;
 }
 
-export function ExpenseList({ 
-  refreshTrigger = 0, 
+export function ExpenseList({
+  refreshTrigger = 0,
   selectedBranchId,
-  isHeadquarters = false 
+  isHeadquarters = false
 }: ExpenseListProps) {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<any[]>([]);
+  const today = format(new Date(), 'yyyy-MM-dd');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [dateRange, setDateRange] = useState({ start: today, end: today });
+  const [displayLimit, setDisplayLimit] = useState(50);
+  const [hasMore, setHasMore] = useState(true);
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
@@ -78,7 +84,7 @@ export function ExpenseList({
   // 데이터 로드
   useEffect(() => {
     loadExpenses();
-  }, [refreshTrigger, selectedBranchId]);
+  }, [refreshTrigger, selectedBranchId, displayLimit, dateRange.start, dateRange.end]);
 
   // 초기 로딩 시 전체 데이터 미리 로드 (관리자만)
   useEffect(() => {
@@ -91,42 +97,17 @@ export function ExpenseList({
   const loadExpenses = async () => {
     setIsLoading(true);
     try {
-      if (isHeadquarters && isHeadquartersAdmin) {
-        // 본사 관리자: 모든 지점 데이터 로드
-        const allExpenses = [];
-        for (const branch of branches.filter(b => b.type !== '본사')) {
-          // 각 지점별로 데이터를 직접 가져오기
-          const branchExpenses = await fetchBranchExpenses(branch.id);
-          allExpenses.push(...branchExpenses.map(expense => ({
-            ...expense,
-            branchName: branch.name,
-            branchId: branch.id
-          })));
-        }
+      // 본사 관리 탭이거나 '전체' 선택 시 모든 데이터 로드 (분기 처리 단순화)
+      const shouldLoadAll = isHeadquarters || !selectedBranchId || selectedBranchId === 'all';
+
+      if (shouldLoadAll) {
+        // 모든 지점 데이터 로드
+        const allExpenses = await fetchExpensesData(selectedBranchId === 'all' ? undefined : selectedBranchId);
         setExpenses(allExpenses);
       } else {
-        // 일반 사용자: 선택된 지점 또는 전체 데이터
-        if (selectedBranchId && selectedBranchId !== 'all') {
-          // 특정 지점 선택
-          const branchExpenses = await fetchBranchExpenses(selectedBranchId);
-          setExpenses(branchExpenses.map(expense => ({
-            ...expense,
-            branchName: branches.find(b => b.id === selectedBranchId)?.name || '',
-            branchId: selectedBranchId
-          })));
-        } else {
-          // 전체 선택 또는 selectedBranchId가 undefined: 모든 지점 데이터 로드
-          const allExpenses = [];
-          for (const branch of branches.filter(b => b.type !== '본사')) {
-            const branchExpenses = await fetchBranchExpenses(branch.id);
-            allExpenses.push(...branchExpenses.map(expense => ({
-              ...expense,
-              branchName: branch.name,
-              branchId: branch.id
-            })));
-          }
-          setExpenses(allExpenses);
-        }
+        // 특정 지점 선택
+        const branchExpenses = await fetchExpensesData(selectedBranchId);
+        setExpenses(branchExpenses);
       }
     } catch (error) {
       console.error('지출 데이터 로드 오류:', error);
@@ -140,26 +121,66 @@ export function ExpenseList({
     }
   };
 
-  // 지점별 지출 데이터 가져오기
-  const fetchBranchExpenses = async (branchId: string) => {
+  // 공통 지출 데이터 가져오기
+  const fetchExpensesData = async (branchId?: string) => {
     try {
-      const q = query(
-        collection(db, 'simpleExpenses'),
-        where('branchId', '==', branchId),
-        orderBy('date', 'desc')
-      );
+      const expensesRef = collection(db, 'simpleExpenses');
+      // 사용자의 요청대로 해당 기간의 데이터를 한 번에 가져오기 위해 리미트를 제거하거나 충분히 크게 설정
+      let q = query(expensesRef, orderBy('date', 'desc'), firestoreLimit(5000));
+
+      if (branchId && branchId !== 'all') {
+        q = query(q, where('branchId', '==', branchId));
+      }
+
+      // 날짜 필터 적용
+      if (dateRange.start) {
+        const start = startOfDay(new Date(dateRange.start));
+        q = query(q, where('date', '>=', Timestamp.fromDate(start)));
+      }
+      if (dateRange.end) {
+        const end = endOfDay(new Date(dateRange.end));
+        q = query(q, where('date', '<=', Timestamp.fromDate(end)));
+      }
+
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as any[];
+
+      // 서버에서 더 가져올 데이터 여부는 여기서 관리하지 않고 전체 로드 방식으로 변경
+      setHasMore(false);
+
+      const data = snapshot.docs.map(docSnapshot => {
+        const docData = docSnapshot.data();
+        // 지점 이름 보정 (없는 경우 branches에서 찾기)
+        let branchName = docData.branchName;
+        if (!branchName && docData.branchId) {
+          branchName = branches.find(b => b.id === docData.branchId)?.name || '';
+        }
+        return {
+          id: docSnapshot.id,
+          ...docData,
+          branchName
+        };
+      });
+
+      return data;
     } catch (error) {
-      console.error(`지점 ${branchId} 데이터 로드 오류:`, error);
+      console.error('데이터 로드 오류:', error);
       return [];
     }
   };
 
-  // 필터링
+  // 필터링된 결과 중 화면에 보여줄 갯수 조절
+  const displayedExpenses = useMemo(() => {
+    return filteredExpenses.slice(0, displayLimit);
+  }, [filteredExpenses, displayLimit]);
+
+  const hasMoreToShow = filteredExpenses.length > displayLimit;
+
+  // 지출 데이터 로드 (날짜나 지점이 바뀔 때만 서버 통신)
+  useEffect(() => {
+    loadExpenses();
+  }, [refreshTrigger, selectedBranchId, dateRange.start, dateRange.end]);
+
+  // 필터링 (메모리 내의 데이터를 검색 및 분류)
   useEffect(() => {
     let filtered = expenses;
 
@@ -182,15 +203,15 @@ export function ExpenseList({
       filtered = filtered.filter(expense => {
         if (!expense.date) return false;
         const expenseDate = expense.date.toDate();
-        const startDate = dateRange.start ? new Date(dateRange.start) : null;
-        const endDate = dateRange.end ? new Date(dateRange.end) : null;
+        const start = dateRange.start ? startOfDay(new Date(dateRange.start)) : null;
+        const end = dateRange.end ? endOfDay(new Date(dateRange.end)) : null;
 
-        if (startDate && endDate) {
-          return expenseDate >= startDate && expenseDate <= endDate;
-        } else if (startDate) {
-          return expenseDate >= startDate;
-        } else if (endDate) {
-          return expenseDate <= endDate;
+        if (start && end) {
+          return expenseDate >= start && expenseDate <= end;
+        } else if (start) {
+          return expenseDate >= start;
+        } else if (end) {
+          return expenseDate <= end;
         }
         return true;
       });
@@ -198,7 +219,7 @@ export function ExpenseList({
 
     // 지점 필터 (본사 관리자만)
     if (isHeadquarters && selectedBranches.length > 0) {
-      filtered = filtered.filter(expense => 
+      filtered = filtered.filter(expense =>
         selectedBranches.includes(expense.branchId)
       );
     }
@@ -243,7 +264,7 @@ export function ExpenseList({
 
   // 개별 선택/해제
   const handleSelectExpense = (expenseId: string) => {
-    setSelectedExpenses(prev => 
+    setSelectedExpenses(prev =>
       prev.includes(expenseId)
         ? prev.filter(id => id !== expenseId)
         : [...prev, expenseId]
@@ -523,8 +544,8 @@ export function ExpenseList({
                     className="pl-8"
                   />
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="icon"
                   onClick={() => setSearchTerm('')}
                   disabled={!searchTerm}
@@ -582,7 +603,7 @@ export function ExpenseList({
                     variant={selectedBranches.includes(branch.id) ? "default" : "outline"}
                     size="sm"
                     onClick={() => {
-                      setSelectedBranches(prev => 
+                      setSelectedBranches(prev =>
                         prev.includes(branch.id)
                           ? prev.filter(id => id !== branch.id)
                           : [...prev, branch.id]
@@ -673,14 +694,14 @@ export function ExpenseList({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredExpenses.length === 0 ? (
+                {displayedExpenses.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={isHeadquarters ? 10 : 9} className="text-center py-8">
                       {isLoading ? '로딩 중...' : '지출 내역이 없습니다.'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredExpenses.map((expense) => (
+                  displayedExpenses.map((expense) => (
                     <TableRow key={expense.id}>
                       <TableCell>
                         <Button
@@ -712,7 +733,7 @@ export function ExpenseList({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant="outline"
                           className={`border-${getCategoryColor(expense.category)}-500`}
                         >
@@ -759,6 +780,30 @@ export function ExpenseList({
               </TableBody>
             </Table>
           </div>
+
+          {/* 더 보기 버튼 */}
+          {hasMoreToShow && (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setDisplayLimit(prev => prev + 50)}
+                disabled={isLoading}
+                className="w-full max-w-xs"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    로딩 중...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <ChevronDown className="h-4 w-4" />
+                    다음 50개 더 보기 ({filteredExpenses.length - displayedExpenses.length}개 남음)
+                  </div>
+                )}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

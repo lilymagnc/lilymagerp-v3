@@ -30,7 +30,9 @@ import { usePartners } from "@/hooks/use-partners";
 import { useToast } from "@/hooks/use-toast";
 import { Order } from "@/hooks/use-orders";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useSimpleExpenses } from "@/hooks/use-simple-expenses";
+import { SimpleExpenseCategory } from "@/types/simple-expense";
+import { Timestamp, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { Package, Calculator, Info, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +55,8 @@ export function OrderOutsourceDialog({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [openCombobox, setOpenCombobox] = useState(false);
     const [autoCalc, setAutoCalc] = useState(true);
+
+    const { addExpense } = useSimpleExpenses();
 
     // 자주 찾는 파트너 (기본값 설정)
     const [popularPartnerIds, setPopularPartnerIds] = useState<string[]>([]);
@@ -163,9 +167,26 @@ export function OrderOutsourceDialog({
                 status: 'processing' // Ensure order status is processing
             });
 
+            // 자동으로 간편지출 관리에 자재비로 등록
+            if (!isEditMode) {
+                const itemsDescription = order.items.map(item => `${item.name}(${item.quantity})`).join(', ');
+                const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+
+                await addExpense({
+                    date: order.orderDate,
+                    amount: partnerPrice,
+                    category: SimpleExpenseCategory.MATERIAL,
+                    subCategory: '생화/자재', // 또는 적절한 서브 카테고리
+                    description: `외부발주: ${itemsDescription}`,
+                    supplier: selectedPartner?.name || "미지정 파트너",
+                    quantity: totalQuantity,
+                    unitPrice: partnerPrice / (totalQuantity || 1),
+                }, order.branchId, order.branchName);
+            }
+
             toast({
-                title: isEditMode ? "외부 발주 수정 완료" : "외부 발주 완료",
-                description: `${selectedPartner?.name}으로 발주 정보가 ${isEditMode ? "수정" : "등록"}되었습니다.`,
+                title: isEditMode ? "외부 발주 수정 완료" : "외부 발주 완료 및 지출 등록",
+                description: `${selectedPartner?.name}으로 발주 정보가 ${isEditMode ? "수정" : "등록"}되었으며, 간편지출에 자재비로 자동 기록되었습니다.`,
             });
 
             onSuccess?.();
@@ -277,7 +298,7 @@ export function OrderOutsourceDialog({
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="partnerPrice">가격 (매입가) *</Label>
+                        <Label htmlFor="partnerPrice">가격 (발주가) *</Label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">₩</span>
                             <Input

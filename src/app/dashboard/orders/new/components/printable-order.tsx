@@ -74,7 +74,7 @@ export class PrintableOrder extends React.Component<PrintableOrderProps> {
                                 릴리맥 플라워앤가든 {title}
                                 {data.outsourceInfo && (
                                     <span className="text-sm font-normal ml-2">
-                                        ({data.outsourceInfo.partnerName} - ₩{data.outsourceInfo.partnerPrice.toLocaleString()})
+                                        ({data.outsourceInfo.partnerName})
                                     </span>
                                 )}
                                 {data.transferInfo && (

@@ -609,84 +609,86 @@ export const exportOrdersToExcel = (orders: any[], startDate?: string, endDate?:
 };
 
 // 간편지출 내보내기 함수
-export const exportToExcel = (expenses: SimpleExpense[], startDate?: string, endDate?: string) => {
-  // 날짜 필터링 (선택사항)
-  let filteredExpenses = expenses;
-  if (startDate && endDate) {
-    filteredExpenses = expenses.filter(expense => {
+export const exportToExcel = (
+  dataOrExpenses: any[] | SimpleExpense[],
+  fileNameOrStartDate?: string,
+  endDate?: string
+) => {
+  // 워크북 생성
+  const workbook = XLSX.utils.book_new();
+  let finalFileName = fileNameOrStartDate || `export_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+
+  // 데이터가 시트 설정 배열인 경우 (예: [{ name: 'Sheet1', data: [...] }])
+  if (dataOrExpenses.length > 0 && 'name' in dataOrExpenses[0] && 'data' in dataOrExpenses[0]) {
+    const sheets = dataOrExpenses as { name: string; data: any[] }[];
+    sheets.forEach(sheet => {
+      if (sheet.data && sheet.data.length > 0) {
+        const worksheet = XLSX.utils.json_to_sheet(sheet.data);
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+      }
+    });
+    if (!finalFileName.endsWith('.xlsx')) finalFileName += '.xlsx';
+  }
+  // 기존 SimpleExpense[] 방식인 경우
+  else {
+    const expenses = dataOrExpenses as SimpleExpense[];
+    const startDate = fileNameOrStartDate;
+
+    // 날짜 필터링 (선택사항)
+    let filteredExpenses = expenses;
+    if (startDate && endDate) {
+      filteredExpenses = expenses.filter(expense => {
+        let expenseDate: Date;
+        if (expense.date && typeof expense.date === 'object' && 'toDate' in expense.date) {
+          expenseDate = expense.date.toDate();
+        } else {
+          expenseDate = new Date(expense.date as unknown as string | number);
+        }
+        const expenseDateStr = expenseDate.toISOString().split('T')[0];
+        return expenseDateStr >= startDate && expenseDateStr <= endDate;
+      });
+    }
+
+    const headers = ['날짜', '카테고리', '항목', '금액', '지점명', '담당자', '메모', '생성일'];
+    const excelData = filteredExpenses.map(expense => {
       let expenseDate: Date;
       if (expense.date && typeof expense.date === 'object' && 'toDate' in expense.date) {
         expenseDate = expense.date.toDate();
       } else {
         expenseDate = new Date(expense.date as unknown as string | number);
       }
-      const expenseDateStr = expenseDate.toISOString().split('T')[0];
-      return expenseDateStr >= startDate && expenseDateStr <= endDate;
+      return [
+        format(expenseDate, 'yyyy-MM-dd', { locale: ko }),
+        expense.category || '-',
+        expense.description || '-',
+        expense.amount?.toLocaleString() || '0',
+        expense.branchName || '-',
+        expense.supplier || '-',
+        expense.description || '-',
+        expense.createdAt && typeof expense.createdAt === 'object' && 'toDate' in expense.createdAt ?
+          format(expense.createdAt.toDate(), 'yyyy-MM-dd HH:mm', { locale: ko }) : '-'
+      ];
     });
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...excelData]);
+    worksheet['!cols'] = [
+      { width: 12 }, { width: 15 }, { width: 25 }, { width: 12 },
+      { width: 15 }, { width: 15 }, { width: 30 }, { width: 20 }
+    ];
+    XLSX.utils.book_append_sheet(workbook, worksheet, '간편지출');
+
+    if (!startDate || !endDate) {
+      const today = format(new Date(), 'yyyy-MM-dd', { locale: ko });
+      finalFileName = `간편지출_${today}.xlsx`;
+    } else {
+      finalFileName = `간편지출_${startDate}_${endDate}.xlsx`;
+    }
   }
 
-  // 헤더 정의
-  const headers = [
-    '날짜', '카테고리', '항목', '금액', '지점명', '담당자', '메모', '생성일'
-  ];
-
-  // 데이터 변환
-  const data = filteredExpenses.map(expense => {
-    let expenseDate: Date;
-    if (expense.date && typeof expense.date === 'object' && 'toDate' in expense.date) {
-      expenseDate = expense.date.toDate();
-    } else {
-      expenseDate = new Date(expense.date as unknown as string | number);
-    }
-    const formattedDate = format(expenseDate, 'yyyy-MM-dd', { locale: ko });
-
-    return [
-      formattedDate,
-      expense.category || '-',
-      expense.description || '-',
-      expense.amount?.toLocaleString() || '0',
-      expense.branchName || '-',
-      expense.supplier || '-',
-      expense.description || '-',
-      expense.createdAt && typeof expense.createdAt === 'object' && 'toDate' in expense.createdAt ?
-        format(expense.createdAt.toDate(), 'yyyy-MM-dd HH:mm', { locale: ko }) : '-'
-    ];
-  });
-
-  // 워크북 생성
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
-
-  // 열 너비 설정
-  worksheet['!cols'] = [
-    { width: 12 }, // 날짜
-    { width: 15 }, // 카테고리
-    { width: 25 }, // 항목
-    { width: 12 }, // 금액
-    { width: 15 }, // 지점명
-    { width: 15 }, // 담당자
-    { width: 30 }, // 메모
-    { width: 20 }  // 생성일
-  ];
-
-  // 시트 이름 설정
-  XLSX.utils.book_append_sheet(workbook, worksheet, '간편지출');
-
-  // 파일명 생성
-  const today = format(new Date(), 'yyyy-MM-dd', { locale: ko });
-  const fileName = startDate && endDate
-    ? `간편지출_${startDate}_${endDate}.xlsx`
-    : `간편지출_${today}.xlsx`;
-
   // 파일 다운로드
-  const excelBuffer = XLSX.write(workbook, {
-    bookType: 'xlsx',
-    type: 'array'
-  });
-  const blob = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  });
-  saveAs(blob, fileName);
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, finalFileName);
 };
 
 // 상품 내보내기 함수

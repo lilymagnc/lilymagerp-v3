@@ -541,7 +541,7 @@ export function OrderDetailDialog({ isOpen, onOpenChange, order }: OrderDetailDi
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">파트너 입금액</p>
+                      <p className="text-xs text-muted-foreground">발주가</p>
                       <p className="font-medium text-sm text-blue-700">₩{order.outsourceInfo.partnerPrice.toLocaleString()}</p>
                     </div>
                     <div className="space-y-1">
