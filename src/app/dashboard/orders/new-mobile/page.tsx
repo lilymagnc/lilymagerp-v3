@@ -25,7 +25,8 @@ import { useProducts, Product } from "@/hooks/use-products";
 import { useCustomers, Customer } from "@/hooks/use-customers";
 import { useAuth } from "@/hooks/use-auth";
 import { useDiscountSettings } from "@/hooks/use-discount-settings";
-import { serverTimestamp } from "firebase/firestore";
+import { serverTimestamp, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { debounce } from "lodash";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -302,6 +303,7 @@ FulfillmentSection.displayName = "FulfillmentSection";
 const MessagePaymentSection = memo(({
     messageType, setMessageType,
     messageContent, setMessageContent,
+    recentRibbonMessages, // Added prop
     canApplyDiscount, selectedDiscountRate, setSelectedDiscountRate,
     customDiscountRate, setCustomDiscountRate,
     discountRates, discountAmount,
@@ -315,11 +317,47 @@ const MessagePaymentSection = memo(({
             <CardContent className="p-4 space-y-4">
                 <div>
                     <Label className="text-xs font-medium mb-2 block">메시지</Label>
-                    <RadioGroup value={messageType} onValueChange={(v) => setMessageType(v as MessageType)} className="flex gap-4 mb-2">
+                    <RadioGroup value={messageType} onValueChange={(v) => { setMessageType(v as MessageType); setMessageContent(''); }} className="flex gap-4 mb-2">
                         <div className="flex items-center space-x-2"><RadioGroupItem value="card" id="m1" /><Label htmlFor="m1" className="text-xs">카드</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="ribbon" id="m2" /><Label htmlFor="m2" className="text-xs">리본</Label></div>
                     </RadioGroup>
-                    <Textarea placeholder="내용 입력" className="h-20 text-sm" value={messageContent} onChange={e => setMessageContent(e.target.value)} />
+
+                    {messageType === 'ribbon' ? (
+                        <div className="space-y-2">
+                            {recentRibbonMessages.length > 0 && (
+                                <Select onValueChange={(val) => {
+                                    // Only set content, exclude sender
+                                    const selectedMsg = recentRibbonMessages.find((m: any) => m.content === val);
+                                    if (selectedMsg) setMessageContent(selectedMsg.content);
+                                }}>
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="이전 메시지 선택" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {recentRibbonMessages.map((msg: any, idx: number) => (
+                                            <SelectItem key={idx} value={msg.content}>
+                                                {msg.content} {msg.sender ? `(To. ${msg.sender})` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                            <Input
+                                placeholder="메시지 / 보내는분 (예: 축결혼 / 홍길동)"
+                                className="h-9 text-sm"
+                                value={messageContent}
+                                onChange={e => setMessageContent(e.target.value)}
+                            />
+                            <p className="text-[10px] text-muted-foreground">* 메시지와 보내는 분을 '/' 로 구분해서 입력하세요.</p>
+                        </div>
+                    ) : (
+                        <Textarea
+                            placeholder="카드에 들어갈 내용을 자유롭게 입력하세요."
+                            className="h-20 text-sm"
+                            value={messageContent}
+                            onChange={e => setMessageContent(e.target.value)}
+                        />
+                    )}
                 </div>
                 <Separator />
                 {canApplyDiscount && (
@@ -435,12 +473,26 @@ CustomerSearchSheet.displayName = "CustomerSearchSheet";
 // --- PRODUCT SELECTION SHEET ---
 const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, onAddProduct, orderItems, onOpenCustomProduct }: any) => {
     const [activeTab, setActiveTab] = useState("flower");
+    const [searchTerm, setSearchTerm] = useState("");
 
     const getProductQuantity = (docId: string) => {
         return orderItems.find((item: any) => item.docId === docId)?.quantity || 0;
     };
 
     const subtotal = orderItems.reduce((acc: number, i: any) => acc + (i.price * i.quantity), 0);
+
+    const filteredCategorizedProducts = useMemo(() => {
+        const result: any = {};
+        Object.keys(categorizedProducts).forEach(key => {
+            const products = categorizedProducts[key];
+            if (!searchTerm.trim()) {
+                result[key] = products;
+            } else {
+                result[key] = products.filter((p: any) => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+            }
+        });
+        return result;
+    }, [categorizedProducts, searchTerm]);
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -454,6 +506,17 @@ const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, o
                     </div>
                     <Button variant="outline" size="sm" onClick={onOpenCustomProduct}>직접 입력</Button>
                 </SheetHeader>
+                <div className="px-4 pt-2">
+                    <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="상품 검색..."
+                            className="pl-8 h-9 text-sm bg-gray-50"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
                     <TabsList className="grid grid-cols-5 mx-4 mt-2">
                         {['flower', 'plant', 'wreath', 'material', 'other'].map(tab => (
@@ -463,7 +526,7 @@ const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, o
                         ))}
                     </TabsList>
                     <div className="flex-1 overflow-y-auto p-4">
-                        {Object.entries(categorizedProducts).map(([key, products]) => (
+                        {Object.entries(filteredCategorizedProducts).map(([key, products]) => (
                             <TabsContent key={key} value={key} className="mt-0 grid grid-cols-2 gap-2">
                                 {(products as any[]).map(p => {
                                     const qty = getProductQuantity(p.docId);
@@ -539,6 +602,56 @@ export default function NewOrderMobilePage() {
     // Message & Payment
     const [messageType, setMessageType] = useState<MessageType>("card");
     const [messageContent, setMessageContent] = useState("");
+    const [recentRibbonMessages, setRecentRibbonMessages] = useState<{ sender: string; content: string }[]>([]);
+
+    useEffect(() => {
+        const fetchRecentRibbonMessages = async () => {
+            if (messageType !== 'ribbon' || !selectedCustomer || !selectedCustomer.contact) {
+                setRecentRibbonMessages([]);
+                return;
+            }
+            try {
+                const ordersRef = collection(db, 'orders');
+                const q = query(
+                    ordersRef,
+                    where('orderer.contact', '==', selectedCustomer.contact),
+                    where('message.type', '==', 'ribbon'),
+                    orderBy('orderDate', 'desc'),
+                    limit(10)
+                );
+                const snapshot = await getDocs(q);
+                const messages: { sender: string; content: string }[] = [];
+                const seen = new Set<string>();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.message?.content) {
+                        const sender = data.message.sender || data.orderer.name || '';
+                        const content = data.message.content;
+                        // For recent messages list, we might want to show original full content or parsed.
+                        // But desktop saves combined content for ribbon if checking handleCompleteOrder? 
+                        // Wait, desktop `handleCompleteOrder` splits content by separator for ID? No.
+                        // Desktop 'ribbon' logic: `messageContent` state holds "Message / Sender".
+                        // Desktop `handleCompleteOrder` splits it.
+                        // So here we should store unique combined messages or just content?
+                        // The loop in desktop: `const sender = data.message.sender ...`
+                        // It seems desktop DB has separated sender/content fields.
+
+                        // Let's mimic desktop logic: 
+                        // messages.push({ sender, content });
+                        const key = `${sender}|${content}`;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            messages.push({ sender, content });
+                        }
+                    }
+                });
+                setRecentRibbonMessages(messages.slice(0, 5));
+            } catch (error) {
+                console.error("Error fetching ribbon history:", error);
+            }
+        };
+        fetchRecentRibbonMessages();
+    }, [messageType, selectedCustomer]);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("paid");
     const [selectedDiscountRate, setSelectedDiscountRate] = useState<number>(0);
@@ -666,7 +779,28 @@ export default function NewOrderMobilePage() {
                 payment: { method: paymentMethod, status: paymentStatus, completedAt: (paymentStatus === 'paid' || paymentStatus === 'completed') ? serverTimestamp() as any : undefined, isSplitPayment: false },
                 pickupInfo: (receiptType !== 'delivery_reservation') ? { date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', time: scheduleTime, pickerName: recipientName || ordererName, pickerContact: recipientContact || ordererContact } : null,
                 deliveryInfo: receiptType === 'delivery_reservation' ? { date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', time: scheduleTime, recipientName, recipientContact, address: `${deliveryAddress} ${deliveryAddressDetail}`, district: selectedDistrict || '' } : null,
-                message: { type: messageType, content: messageContent }, request: ""
+                message: messageType !== 'none' ? (
+                    messageType === 'ribbon' ? (() => {
+                        const parts = messageContent.split('/');
+                        const content = parts[0].trim();
+                        const sender = parts.length > 1 ? parts.slice(1).join('/').trim() : ""; // Fallback to orderer name in backend? Desktop does: `const sender = parts.length > 1 ? parts.slice(1).join('/').trim() : ordererName;`
+                        // Let's match desktop payload construction if possible. 
+                        // In desktop `handleCompleteOrder`:
+                        /*
+                         if (messageType === 'ribbon') {
+                            const parts = messageContent.split('/');
+                            finalMessageContent = parts[0].trim();
+                            // If sender is empty, use orderer name
+                            finalMessageSender = parts.length > 1 && parts[1].trim() !== '' 
+                                ? parts.slice(1).join('/').trim() 
+                                : ordererName;
+                        }
+                        */
+                        const finalSender = sender || ordererName;
+                        return { type: messageType, content: content, sender: finalSender };
+                    })() : { type: messageType, content: messageContent } // Card: content is full text
+                ) : null,
+                request: ""
             };
             await addOrder(orderPayload);
             toast({ title: "주문 접수 완료!" });
@@ -717,6 +851,7 @@ export default function NewOrderMobilePage() {
                 <MessagePaymentSection
                     messageType={messageType} setMessageType={setMessageType}
                     messageContent={messageContent} setMessageContent={setMessageContent}
+                    recentRibbonMessages={recentRibbonMessages}
                     canApplyDiscount={orderSummary.canApply}
                     selectedDiscountRate={selectedDiscountRate} setSelectedDiscountRate={setSelectedDiscountRate}
                     customDiscountRate={customDiscountRate} setCustomDiscountRate={setCustomDiscountRate}
