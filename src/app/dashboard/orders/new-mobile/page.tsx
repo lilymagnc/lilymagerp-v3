@@ -402,6 +402,9 @@ const CustomerSearchSheet = memo(({ open, onOpenChange, onSelect, customers }: a
             <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-xl">
                 <SheetHeader className="p-4 border-b">
                     <SheetTitle>고객 검색</SheetTitle>
+                    <SheetDescription>
+                        이름 또는 전화번호로 고객을 검색할 수 있습니다.
+                    </SheetDescription>
                     <Input
                         placeholder="이름 또는 전화번호 검색"
                         value={searchQuery}
@@ -443,7 +446,12 @@ const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, o
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0 rounded-t-xl">
                 <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
-                    <SheetTitle>상품 선택</SheetTitle>
+                    <div>
+                        <SheetTitle>상품 선택</SheetTitle>
+                        <SheetDescription className="text-xs text-muted-foreground">
+                            카테고리별 상품을 선택하여 주문에 추가할 수 있습니다.
+                        </SheetDescription>
+                    </div>
                     <Button variant="outline" size="sm" onClick={onOpenCustomProduct}>직접 입력</Button>
                 </SheetHeader>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
@@ -487,15 +495,25 @@ ProductSelectionSheet.displayName = "ProductSelectionSheet";
 export default function NewOrderMobilePage() {
     const { user } = useAuth();
     const { branches, loading: branchesLoading } = useBranches();
-    const { products: allProducts, loading: productsLoading } = useProducts();
+    const { products: allProducts, loading: productsLoading, fetchProducts } = useProducts();
     const { addOrder } = useOrders();
     const { findCustomersByContact, customers } = useCustomers();
     const { discountSettings, canApplyDiscount, getActiveDiscountRates } = useDiscountSettings();
     const { toast } = useToast();
     const router = useRouter();
 
+    // 지점이 선택되면 해당 지점의 상품 목록을 가져옴
+
+
     // --- STATE ---
     const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+
+    // 지점이 선택되면 해당 지점의 상품 목록을 가져옴
+    useEffect(() => {
+        if (selectedBranch) {
+            fetchProducts({ branch: selectedBranch.name, pageSize: 1000 });
+        }
+    }, [selectedBranch, fetchProducts]);
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
     // Orderer
@@ -769,7 +787,12 @@ export default function NewOrderMobilePage() {
             {/* Custom Product Dialog */}
             <Dialog open={isCustomProductDialogOpen} onOpenChange={setIsCustomProductDialogOpen}>
                 <DialogContent className="max-w-xs">
-                    <DialogHeader><DialogTitle>수동 상품 추가</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle>수동 상품 추가</DialogTitle>
+                        <DialogDescription>
+                            등록되지 않은 상품을 직접 입력하여 추가합니다.
+                        </DialogDescription>
+                    </DialogHeader>
                     <div className="space-y-3 py-2">
                         <Label className="text-xs">상품명</Label>
                         <Input value={customProductName} onChange={e => setCustomProductName(e.target.value)} />

@@ -337,15 +337,15 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
 
     setIsLoading(true);
     try {
-      // 필수 필드 검증
-      if (!formData.orderer.name || !formData.orderer.contact) {
+      // 필수 필드 검증 (주문자 정보 검증 제거 - 고객 요청)
+      /* if (!formData.orderer.name || !formData.orderer.contact) {
         toast({
           title: "오류",
           description: "주문자명과 연락처는 필수입니다.",
           variant: "destructive"
         });
         return;
-      }
+      } */
 
       if (formData.items.length === 0) {
         toast({
