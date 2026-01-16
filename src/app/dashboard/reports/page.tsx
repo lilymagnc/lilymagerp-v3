@@ -130,7 +130,8 @@ export default function StatsDashboard() {
 
   // 통계 데이터 계산
   const calculateStats = () => {
-    if (!orders.length || !branches.length || !products.length) return null;
+    // if (!orders.length || !branches.length) return null; // 데이터가 없어도 0으로 통계 표시
+
 
     const { from, to } = getDateRange();
     const filteredOrders = orders.filter(order => {
@@ -221,14 +222,14 @@ export default function StatsDashboard() {
         // 상품별 매출
         order.items.forEach(item => {
           const product = products.find(p => p.id === item.id);
-          if (product) {
-            const p = productSalesMap.get(item.id) || { productId: item.id, productName: product.name, sales: 0, quantity: 0 };
-            const itemOriginalSales = item.price * item.quantity;
-            const itemContextSales = selectedBranch === 'all' ? itemOriginalSales : Math.round(itemOriginalSales * (contextSales / (totalAmount || 1)));
-            p.sales += itemContextSales;
-            p.quantity += item.quantity;
-            productSalesMap.set(item.id, p);
-          }
+          const productName = product ? product.name : item.name;
+
+          const p = productSalesMap.get(item.id) || { productId: item.id, productName: productName, sales: 0, quantity: 0 };
+          const itemOriginalSales = item.price * item.quantity;
+          const itemContextSales = selectedBranch === 'all' ? itemOriginalSales : Math.round(itemOriginalSales * (contextSales / (totalAmount || 1)));
+          p.sales += itemContextSales;
+          p.quantity += item.quantity;
+          productSalesMap.set(item.id, p);
         });
 
         // 결제수단별 매출
