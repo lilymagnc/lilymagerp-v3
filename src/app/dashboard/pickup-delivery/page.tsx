@@ -151,7 +151,7 @@ export default function PickupDeliveryPage() {
         date: Timestamp.now(),
         category: SimpleExpenseCategory.TRANSPORT,
         subCategory: 'DELIVERY',
-        description: `배송비 - ${order.orderer.name} (${order.id})`,
+        description: `배송비-${order.orderer.name}`,
         amount: actualCost,
         supplier: supplier,
         quantity: 1,
@@ -1411,9 +1411,13 @@ export default function PickupDeliveryPage() {
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
-                                <div className="text-sm text-muted-foreground">
-                                  조회 전용
-                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeliveryCostInput(order)}
+                                >
+                                  {order.actualDeliveryCost ? '수정' : '배송비 입력'}
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))}

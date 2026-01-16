@@ -111,6 +111,45 @@ export function useSimpleExpenses() {
         receiptUrl = await getDownloadURL(uploadResult.ref);
         receiptFileName = data.receiptFile.name;
       }
+
+      // 주문 관련 지출인 경우 중복 확인 및 업데이트 처리
+      if (data.relatedOrderId && data.category === SimpleExpenseCategory.TRANSPORT) {
+        try {
+          const expenseQuery = query(
+            collection(db, 'simpleExpenses'),
+            where('relatedOrderId', '==', data.relatedOrderId),
+            where('category', '==', SimpleExpenseCategory.TRANSPORT)
+          );
+          const expenseSnapshot = await getDocs(expenseQuery);
+
+          if (!expenseSnapshot.empty) {
+            // 이미 존재하는 경우 업데이트
+            const existingExpense = expenseSnapshot.docs[0];
+            const updateData = {
+              date: data.date,
+              amount: data.amount,
+              description: data.description,
+              supplier: data.supplier,
+              quantity: data.quantity || 1,
+              unitPrice: data.unitPrice || 0,
+              branchId: branchId,
+              branchName: branchName,
+              updatedAt: serverTimestamp()
+            };
+
+            await updateDoc(existingExpense.ref, updateData);
+
+            toast({
+              title: "지출 수정 완료",
+              description: "기존 배송비 지출 내역이 수정되었습니다."
+            });
+            return true;
+          }
+        } catch (error) {
+          console.error("지출 중복 확인 오류:", error);
+        }
+      }
+
       // 거래처 자동 등록 (지점에 상관없이 구매처명이 같으면 중복 처리)
       let supplierAdded = false;
       if (data.supplier && data.supplier.trim() !== '') {
@@ -204,65 +243,14 @@ export function useSimpleExpenses() {
           console.error("자재 추가/업데이트 오류:", error);
         }
       }
-      // 제품비인 경우 제품관리에 자동 등록
+      // 제품비인 경우 제품관리에 자동 등록 로직 제거 (사용자 요청: 간편지출에서 상품관리로 넘어가지 않게 함)
+      /* 
       let productAdded = false;
       if (data.category === SimpleExpenseCategory.OTHER && data.description && data.description.trim() !== '') {
-        try {
-          const productName = data.description.trim();
-          // 같은 이름의 제품이 있는지 확인 (지점 무관)
-          const productQuery = query(
-            collection(db, "products"),
-            where("name", "==", productName)
-          );
-          const productSnapshot = await getDocs(productQuery);
-          let productId: string;
-          if (!productSnapshot.empty) {
-            // 같은 이름의 제품이 있으면 기존 ID 사용
-            productId = productSnapshot.docs[0].data().id;
-          } else {
-            // 같은 이름의 제품이 없으면 새 ID 생성
-            productId = `P${String(Date.now()).slice(-5)}`;
-          }
-          // 해당 지점에 같은 ID의 제품이 있는지 확인
-          const branchProductQuery = query(
-            collection(db, "products"),
-            where("id", "==", productId),
-            where("branch", "==", branchName)
-          );
-          const branchProductSnapshot = await getDocs(branchProductQuery);
-          if (branchProductSnapshot.empty) {
-            // 해당 지점에 같은 ID의 제품이 없으면 새로 등록
-            const productData = {
-              id: productId,
-              name: productName,
-              mainCategory: '기타상품',
-              midCategory: '기타',
-              price: data.unitPrice || 0,
-              supplier: data.supplier || '미지정',
-              stock: data.quantity || 1,
-              size: '기타',
-              color: '기타',
-              branch: branchName,
-              createdAt: serverTimestamp()
-            };
-            await addDoc(collection(db, 'products'), productData);
-            productAdded = true;
-          } else {
-            // 해당 지점에 같은 ID의 제품이 있으면 수량만 업데이트
-            const existingProduct = branchProductSnapshot.docs[0];
-            const existingData = existingProduct.data();
-            const newStock = (existingData.stock || 0) + (data.quantity || 1);
-            await updateDoc(existingProduct.ref, {
-              stock: newStock,
-              price: data.unitPrice || existingData.price || 0, // 최신 가격으로 업데이트
-              updatedAt: serverTimestamp()
-            });
-            productAdded = true;
-          }
-        } catch (error) {
-          console.error("제품 추가/업데이트 오류:", error);
-        }
+         // ... previously added to products ...
       }
+      */
+      const productAdded = false; // 항상 false로 설정하여 아래 toast 메시지 등에서 영향 없도록 함
       const expenseData: Omit<SimpleExpense, 'id'> = {
         date: data.date,
         amount: data.amount,

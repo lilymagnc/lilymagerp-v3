@@ -21,21 +21,26 @@ import { MultiPrintOptionsDialog } from "@/components/multi-print-options-dialog
 import { ScanLine, Plus, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { exportProductsToExcel } from "@/lib/excel-export";
+import { useCategories } from "@/hooks/use-categories"; // 카테고리 훅 추가
 
 export default function ProductsPage() {
-  const router = useRouter(); 
-  const { 
-    products, 
-    loading, 
-    addProduct, 
-    updateProduct, 
-    deleteProduct, 
+  const router = useRouter();
+  const {
+    products,
+    loading,
+    hasMore,
+    stats,
+    loadMore,
+    addProduct,
+    updateProduct,
+    deleteProduct,
     bulkAddProducts,
     fetchProducts,
-    // migrateProductIds 제거
   } = useProducts();
   const { branches } = useBranches();
   const { user } = useAuth();
+  const { getMainCategories } = useCategories(); // 카테고리 목록 가져오기
+
   const isAdmin = user?.role === '본사 관리자';
   const userBranch = user?.franchise || "";
 
@@ -56,6 +61,11 @@ export default function ProductsPage() {
     }
   }, [branches, isAdmin, userBranch]);
 
+  // 대분류 카테고리 목록
+  const categories = useMemo(() => {
+    return getMainCategories();
+  }, [getMainCategories]);
+
   // 자동 지점 필터링 (지점 직원은 자동으로 자신의 지점으로 설정)
   useEffect(() => {
     if (!isAdmin && userBranch && selectedBranch === "all") {
@@ -63,29 +73,31 @@ export default function ProductsPage() {
     }
   }, [isAdmin, userBranch, selectedBranch]);
 
-  const filteredProducts = useMemo(() => {
-    let filtered = products;
-
-    // 지점 필터링 추가
-    if (selectedBranch !== "all") {
-      filtered = filtered.filter(product => product.branch === selectedBranch);
+  // 필터 변경 시 데이터 다시 로드
+  useEffect(() => {
+    let branchToFetch = selectedBranch;
+    if (!isAdmin && userBranch && selectedBranch === "all") {
+      branchToFetch = userBranch;
     }
 
-    // 검색어 및 카테고리 필터링
-    const finalFiltered = filtered.filter(product => {
-      const matchesSearch = (product.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                          (product.code?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-      const matchesCategory = !selectedCategory || selectedCategory === "all" || product.mainCategory === selectedCategory;
-      return matchesSearch && matchesCategory;
+    // 초기 로딩 또는 필터 변경 시 fetch
+    fetchProducts({
+      branch: branchToFetch,
+      mainCategory: selectedCategory
     });
+  }, [fetchProducts, selectedBranch, selectedCategory, isAdmin, userBranch]);
 
-    return finalFiltered;
-  }, [products, searchTerm, selectedBranch, selectedCategory, isAdmin, userBranch, user]);
 
-  // 카테고리 목록 생성 (필터링된 상품 기준)
-  const categories = useMemo(() => {
-    return [...new Set(filteredProducts.map(product => product.mainCategory).filter(Boolean))];
-  }, [filteredProducts]);
+  const filteredProducts = useMemo(() => {
+    // 서버에서 이미 필터링된 데이터를 가져오므로, 여기서는 검색어 필터링만 수행 (현재 로딩된 데이터 내에서)
+    if (!searchTerm) return products;
+
+    return products.filter(product => {
+      const matchesSearch = (product.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (product.code?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    });
+  }, [products, searchTerm]);
 
   const handleFormSubmit = async (data: any) => {
     try {
@@ -101,6 +113,12 @@ export default function ProductsPage() {
     }
   };
 
+  const currentFilters = useMemo(() => ({
+    branch: selectedBranch,
+    mainCategory: selectedCategory,
+    pageSize: 50
+  }), [selectedBranch, selectedCategory]);
+
   const handleMultiPrintSubmit = (items: { id: string; quantity: number }[], startPosition: number) => {
     const itemsQuery = items.map(item => `${item.id}:${item.quantity}`).join(',');
     const params = new URLSearchParams({
@@ -112,17 +130,16 @@ export default function ProductsPage() {
     setIsMultiPrintDialogOpen(false);
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-64">로딩 중...</div>;
-  }
-
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setIsFormOpen(true);
   };
 
   const handleRefresh = async () => {
-    await fetchProducts();
+    await fetchProducts({
+      branch: selectedBranch,
+      mainCategory: selectedCategory
+    });
   };
 
   const handleExportToExcel = async () => {
@@ -138,29 +155,64 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="상품 관리" 
+      <PageHeader
+        title="상품 관리"
         description={!isAdmin ? `${userBranch} 지점의 상품 정보를 관리합니다.` : "상품 정보를 관리합니다."}
       >
-        <Button 
-          variant="outline"
-          onClick={() => router.push('/dashboard/barcode-scanner')}
-        >
-          <ScanLine className="mr-2 h-4 w-4" />
-          바코드 스캔
-        </Button>
+        <div className="flex gap-2">
+          {/* 바코드 스캔 버튼을 헤더의 actions 영역으로 이동 (기존: PageHeader 내부 children에서 외부로 분리 필요? 아니면 PageHeader가 children을 actions로 렌더링하나?) 
+            PageHeader 정의를 보면 children이 action area에 렌더링됨.
+          */}
+          <Button
+            variant="outline"
+            onClick={() => router.push('/dashboard/barcode-scanner')}
+          >
+            <ScanLine className="mr-2 h-4 w-4" />
+            바코드 스캔
+          </Button>
+          {isAdmin && (
+            <>
+              <Button onClick={() => setIsFormOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                상품 추가
+              </Button>
+              <ImportButton
+                onImport={(data) => bulkAddProducts(data, selectedBranch)}
+                fileName="products_template.xlsx"
+                resourceName="상품"
+              />
+              <Button
+                variant="outline"
+                onClick={handleExportToExcel}
+                disabled={filteredProducts.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                엑셀 내보내기
+              </Button>
+              {selectedProducts.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsMultiPrintDialogOpen(true)}
+                >
+                  선택 상품 라벨 출력 ({selectedProducts.length}개)
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </PageHeader>
 
-      {/* 상품 통계 카드 */}
-      <ProductStatsCards 
-        products={filteredProducts} 
+      {/* 상품 통계 카드 (서버 데이터 사용) */}
+      <ProductStatsCards
+        stats={stats}
+        products={filteredProducts}
         selectedBranch={selectedBranch}
         isAdmin={isAdmin}
       />
 
       <div className="flex flex-col sm:flex-row gap-4">
         <Input
-          placeholder="상품명 또는 코드로 검색..."
+          placeholder="상품명 또는 코드로 검색 (현재 목록 내)..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1"
@@ -195,41 +247,6 @@ export default function ProductsPage() {
         </Select>
       </div>
 
-      <PageHeader title="상품 관리" description="상품을 추가, 수정, 삭제할 수 있습니다.">
-        <div className="flex gap-2">
-          {isAdmin && (
-            <>
-              <Button onClick={() => setIsFormOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                상품 추가
-              </Button>
-              {/* 마이그레이션 버튼 제거 */}
-                             <ImportButton
-                 onImport={(data) => bulkAddProducts(data, selectedBranch)}
-                 fileName="products_template.xlsx"
-                 resourceName="상품"
-               />
-              <Button 
-                variant="outline"
-                onClick={handleExportToExcel}
-                disabled={filteredProducts.length === 0}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                엑셀 내보내기
-              </Button>
-              {selectedProducts.length > 0 && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsMultiPrintDialogOpen(true)}
-                >
-                  선택 상품 라벨 출력 ({selectedProducts.length}개)
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      </PageHeader>
-
       <ProductTable
         products={filteredProducts}
         onSelectionChange={setSelectedProducts}
@@ -237,8 +254,26 @@ export default function ProductsPage() {
         onDelete={deleteProduct}
         selectedProducts={selectedProducts}
         isAdmin={isAdmin}
-        onRefresh={handleRefresh} // 새로고침 함수 전달
+        onRefresh={handleRefresh}
       />
+
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={() => loadMore(currentFilters)}
+            disabled={loading}
+            className="w-full max-w-xs shadow-sm hover:bg-accent"
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                로딩 중...
+              </div>
+            ) : "상품 더 보기"}
+          </Button>
+        </div>
+      )}
 
       <ProductForm
         isOpen={isFormOpen}

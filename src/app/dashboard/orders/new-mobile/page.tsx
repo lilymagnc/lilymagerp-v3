@@ -447,10 +447,10 @@ const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, o
                     <Button variant="outline" size="sm" onClick={onOpenCustomProduct}>직접 입력</Button>
                 </SheetHeader>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                    <TabsList className="grid grid-cols-4 mx-4 mt-2">
-                        {['flower', 'plant', 'wreath', 'other'].map(tab => (
+                    <TabsList className="grid grid-cols-5 mx-4 mt-2">
+                        {['flower', 'plant', 'wreath', 'material', 'other'].map(tab => (
                             <TabsTrigger key={tab} value={tab}>
-                                {tab === 'flower' ? '플라워' : tab === 'plant' ? '플랜트' : tab === 'wreath' ? '화환' : '기타'}
+                                {tab === 'flower' ? '플라워' : tab === 'plant' ? '플랜트' : tab === 'wreath' ? '화환' : tab === 'material' ? '자재' : '기타'}
                             </TabsTrigger>
                         ))}
                     </TabsList>
