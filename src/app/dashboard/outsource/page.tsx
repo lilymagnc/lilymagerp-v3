@@ -57,8 +57,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip as RechartsTooltip,
+    ResponsiveContainer,
+    Cell,
+    PieChart,
+    Pie,
+    Legend
+} from 'recharts';
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function OutsourcePage() {
     const { orders, loading, stats: totalStats, fetchOutsourceOrders, updateOutsourceStatus } = useOutsourceOrders();
@@ -156,6 +170,36 @@ export default function OutsourcePage() {
         return Array.from(statsMap.values()).sort((a, b) => b.revenue - a.revenue);
     }, [filteredOrders]);
 
+    const branchStats = React.useMemo(() => {
+        const statsMap = new Map<string, {
+            branchName: string,
+            count: number,
+            revenue: number,
+            partnerPrice: number,
+            profit: number
+        }>();
+
+        filteredOrders.forEach(order => {
+            const branchName = order.branchName || "미지정";
+            const current = statsMap.get(branchName) || {
+                branchName,
+                count: 0,
+                revenue: 0,
+                partnerPrice: 0,
+                profit: 0
+            };
+
+            current.count += 1;
+            current.revenue += order.summary?.total || 0;
+            current.partnerPrice += order.outsourceInfo?.partnerPrice || 0;
+            current.profit += order.outsourceInfo?.profit || 0;
+
+            statsMap.set(branchName, current);
+        });
+
+        return Array.from(statsMap.values()).sort((a, b) => b.revenue - a.revenue);
+    }, [filteredOrders]);
+
     const activeStats = React.useMemo(() => {
         const totalCount = filteredOrders.length;
         const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.summary?.total || 0), 0);
@@ -171,6 +215,25 @@ export default function OutsourcePage() {
             averageMargin
         };
     }, [filteredOrders]);
+
+    const annualRevenue = React.useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        return orders.filter(order => {
+            if (isAdmin && selectedBranch !== "all" && order.branchName !== selectedBranch) {
+                return false;
+            }
+            const orderDate = order.orderDate instanceof Timestamp ? order.orderDate.toDate() : new Date(order.orderDate);
+            return orderDate.getFullYear() === currentYear;
+        }).reduce((sum, order) => sum + (order.summary?.total || 0), 0);
+    }, [orders, selectedBranch, isAdmin]);
+
+    const periodTitle = React.useMemo(() => {
+        if (!startDate || !endDate) return "전체 기간";
+        if (format(startDate, 'yyyyMM') === format(endDate, 'yyyyMM')) {
+            return format(startDate, 'yyyy년 MM월');
+        }
+        return `${format(startDate, 'yy/MM/dd')} ~ ${format(endDate, 'yy/MM/dd')}`;
+    }, [startDate, endDate]);
 
     const handleDownloadStats = () => {
         const data = partnerStats.map(s => ({
@@ -335,15 +398,15 @@ export default function OutsourcePage() {
             </Card>
 
             {/* 대시보드 요약 */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <Card className="bg-slate-900 text-white">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">발주 건수</CardTitle>
-                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-slate-300">{new Date().getFullYear()}년 총액</CardTitle>
+                        <DollarSign className="h-4 w-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{activeStats.totalCount}건</div>
-                        {(startDate || endDate) && <p className="text-xs text-muted-foreground mt-1">필터 적용됨</p>}
+                        <div className="text-2xl font-bold">₩{annualRevenue.toLocaleString()}</div>
+                        <p className="text-[10px] text-slate-400 mt-1">올해 전체 주문 합계</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -353,11 +416,12 @@ export default function OutsourcePage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-blue-600">₩{activeStats.totalRevenue.toLocaleString()}</div>
+                        <p className="text-[10px] text-muted-foreground mt-1">선택 기간 합계</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">수익액 (Profit)</CardTitle>
+                        <CardTitle className="text-sm font-medium">수수료 수익</CardTitle>
                         <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -374,49 +438,164 @@ export default function OutsourcePage() {
                         <div className="text-2xl font-bold text-orange-600">₩{activeStats.totalPartnerPrice.toLocaleString()}</div>
                     </CardContent>
                 </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">발주 건수</CardTitle>
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{activeStats.totalCount}건</div>
+                        {(startDate || endDate) && <p className="text-xs text-muted-foreground mt-1">필터 적용됨</p>}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* 차트 시각화 섹션 */}
+            <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-primary" />
+                            {periodTitle} 지점별 발주 현황
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={branchStats.slice(0, 5)} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis
+                                    dataKey="branchName"
+                                    tick={{ fontSize: 11 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis
+                                    tick={{ fontSize: 11 }}
+                                    tickFormatter={(value) => `₩${(value / 10000).toLocaleString()}만`}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <RechartsTooltip
+                                    formatter={(value: number) => [`₩${value.toLocaleString()}원`, '매출']}
+                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
+                                    {branchStats.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={index === 0 ? '#3b82f6' : '#93c5fd'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base font-medium flex items-center gap-2">
+                            <Package className="h-4 w-4 text-emerald-500" />
+                            {periodTitle} 지점별 수익 분포
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={branchStats}
+                                    dataKey="profit"
+                                    nameKey="branchName"
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    label={({ branchName, percent }) => `${branchName} ${(percent * 100).toFixed(0)}%`}
+                                >
+                                    {branchStats.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#10b981' : '#6ee7b7'} />
+                                    ))}
+                                </Pie>
+                                <RechartsTooltip formatter={(value: number) => `₩${value.toLocaleString()}원`} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
             </div>
 
             <div className="grid gap-4 md:grid-cols-7">
-                {/* 업체별 통계 요약 */}
+                {/* 업체별/지점별 통계 탭 */}
                 <Card className="md:col-span-3">
-                    <CardHeader>
-                        <CardTitle className="text-lg">수주 업체별 통계</CardTitle>
-                        <CardDescription>
-                            {startDate ? format(startDate, 'yyyy년 M월') : '전체'} 업체별 수주 건수와 수익 현황입니다.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="relative w-full overflow-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>업체명</TableHead>
-                                        <TableHead className="text-center">건수</TableHead>
-                                        <TableHead className="text-right">발주가</TableHead>
-                                        <TableHead className="text-right">수익</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {partnerStats.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center py-4 text-sm text-muted-foreground">
-                                                데이터가 없습니다.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        partnerStats.map((s) => (
-                                            <TableRow key={s.partnerName}>
-                                                <TableCell className="font-medium text-xs">{s.partnerName}</TableCell>
-                                                <TableCell className="text-center text-xs">{s.count}</TableCell>
-                                                <TableCell className="text-right text-[10px]">₩{s.partnerPrice.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right font-semibold text-green-600 text-xs text-nowrap">₩{s.profit.toLocaleString()}</TableCell>
+                    <Tabs defaultValue="partners" className="w-full">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                                <CardTitle className="text-lg">분류별 통계 요약</CardTitle>
+                                <CardDescription>
+                                    조건별 수주/발주 현황입니다.
+                                </CardDescription>
+                            </div>
+                            <TabsList className="bg-muted">
+                                <TabsTrigger value="partners" className="text-xs">업체별</TabsTrigger>
+                                <TabsTrigger value="branches" className="text-xs">지점별</TabsTrigger>
+                            </TabsList>
+                        </CardHeader>
+                        <CardContent>
+                            <TabsContent value="partners" className="m-0">
+                                <div className="max-h-[350px] overflow-auto">
+                                    <Table>
+                                        <TableHeader className="sticky top-0 bg-white z-10 shadow-sm border-b">
+                                            <TableRow>
+                                                <TableHead className="text-xs">업체명</TableHead>
+                                                <TableHead className="text-center text-xs">건수</TableHead>
+                                                <TableHead className="text-right text-xs">발주가</TableHead>
+                                                <TableHead className="text-right text-xs">수익</TableHead>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {partnerStats.length === 0 ? (
+                                                <TableRow><TableCell colSpan={4} className="text-center py-4 text-sm text-muted-foreground">데이터가 없습니다.</TableCell></TableRow>
+                                            ) : (
+                                                partnerStats.map((s) => (
+                                                    <TableRow key={s.partnerName}>
+                                                        <TableCell className="font-medium text-xs truncate max-w-[120px]">{s.partnerName}</TableCell>
+                                                        <TableCell className="text-center text-xs">{s.count}</TableCell>
+                                                        <TableCell className="text-right text-[10px]">₩{s.partnerPrice.toLocaleString()}</TableCell>
+                                                        <TableCell className="text-right font-semibold text-green-600 text-xs">₩{s.profit.toLocaleString()}</TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </TabsContent>
+                            <TabsContent value="branches" className="m-0">
+                                <div className="max-h-[350px] overflow-auto">
+                                    <Table>
+                                        <TableHeader className="sticky top-0 bg-white z-10 shadow-sm border-b">
+                                            <TableRow>
+                                                <TableHead className="text-xs">지점명</TableHead>
+                                                <TableHead className="text-center text-xs">건수</TableHead>
+                                                <TableHead className="text-right text-xs">발주가</TableHead>
+                                                <TableHead className="text-right text-xs">수익</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {branchStats.length === 0 ? (
+                                                <TableRow><TableCell colSpan={4} className="text-center py-4 text-sm text-muted-foreground">데이터가 없습니다.</TableCell></TableRow>
+                                            ) : (
+                                                branchStats.map((s) => (
+                                                    <TableRow key={s.branchName}>
+                                                        <TableCell className="font-medium text-xs">{s.branchName}</TableCell>
+                                                        <TableCell className="text-center text-xs">{s.count}</TableCell>
+                                                        <TableCell className="text-right text-[10px]">₩{s.partnerPrice.toLocaleString()}</TableCell>
+                                                        <TableCell className="text-right font-semibold text-green-600 text-xs">₩{s.profit.toLocaleString()}</TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </TabsContent>
+                        </CardContent>
+                    </Tabs>
                 </Card>
 
                 {/* 요약 상세 */}
@@ -445,14 +624,14 @@ export default function OutsourcePage() {
                                         <TableRow><TableCell colSpan={4} className="text-center py-4">내역 없음</TableCell></TableRow>
                                     ) : (
                                         filteredOrders.slice(0, 5).map((order) => (
-                                            <TableRow key={order.id} className="cursor-pointer" onClick={() => handleRowClick(order)}>
+                                            <TableRow key={order.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleRowClick(order)}>
                                                 <TableCell className="text-[10px] whitespace-nowrap">
                                                     {order.outsourceInfo?.outsourcedAt && format((order.outsourceInfo.outsourcedAt as Timestamp).toDate(), 'MM/dd HH:mm')}
                                                 </TableCell>
                                                 <TableCell className="font-medium text-xs truncate max-w-[100px]">{order.outsourceInfo?.partnerName}</TableCell>
-                                                <TableCell className="text-right text-xs">₩{order.outsourceInfo?.partnerPrice.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right text-xs font-medium">₩{order.outsourceInfo?.partnerPrice.toLocaleString()}</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={order.outsourceInfo?.status === 'completed' ? 'default' : 'secondary'} className="text-[10px] px-1 h-5">
+                                                    <Badge variant={order.outsourceInfo?.status === 'completed' ? 'default' : 'secondary'} className="text-[10px] px-2 h-5">
                                                         {order.outsourceInfo?.status === 'pending' ? '대기' :
                                                             order.outsourceInfo?.status === 'accepted' ? '수락' :
                                                                 order.outsourceInfo?.status === 'completed' ? '완료' : '취소'}
