@@ -221,9 +221,9 @@ export function FulfillmentSection({
                                 <div className="flex gap-2">
                                     <Input
                                         value={deliveryAddress}
-                                        readOnly
-                                        placeholder="주소를 검색해주세요"
-                                        className="flex-1 bg-muted/50"
+                                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                                        placeholder="주소 입력 또는 검색"
+                                        className="flex-1"
                                     />
                                     <Button type="button" onClick={onAddressSearch} variant="secondary">
                                         <Search className="w-4 h-4 mr-2" />

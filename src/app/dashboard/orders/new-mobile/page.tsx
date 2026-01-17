@@ -271,7 +271,7 @@ const FulfillmentSection = memo(({
                             <div>
                                 <Label className="text-xs">배송지</Label>
                                 <div className="flex gap-2">
-                                    <Input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="주소 입력 or 검색" className="h-9 flex-1 text-xs" />
+                                    <Input value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="주소 입력 또는 검색" className="h-9 flex-1 text-xs" />
                                     <Button variant="outline" size="sm" onClick={handleAddressSearch} className="h-9 px-3"><Search className="h-4 w-4" /></Button>
                                 </div>
                                 <Input value={deliveryAddressDetail} onChange={e => setDeliveryAddressDetail(e.target.value)} placeholder="상세주소" className="mt-2 h-9 text-xs" />
@@ -743,6 +743,14 @@ export default function NewOrderMobilePage() {
             setRecipientContact(ordererContact);
         }
     }, [isSameAsOrderer, ordererName, ordererContact]);
+
+    useEffect(() => {
+        if (receiptType === 'delivery_reservation') {
+            setIsSameAsOrderer(false);
+            setRecipientName("");
+            setRecipientContact("");
+        }
+    }, [receiptType]);
 
     useEffect(() => {
         if (receiptType === 'delivery_reservation' && deliveryAddress && selectedBranch?.deliveryFees) {

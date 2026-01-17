@@ -421,10 +421,10 @@ export default function NewOrderPage() {
       }
     } else if (receiptType === 'delivery_reservation') {
       setDeliveryFeeType("auto");
-      if (isSameAsOrderer) {
-        setRecipientName(ordererName);
-        setRecipientContact(ordererContact);
-      }
+      // For delivery, usually someone else receives it, so uncheck sameAsOrderer
+      setIsSameAsOrderer(false);
+      setRecipientName("");
+      setRecipientContact("");
     }
   }, [receiptType]);
 
