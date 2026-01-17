@@ -492,8 +492,8 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
                   <Label htmlFor="orderer-company">회사명</Label>
                   <Input
                     id="orderer-company"
-                    value={formData.orderer.companyName}
-                    onChange={(e) => handleInputChange('orderer', 'companyName', e.target.value)}
+                    value={formData.orderer.company}
+                    onChange={(e) => handleInputChange('orderer', 'company', e.target.value)}
                     placeholder="회사명을 입력하세요"
                   />
                 </div>

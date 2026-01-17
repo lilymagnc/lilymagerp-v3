@@ -31,6 +31,8 @@ interface CustomerSectionProps {
     setOrdererName: (name: string) => void;
     ordererContact: string;
     setOrdererContact: (contact: string) => void;
+    ordererCompany: string;
+    setOrdererCompany: (company: string) => void;
     isAnonymous: boolean;
     setIsAnonymous: (isAnonymous: boolean) => void;
     registerCustomer: boolean;
@@ -55,6 +57,8 @@ export function CustomerSection({
     setOrdererName,
     ordererContact,
     setOrdererContact,
+    ordererCompany,
+    setOrdererCompany,
     isAnonymous,
     setIsAnonymous,
     registerCustomer,
@@ -93,7 +97,7 @@ export function CustomerSection({
                     <div className="relative">
                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
-                            placeholder="이름 또는 전화번호로 검색..."
+                            placeholder="이름, 전화번호 또는 회사명으로 검색..."
                             value={customerSearchQuery}
                             onChange={(e) => setCustomerSearchQuery(e.target.value)}
                             onFocus={() => setIsCustomerSearchOpen(true)}
@@ -111,7 +115,10 @@ export function CustomerSection({
                                         className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                                         onClick={() => onCustomerSelect(customer)}
                                     >
-                                        <div className="font-medium">{customer.name}</div>
+                                        <div className="font-medium">
+                                            {customer.name}
+                                            {customer.companyName && <span className="text-xs text-muted-foreground ml-2">({customer.companyName})</span>}
+                                        </div>
                                         <div className="text-gray-500 text-xs">{customer.contact}</div>
                                     </div>
                                 ))
@@ -125,25 +132,36 @@ export function CustomerSection({
                     )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="ordererName">주문자명</Label>
+                        <Label htmlFor="ordererCompany">회사명</Label>
                         <Input
-                            id="ordererName"
-                            value={ordererName}
-                            onChange={(e) => setOrdererName(e.target.value)}
-                            placeholder="홍길동"
+                            id="ordererCompany"
+                            value={ordererCompany}
+                            onChange={(e) => setOrdererCompany(e.target.value)}
+                            placeholder="회사명을 입력하세요"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="ordererContact">연락처</Label>
-                        <Input
-                            id="ordererContact"
-                            value={ordererContact}
-                            onChange={(e) => setOrdererContact(formatPhoneNumber(e.target.value))}
-                            placeholder="010-0000-0000"
-                            maxLength={13}
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="ordererName">주문자명</Label>
+                            <Input
+                                id="ordererName"
+                                value={ordererName}
+                                onChange={(e) => setOrdererName(e.target.value)}
+                                placeholder="홍길동"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="ordererContact">연락처</Label>
+                            <Input
+                                id="ordererContact"
+                                value={ordererContact}
+                                onChange={(e) => setOrdererContact(formatPhoneNumber(e.target.value))}
+                                placeholder="010-0000-0000"
+                                maxLength={13}
+                            />
+                        </div>
                     </div>
                 </div>
 

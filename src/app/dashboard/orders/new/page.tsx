@@ -252,10 +252,9 @@ export default function NewOrderPage() {
   }, [allProducts, selectedBranch]);
 
   // Top Products Calculation
-  const calculateTopProducts = (category: string, limit: number, isMidCategory = false, keyword = '') => {
+  const calculateTopProducts = useCallback((category: string, limit: number, isMidCategory = false, keyword = '') => {
     if (!branchProducts.length || !selectedBranch) return [];
 
-    // Count from orders
     const productCounts: Record<string, number> = {};
     orders.forEach(order => {
       if (order.branchId === selectedBranch.id || order.branchName === selectedBranch.name) {
@@ -272,9 +271,17 @@ export default function NewOrderPage() {
         (p.mainCategory === '자재' && p.midCategory?.includes(keyword))
       );
     } else if (isMidCategory) {
-      targetProducts = targetProducts.filter(p =>
-        p.mainCategory === category || p.midCategory === category || p.name.includes(category)
-      );
+      targetProducts = targetProducts.filter(p => {
+        const mCat = p.mainCategory || "";
+        const midCat = p.midCategory || "";
+        const name = p.name || "";
+
+        if (category === '화환') return mCat.includes('화환') || midCat.includes('화환') || name.includes('화환') || name.includes('근조') || name.includes('축하');
+        if (category === '동서양란') return mCat.includes('란') || midCat.includes('란') || name.includes('란') || mCat.includes('난') || midCat.includes('난') || name.includes('난') || name.includes('동양란') || name.includes('서양란') || name.includes('호접란');
+        if (category === '플랜트') return mCat.includes('플랜트') || mCat.includes('관엽') || mCat.includes('공기정화');
+
+        return mCat.includes(category) || midCat.includes(category) || name.includes(category);
+      });
     } else {
       targetProducts = targetProducts.filter(p => p.mainCategory === category);
     }
@@ -289,16 +296,40 @@ export default function NewOrderPage() {
     if (allAvailable.length < limit) {
       const remaining = targetProducts
         .filter(p => !allAvailable.find(ap => ap.id === p.id))
-        .sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0)); // Prioritize stock > 0
+        .sort((a, b) => (b.stock > 0 ? 1 : 0) - (a.stock > 0 ? 1 : 0));
       allAvailable.push(...remaining);
     }
     return allAvailable.slice(0, limit);
-  };
+  }, [branchProducts, selectedBranch, orders]);
 
-  const topFlowerProducts = useMemo(() => calculateTopProducts('플라워', 10), [branchProducts, orders, selectedBranch]);
-  const topPlantProducts = useMemo(() => calculateTopProducts('플랜트', 10), [branchProducts, orders, selectedBranch]);
-  const topWreathProducts = useMemo(() => calculateTopProducts('경조화환', 5, true), [branchProducts, orders, selectedBranch]);
-  const shoppingBagProducts = useMemo(() => calculateTopProducts('', 10, false, '쇼핑백'), [branchProducts, orders, selectedBranch]);
+  const dynamicCategories = useMemo(() => {
+    if (!selectedBranch || !branchProducts.length) return [];
+
+    // User requested specific categories and order
+    const priority = ['꽃다발', '꽃바구니', '센터피스', '플랜트', '동서양란', '화환', '자재'];
+
+    const getMatch = (p: Product, cat: string) => {
+      const mCat = p.mainCategory || "";
+      const midCat = p.midCategory || "";
+      const name = p.name || "";
+
+      if (cat === '화환') return mCat.includes('화환') || midCat.includes('화환') || name.includes('화환') || name.includes('근조') || name.includes('축하');
+      if (cat === '동서양란') return mCat.includes('란') || midCat.includes('란') || name.includes('란') || mCat.includes('난') || midCat.includes('난') || name.includes('난') || name.includes('동양란') || name.includes('서양란') || name.includes('호접란');
+      if (cat === '플랜트') return mCat.includes('플랜트') || mCat.includes('관엽') || mCat.includes('공기정화');
+
+      return mCat.includes(cat) || midCat.includes(cat) || name.includes(cat);
+    };
+
+    return priority.map(cat => {
+      const hasProducts = branchProducts.some(p => getMatch(p, cat));
+      if (!hasProducts) return null;
+
+      return {
+        name: cat,
+        products: calculateTopProducts(cat, 10, true) // Limited to 10 as requested
+      };
+    }).filter((c): c is any => c !== null);
+  }, [branchProducts, orders, selectedBranch, calculateTopProducts]);
 
 
   // Order Edit Logic
@@ -487,6 +518,42 @@ export default function NewOrderPage() {
     setSelectedBranch(branch);
   };
 
+  const applyLastOrderPreferences = useCallback(async (contact: string, company?: string) => {
+    try {
+      if (!contact && (!company || !company.trim())) return;
+
+      const ordersRef = collection(db, 'orders');
+      let q;
+
+      if (company && company.trim()) {
+        q = query(
+          ordersRef,
+          where('orderer.company', '==', company.trim()),
+          orderBy('orderDate', 'desc'),
+          limit(1)
+        );
+      } else {
+        q = query(
+          ordersRef,
+          where('orderer.contact', '==', contact),
+          orderBy('orderDate', 'desc'),
+          limit(1)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        const lastOrder = snapshot.docs[0].data() as any;
+        if (lastOrder.payment) {
+          if (lastOrder.payment.method) setPaymentMethod(lastOrder.payment.method as PaymentMethod);
+          if (lastOrder.payment.status) setPaymentStatus(lastOrder.payment.status as PaymentStatus);
+        }
+      }
+    } catch (error) {
+      console.error("Error applying last order preferences:", error);
+    }
+  }, []);
+
   const handleAddProduct = (product: Product) => {
     setOrderItems(prevItems => {
       const existingItem = prevItems.find(item => item.id === product.id);
@@ -555,7 +622,9 @@ export default function NewOrderPage() {
 
         const searchTerm = query.toLowerCase().trim();
         const results = customers.filter(c => {
-          return c.name.includes(searchTerm) || c.contact.includes(searchTerm) || (c.companyName || "").includes(searchTerm);
+          return c.name.toLowerCase().includes(searchTerm) ||
+            c.contact.includes(searchTerm) ||
+            (c.companyName || "").toLowerCase().includes(searchTerm);
         });
         setCustomerSearchResults(results);
       } finally {
@@ -743,11 +812,14 @@ export default function NewOrderPage() {
               setOrdererCompany(c.companyName || "");
               setIsCustomerSearchOpen(false);
               setCustomerSearchQuery(c.name);
+              applyLastOrderPreferences(c.contact, c.companyName);
             }}
             ordererName={ordererName}
             setOrdererName={setOrdererName}
             ordererContact={ordererContact}
             setOrdererContact={setOrdererContact}
+            ordererCompany={ordererCompany}
+            setOrdererCompany={setOrdererCompany}
             isAnonymous={isAnonymous}
             setIsAnonymous={setIsAnonymous}
             registerCustomer={registerCustomer}
@@ -757,15 +829,12 @@ export default function NewOrderPage() {
 
           <ProductSection
             onTabChange={(tab: string) => {
-              if (tab === 'wreath') {
+              if (tab === '경조화환' || tab === 'wreath') {
                 setReceiptType('delivery_reservation');
               }
             }}
             allProducts={branchProducts}
-            topFlowerProducts={topFlowerProducts}
-            topPlantProducts={topPlantProducts}
-            topWreathProducts={topWreathProducts}
-            shoppingBagProducts={shoppingBagProducts}
+            categories={dynamicCategories}
             onAddProduct={handleAddProduct}
             onOpenCustomProductDialog={() => setIsCustomProductDialogOpen(true)}
           />

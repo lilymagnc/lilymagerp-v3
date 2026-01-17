@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
+interface CategoryData {
+    name: string;
+    products: Product[];
+}
+
 interface ProductSectionProps {
-    topFlowerProducts: Product[];
-    topPlantProducts: Product[];
-    topWreathProducts: Product[];
-    shoppingBagProducts: Product[];
+    categories: CategoryData[];
     allProducts: Product[]; // Full list of products for the branch
     onAddProduct: (product: Product) => void;
     onOpenCustomProductDialog: () => void;
@@ -23,40 +25,40 @@ interface ProductSectionProps {
 }
 
 export function ProductSection({
-    topFlowerProducts,
-    topPlantProducts,
-    topWreathProducts,
-    shoppingBagProducts,
+    categories,
     allProducts,
     onAddProduct,
     onOpenCustomProductDialog,
     onTabChange
 }: ProductSectionProps) {
-    const [activeTab, setActiveTab] = useState("flower");
+    const [activeTab, setActiveTab] = useState(categories[0]?.name || "");
     const [searchTerm, setSearchTerm] = useState("");
 
+    // Update active tab if categories change and current tab is invalid
+    React.useEffect(() => {
+        if (categories.length > 0 && (!activeTab || !categories.find(c => c.name === activeTab))) {
+            setActiveTab(categories[0].name);
+        }
+    }, [categories, activeTab]);
+
     const filteredAllProducts = allProducts.filter(p => {
-        // 1. Text Search Filter
         const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-        // 2. Category Filter based on Active Tab
         let matchesCategory = true;
+        if (activeTab) {
+            const mCat = p.mainCategory || "";
+            const midCat = p.midCategory || "";
+            const name = p.name || "";
 
-        // Avoid filtering if searching globally? Usually standard UX is filter within category, 
-        // OR search overrides category. 
-        // User request: "When category is selected, product list should show THAT category products only."
-        // We will prioritize Category Filter ALWAYS, unless maybe strict all-search is needed.
-        // Let's filter by category.
-
-        if (activeTab === 'flower') {
-            matchesCategory = p.mainCategory === '플라워';
-        } else if (activeTab === 'plant') {
-            matchesCategory = p.mainCategory === '플랜트';
-        } else if (activeTab === 'wreath') {
-            matchesCategory = p.mainCategory === '경조화환';
-        } else if (activeTab === 'shoppingbag') {
-            // Logic for shopping bag / 'etc'
-            matchesCategory = p.name.includes('쇼핑백') || p.mainCategory === '자재' || p.mainCategory === '기타';
+            if (activeTab === '화환') {
+                matchesCategory = mCat.includes('화환') || midCat.includes('화환') || name.includes('화환') || name.includes('근조') || name.includes('축하');
+            } else if (activeTab === '동서양란') {
+                matchesCategory = mCat.includes('란') || midCat.includes('란') || name.includes('란') || mCat.includes('난') || midCat.includes('난') || name.includes('난') || name.includes('동양란') || name.includes('서양란') || name.includes('호접란');
+            } else if (activeTab === '플랜트') {
+                matchesCategory = mCat.includes('플랜트') || mCat.includes('관엽') || mCat.includes('공기정화');
+            } else {
+                matchesCategory = mCat.includes(activeTab) || midCat.includes(activeTab) || name.includes(activeTab);
+            }
         }
 
         return matchesSearch && matchesCategory;
@@ -104,47 +106,31 @@ export function ProductSection({
                     setActiveTab(val);
                     onTabChange?.(val);
                 }} className="w-full">
-                    <TabsList className="grid w-full grid-cols-5 mb-4">
-                        <TabsTrigger value="flower">꽃다발/바구니</TabsTrigger>
-                        <TabsTrigger value="plant">관엽식물/동서양란</TabsTrigger>
-                        <TabsTrigger value="wreath">경조화환</TabsTrigger>
-                        <TabsTrigger value="shoppingbag">쇼핑백/기타</TabsTrigger>
-                        {/* Added 'all' tab or keep distinct? Maybe just the search below is enough. */}
-                    </TabsList>
+                    <ScrollArea className="w-full whitespace-nowrap rounded-md border bg-muted/50 p-1 mb-4">
+                        <TabsList className="inline-flex w-max min-w-full justify-start h-9 p-0 bg-transparent">
+                            {categories.map((cat) => (
+                                <TabsTrigger
+                                    key={cat.name}
+                                    value={cat.name}
+                                    className="data-[state=active]:bg-white data-[state=active]:shadow-sm px-4"
+                                >
+                                    {cat.name}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
 
-                    <TabsContent value="flower" className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-medium text-muted-foreground">인기 상품 (Top 10)</h4>
+                    {categories.map((cat) => (
+                        <TabsContent key={cat.name} value={cat.name} className="space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-medium text-muted-foreground">{cat.name} 판매 순위 상품</h4>
+                                </div>
+                                <ProductGrid products={cat.products} />
                             </div>
-                            <ProductGrid products={topFlowerProducts} />
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="plant" className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-medium text-muted-foreground">인기 상품 (Top 10)</h4>
-                            </div>
-                            <ProductGrid products={topPlantProducts} />
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="wreath" className="space-y-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-medium text-muted-foreground">인기 상품 (Top 5)</h4>
-                            </div>
-                            <ProductGrid products={topWreathProducts} />
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="shoppingbag" className="space-y-4">
-                        <div className="space-y-2">
-                            <h4 className="text-sm font-medium text-muted-foreground">쇼핑백 및 기타 자재</h4>
-                            <ProductGrid products={shoppingBagProducts} />
-                        </div>
-                    </TabsContent>
+                        </TabsContent>
+                    ))}
                 </Tabs>
 
                 <div className="mt-6 pt-4 border-t space-y-3">
@@ -163,7 +149,7 @@ export function ProductSection({
                             const p = allProducts.find(prod => prod.docId === val);
                             if (p) {
                                 onAddProduct(p);
-                                setSearchTerm(""); // Reset search? Optional
+                                setSearchTerm("");
                             }
                         }}>
                             <SelectTrigger className="w-[200px]">
@@ -183,7 +169,6 @@ export function ProductSection({
                             </SelectContent>
                         </Select>
                     </div>
-                    {/* Suggestion Grid for Search Terms */}
                     {searchTerm && (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
                             {filteredAllProducts.slice(0, 6).map(p => (

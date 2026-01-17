@@ -42,7 +42,7 @@ interface OrderItem extends Product {
 type ReceiptType = "store_pickup" | "pickup_reservation" | "delivery_reservation";
 type PaymentMethod = "card" | "cash" | "transfer" | "mainpay" | "shopping_mall" | "epay" | "kakao" | "apple";
 type PaymentStatus = "pending" | "paid" | "completed" | "split_payment";
-type MessageType = "card" | "ribbon";
+type MessageType = "card" | "ribbon" | "none";
 
 declare global {
     interface Window {
@@ -106,6 +106,7 @@ BranchSelector.displayName = "BranchSelector";
 const OrdererSection = memo(({
     ordererName, setOrdererName,
     ordererContact, setOrdererContact,
+    ordererCompany, setOrdererCompany,
     selectedCustomer, setSelectedCustomer,
     isRegisterCustomer, setIsRegisterCustomer,
     isAnonymous, setIsAnonymous,
@@ -122,6 +123,10 @@ const OrdererSection = memo(({
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-2 space-y-3">
+                <div>
+                    <Label className="text-xs text-muted-foreground">회사명</Label>
+                    <Input value={ordererCompany} onChange={e => setOrdererCompany(e.target.value)} className="h-9" placeholder="회사명을 입력하세요" />
+                </div>
                 <div className="flex gap-2">
                     <div className="flex-1">
                         <Label className="text-xs text-muted-foreground">이름</Label>
@@ -441,10 +446,10 @@ const CustomerSearchSheet = memo(({ open, onOpenChange, onSelect, customers }: a
                 <SheetHeader className="p-4 border-b">
                     <SheetTitle>고객 검색</SheetTitle>
                     <SheetDescription>
-                        이름 또는 전화번호로 고객을 검색할 수 있습니다.
+                        이름, 전화번호 또는 회사명으로 고객을 검색할 수 있습니다.
                     </SheetDescription>
                     <Input
-                        placeholder="이름 또는 전화번호 검색"
+                        placeholder="이름, 전화번호 또는 회사명 검색"
                         value={searchQuery}
                         onChange={(e) => {
                             setSearchQuery(e.target.value);
@@ -456,7 +461,13 @@ const CustomerSearchSheet = memo(({ open, onOpenChange, onSelect, customers }: a
                 <div className="flex-1 overflow-y-auto p-4">
                     {searchResults.map(c => (
                         <div key={c.id} className="py-2 border-b flex justify-between items-center" onClick={() => { onSelect(c); onOpenChange(false); }}>
-                            <div><div className="font-bold text-sm">{c.name}</div><div className="text-xs text-gray-500">{c.contact}</div></div>
+                            <div>
+                                <div className="font-bold text-sm">
+                                    {c.name}
+                                    {c.companyName && <span className="text-xs text-muted-foreground ml-1">({c.companyName})</span>}
+                                </div>
+                                <div className="text-xs text-gray-500">{c.contact}</div>
+                            </div>
                             <Badge variant="outline" className="text-xs">{c.points?.toLocaleString() ?? 0}P</Badge>
                         </div>
                     ))}
@@ -472,8 +483,15 @@ CustomerSearchSheet.displayName = "CustomerSearchSheet";
 
 // --- PRODUCT SELECTION SHEET ---
 const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, onAddProduct, orderItems, onOpenCustomProduct }: any) => {
-    const [activeTab, setActiveTab] = useState("flower");
+    const [activeTab, setActiveTab] = useState(Object.keys(categorizedProducts)[0] || "");
     const [searchTerm, setSearchTerm] = useState("");
+
+    useEffect(() => {
+        const keys = Object.keys(categorizedProducts);
+        if (keys.length > 0 && (!activeTab || !keys.includes(activeTab))) {
+            setActiveTab(keys[0]);
+        }
+    }, [categorizedProducts, activeTab]);
 
     const getProductQuantity = (docId: string) => {
         return orderItems.find((item: any) => item.docId === docId)?.quantity || 0;
@@ -518,13 +536,15 @@ const ProductSelectionSheet = memo(({ open, onOpenChange, categorizedProducts, o
                     </div>
                 </div>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                    <TabsList className="grid grid-cols-5 mx-4 mt-2">
-                        {['flower', 'plant', 'wreath', 'material', 'other'].map(tab => (
-                            <TabsTrigger key={tab} value={tab}>
-                                {tab === 'flower' ? '플라워' : tab === 'plant' ? '플랜트' : tab === 'wreath' ? '화환' : tab === 'material' ? '자재' : '기타'}
-                            </TabsTrigger>
-                        ))}
-                    </TabsList>
+                    <div className="mx-4 mt-2 overflow-x-auto no-scrollbar">
+                        <TabsList className="inline-flex w-max min-w-full p-1 h-10">
+                            {Object.keys(categorizedProducts).map(cat => (
+                                <TabsTrigger key={cat} value={cat} className="px-4 text-xs whitespace-nowrap">
+                                    {cat}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </div>
                     <div className="flex-1 overflow-y-auto p-4">
                         {Object.entries(filteredCategorizedProducts).map(([key, products]) => (
                             <TabsContent key={key} value={key} className="mt-0 grid grid-cols-2 gap-2">
@@ -582,9 +602,46 @@ export default function NewOrderMobilePage() {
     // Orderer
     const [ordererName, setOrdererName] = useState("");
     const [ordererContact, setOrdererContact] = useState("");
+    const [ordererCompany, setOrdererCompany] = useState("");
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [isAnonymous, setIsAnonymous] = useState(false);
     const [isRegisterCustomer, setIsRegisterCustomer] = useState(true);
+
+    const applyLastOrderPreferences = useCallback(async (contact: string, company?: string) => {
+        try {
+            if (!contact && (!company || !company.trim())) return;
+
+            const ordersRef = collection(db, 'orders');
+            let q;
+
+            if (company && company.trim()) {
+                q = query(
+                    ordersRef,
+                    where('orderer.company', '==', company.trim()),
+                    orderBy('orderDate', 'desc'),
+                    limit(1)
+                );
+            } else {
+                q = query(
+                    ordersRef,
+                    where('orderer.contact', '==', contact),
+                    orderBy('orderDate', 'desc'),
+                    limit(1)
+                );
+            }
+
+            const snapshot = await getDocs(q);
+            if (!snapshot.empty) {
+                const lastOrder = snapshot.docs[0].data() as any;
+                if (lastOrder.payment) {
+                    if (lastOrder.payment.method) setPaymentMethod(lastOrder.payment.method as PaymentMethod);
+                    if (lastOrder.payment.status) setPaymentStatus(lastOrder.payment.status as PaymentStatus);
+                }
+            }
+        } catch (error) {
+            console.error("Error applying last order preferences:", error);
+        }
+    }, []);
 
     // Fulfillment
     const [receiptType, setReceiptType] = useState<ReceiptType>("store_pickup");
@@ -720,14 +777,31 @@ export default function NewOrderMobilePage() {
     }, [allProducts, selectedBranch]);
 
     const categorizedProducts = useMemo(() => {
-        return {
-            flower: branchProducts.filter(p => p.mainCategory === '플라워'),
-            plant: branchProducts.filter(p => p.mainCategory === '플랜트'),
-            wreath: branchProducts.filter(p => p.mainCategory?.includes('화환') || p.midCategory?.includes('화환') || p.name.includes('화환')),
-            material: branchProducts.filter(p => p.mainCategory === '자재'),
-            other: branchProducts.filter(p => !['플라워', '플랜트', '자재'].includes(p.mainCategory) && !p.name.includes('화환'))
+        const priority = ['꽃다발', '꽃바구니', '센터피스', '플랜트', '동서양란', '화환', '자재'];
+        const sortedGroups: Record<string, any[]> = {};
+
+        const getMatch = (p: any, cat: string) => {
+            const mCat = p.mainCategory || "";
+            const midCat = p.midCategory || "";
+            const name = p.name || "";
+
+            if (cat === '화환') return mCat.includes('화환') || midCat.includes('화환') || name.includes('화환') || name.includes('근조') || name.includes('축하');
+            if (cat === '동서양란') return mCat.includes('란') || midCat.includes('란') || name.includes('란') || mCat.includes('난') || midCat.includes('난') || name.includes('난') || name.includes('동양란') || name.includes('서양란') || name.includes('호접란');
+            if (cat === '플랜트') return mCat.includes('플랜트') || mCat.includes('관엽') || mCat.includes('공기정화');
+
+            return mCat.includes(cat) || midCat.includes(cat) || name.includes(cat);
         };
+
+        priority.forEach(cat => {
+            const products = branchProducts.filter(p => getMatch(p, cat));
+            if (products.length > 0) {
+                sortedGroups[cat] = products;
+            }
+        });
+
+        return sortedGroups;
     }, [branchProducts]);
+
 
     // --- HANDLERS ---
     const handleUpdateQuantity = useCallback((docId: string, delta: number) => {
@@ -774,7 +848,7 @@ export default function NewOrderMobilePage() {
             const orderPayload: OrderData = {
                 branchId: selectedBranch.id, branchName: selectedBranch.name, orderDate: new Date(), status: 'processing', orderType: 'store', receiptType, items: orderItems,
                 summary: { subtotal: orderSummary.subtotal, discountAmount: orderSummary.discountAmount, discountRate: orderSummary.discountRate, deliveryFee: orderSummary.deliveryFee, pointsUsed: orderSummary.actualUsedPoints, pointsEarned: 0, total: orderSummary.finalTotal },
-                orderer: { id: selectedCustomer?.id || "", name: ordererName, contact: ordererContact, company: "", email: "" },
+                orderer: { id: selectedCustomer?.id || "", name: ordererName, contact: ordererContact, company: ordererCompany, email: "" },
                 isAnonymous, registerCustomer: isRegisterCustomer,
                 payment: { method: paymentMethod, status: paymentStatus, completedAt: (paymentStatus === 'paid' || paymentStatus === 'completed') ? serverTimestamp() as any : undefined, isSplitPayment: false },
                 pickupInfo: (receiptType !== 'delivery_reservation') ? { date: scheduleDate ? format(scheduleDate, "yyyy-MM-dd") : '', time: scheduleTime, pickerName: recipientName || ordererName, pickerContact: recipientContact || ordererContact } : null,
@@ -818,6 +892,7 @@ export default function NewOrderMobilePage() {
                 <OrdererSection
                     ordererName={ordererName} setOrdererName={setOrdererName}
                     ordererContact={ordererContact} setOrdererContact={setOrdererContact}
+                    ordererCompany={ordererCompany} setOrdererCompany={setOrdererCompany}
                     selectedCustomer={selectedCustomer} setSelectedCustomer={setSelectedCustomer}
                     isRegisterCustomer={isRegisterCustomer} setIsRegisterCustomer={setIsRegisterCustomer}
                     isAnonymous={isAnonymous} setIsAnonymous={setIsAnonymous}
@@ -905,6 +980,8 @@ export default function NewOrderMobilePage() {
                     setSelectedCustomer(c);
                     setOrdererName(c.name);
                     setOrdererContact(c.contact);
+                    setOrdererCompany(c.companyName || "");
+                    applyLastOrderPreferences(c.contact, c.companyName);
                 }}
                 customers={customers}
             />
