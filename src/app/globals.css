@@ -63,6 +63,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -130,7 +131,8 @@
   line-height: 1.7;
 }
 
-.notice-content ul, .notice-content ol {
+.notice-content ul,
+.notice-content ol {
   margin: 0.8em 0;
   padding-left: 1.8em;
   line-height: 1.7;
@@ -212,13 +214,14 @@
   from {
     transform: translateX(0);
   }
+
   to {
     transform: translateX(-50%);
   }
 }
 
 .animate-scroll-left {
-  animation: scroll-left 45s linear infinite;
+  animation: scroll-left 120s linear infinite;
 }
 
 * {
@@ -237,19 +240,22 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 98%; /* #FAFAFA */
+    --background: 0 0% 98%;
+    /* #FAFAFA */
     --foreground: 20 14.3% 4.1%;
     --card: 0 0% 100%;
     --card-foreground: 20 14.3% 4.1%;
     --popover: 0 0% 100%;
     --popover-foreground: 20 14.3% 4.1%;
-    --primary: 36 100% 65%; /* #FFB74D */
+    --primary: 36 100% 65%;
+    /* #FFB74D */
     --primary-foreground: 20 14.3% 4.1%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
     --muted-foreground: 0 0% 45.1%;
-    --accent: 122 33% 85%; /* #C8E6C9 */
+    --accent: 122 33% 85%;
+    /* #C8E6C9 */
     --accent-foreground: 122 25% 25%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
@@ -271,6 +277,7 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 36 100% 65%;
   }
+
   .dark {
     --background: 20 14.3% 4.1%;
     --foreground: 0 0% 98%;
@@ -311,6 +318,7 @@ body {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -320,13 +328,15 @@ body {
 
 
 @media print {
+
   /* Hide everything by default */
   body * {
     visibility: hidden;
   }
 
   /* Only show elements with .printable-area and their children */
-  .printable-area, .printable-area * {
+  .printable-area,
+  .printable-area * {
     visibility: visible;
   }
 
@@ -336,14 +346,18 @@ body {
     left: 0;
     top: 0;
     width: 100%;
-    height: 100%; /* Use 100% height for full page */
+    height: 100%;
+    /* Use 100% height for full page */
     box-sizing: border-box;
-    margin: 0; /* Remove any default margins */
-    padding: 0; /* Remove any default padding */
+    margin: 0;
+    /* Remove any default margins */
+    padding: 0;
+    /* Remove any default padding */
   }
 
   /* Hide elements with no-print class */
-  .no-print, .no-print * {
+  .no-print,
+  .no-print * {
     display: none !important;
   }
 

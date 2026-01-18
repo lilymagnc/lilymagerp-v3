@@ -69,6 +69,8 @@ export interface OrderData {
     recipientContact: string;
     address: string;
     district: string;
+    itemSize?: 'small' | 'medium' | 'large';
+    isExpress?: boolean;
     driverAffiliation?: string;
     driverName?: string;
     driverContact?: string;

@@ -56,6 +56,12 @@ interface FulfillmentSectionProps {
 
     formatPhoneNumber: (value: string) => string;
     recentRibbonMessages?: { sender: string; content: string }[];
+
+    // New props for delivery fee automation
+    itemSize: 'small' | 'medium' | 'large';
+    setItemSize: (size: 'small' | 'medium' | 'large') => void;
+    isExpress: boolean;
+    setIsExpress: (isExpress: boolean) => void;
 }
 
 export function FulfillmentSection({
@@ -84,7 +90,11 @@ export function FulfillmentSection({
     isSameAsOrderer,
     setIsSameAsOrderer,
     formatPhoneNumber,
-    recentRibbonMessages
+    recentRibbonMessages,
+    itemSize,
+    setItemSize,
+    isExpress,
+    setIsExpress
 }: FulfillmentSectionProps) {
 
     const isDelivery = receiptType === 'delivery_reservation';
@@ -213,7 +223,49 @@ export function FulfillmentSection({
                         </div>
                     </div>
 
-                    {/* 4. 주소 (배송일 경우만) */}
+                    {/* 4. 배송 옵션 (상품규격 및 급행) */}
+                    {isDelivery && (
+                        <div className="space-y-4 pt-2 border-t">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <Label className="text-sm font-medium">상품규격 (배송비 추가)</Label>
+                                    <RadioGroup
+                                        value={itemSize}
+                                        onValueChange={(val) => setItemSize(val as 'small' | 'medium' | 'large')}
+                                        className="flex gap-4"
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="small" id="size-small" />
+                                            <Label htmlFor="size-small" className="cursor-pointer">소품(기본)</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="medium" id="size-medium" />
+                                            <Label htmlFor="size-medium" className="cursor-pointer">중품(+3,000)</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="large" id="size-large" />
+                                            <Label htmlFor="size-large" className="cursor-pointer">대품(+5,000)</Label>
+                                        </div>
+                                    </RadioGroup>
+                                </div>
+                                <div className="space-y-3">
+                                    <Label className="text-sm font-medium">배송 특이사항</Label>
+                                    <div className="flex items-center space-x-2 h-10">
+                                        <Checkbox
+                                            id="isExpress"
+                                            checked={isExpress}
+                                            onCheckedChange={(checked) => setIsExpress(checked as boolean)}
+                                        />
+                                        <Label htmlFor="isExpress" className="text-sm font-normal cursor-pointer text-orange-600 font-bold">
+                                            급행 배송 예약 (+10,000원)
+                                        </Label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 5. 주소 (배송일 경우만) */}
                     {isDelivery && (
                         <div className="space-y-4 pt-2 border-t">
                             <Label className="text-base font-semibold">배송지 정보</Label>
@@ -324,7 +376,7 @@ export function FulfillmentSection({
                         />
                     </div>
                 </CardContent>
-            </Card>
-        </div>
+            </Card >
+        </div >
     );
 }

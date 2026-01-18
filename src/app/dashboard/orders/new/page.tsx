@@ -75,6 +75,8 @@ export default function NewOrderPage() {
   const [deliveryFeeType, setDeliveryFeeType] = useState<"auto" | "manual">("auto");
   const [manualDeliveryFee, setManualDeliveryFee] = useState(0);
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
+  const [itemSize, setItemSize] = useState<'small' | 'medium' | 'large'>('small');
+  const [isExpress, setIsExpress] = useState(false);
 
   // Customer & Orderer
   const [ordererName, setOrdererName] = useState("");
@@ -377,6 +379,8 @@ export default function NewOrderPage() {
           setRecipientContact(foundOrder.deliveryInfo.recipientContact);
           setDeliveryAddress(foundOrder.deliveryInfo.address);
           setDeliveryAddressDetail("");
+          if (foundOrder.deliveryInfo.itemSize) setItemSize(foundOrder.deliveryInfo.itemSize);
+          if (foundOrder.deliveryInfo.isExpress) setIsExpress(foundOrder.deliveryInfo.isExpress);
         }
 
         setMessageType(foundOrder.message.type);
@@ -466,10 +470,28 @@ export default function NewOrderPage() {
   const deliveryFee = useMemo(() => {
     if (receiptType === 'store_pickup' || receiptType === 'pickup_reservation') return 0;
     if (deliveryFeeType === 'manual') return manualDeliveryFee;
-    if (!selectedBranch || !selectedDistrict) return 0;
-    const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
-    return feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
-  }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, receiptType]);
+    if (!selectedBranch) return 0;
+
+    let totalFee = 0;
+
+    // Base district fee
+    if (selectedDistrict) {
+      const feeInfo = selectedBranch.deliveryFees?.find(df => df.district === selectedDistrict);
+      totalFee = feeInfo ? feeInfo.fee : (selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0);
+    } else {
+      // If no district selected, use '기타' as fallback for auto if address exists, or 0
+      totalFee = selectedBranch.deliveryFees?.find(df => df.district === "기타")?.fee ?? 0;
+    }
+
+    // Surcharges
+    const surcharges = selectedBranch.surcharges || { mediumItem: 3000, largeItem: 5000, express: 10000 };
+    if (itemSize === 'medium') totalFee += (surcharges.mediumItem ?? 3000);
+    else if (itemSize === 'large') totalFee += (surcharges.largeItem ?? 5000);
+
+    if (isExpress) totalFee += (surcharges.express ?? 10000);
+
+    return totalFee;
+  }, [deliveryFeeType, manualDeliveryFee, selectedBranch, selectedDistrict, receiptType, itemSize, isExpress]);
 
   const orderSummary = useMemo(() => {
     const subtotal = orderItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -726,6 +748,8 @@ export default function NewOrderPage() {
         recipientContact,
         address: `${deliveryAddress} ${deliveryAddressDetail}`,
         district: selectedDistrict ?? '',
+        itemSize,
+        isExpress,
       } : null,
       message: {
         type: messageType,
@@ -866,6 +890,10 @@ export default function NewOrderPage() {
             setIsSameAsOrderer={setIsSameAsOrderer}
             formatPhoneNumber={formatPhoneNumber}
             recentRibbonMessages={recentRibbonMessages}
+            itemSize={itemSize}
+            setItemSize={setItemSize}
+            isExpress={isExpress}
+            setIsExpress={setIsExpress}
           />
         </div>
 

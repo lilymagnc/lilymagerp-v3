@@ -99,6 +99,8 @@ const BulletinBoard = () => {
               (event.branchName === '전체' || event.branchName === user?.franchise);
           }
         })
+        .sort((a, b) => b.startDate.getTime() - a.startDate.getTime())
+        .slice(0, 10)
         .map(event => `📢 ${event.title}`);
 
       if (noticeLines.length === 0) {
@@ -117,7 +119,10 @@ const BulletinBoard = () => {
   return (
     <div className="h-20 w-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-2xl overflow-hidden relative flex items-center">
       <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-      <div className="absolute w-max flex flex-row items-center animate-scroll-left">
+      <div
+        className="absolute w-max flex flex-row items-center animate-scroll-left"
+        style={{ animationDuration: `${Math.max(60, boardData.length * 15)}s` }}
+      >
         {displayData.map((item, index) => (
           <React.Fragment key={index}>
             <p

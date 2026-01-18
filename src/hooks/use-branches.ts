@@ -73,7 +73,7 @@ export const initialBranches: Omit<Branch, 'id'>[] = [
       { district: "서초구", fee: 16000 },
       { district: "기타", fee: 30000 }
     ],
-    surcharges: { mediumItem: 2000, largeItem: 5000 }
+    surcharges: { mediumItem: 3000, largeItem: 5000, express: 10000 }
   },
   {
     name: "릴리맥플라워랩",
@@ -106,7 +106,7 @@ export const initialBranches: Omit<Branch, 'id'>[] = [
       { district: "노원구", fee: 25000 },
       { district: "기타", fee: 30000 }
     ],
-    surcharges: { mediumItem: 2000, largeItem: 5000 }
+    surcharges: { mediumItem: 3000, largeItem: 5000, express: 10000 }
   },
   {
     name: "릴리맥여의도2호점",
@@ -129,7 +129,7 @@ export const initialBranches: Omit<Branch, 'id'>[] = [
       { district: "노원구", fee: 25000 },
       { district: "기타", fee: 30000 }
     ],
-    surcharges: { mediumItem: 2000, largeItem: 5000 }
+    surcharges: { mediumItem: 3000, largeItem: 5000, express: 10000 }
   },
 ];
 

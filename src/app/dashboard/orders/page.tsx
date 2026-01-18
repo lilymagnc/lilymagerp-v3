@@ -32,8 +32,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, addDoc, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useDisplayBoard } from "@/hooks/use-display-board";
+import { useCalendar } from "@/hooks/use-calendar";
 
 export default function OrdersPage() {
   const { orders, loading, fetchOrders, fetchAllOrders, updateOrderStatus, updatePaymentStatus, cancelOrder, deleteOrder } = useOrders();
@@ -50,6 +53,7 @@ export default function OrdersPage() {
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("all");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [selectedReceiptType, setSelectedReceiptType] = useState("all");
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [isMessagePrintDialogOpen, setIsMessagePrintDialogOpen] = useState(false);
@@ -94,6 +98,103 @@ export default function OrdersPage() {
       setSelectedBranch(userBranch);
     }
   }, [isAdmin, userBranch, selectedBranch]);
+
+  const { createNotification } = useNotifications();
+  const { createDisplayItem } = useDisplayBoard();
+  const { createEvent } = useCalendar();
+  const [hasRunAutomation, setHasRunAutomation] = useState(false);
+
+  // 주문 날짜 경과 시 자동 완료 처리
+  useEffect(() => {
+    // orders가 비어있거나 이미 실행했으면 중단
+    if (loading || orders.length === 0 || hasRunAutomation) return;
+
+    const runAutomation = async () => {
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+
+      // 자동 완료 대상 필터링: '처리중' 상태이고 수령일이 오늘보다 이전인 주문
+      const overdueOrders = orders.filter(order => {
+        if (order.status !== 'processing') return false;
+
+        // 권한 체크: 본사 관리자는 전체, 지점 관리자는 본인 지점만
+        if (!isAdmin && userBranch && order.branchName !== userBranch) return false;
+
+        const scheduleDate = order.pickupInfo?.date || order.deliveryInfo?.date;
+        return scheduleDate && scheduleDate < todayStr;
+      });
+
+      if (overdueOrders.length === 0) {
+        setHasRunAutomation(true);
+        return;
+      }
+
+      console.log(`[Automation] 자동 완료 대상 주문 ${overdueOrders.length}건 발견`);
+
+      let processedCount = 0;
+      for (const order of overdueOrders) {
+        try {
+          // 1. 주문 상태 업데이트 (Firebase 직접 업데이트하여 반영 속도 개선)
+          const orderRef = doc(db, 'orders', order.id);
+          await updateDoc(orderRef, {
+            status: 'completed',
+            updatedAt: serverTimestamp()
+          });
+
+          // 2. 시스템 알림 생성
+          await createNotification({
+            type: 'system',
+            subType: 'auto_complete',
+            title: '주문 자동 완료 알림',
+            message: `[${order.branchName}] ${order.orderer.name}님의 주문이 수령일(${order.pickupInfo?.date || order.deliveryInfo?.date}) 경과로 자동 완료되었습니다.`,
+            severity: 'low',
+            branchId: order.branchId,
+            relatedId: order.id,
+            relatedType: 'order'
+          });
+
+          // 3. 전광판 등록 (24시간 노출)
+          await createDisplayItem(
+            'delivery_complete',
+            '주문 자동 완료 알림',
+            `수령일(${order.pickupInfo?.date || order.deliveryInfo?.date}) 경과로 주문이 자동 완료 처리되었습니다.\n주문자: ${order.orderer.name}`,
+            order.branchId,
+            order.branchName,
+            'low',
+            undefined,
+            order.id
+          );
+
+          // 4. 캘린더 일정 등록
+          await createEvent({
+            type: 'notice',
+            title: `[자동완료] ${order.orderer.name}`,
+            description: `지나간 주문 자동 완료 처리됨 (원래 수령일: ${order.pickupInfo?.date || order.deliveryInfo?.date})`,
+            startDate: new Date(),
+            branchName: order.branchName,
+            status: 'completed',
+            relatedId: order.id,
+            color: '#94a3b8' // slate-400
+          });
+
+          processedCount++;
+        } catch (err) {
+          console.error(`[Automation] 주문 ${order.id} 자동 완료 처리 중 오류:`, err);
+        }
+      }
+
+      if (processedCount > 0) {
+        toast({
+          title: "미처리 주문 정리 완료",
+          description: `${processedCount}건의 주문이 과거 수령일 경과로 자동 완료되었습니다.`,
+        });
+        // 상태 변경 반영을 위해 데이터 다시 불러오기
+        fetchOrders();
+      }
+      setHasRunAutomation(true);
+    };
+
+    runAutomation();
+  }, [loading, orders, hasRunAutomation, isAdmin, userBranch, createNotification, createDisplayItem, createEvent, fetchOrders, toast]);
 
   // URL 파라미터에서 메시지 인쇄 다이얼로그 자동 열기
   useEffect(() => {
@@ -386,6 +487,27 @@ export default function OrdersPage() {
     }
   };
 
+  // 수령 방식 표시 함수
+  const getReceiptTypeText = (type: string) => {
+    switch (type) {
+      case 'store_pickup': return '픽업';
+      case 'pickup_reservation': return '픽업예약';
+      case 'delivery_reservation': return '배송';
+      default: return type || '-';
+    }
+  };
+
+  // 상품명 추출 로직
+  const getProductNames = (order: Order) => {
+    if (order.items && order.items.length > 0) {
+      const names = order.items.map(item => item.name || '상품명 없음');
+      return names.join(', ');
+    }
+    return '상품 정보 없음';
+  };
+
+
+
   // 주문자 이름과 회사명 표시 함수
   const getOrdererDisplay = (orderer: any) => {
     if (orderer.company && orderer.company.trim()) {
@@ -462,8 +584,13 @@ export default function OrdersPage() {
       );
     }
 
+    // 수령 방식 필터링
+    if (selectedReceiptType !== "all") {
+      filtered = filtered.filter(order => order.receiptType === selectedReceiptType);
+    }
+
     return filtered;
-  }, [orders, searchTerm, selectedBranch, selectedOrderStatus, selectedPaymentStatus, startDate, endDate, isAdmin, userBranch, showTransferredOnly]);
+  }, [orders, searchTerm, selectedBranch, selectedOrderStatus, selectedPaymentStatus, startDate, endDate, isAdmin, userBranch, showTransferredOnly, selectedReceiptType]);
 
   // 최근 3일 이내 승인된 이관 주문 확인
   const recentlyTransferredOrders = useMemo(() => {
@@ -875,7 +1002,44 @@ export default function OrdersPage() {
   // 필터 변경 시 첫 페이지로 이동
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedBranch, selectedOrderStatus, selectedPaymentStatus, startDate, endDate]);
+  }, [searchTerm, selectedBranch, selectedOrderStatus, selectedPaymentStatus, startDate, endDate, selectedReceiptType]);
+
+  // 당일/미래 픽업 및 배송 요약 데이터
+  const quickSchedule = useMemo(() => {
+    const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
+
+    const getScheduleOrders = (type: 'today' | 'future') => {
+      return orders.filter(order => {
+        // 권한 필터링 (자신의 지점 주문만)
+        if (!isAdmin && userBranch && order.branchName !== userBranch) return false;
+        // 지점 필터가 적용된 경우 해당 지점만
+        if (isAdmin && selectedBranch !== "all" && order.branchName !== selectedBranch) return false;
+
+        const schedule = order.pickupInfo || order.deliveryInfo;
+        if (!schedule?.date || order.status === 'canceled' || order.status === 'completed') return false;
+
+        if (type === 'today') {
+          return schedule.date === todayStr;
+        } else {
+          return schedule.date > todayStr;
+        }
+      }).sort((a, b) => {
+        const dateA = (a.pickupInfo?.date || a.deliveryInfo?.date || "");
+        const dateB = (b.pickupInfo?.date || b.deliveryInfo?.date || "");
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+        const timeA = (a.pickupInfo?.time || a.deliveryInfo?.time || "00:00");
+        const timeB = (b.pickupInfo?.time || b.deliveryInfo?.time || "00:00");
+        return timeA.localeCompare(timeB);
+      });
+    };
+
+    return {
+      today: getScheduleOrders('today'),
+      future: getScheduleOrders('future')
+    };
+  }, [orders, isAdmin, userBranch, selectedBranch]);
   return (
     <>
       <PageHeader
@@ -1121,6 +1285,115 @@ export default function OrdersPage() {
         )}
       </div>
 
+      {/* 당일/미래 스케줄 요약 */}
+      {!loading && (quickSchedule.today.length > 0 || quickSchedule.future.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <Card className="border-blue-100 bg-blue-50/30">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <span className="bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">오늘</span>
+                오늘의 픽업/배송 일정 ({quickSchedule.today.length}건)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-4 h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent">
+              {quickSchedule.today.length > 0 ? (
+                <div className="space-y-2 pb-2">
+                  {quickSchedule.today.map(order => (
+                    <div
+                      key={order.id}
+                      className="flex flex-col gap-1 p-2 bg-white rounded border border-blue-100 hover:border-blue-300 cursor-pointer shadow-sm transition-all"
+                      onClick={() => handleOrderRowClick(order)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-blue-700 min-w-[40px]">{order.pickupInfo?.time || order.deliveryInfo?.time || '-'}</span>
+                          <Badge variant="outline" className={cn(
+                            "px-1 py-0 h-4 text-[10px] whitespace-nowrap",
+                            order.receiptType === 'delivery_reservation' ? "bg-orange-50 text-orange-600 border-orange-200" : "bg-green-50 text-green-600 border-green-200"
+                          )}>
+                            {getReceiptTypeText(order.receiptType)}
+                          </Badge>
+                          <span className="font-semibold truncate max-w-[80px]">{order.deliveryInfo?.recipientName || order.pickupInfo?.pickerName || order.orderer.name}</span>
+                          <span className="text-[10px] text-muted-foreground bg-gray-100 px-1 rounded">{order.branchName}</span>
+                        </div>
+                        <Badge variant="outline" className="px-1 py-0 h-4 text-[10px] whitespace-nowrap">
+                          {getStatusBadge(order.status).props.children}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground truncate flex-1 mr-2">{getProductNames(order)}</span>
+                        <div className="flex gap-1">
+                          {order.transferInfo?.isTransferred && (
+                            <span className="bg-purple-50 text-purple-600 border border-purple-100 px-1 rounded">이관</span>
+                          )}
+                          {order.outsourceInfo?.isOutsourced && (
+                            <span className="bg-orange-50 text-orange-600 border border-orange-100 px-1 rounded">외부:{order.outsourceInfo.partnerName}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">오늘 일정이 없습니다.</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-100 bg-purple-50/30">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <span className="bg-purple-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">예약</span>
+                향후 전체 예약 일정 ({quickSchedule.future.length}건)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-4 h-[250px] overflow-y-auto scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-transparent">
+              {quickSchedule.future.length > 0 ? (
+                <div className="space-y-2 pb-2">
+                  {quickSchedule.future.map(order => (
+                    <div
+                      key={order.id}
+                      className="flex flex-col gap-1 p-2 bg-white rounded border border-purple-100 hover:border-purple-300 cursor-pointer shadow-sm transition-all"
+                      onClick={() => handleOrderRowClick(order)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-purple-700 min-w-[75px]">{order.pickupInfo?.date?.substring(5) || order.deliveryInfo?.date?.substring(5)} {order.pickupInfo?.time || order.deliveryInfo?.time || '-'}</span>
+                          <Badge variant="outline" className={cn(
+                            "px-1 py-0 h-4 text-[10px] whitespace-nowrap",
+                            order.receiptType === 'delivery_reservation' ? "bg-orange-50 text-orange-600 border-orange-200" : "bg-green-50 text-green-600 border-green-200"
+                          )}>
+                            {getReceiptTypeText(order.receiptType)}
+                          </Badge>
+                          <span className="font-semibold truncate max-w-[80px]">{order.deliveryInfo?.recipientName || order.pickupInfo?.pickerName || order.orderer.name}</span>
+                          <span className="text-[10px] text-muted-foreground bg-gray-100 px-1 rounded">{order.branchName}</span>
+                        </div>
+                        <Badge variant="outline" className="px-1 py-0 h-4 text-[10px] whitespace-nowrap">
+                          {getStatusBadge(order.status).props.children}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground truncate flex-1 mr-2">{getProductNames(order)}</span>
+                        <div className="flex gap-1">
+                          {order.transferInfo?.isTransferred && (
+                            <span className="bg-purple-50 text-purple-600 border border-purple-100 px-1 rounded">이관</span>
+                          )}
+                          {order.outsourceInfo?.isOutsourced && (
+                            <span className="bg-orange-50 text-orange-600 border border-orange-100 px-1 rounded">외부:{order.outsourceInfo.partnerName}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground italic">향후 일정이 없습니다.</div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>주문 내역</CardTitle>
@@ -1190,6 +1463,20 @@ export default function OrdersPage() {
                   <SelectItem value="paid">완결</SelectItem>
                   <SelectItem value="split_payment">분할결제</SelectItem>
                   <SelectItem value="pending">미결</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="receipt-type-select" className="sr-only">수령 방법 선택</label>
+              <Select value={selectedReceiptType} onValueChange={setSelectedReceiptType}>
+                <SelectTrigger id="receipt-type-select" name="receipt-type-select" className="w-full sm:w-[140px]">
+                  <SelectValue placeholder="수령 방법" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체 수령방법</SelectItem>
+                  <SelectItem value="store_pickup">픽업</SelectItem>
+                  <SelectItem value="pickup_reservation">픽업예약</SelectItem>
+                  <SelectItem value="delivery_reservation">배송</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1376,6 +1663,7 @@ export default function OrdersPage() {
                   </Button>
                 </TableHead>
                 <TableHead>주문일</TableHead>
+                <TableHead>수령방법</TableHead>
                 <TableHead>픽업/배송일</TableHead>
                 <TableHead>주문자/회사명</TableHead>
                 <TableHead>상품명</TableHead>
@@ -1404,14 +1692,6 @@ export default function OrdersPage() {
                 ))
               ) : (
                 paginatedOrders.map((order) => {
-                  // 상품명 추출 로직
-                  const getProductNames = (order: Order) => {
-                    if (order.items && order.items.length > 0) {
-                      const names = order.items.map(item => item.name || '상품명 없음');
-                      return names.join(', ');
-                    }
-                    return '상품 정보 없음';
-                  };
 
                   return (
                     <TableRow
@@ -1441,6 +1721,16 @@ export default function OrdersPage() {
                           <span className="text-xs">{order.orderDate && format((order.orderDate as Timestamp).toDate(), 'yyyy-MM-dd')}</span>
                           <span className="text-[10px] text-muted-foreground">{order.orderDate && format((order.orderDate as Timestamp).toDate(), 'HH:mm')}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn(
+                          "px-2 py-0.5 whitespace-nowrap",
+                          order.receiptType === 'delivery_reservation' ? "bg-orange-50 text-orange-700 border-orange-200" :
+                            order.receiptType === 'pickup_reservation' ? "bg-green-50 text-green-700 border-green-200" :
+                              "bg-blue-50 text-blue-700 border-blue-200"
+                        )}>
+                          {getReceiptTypeText(order.receiptType)}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {(() => {
