@@ -81,6 +81,7 @@ export interface OrderData {
   } | null;
   // 배송비 관리 관련 필드
   actualDeliveryCost?: number;
+  actualDeliveryCostCash?: number;
   deliveryCostStatus?: 'pending' | 'completed';
   deliveryCostUpdatedAt?: Date | Timestamp;
   deliveryCostUpdatedBy?: string;
@@ -151,19 +152,48 @@ export function useOrders() {
       // 날짜 필터 추가 (최근 N일)
       const startDate = Timestamp.fromDate(subDays(startOfDay(new Date()), days));
 
-      let q = query(
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      );
+
+      // 1. 주문 날짜 기준 쿼리
+      const qDate = query(
         ordersCollection,
         where("orderDate", ">=", startDate),
         orderBy("orderDate", "desc")
       );
 
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), 30000)
+      // 2. 배송비 수정 날짜 기준 쿼리 (구 주문이 오늘 수정된 경우 대비)
+      const qDeliveryUpdate = query(
+        ordersCollection,
+        where("deliveryCostUpdatedAt", ">=", startDate)
       );
 
-      const querySnapshot = await Promise.race([getDocs(q), timeoutPromise]) as any;
+      // 3. 결제 완료 날짜 기준 쿼리
+      const qPaymentUpdate = query(
+        ordersCollection,
+        where("payment.completedAt", ">=", startDate)
+      );
 
-      const ordersData = querySnapshot.docs.map((doc: any) => {
+      const results = await Promise.allSettled([
+        Promise.race([getDocs(qDate), timeoutPromise]),
+        Promise.race([getDocs(qDeliveryUpdate), timeoutPromise]),
+        Promise.race([getDocs(qPaymentUpdate), timeoutPromise])
+      ]);
+
+      const combinedDocs: any[] = [];
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          const snap = result.value as any;
+          if (snap.docs) {
+            combinedDocs.push(...snap.docs);
+          }
+        } else {
+          console.warn(`Query ${index} failed:`, result.reason);
+        }
+      });
+
+      const ordersData = combinedDocs.map((doc: any) => {
         const data = doc.data();
         let receiptType = data.receiptType;
         if (receiptType === 'pickup') receiptType = 'pickup_reservation';
@@ -181,6 +211,13 @@ export function useOrders() {
         uniqueOrdersMap.set(order.id, order);
       });
       const uniqueOrders = Array.from(uniqueOrdersMap.values()) as Order[];
+
+      // 정렬 (최신순)
+      uniqueOrders.sort((a, b) => {
+        const dateA = (a.orderDate as any)?.toDate ? (a.orderDate as any).toDate() : new Date(a.orderDate as any);
+        const dateB = (b.orderDate as any)?.toDate ? (b.orderDate as any).toDate() : new Date(b.orderDate as any);
+        return dateB.getTime() - dateA.getTime();
+      });
 
       setOrders(uniqueOrders);
     } catch (error) {
@@ -231,6 +268,95 @@ export function useOrders() {
       return ordersData;
     } catch (error) {
       console.error('전체 주문 로딩 오류:', error);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 정산용 주문 조회 (최적화)
+  const fetchOrdersForSettlement = useCallback(async (targetDateStr: string) => {
+    try {
+      setLoading(true);
+      const targetDate = new Date(targetDateStr);
+      const start = startOfDay(targetDate);
+      const end = new Date(targetDate);
+      end.setHours(23, 59, 59, 999);
+
+      const startTs = Timestamp.fromDate(start);
+      const endTs = Timestamp.fromDate(end);
+
+      const ordersCollection = collection(db, 'orders');
+
+      // 1. 해당 일자 생성 주문
+      const qDate = query(
+        ordersCollection,
+        where("orderDate", ">=", startTs),
+        where("orderDate", "<=", endTs)
+      );
+
+      // 2. 해당 일자 결제 완료 (1차)
+      // Note: Firestore does not support logical OR across different fields natively in one query usually without heavy indexing or multiple queries.
+      // We will execute parallel queries.
+      const qPaymentUser = query(
+        ordersCollection,
+        where("payment.completedAt", ">=", startTs),
+        where("payment.completedAt", "<=", endTs)
+      );
+
+      // 3. 해당 일자 결제 완료 (2차/잔금)
+      const qPaymentSecond = query(
+        ordersCollection,
+        where("payment.secondPaymentDate", ">=", startTs),
+        where("payment.secondPaymentDate", "<=", endTs)
+      );
+
+      // 4. 배송비 수정 (현금 배송비 정산용)
+      const qDeliveryCost = query(
+        ordersCollection,
+        where("deliveryCostUpdatedAt", ">=", startTs),
+        where("deliveryCostUpdatedAt", "<=", endTs)
+      );
+
+      const results = await Promise.allSettled([
+        getDocs(qDate),
+        getDocs(qPaymentUser),
+        getDocs(qPaymentSecond),
+        getDocs(qDeliveryCost)
+      ]);
+
+      const combinedDocs: any[] = [];
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          combinedDocs.push(...result.value.docs);
+        }
+      });
+
+      // 중복 제거
+      const uniqueOrdersMap = new Map();
+      combinedDocs.forEach((doc) => {
+        if (!uniqueOrdersMap.has(doc.id)) {
+          const data = doc.data();
+          let receiptType = data.receiptType;
+          if (receiptType === 'pickup') receiptType = 'pickup_reservation';
+          else if (receiptType === 'delivery') receiptType = 'delivery_reservation';
+
+          uniqueOrdersMap.set(doc.id, {
+            id: doc.id,
+            ...data,
+            receiptType
+          } as Order);
+        }
+      });
+
+      const uniqueOrders = Array.from(uniqueOrdersMap.values());
+
+      // 상태 업데이트 (정산 페이지에서 사용)
+      setOrders(uniqueOrders);
+      return uniqueOrders;
+
+    } catch (error) {
+      console.error("정산 데이터 로딩 오류:", error);
       return [];
     } finally {
       setLoading(false);
@@ -992,7 +1118,8 @@ export function useOrders() {
     updateOrder,
     cancelOrder,
     deleteOrder,
-    completeDelivery
+    completeDelivery,
+    fetchOrdersForSettlement
   };
 }
 // 주문자 정보로 고객 등록/업데이트 함수

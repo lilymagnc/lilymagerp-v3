@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Plus, 
-  Receipt, 
-  Calendar, 
+import {
+  Plus,
+  Receipt,
+  Calendar,
   BarChart3,
   DollarSign,
   TrendingUp,
@@ -23,14 +23,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { useBranches } from '@/hooks/use-branches';
 import { useUserRole } from '@/hooks/use-user-role';
 import { useEffect, useMemo } from 'react';
-import { 
+import {
   SIMPLE_EXPENSE_CATEGORY_LABELS,
   formatCurrency,
   getCategoryColor
 } from '@/types/simple-expense';
 export default function SimpleExpensesPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState('charts');
+  const [activeTab, setActiveTab] = useState('list');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('current');
   const [isMounted, setIsMounted] = useState(false);
@@ -41,12 +41,12 @@ export default function SimpleExpensesPage() {
   const { expenses, fetchExpenses, calculateStats } = useSimpleExpenses();
   const { user } = useAuth();
   const { branches, loading: branchesLoading } = useBranches();
-  
+
 
   // 관리자 여부 확인 (user?.role 직접 사용)
   const isAdmin = user?.role === '본사 관리자';
   const isHQManager = user?.role === '본사 관리자';
-  
+
   // 본사관리자 권한 확인
   const isHeadOfficeAdmin = user?.role === '본사 관리자';
   // 데이터 업데이트 함수
@@ -79,7 +79,7 @@ export default function SimpleExpensesPage() {
       console.error('데이터 업데이트 오류:', error);
     }
   };
-  
+
 
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
@@ -107,7 +107,7 @@ export default function SimpleExpensesPage() {
   // 지점 변경 처리
   const handleBranchChange = useCallback((branchId: string) => {
     if (!isMounted || isUpdating) return;
-    
+
     // 이전 작업들 정리
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -116,21 +116,21 @@ export default function SimpleExpensesPage() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     // 새로운 AbortController 생성
     abortControllerRef.current = new AbortController();
-    
+
     // 업데이트 상태 설정
     setIsUpdating(true);
-    
+
     // 상태 업데이트를 안전하게 처리
     setSelectedBranchId(branchId);
     setRenderKey(prev => prev + 1);
-    
+
     // 데이터 로딩을 지연시켜 DOM 업데이트 충돌 방지
     timeoutRef.current = setTimeout(() => {
       if (!isMounted || abortControllerRef.current?.signal.aborted) return;
-      
+
       try {
         if (branchId === 'all') {
           fetchExpenses(); // 전체 데이터 로드
@@ -158,7 +158,7 @@ export default function SimpleExpensesPage() {
   // 현재 선택된 지점 정보
   let currentBranchId = selectedBranchId === 'all' ? '' : selectedBranchId;
   let currentBranch = branches.find(b => b.id === currentBranchId);
-  
+
   // 본사관리자인 경우 특별 처리
   if (isHeadOfficeAdmin && selectedBranchId === 'all') {
     // 본사관리자가 '전체'를 선택한 경우, 본사 지점을 기본값으로 설정
@@ -168,7 +168,7 @@ export default function SimpleExpensesPage() {
       currentBranch = headOfficeBranch;
     }
   }
-  
+
 
   // 필터링된 지출 데이터
   const filteredExpenses = useMemo(() => {
@@ -178,9 +178,9 @@ export default function SimpleExpensesPage() {
     // 본사 지점을 선택한 경우 본사 데이터만 표시 (빈 branchId도 포함)
     const selectedBranch = branches.find(b => b.id === selectedBranchId);
     if (selectedBranch?.type === '본사') {
-      return expenses.filter(expense => 
-        expense.branchId === selectedBranchId || 
-        !expense.branchId || 
+      return expenses.filter(expense =>
+        expense.branchId === selectedBranchId ||
+        !expense.branchId ||
         expense.branchId === ''
       );
     }
@@ -191,8 +191,8 @@ export default function SimpleExpensesPage() {
     if (!expense.date) return false;
     const expenseDate = expense.date.toDate();
     const now = new Date();
-    const isCurrentMonth = expenseDate.getMonth() === now.getMonth() && 
-                          expenseDate.getFullYear() === now.getFullYear();
+    const isCurrentMonth = expenseDate.getMonth() === now.getMonth() &&
+      expenseDate.getFullYear() === now.getFullYear();
     return isCurrentMonth;
   });
   const thisMonthStats = calculateStats(thisMonthExpenses);
@@ -213,10 +213,10 @@ export default function SimpleExpensesPage() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     const currentMonthKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
-    
+
     // 현재 월은 항상 포함
     monthSet.add(currentMonthKey);
-    
+
     // 지출 데이터에서 월 추출
     expenses.forEach(expense => {
       if (expense.date) {
@@ -227,7 +227,7 @@ export default function SimpleExpensesPage() {
         monthSet.add(monthKey);
       }
     });
-    
+
     // 월별로 정렬 (최신순)
     return Array.from(monthSet).sort((a, b) => b.localeCompare(a));
   }, [expenses]);
@@ -258,7 +258,7 @@ export default function SimpleExpensesPage() {
   // 초기 데이터 로드
   useEffect(() => {
     if (!isMounted) return;
-    
+
     if (!isAdmin && user?.franchise) {
       // 일반 사용자는 자신의 지점만
       const userBranch = branches.find(b => b.name === user.franchise);
@@ -291,9 +291,9 @@ export default function SimpleExpensesPage() {
         <div className="flex items-center gap-2">
           {/* 월 선택 드롭다운 */}
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <Select 
+          <Select
             key={`month-select-${selectedMonth}-${renderKey}-${isMounted}`}
-            value={selectedMonth} 
+            value={selectedMonth}
             onValueChange={setSelectedMonth}
             disabled={isUpdating || !isMounted}
           >
@@ -313,15 +313,15 @@ export default function SimpleExpensesPage() {
               })}
             </SelectContent>
           </Select>
-          
+
           {/* 지점 선택 드롭다운 (관리자만) */}
           {isAdmin && isMounted && (
             <>
               <Building className="h-4 w-4 text-muted-foreground" />
-              <Select 
+              <Select
                 key={`branch-select-${selectedBranchId}-${renderKey}-${isMounted}`}
-                value={selectedBranchId} 
-                onValueChange={handleBranchChange} 
+                value={selectedBranchId}
+                onValueChange={handleBranchChange}
                 disabled={branchesLoading || isUpdating || !isMounted}
               >
                 <SelectTrigger className="w-[200px] text-foreground">
@@ -478,7 +478,7 @@ export default function SimpleExpensesPage() {
             <div className="flex flex-wrap gap-2">
               {thisMonthStats.categoryBreakdown.map((category) => (
                 <div key={category.category} className="flex items-center gap-2">
-                  <Badge 
+                  <Badge
                     variant="outline"
                     className={`border-${getCategoryColor(category.category)}-500`}
                   >
@@ -496,84 +496,84 @@ export default function SimpleExpensesPage() {
           </CardContent>
         </Card>
       )}
-             {/* 메인 탭 */}
-       {isMounted && (
+      {/* 메인 탭 */}
+      {isMounted && (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4" key={`tabs-${renderKey}-${isMounted}`}>
-         <TabsList className="grid w-full grid-cols-5">
-           <TabsTrigger value="input" className="flex items-center gap-2">
-             <Plus className="h-4 w-4" />
-             지출 입력
-           </TabsTrigger>
-           <TabsTrigger value="fixed" className="flex items-center gap-2">
-             <Calendar className="h-4 w-4" />
-             고정비 관리
-           </TabsTrigger>
-           <TabsTrigger value="list" className="flex items-center gap-2">
-             <Receipt className="h-4 w-4" />
-             지출 내역
-           </TabsTrigger>
-           <TabsTrigger value="charts" className="flex items-center gap-2">
-             <BarChart3 className="h-4 w-4" />
-             차트 분석
-           </TabsTrigger>
-           {isHQManager && (
-             <TabsTrigger value="headquarters" className="flex items-center gap-2">
-               <Building className="h-4 w-4" />
-               본사 관리
-             </TabsTrigger>
-           )}
-         </TabsList>
-        <TabsContent value="input">
-          {branchesLoading ? (
-            <Card className="w-full max-w-2xl mx-auto">
-              <CardContent className="flex items-center justify-center p-8">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">지점 데이터를 불러오는 중입니다...</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <ExpenseInputForm 
-              key={`expense-form-${renderKey}-${currentBranchId}`}
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="input" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              지출 입력
+            </TabsTrigger>
+            <TabsTrigger value="fixed" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              고정비 관리
+            </TabsTrigger>
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
+              지출 내역
+            </TabsTrigger>
+            <TabsTrigger value="charts" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              차트 분석
+            </TabsTrigger>
+            {isHQManager && (
+              <TabsTrigger value="headquarters" className="flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                본사 관리
+              </TabsTrigger>
+            )}
+          </TabsList>
+          <TabsContent value="input">
+            {branchesLoading ? (
+              <Card className="w-full max-w-2xl mx-auto">
+                <CardContent className="flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">지점 데이터를 불러오는 중입니다...</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <ExpenseInputForm
+                key={`expense-form-${renderKey}-${currentBranchId}`}
+                onSuccess={handleSuccess}
+                continueMode={true}
+                selectedBranchId={currentBranchId}
+                selectedBranchName={currentBranch?.name || ''}
+              />
+            )}
+          </TabsContent>
+          <TabsContent value="fixed">
+            <FixedCostTemplate
+              key={`fixed-cost-${renderKey}`}
               onSuccess={handleSuccess}
-              continueMode={true}
-              selectedBranchId={currentBranchId}
-              selectedBranchName={currentBranch?.name || ''}
             />
+          </TabsContent>
+          <TabsContent value="list">
+            <ExpenseList
+              key={`expense-list-${renderKey}-${selectedBranchId}`}
+              refreshTrigger={refreshTrigger}
+              selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
+            />
+          </TabsContent>
+          <TabsContent value="charts">
+            <ExpenseCharts
+              key={`expense-charts-${renderKey}-${selectedBranchId}-${selectedMonth}`}
+              expenses={filteredExpenses}
+              currentBranchName={currentBranch?.name || ''}
+              selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
+              selectedMonth={selectedMonth === 'all' || selectedMonth === 'current' ? undefined : selectedMonth}
+            />
+          </TabsContent>
+          {isHQManager && (
+            <TabsContent value="headquarters">
+              <ExpenseList
+                refreshTrigger={refreshTrigger}
+                selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
+                isHeadquarters={true}
+              />
+            </TabsContent>
           )}
-        </TabsContent>
-        <TabsContent value="fixed">
-          <FixedCostTemplate 
-            key={`fixed-cost-${renderKey}`}
-            onSuccess={handleSuccess} 
-          />
-        </TabsContent>
-                 <TabsContent value="list">
-           <ExpenseList 
-             key={`expense-list-${renderKey}-${selectedBranchId}`}
-             refreshTrigger={refreshTrigger} 
-             selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
-           />
-         </TabsContent>
-         <TabsContent value="charts">
-           <ExpenseCharts 
-             key={`expense-charts-${renderKey}-${selectedBranchId}-${selectedMonth}`}
-             expenses={filteredExpenses}
-             currentBranchName={currentBranch?.name || ''}
-             selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
-             selectedMonth={selectedMonth === 'all' || selectedMonth === 'current' ? undefined : selectedMonth}
-           />
-         </TabsContent>
-         {isHQManager && (
-           <TabsContent value="headquarters">
-             <ExpenseList 
-               refreshTrigger={refreshTrigger} 
-               selectedBranchId={selectedBranchId === 'all' ? undefined : selectedBranchId}
-               isHeadquarters={true}
-             />
-           </TabsContent>
-         )}
         </Tabs>
       )}
     </div>

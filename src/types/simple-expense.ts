@@ -109,6 +109,7 @@ export interface SimpleExpense {
   supplier: string;
   quantity?: number; // 수량 필드 추가
   unitPrice?: number; // 단가 필드 추가
+  paymentMethod?: 'card' | 'cash' | 'transfer' | 'other'; // 결제 수단 추가
   receiptUrl?: string;
   branchId: string;
   branchName: string;
@@ -152,6 +153,7 @@ export interface CreateSimpleExpenseData {
   supplier: string;
   quantity?: number; // 수량 필드 추가
   unitPrice?: number; // 단가 필드 추가
+  paymentMethod?: 'card' | 'cash' | 'transfer' | 'other'; // 결제 수단 추가
   receiptFile?: File;
   inventoryUpdates?: InventoryUpdateItem[];  // 재고 업데이트 아이템들
   relatedRequestId?: string;  // 관련 자재요청 ID

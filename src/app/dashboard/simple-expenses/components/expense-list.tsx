@@ -125,8 +125,8 @@ export function ExpenseList({
   const fetchExpensesData = async (branchId?: string) => {
     try {
       const expensesRef = collection(db, 'simpleExpenses');
-      // 사용자의 요청대로 해당 기간의 데이터를 한 번에 가져오기 위해 리미트를 제거하거나 충분히 크게 설정
-      let q = query(expensesRef, orderBy('date', 'desc'), firestoreLimit(5000));
+      // 사용자의 요청대로 해당 기간의 데이터를 한 번에 가져오되, 로딩 속도 개선을 위해 1000개로 제한
+      let q = query(expensesRef, orderBy('date', 'desc'), firestoreLimit(1000));
 
       if (branchId && branchId !== 'all') {
         q = query(q, where('branchId', '==', branchId));

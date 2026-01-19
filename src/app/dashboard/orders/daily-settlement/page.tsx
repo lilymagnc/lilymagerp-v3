@@ -1,17 +1,20 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Target, DollarSign, ArrowRightLeft, RefreshCw, ChevronLeft, ChevronRight, FileText, XCircle, Download } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Calendar, Target, DollarSign, ArrowRightLeft, RefreshCw, ChevronLeft, ChevronRight, FileText, XCircle, Download, Save, ShoppingCart } from "lucide-react";
 import { format, subDays, addDays, startOfDay, endOfDay } from "date-fns";
 import { useOrders, Order } from "@/hooks/use-orders";
 import { useBranches } from "@/hooks/use-branches";
 import { useAuth } from "@/hooks/use-auth";
 import { useProducts } from "@/hooks/use-products";
+import { useSimpleExpenses } from "@/hooks/use-simple-expenses";
+import { useDailySettlements } from "@/hooks/use-daily-settlements";
 import { Timestamp } from "firebase/firestore";
 import { PageHeader } from "@/components/page-header";
 import Link from 'next/link';
@@ -19,11 +22,15 @@ import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OrderDetailDialog } from "../components/order-detail-dialog";
 import { exportDailySettlementToExcel } from "@/lib/excel-export";
+import { SimpleExpenseCategory, SIMPLE_EXPENSE_CATEGORY_LABELS } from "@/types/simple-expense";
+import { DailySettlementRecord } from "@/types/daily-settlement";
 
 export default function DailySettlementPage() {
-    const { orders, loading: ordersLoading } = useOrders();
+    const { orders, fetchOrdersForSettlement, loading: ordersLoading } = useOrders();
     const { branches, loading: branchesLoading } = useBranches();
     const { products, loading: productsLoading } = useProducts();
+    const { expenses, fetchExpenses, calculateStats, loading: expensesLoading } = useSimpleExpenses();
+    const { getSettlement, saveSettlement, loading: settlementLoading } = useDailySettlements();
     const { user } = useAuth();
 
     const [reportDate, setReportDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -31,13 +38,51 @@ export default function DailySettlementPage() {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+    // 정산 데이터 상태
+    const [settlementRecord, setSettlementRecord] = useState<DailySettlementRecord | null>(null);
+    const [prevSettlementRecord, setPrevSettlementRecord] = useState<DailySettlementRecord | null>(null);
+    const [dailyExpenses, setDailyExpenses] = useState<any[]>([]);
+    const [vaultDeposit, setVaultDeposit] = useState<number>(0);
+    const [manualPreviousBalance, setManualPreviousBalance] = useState<number>(0);
+
     const isAdmin = user?.role === '본사 관리자';
     const userBranch = user?.franchise;
 
     // 현재 보고 있는 기준 지점
     const currentTargetBranch = isAdmin ? selectedBranch : userBranch;
+    const currentBranchId = branches.find(b => b.name === currentTargetBranch)?.id;
 
-    const loading = ordersLoading || branchesLoading || productsLoading;
+    // 비용 및 정산 데이터 불러오기 (최적화됨)
+    useEffect(() => {
+        const loadData = async () => {
+            if (!currentBranchId || currentTargetBranch === 'all') return;
+
+            const dateFrom = new Date(reportDate + 'T00:00:00');
+            const dateTo = new Date(reportDate + 'T23:59:59');
+            const prevDate = format(subDays(new Date(reportDate), 1), 'yyyy-MM-dd');
+
+            // 병렬 처리를 통한 로딩 속도 개선
+            const [settlementResult, prevSettlementResult, _expensesResult, _ordersResult] = await Promise.all([
+                getSettlement(currentBranchId, reportDate),
+                getSettlement(currentBranchId, prevDate),
+                fetchExpenses({
+                    branchId: currentBranchId,
+                    dateFrom,
+                    dateTo
+                }),
+                fetchOrdersForSettlement(reportDate)
+            ]);
+
+            setSettlementRecord(settlementResult);
+            setVaultDeposit(settlementResult?.vaultDeposit || 0);
+            setManualPreviousBalance(settlementResult?.previousVaultBalance || 0);
+            setPrevSettlementRecord(prevSettlementResult);
+        };
+
+        loadData();
+    }, [currentBranchId, reportDate, currentTargetBranch, getSettlement, fetchExpenses, fetchOrdersForSettlement]);
+
+    const loading = ordersLoading || branchesLoading || productsLoading || expensesLoading || settlementLoading;
 
     // 정산 데이터 계산
     const stats = useMemo(() => {
@@ -68,8 +113,8 @@ export default function DailySettlementPage() {
 
         // 시간 내림차순 정렬
         dailyOrders.sort((a, b) => {
-            const dateA = a.orderDate instanceof Date ? a.orderDate : a.orderDate.toDate();
-            const dateB = b.orderDate instanceof Date ? b.orderDate : b.orderDate.toDate();
+            const dateA = (a.orderDate as any)?.toDate ? (a.orderDate as any).toDate() : new Date(a.orderDate as any);
+            const dateB = (b.orderDate as any)?.toDate ? (b.orderDate as any).toDate() : new Date(b.orderDate as any);
             return dateB.getTime() - dateA.getTime();
         });
 
@@ -120,6 +165,45 @@ export default function DailySettlementPage() {
             transfer: { count: 0, amount: 0 },
             others: { count: 0, amount: 0 }
         };
+
+        let deliveryCostCashToday = 0;
+
+        // 배송비 현금 지급액 합산 (정체성 강화: 오늘 주문이거나 오늘 배송비가 수정된 모든 건)
+        const processedCashOrderIds = new Set<string>();
+
+        // 함수 정의: 지점 필터링 로직 (중복 방지)
+        const isTargetBranchOrder = (order: Order) => {
+            if (currentTargetBranch === 'all') return true;
+            const target = currentTargetBranch.trim().replace(/\s/g, '');
+            const isOriginal = order.branchName?.trim().replace(/\s/g, '') === target;
+            const isProcess = order.transferInfo?.isTransferred &&
+                (order.transferInfo?.status === 'accepted' || order.transferInfo?.status === 'completed') &&
+                order.transferInfo?.processBranchName?.trim().replace(/\s/g, '') === target;
+            return isOriginal || isProcess;
+        };
+
+        // 1. 당일 주문 전체에서 현금 배송비 추출
+        dailyOrders.forEach(order => {
+            if (order.actualDeliveryCostCash && isTargetBranchOrder(order)) {
+                deliveryCostCashToday += Number(order.actualDeliveryCostCash);
+                processedCashOrderIds.add(order.id);
+            }
+        });
+
+        // 2. 전체 기간 주문 중 오늘 배송비가 수정된 건 추가 합산 (이월 주문 대비)
+        orders.forEach(order => {
+            if (!order.actualDeliveryCostCash || processedCashOrderIds.has(order.id)) return;
+            if (!isTargetBranchOrder(order)) return;
+
+            const updatedAt = (order.deliveryCostUpdatedAt as any)?.toDate
+                ? (order.deliveryCostUpdatedAt as any).toDate()
+                : (order.deliveryCostUpdatedAt instanceof Date ? order.deliveryCostUpdatedAt : null);
+
+            if (updatedAt && format(updatedAt, 'yyyy-MM-dd') === reportDate) {
+                deliveryCostCashToday += Number(order.actualDeliveryCostCash);
+                processedCashOrderIds.add(order.id);
+            }
+        });
 
         const updatePaymentStats = (order: Order, amount: number) => {
             // 호출 시점에서 이미 '유효한 결제'임이 확인되었다고 가정함
@@ -211,12 +295,11 @@ export default function DailySettlementPage() {
                         // 수주 지점의 결제 수단 집계 반영
                         updatePaymentStats(order, share);
                     }
-                    else if (!pendingOrdersToday.includes(order)) { // 중복 방지
-                        pendingOrdersToday.push(order);
-                        // 수주 지점은 미결 금액 집계 제외 (기존 로직 유지)
-                    }
+                    // 수주 지점은 미결 금액 집계 제외 (기존 로직 유지)
                 }
             }
+
+            // 배송비 현금 지급액 합산 로직은 위에서 전체 orders 대상으로 통합 처리함
         });
 
         // 이월 주문 결제 처리
@@ -261,6 +344,22 @@ export default function DailySettlementPage() {
             }
         });
 
+        // 지출(비용) 집계
+        // useSimpleExpenses에서 fetch한 expenses 필터링 (currentTargetBranchId 기준)
+        // fetchExpenses가 이미 지점/날짜 필터를 적용했다면 그대로 사용 가능
+        const expenseSummary = {
+            total: 0,
+            transport: { count: 0, amount: 0 },
+            material: { amount: 0 },
+            others: { amount: 0 }
+        };
+
+        // filters가 적용된 상태라면 fetch한 expenses가 이미 정확함
+        // 하지만 currentTargetBranch가 'all'인 경우 useSimpleExpenses의 expenses는 전체일 수 있음
+        const targetExpenses = currentTargetBranch === 'all'
+            ? [] // 전체 보기 시에는 개별 지점 시재 파악이 어려우므로 제외하거나 별도 처리
+            : ordersLoading ? [] : []; // 실제 값은 아래에서 계산 (훅에서 가져온 expenses 사용)
+
         return {
             dailyOrders,
             paidOrdersToday,
@@ -274,15 +373,110 @@ export default function DailySettlementPage() {
             pendingAmountToday,
             orderCount: dailyOrders.length,
             paymentStats,
+            deliveryCostCashToday,
             from,
             to
         };
-    }, [orders, reportDate, currentTargetBranch]);
+    }, [orders, reportDate, currentTargetBranch, ordersLoading]);
+
+    // 지출 요약 (매입)
+    const summaryExpense = useMemo(() => {
+        // useSimpleExpenses에서 fetch한 expenses 필터링
+        const filtered = expenses.filter(e => {
+            const expenseDate = e.date instanceof Date ? e.date : e.date.toDate();
+            // const reportDateObj = new Date(reportDate + 'T00:00:00'); // Unused
+            return format(expenseDate, 'yyyy-MM-dd') === reportDate;
+        });
+
+        const transport = filtered.filter(e => e.category === SimpleExpenseCategory.TRANSPORT);
+
+        // 외부발주 분리 (설명에 '외부발주'가 포함된 자재비)
+        const outsource = filtered.filter(e =>
+            e.category === SimpleExpenseCategory.MATERIAL && e.description.includes('외부발주')
+        );
+
+        // 순수 자재비 (외부발주 제외)
+        const material = filtered.filter(e =>
+            e.category === SimpleExpenseCategory.MATERIAL && !e.description.includes('외부발주')
+        );
+
+        const other = filtered.filter(e => e.category !== SimpleExpenseCategory.TRANSPORT && e.category !== SimpleExpenseCategory.MATERIAL);
+
+        return {
+            total: filtered.reduce((sum, e) => sum + e.amount, 0),
+            transport: {
+                count: transport.reduce((sum, e) => sum + (e.quantity || 1), 0),
+                amount: transport.reduce((sum, e) => sum + e.amount, 0)
+            },
+            outsource: {
+                count: outsource.length,
+                amount: outsource.reduce((sum, e) => sum + e.amount, 0),
+                items: outsource // 목록 전달
+            },
+            materialAmount: material.reduce((sum, e) => sum + e.amount, 0),
+            otherAmount: other.reduce((sum, e) => sum + e.amount, 0)
+        };
+    }, [expenses, reportDate]);
+
+    // 금고 현금 계산
+    const vaultCash = useMemo(() => {
+        const cashSales = stats?.paymentStats.cash.amount || 0;
+
+        // 배송비 현금 지급액 집계: 주문 데이터 기반 + 간편지출(현금) 데이터 기반 통합
+        // 지출 내역 중 '운송비'이면서 '현금' 결제인 항목들 합산
+        const transportCashExpenses = expenses.filter(e => {
+            const expenseDate = e.date instanceof Date ? e.date : e.date.toDate();
+            const isInDate = format(expenseDate, 'yyyy-MM-dd') === reportDate;
+            const isTransport = e.category === SimpleExpenseCategory.TRANSPORT;
+            const isCash = e.paymentMethod === 'cash' || e.description.includes('현금');
+            return isInDate && isTransport && isCash;
+        });
+        const deliveryCostCashFromExpenses = transportCashExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+        // 주문 데이터 기반과 지출 데이터 기반 중 더 큰 값 사용 (지출 데이터가 더 정확하므로 우선권)
+        const deliveryCostCash = Math.max(stats?.deliveryCostCashToday || 0, deliveryCostCashFromExpenses);
+
+        // 이전 잔액 결정: 수동 입력값이 있으면 우선
+        const prevBalance = manualPreviousBalance || (prevSettlementRecord ?
+            (prevSettlementRecord.previousVaultBalance + (prevSettlementRecord.cashSalesToday || 0) - prevSettlementRecord.vaultDeposit - (prevSettlementRecord.deliveryCostCashToday || 0))
+            : 0);
+        const remaining = prevBalance + cashSales - vaultDeposit - deliveryCostCash;
+
+        return {
+            prevBalance,
+            cashSales,
+            deliveryCostCash,
+            vaultDeposit,
+            remaining
+        };
+    }, [stats, manualPreviousBalance, prevSettlementRecord, vaultDeposit, expenses, reportDate]);
+
+    // 정산 저장 핸들러
+    const handleSaveSettlement = async () => {
+        if (!currentBranchId || currentTargetBranch === 'all') return;
+
+        const success = await saveSettlement({
+            branchId: currentBranchId,
+            branchName: currentTargetBranch,
+            date: reportDate,
+            previousVaultBalance: vaultCash.prevBalance,
+            cashSalesToday: vaultCash.cashSales,
+            deliveryCostCashToday: vaultCash.deliveryCostCash,
+            vaultDeposit: vaultDeposit,
+            createdAt: settlementRecord?.createdAt || undefined
+        });
+
+        if (success) {
+            // 저장 후 상태 업데이트를 위해 다시 불러오기
+            const record = await getSettlement(currentBranchId, reportDate);
+            setSettlementRecord(record);
+        }
+    };
 
     const handlePrevDay = () => setReportDate(prev => format(subDays(new Date(prev), 1), 'yyyy-MM-dd'));
     const handleNextDay = () => setReportDate(prev => format(addDays(new Date(prev), 1), 'yyyy-MM-dd'));
 
-    if (loading) {
+    if (loading && !branches.length) { // 초기 로딩 시에만 풀스크린 로딩
         return (
             <div className="flex items-center justify-center min-h-[400px]">
                 <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -338,17 +532,154 @@ export default function DailySettlementPage() {
                 </div>
             </PageHeader>
 
+            {/* 금고 현금 및 매입 요약 */}
+            {currentTargetBranch !== 'all' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card className="border-primary/20 shadow-sm">
+                        <CardHeader className="bg-primary/5 pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <DollarSign className="h-5 w-5 text-primary" />
+                                금고 현금 관리 (현금 시재)
+                            </CardTitle>
+                            <CardDescription>금고 내 실제 현금 흐름을 관리합니다.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">전일 금고 시재</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            type="number"
+                                            value={vaultCash.prevBalance}
+                                            onChange={(e) => setManualPreviousBalance(Number(e.target.value))}
+                                            className="h-9 font-bold"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        {prevSettlementRecord ? '전일 정산 기록에서 불러옴' : '수동 입력 필요'}
+                                    </p>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">당일 현금 매출 (+)</Label>
+                                    <div className="h-9 px-3 flex items-center bg-green-50 rounded-md border border-green-100 font-bold text-green-700">
+                                        ₩{vaultCash.cashSales.toLocaleString()}
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">주문 결제 데이터 자동 합산</p>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">시재 입금 (금고 → 은행) (-)</Label>
+                                    <Input
+                                        type="number"
+                                        value={vaultCash.vaultDeposit}
+                                        onChange={(e) => setVaultDeposit(Number(e.target.value))}
+                                        className="h-9 font-bold text-red-600 border-red-200"
+                                        placeholder="은행 입금액"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">금고에서 꺼내 실제 입금한 금액</p>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-red-700 font-bold">배송비 현금 지급 (-)</Label>
+                                    <div className="h-9 px-3 flex items-center bg-red-50 rounded-md border border-red-100 font-bold text-red-600">
+                                        ₩{vaultCash.deliveryCostCash.toLocaleString()}
+                                    </div>
+                                    <p className="text-[10px] text-red-500 font-medium">기사님께 현금으로 직접 지급한 배송비</p>
+                                </div>
+                                <div className="space-y-1.5 col-span-2">
+                                    <Label className="text-xs text-primary font-bold">금고상 잔여 현금 (=)</Label>
+                                    <div className="h-9 px-3 flex items-center bg-primary/10 rounded-md border border-primary/20 font-black text-primary text-lg">
+                                        ₩{vaultCash.remaining.toLocaleString()}
+                                    </div>
+                                    <p className="text-[10px] text-primary/70 font-medium">현재 포스기 금고에 있어야 할 금액</p>
+                                </div>
+                            </div>
+                            <Button
+                                className="w-full mt-2"
+                                onClick={handleSaveSettlement}
+                                disabled={settlementLoading}
+                            >
+                                {settlementLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                오늘의 시재 정산 저장
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-orange-200 shadow-sm">
+                        <CardHeader className="bg-orange-50/50 pb-3">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <ShoppingCart className="h-5 w-5 text-orange-600" />
+                                당일 매입 및 지출 요약
+                            </CardTitle>
+                            <CardDescription>간편지출관리 데이터를 통합 요약합니다.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-bold text-gray-700">총 지출 합계</span>
+                                        <span className="text-[10px] text-muted-foreground">당일 모든 지출 항목</span>
+                                    </div>
+                                    <span className="text-xl font-black text-gray-900">₩{summaryExpense.total.toLocaleString()}</span>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div className="flex flex-col p-2 bg-blue-50 rounded border border-blue-100 italic">
+                                        <span className="text-[10px] text-blue-600 font-bold">운송비 ({summaryExpense.transport.count}건)</span>
+                                        <span className="text-sm font-bold text-blue-800">₩{summaryExpense.transport.amount.toLocaleString()}</span>
+                                    </div>
+
+                                    {/* 외부발주 섹션 (내역이 있으면 파트너별 표시) */}
+                                    <div className="flex flex-col p-2 bg-orange-50 rounded border border-orange-100">
+                                        <span className="text-[10px] text-orange-600 font-bold">외부발주 (매입)</span>
+                                        <span className="text-sm font-bold text-orange-800">₩{summaryExpense.outsource.amount.toLocaleString()}</span>
+                                        {summaryExpense.outsource.items.length > 0 && (
+                                            <div className="mt-1 flex flex-col gap-0.5">
+                                                {Object.entries(summaryExpense.outsource.items.reduce((acc, item) => {
+                                                    acc[item.supplier] = (acc[item.supplier] || 0) + item.amount;
+                                                    return acc;
+                                                }, {} as Record<string, number>)).map(([supplier, amount]) => (
+                                                    <span key={supplier} className="text-[9px] text-orange-700 flex justify-between">
+                                                        <span>{supplier}</span>
+                                                        <span>{amount.toLocaleString()}</span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex flex-col p-2 bg-purple-50 rounded border border-purple-100">
+                                        <span className="text-[10px] text-purple-600 font-bold">자재비 (기타)</span>
+                                        <span className="text-sm font-bold text-purple-800">₩{summaryExpense.materialAmount.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex flex-col p-2 bg-gray-50 rounded border border-gray-200">
+                                        <span className="text-[10px] text-gray-500 font-bold">기타 지출</span>
+                                        <span className="text-sm font-bold text-gray-700">₩{summaryExpense.otherAmount.toLocaleString()}</span>
+                                    </div>
+                                </div>
+
+                                <div className="mt-2 text-right">
+                                    <Button variant="link" size="sm" asChild className="text-blue-600 hover:text-blue-800 p-0 h-auto">
+                                        <Link href="/dashboard/simple-expenses" className="flex items-center">
+                                            지출 상세 보기 <ChevronRight className="ml-1 h-3 w-3" />
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div >
+                        </CardContent >
+                    </Card >
+                </div >
+            )
+            }
+
             {/* 요약 카드 */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <Card className="bg-blue-50/50 border-blue-100">
                     <CardHeader className="pb-2">
-                        <CardDescription className="text-blue-600 font-medium whitespace-nowrap">오늘 접수 총액 (발주 기준)</CardDescription>
+                        <CardDescription className="text-blue-600 font-medium whitespace-nowrap">오늘 총 매출 (접수 기준)</CardDescription>
                         <CardTitle className="text-2xl font-bold flex items-baseline gap-2">
                             ₩{stats?.totalPayment.toLocaleString()}
                         </CardTitle>
                         <div className="flex justify-between items-center mt-1">
                             <span className="text-xs text-muted-foreground mr-1">({stats?.orderCount || 0}건)</span>
-                            <span className="text-[10px] text-orange-600 font-medium">미결: ₩{stats?.pendingAmountToday.toLocaleString()}</span>
+                            <span className="text-[10px] text-orange-600 font-medium">실질: ₩{stats?.outgoingSettle.toLocaleString()}</span>
                         </div>
                     </CardHeader>
                 </Card>
@@ -779,6 +1110,6 @@ export default function DailySettlementPage() {
                 onOpenChange={setIsDetailOpen}
                 order={selectedOrder}
             />
-        </div>
+        </div >
     );
 }

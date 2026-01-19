@@ -68,6 +68,9 @@ export function useSimpleExpenses() {
       }
       if (filters?.limit) {
         q = query(q, limit(filters.limit));
+      } else {
+        // 기본적으로 최근 3000개까지만 조회하여 속도 개선 (사용자 요청)
+        q = query(q, limit(3000));
       }
       const snapshot = await getDocs(q);
       const expenseList = snapshot.docs.map(doc => ({
@@ -118,14 +121,15 @@ export function useSimpleExpenses() {
           const expenseQuery = query(
             collection(db, 'simpleExpenses'),
             where('relatedOrderId', '==', data.relatedOrderId),
-            where('category', '==', SimpleExpenseCategory.TRANSPORT)
+            where('category', '==', SimpleExpenseCategory.TRANSPORT),
+            where('subCategory', '==', data.subCategory || 'DELIVERY') // 서브카테고리까지 확인하여 분리 저장
           );
           const expenseSnapshot = await getDocs(expenseQuery);
 
           if (!expenseSnapshot.empty) {
             // 이미 존재하는 경우 업데이트
             const existingExpense = expenseSnapshot.docs[0];
-            const updateData = {
+            const updateData: any = {
               date: data.date,
               amount: data.amount,
               description: data.description,
@@ -136,6 +140,8 @@ export function useSimpleExpenses() {
               branchName: branchName,
               updatedAt: serverTimestamp()
             };
+            if (data.paymentMethod) updateData.paymentMethod = data.paymentMethod;
+            if (data.subCategory) updateData.subCategory = data.subCategory;
 
             await updateDoc(existingExpense.ref, updateData);
 
@@ -251,7 +257,7 @@ export function useSimpleExpenses() {
       }
       */
       const productAdded = false; // 항상 false로 설정하여 아래 toast 메시지 등에서 영향 없도록 함
-      const expenseData: Omit<SimpleExpense, 'id'> = {
+      const expenseData: any = {
         date: data.date,
         amount: data.amount,
         category: data.category,
@@ -268,6 +274,9 @@ export function useSimpleExpenses() {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       };
+
+      if (data.paymentMethod) expenseData.paymentMethod = data.paymentMethod;
+
       await addDoc(collection(db, 'simpleExpenses'), expenseData);
       // 재고 업데이트 처리
       if (data.inventoryUpdates && data.inventoryUpdates.length > 0) {
