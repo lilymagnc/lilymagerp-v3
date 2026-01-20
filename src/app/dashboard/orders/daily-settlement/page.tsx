@@ -477,7 +477,6 @@ export default function DailySettlementPage() {
             deliveryCostCashToday: vaultCash.deliveryCostCash,
             cashExpenseToday: vaultCash.otherCashExpenses,
             vaultDeposit: vaultDeposit,
-            vaultDeposit: vaultDeposit,
             createdAt: settlementRecord?.createdAt || undefined
         });
 
@@ -551,67 +550,68 @@ export default function DailySettlementPage() {
             {currentTargetBranch !== 'all' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card className="border-primary/20 shadow-sm">
-                        <CardHeader className="bg-primary/5 pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <DollarSign className="h-5 w-5 text-primary" />
+                        <CardHeader className="bg-primary/5 py-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-primary" />
                                 금고 현금 관리 (현금 시재)
                             </CardTitle>
-                            <CardDescription>금고 내 실제 현금 흐름을 관리합니다.</CardDescription>
                         </CardHeader>
-                        <CardContent className="pt-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">전일 금고 시재</Label>
+                        <CardContent className="pt-4 space-y-3">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] text-muted-foreground">전일 금고 시재</Label>
                                     <div className="flex gap-2">
                                         <Input
                                             type="number"
                                             value={vaultCash.prevBalance}
                                             onChange={(e) => setManualPreviousBalance(Number(e.target.value))}
-                                            className="h-9 font-bold"
+                                            className="h-8 text-sm font-bold"
                                         />
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">
+                                    <p className="text-[9px] text-muted-foreground leading-tight">
                                         {prevSettlementRecord ? '전일 정산 기록에서 불러옴' : '수동 입력 필요'}
                                     </p>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">당일 현금 매출 (+)</Label>
-                                    <div className="h-9 px-3 flex items-center bg-green-50 rounded-md border border-green-100 font-bold text-green-700">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] text-muted-foreground">당일 현금 매출 (+)</Label>
+                                    <div className="h-8 px-2 flex items-center bg-green-50 rounded-md border border-green-100 font-bold text-green-700 text-sm">
                                         ₩{vaultCash.cashSales.toLocaleString()}
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">주문 결제 데이터 자동 합산</p>
+                                    <p className="text-[9px] text-muted-foreground leading-tight">주문 결제 자동 합산</p>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">시재 입금 (금고 → 은행) (-)</Label>
-                                    <Input
-                                        type="number"
-                                        value={vaultCash.vaultDeposit}
-                                        onChange={(e) => setVaultDeposit(Number(e.target.value))}
-                                        className="h-9 font-bold text-red-600 border-red-200"
-                                        placeholder="은행 입금액"
-                                    />
-                                    <p className="text-[10px] text-muted-foreground">금고에서 꺼내 실제 입금한 금액</p>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs text-red-700 font-bold">배송비 현금 지급 (-)</Label>
-                                    <div className="h-9 px-3 flex items-center bg-red-50 rounded-md border border-red-100 font-bold text-red-600">
-                                        ₩{vaultCash.deliveryCostCash.toLocaleString()}
+
+                                {/* 지출 항목 1열 배치 */}
+                                <div className="col-span-2 grid grid-cols-3 gap-2 py-2 border-y border-dashed border-gray-100">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-muted-foreground font-medium">시재 입금 (-)</Label>
+                                        <Input
+                                            type="number"
+                                            value={vaultCash.vaultDeposit}
+                                            onChange={(e) => setVaultDeposit(Number(e.target.value))}
+                                            className="h-8 text-xs font-bold text-red-600 border-red-200"
+                                            placeholder="은행 입금"
+                                        />
                                     </div>
-                                    <p className="text-[10px] text-red-500 font-medium">기사님께 현금으로 직접 지급한 배송비</p>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs text-red-700 font-bold">기타 현금 지출 (간편지출) (-)</Label>
-                                    <div className="h-9 px-3 flex items-center bg-red-50 rounded-md border border-red-100 font-bold text-red-600">
-                                        ₩{vaultCash.otherCashExpenses.toLocaleString()}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-red-700 font-bold">배송비 현금 (-)</Label>
+                                        <div className="h-8 px-2 flex items-center bg-red-50 rounded-md border border-red-100 font-bold text-red-600 text-xs">
+                                            ₩{vaultCash.deliveryCostCash.toLocaleString()}
+                                        </div>
                                     </div>
-                                    <p className="text-[10px] text-red-500 font-medium">간편지출에 등록된 일반 현금 영수증/지출</p>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] text-red-700 font-bold">기타 현금 지출 (-)</Label>
+                                        <div className="h-8 px-2 flex items-center bg-red-50 rounded-md border border-red-100 font-bold text-red-600 text-xs">
+                                            ₩{vaultCash.otherCashExpenses.toLocaleString()}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5 col-span-2">
+
+                                <div className="space-y-1 col-span-2 pt-1">
                                     <Label className="text-xs text-primary font-bold">금고상 잔여 현금 (=)</Label>
-                                    <div className="h-9 px-3 flex items-center bg-primary/10 rounded-md border border-primary/20 font-black text-primary text-lg">
+                                    <div className="h-10 px-3 flex items-center bg-primary/10 rounded-md border border-primary/20 font-black text-primary text-lg">
                                         ₩{vaultCash.remaining.toLocaleString()}
                                     </div>
-                                    <p className="text-[10px] text-primary/70 font-medium">현재 포스기 금고에 있어야 할 금액</p>
+                                    <p className="text-[10px] text-primary/70 font-medium tracking-tight">현재 포스기 금고에 있어야 할 금액</p>
                                 </div>
                             </div>
                             <Button

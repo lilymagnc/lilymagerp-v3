@@ -251,9 +251,13 @@ export default function DashboardPage() {
     const pickupDeliveryEvents: any[] = [];
 
     orders.forEach(order => {
-      // 관리자가 아닌 경우 해당 지점의 주문만 처리
-      if (!isAdmin && order.branchName !== userBranch) {
-        return;
+      // 지점 필터링 (자신의 지점 + 이관받은 주문)
+      if (currentFilteredBranch) {
+        const isOwnBranch = order.branchName === currentFilteredBranch;
+        const isTransferredToMe = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === currentFilteredBranch;
+        if (!isOwnBranch && !isTransferredToMe) {
+          return;
+        }
       }
 
       // 픽업 예약 처리 (즉시픽업 제외, 처리 중이거나 완료된 주문)
@@ -302,7 +306,7 @@ export default function DashboardPage() {
     });
 
     return pickupDeliveryEvents;
-  }, [orders, isAdmin, userBranch]);
+  }, [orders, isAdmin, userBranch, currentFilteredBranch]);
 
   // 오늘과 내일의 일정 데이터 (수동 일정 + 배송/픽업 이벤트)
   const todayAndTomorrowEvents = useMemo(() => {
@@ -424,12 +428,50 @@ export default function DashboardPage() {
           } else {
             const bName = branchFilter || userBranch;
             if (bName) {
-              recentQ = query(
+              // 지점 전용/필터링: 지점 본인 주문 + 지점으로 이관된 주문 모두 필요
+              // Firestore OR 쿼리 제한으로 인해 두 쿼리를 병합하거나 넉넉히 가져와서 필터링
+              // 여기서는 간단하게 본인 주문 우선으로 가져오되, 이관 주문도 포함되도록 처리 (정확도를 위해 병합 쿼리 사용)
+              const q1 = query(
                 collection(db, "orders"),
                 where("branchName", "==", bName),
                 orderBy("orderDate", "desc"),
                 limit(10)
               );
+              const q2 = query(
+                collection(db, "orders"),
+                where("transferInfo.processBranchName", "==", bName),
+                orderBy("orderDate", "desc"),
+                limit(10)
+              );
+
+              const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+              const combined = [...snap1.docs, ...snap2.docs].map(doc => ({
+                id: doc.id,
+                ...doc.data()
+              })).sort((a: any, b: any) => {
+                const dateA = a.orderDate?.toDate ? a.orderDate.toDate() : new Date(a.orderDate);
+                const dateB = b.orderDate?.toDate ? b.orderDate.toDate() : new Date(b.orderDate);
+                return dateB.getTime() - dateA.getTime();
+              }).slice(0, 10);
+
+              const recentOrdersData = combined.map((order: any) => {
+                let productNames = '상품 정보 없음';
+                const items = order.items || order.products || [];
+                if (Array.isArray(items) && items.length > 0) {
+                  productNames = items.map((item: any) => item.name || item.productName || '상품명 없음').join(', ');
+                }
+                return {
+                  id: order.id,
+                  orderer: order.orderer || { name: '정보 없음' },
+                  orderDate: order.orderDate,
+                  total: order.summary?.total || order.total || 0,
+                  status: order.status,
+                  branchName: order.branchName,
+                  productNames
+                } as Order;
+              });
+              setRecentOrders(recentOrdersData);
+              recentQ = null; // 이미 처리됨
             }
           }
 
@@ -466,7 +508,7 @@ export default function DashboardPage() {
         try {
           let activeQ;
           if (isAdmin && !branchFilter) {
-            // 관리자 전용: 전체 대기 주문 (인덱스 필요할 수 있음)
+            // 관리자 전용: 전체 대기 주문
             activeQ = query(
               collection(db, "orders"),
               where("status", "in", ["pending", "processing"])
@@ -474,12 +516,30 @@ export default function DashboardPage() {
           } else {
             const bName = branchFilter || userBranch;
             if (bName) {
-              // 지점 전용/필터링: 지점별 대기 주문 (복합 인덱스 필요: branchName + status)
-              activeQ = query(
+              // 지점 전용/필터링: 지점 본인 주문 + 지점으로 이관된 주문 모두 필요
+              const q1 = query(
                 collection(db, "orders"),
                 where("branchName", "==", bName),
                 where("status", "in", ["pending", "processing"])
               );
+              const q2 = query(
+                collection(db, "orders"),
+                where("transferInfo.processBranchName", "==", bName),
+                where("status", "in", ["pending", "processing"])
+              );
+
+              const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+              const uniqueDocs = new Map();
+              [...snap1.docs, ...snap2.docs].forEach(doc => uniqueDocs.set(doc.id, doc.data()));
+
+              uniqueDocs.forEach((order: any) => {
+                pendingOrders++;
+                if (order.payment?.status === 'pending') {
+                  pendingPaymentCount++;
+                  pendingPaymentAmount += (order.summary?.total || order.total || 0);
+                }
+              });
+              activeQ = null; // 이미 처리됨
             }
           }
 

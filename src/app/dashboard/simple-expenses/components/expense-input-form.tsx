@@ -24,6 +24,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -41,7 +42,17 @@ import {
   Building2,
   FileSpreadsheet,
   Tag,
-  DollarSign
+  DollarSign,
+  Flower2,
+  Package,
+  Utensils,
+  Truck,
+  Coffee,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Link,
+  Info
 } from 'lucide-react';
 import { DuplicateCheckDialog } from './duplicate-check-dialog';
 import { useSimpleExpenses } from '@/hooks/use-simple-expenses';
@@ -135,6 +146,7 @@ export function ExpenseInputForm({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [supplierSearchValue, setSupplierSearchValue] = useState('');
   const [isDirectInput, setIsDirectInput] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [excelData, setExcelData] = useState<any[]>([]);
   const [duplicateData, setDuplicateData] = useState<any[]>([]);
   const [isExcelUploading, setIsExcelUploading] = useState(false);
@@ -901,7 +913,7 @@ export function ExpenseInputForm({
         supplier: '',
         category: SimpleExpenseCategory.OTHER,
         subCategory: '',
-        paymentMethod: 'card',
+        paymentMethod: 'cash',
         items: [{
           description: '',
           quantity: 1,
@@ -968,62 +980,63 @@ export function ExpenseInputForm({
         {uploadMode === 'manual' ? (
           <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* 기존 수동 입력 폼 */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {/* 날짜 */}
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>날짜</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* 헤더 섹션: 날짜, 결제수단, 구매처 */}
+              <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 날짜 */}
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider">날짜</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} className="h-10 border-gray-200 focus:border-primary focus:ring-primary/20 bg-white" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                {/* 현금 결제 여부 (심플 버튼) */}
-                <FormField
-                  control={form.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col justify-end">
-                      <FormLabel className="sr-only">현금 결제 여부</FormLabel>
-                      <Button
-                        type="button"
-                        variant={field.value === 'cash' ? 'default' : 'outline'}
-                        className={cn(
-                          "w-full gap-2",
-                          field.value === 'cash' && "bg-green-600 hover:bg-green-700 text-white border-transparent"
-                        )}
-                        onClick={() => {
-                          // 토글: 현재 cash이면 card로, 아니면 cash로
-                          field.onChange(field.value === 'cash' ? 'card' : 'cash');
-                        }}
-                      >
-                        <DollarSign className="h-4 w-4" />
-                        {field.value === 'cash' ? '현금 결제 ON' : '현금 결제'}
-                      </Button>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  {/* 결제수단 */}
+                  {/* 결제수단 - 현금 단일 선택으로 간소화 */}
+                  <FormField
+                    control={form.control}
+                    name="paymentMethod"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider">결제수단</FormLabel>
+                        <div className="flex p-1 bg-white border border-gray-200 rounded-lg h-10">
+                          <button
+                            type="button"
+                            className={cn(
+                              "flex-1 flex items-center justify-center rounded-md text-xs font-medium transition-all",
+                              field.value === 'cash'
+                                ? "bg-green-600 text-white shadow-sm"
+                                : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-500"
+                            )}
+                            onClick={() => field.onChange(field.value === 'cash' ? 'card' : 'cash')}
+                          >
+                            <DollarSign className="mr-1.5 h-3.5 w-3.5" />
+                            {field.value === 'cash' ? '현금 지출 선택됨' : '현금 지출 시 클릭'}
+                          </button>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                {/* 구매처 */}
-                <FormField
-                  control={form.control}
-                  name="supplier"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>구매처</FormLabel>
-                      {isDirectInput ? (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
+                  {/* 구매처 */}
+                  <FormField
+                    control={form.control}
+                    name="supplier"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel className="text-xs font-semibold text-gray-500 uppercase tracking-wider">구매처</FormLabel>
+                        {isDirectInput ? (
+                          <div className="flex gap-1 h-10">
                             <Input
-                              placeholder="구매처명을 직접 입력하세요"
+                              placeholder="구매처명 직접 입력"
                               value={supplierSearchValue}
                               onChange={(e) => safeSetState(setSupplierSearchValue, e.target.value)}
                               onKeyDown={(e) => {
@@ -1032,707 +1045,518 @@ export function ExpenseInputForm({
                                   handleDirectInputSubmit();
                                 }
                               }}
-                              className="flex-1"
+                              className="flex-1 bg-white text-sm"
                             />
                             <Button
                               type="button"
-                              variant="outline"
+                              variant="secondary"
                               size="sm"
                               onClick={handleDirectInputSubmit}
-                              disabled={!supplierSearchValue.trim()}
+                              className="h-10"
                             >
                               저장
                             </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                safeSetState(setIsDirectInput, false);
-                                safeSetState(setSupplierSearchValue, '');
-                              }}
-                            >
-                              취소
-                            </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            새로운 구매처를 직접 입력합니다. 나중에 거래처관리에서 관리할 수 있습니다.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <Popover
-                            open={supplierOpen}
-                            onOpenChange={handlePopoverOpenChange}
-                          >
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  aria-expanded={supplierOpen}
-                                  className={cn(
-                                    "justify-between w-full",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Building2 className="h-4 w-4" />
-                                    {field.value ? (
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-medium">{field.value}</span>
-                                        <Badge variant="outline" className="text-xs">
-                                          선택됨
-                                        </Badge>
-                                      </div>
-                                    ) : (
-                                      "구매처를 선택하거나 입력하세요"
+                        ) : (
+                          <div className="relative h-10">
+                            <Popover open={supplierOpen} onOpenChange={handlePopoverOpenChange}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className={cn(
+                                      "justify-between w-full h-10 bg-white border-gray-200 text-sm font-normal",
+                                      !field.value && "text-muted-foreground"
                                     )}
-                                  </div>
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-[400px] p-0"
-                              onOpenAutoFocus={(e) => e.preventDefault()}
-                              onCloseAutoFocus={(e) => e.preventDefault()}
-                              sideOffset={4}
-                            >
-                              <Command>
-                                <div className="flex items-center border-b px-3 py-2">
-                                  <Building2 className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                                  <CommandInput
-                                    placeholder="구매처명, 유형, 담당자명으로 검색..."
-                                    value={supplierSearchValue}
-                                    onValueChange={handleSupplierSearch}
-                                    className="border-0 focus:ring-0"
-                                  />
-                                </div>
-                                <CommandEmpty>
-                                  <div className="p-4 text-center">
-                                    <Building2 className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                                    <p className="text-sm text-muted-foreground mb-2">
-                                      "{supplierSearchValue}" 검색 결과가 없습니다.
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mb-3">
-                                      구매처명, 유형, 담당자명으로 검색해보세요.
-                                    </p>
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={handleDirectInput}
-                                      className="w-full"
-                                    >
-                                      <Plus className="h-4 w-4 mr-2" />
-                                      새 구매처로 직접 입력
-                                    </Button>
-                                  </div>
-                                </CommandEmpty>
-                                <CommandGroup className="max-h-[300px] overflow-auto">
-                                  {filteredPartners.length > 0 && (
-                                    <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                                      등록된 거래처 ({filteredPartners.length}개)
+                                  >
+                                    <div className="flex items-center gap-2 truncate">
+                                      {field.value || "구매처 선택/검색"}
                                     </div>
-                                  )}
-                                  {filteredPartners.map((partner) => (
-                                    <div
-                                      key={partner.id}
-                                      className={cn(
-                                        "flex items-center gap-3 p-3 cursor-pointer hover:bg-accent rounded-md transition-colors",
-                                        field.value === partner.name && "bg-accent border border-primary/20"
-                                      )}
-                                      onClick={() => {
-                                        handleSupplierSelect(partner.name);
-                                      }}
-                                    >
-                                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                                        <Building2 className="h-4 w-4 text-primary" />
+                                    <Search className="h-3.5 w-3.5 opacity-50 ml-2" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[300px] p-0" align="start">
+                                <Command shouldFilter={false}>
+                                  <div className="flex items-center border-b px-3 py-2">
+                                    <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                    <CommandInput
+                                      placeholder="구매처 검색..."
+                                      value={supplierSearchValue}
+                                      onValueChange={handleSupplierSearch}
+                                      className="border-0 focus:ring-0 text-sm"
+                                    />
+                                  </div>
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      <div className="p-4 text-center">
+                                        <p className="text-xs text-muted-foreground mb-3">검색 결과가 없습니다.</p>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={handleDirectInput}
+                                          className="w-full text-xs"
+                                        >
+                                          <Plus className="h-3 w-3 mr-2" />
+                                          직접 입력하기
+                                        </Button>
                                       </div>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium truncate">{partner.name}</span>
-                                          <Badge variant="secondary" className="text-xs">
-                                            {partner.type}
-                                          </Badge>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                          <span>{partner.contactPerson || '담당자 없음'}</span>
-                                          {partner.phone && (
-                                            <span>• {partner.phone}</span>
-                                          )}
-                                          {partner.email && (
-                                            <span>• {partner.email}</span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </CommandGroup>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                      )}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* 카테고리 선택 */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-medium mb-2">카테고리 선택</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    선택한 카테고리에 여러 품목을 추가할 수 있습니다.
-                  </p>
-                </div>
-
-                {/* 빠른 태그 버튼 */}
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {[
-                    { label: '생화', category: SimpleExpenseCategory.MATERIAL, sub: 'fresh_flower' },
-                    { label: '분화', category: SimpleExpenseCategory.MATERIAL, sub: 'potted_plant' },
-                    { label: '화분', category: SimpleExpenseCategory.MATERIAL, sub: 'pot' },
-                    { label: '포장재', category: SimpleExpenseCategory.MATERIAL, sub: 'packaging' },
-                    { label: '식재재료', category: SimpleExpenseCategory.MATERIAL, sub: 'planting_material' },
-                  ].map((tag) => (
-                    <Button
-                      key={tag.label}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-1"
-                      onClick={() => {
-                        form.setValue('category', tag.category);
-                        // 약간의 지연 후 서브카테고리 설정 (렌더링 이슈 방지)
-                        setTimeout(() => {
-                          if (isMountedRef.current) {
-                            form.setValue('subCategory', tag.sub);
-                          }
-                        }, 50);
-                      }}
-                    >
-                      <Tag className="h-3 w-3" />
-                      {tag.label}
-                    </Button>
-                  ))}
-                </div>
-
-                {/* 전체 분류 */}
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>분류</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          if (isMountedRef.current) {
-                            setTimeout(() => {
-                              if (isMountedRef.current) {
-                                try {
-                                  field.onChange(value);
-                                } catch (error) {
-                                  console.error('Category change error:', error);
-                                }
-                              }
-                            }, 100);
-                          }
-                        }}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="분류 선택" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {Object.entries(SIMPLE_EXPENSE_CATEGORY_LABELS).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* 세부 분류 */}
-                {getSubCategoryOptions(form.watch('category')).length > 0 && (
-                  <FormField
-                    control={form.control}
-                    name="subCategory"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>세부 분류</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            if (isMountedRef.current) {
-                              setTimeout(() => {
-                                if (isMountedRef.current) {
-                                  try {
-                                    field.onChange(value);
-                                  } catch (error) {
-                                    console.error('Subcategory change error:', error);
-                                  }
-                                }
-                              }, 100);
-                            }
-                          }}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="세부 분류 선택" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {getSubCategoryOptions(form.watch('category')).map(([key, label]) => (
-                              <SelectItem key={key} value={key}>
-                                {label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                                    </CommandEmpty>
+                                    <CommandGroup className="max-h-[250px] overflow-auto overscroll-contain">
+                                      {filteredPartners.map((partner) => (
+                                        <CommandItem
+                                          key={partner.id}
+                                          value={partner.name}
+                                          onSelect={() => handleSupplierSelect(partner.name)}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleSupplierSelect(partner.name);
+                                          }}
+                                          className="cursor-pointer py-2 hover:bg-gray-50 pointer-events-auto"
+                                        >
+                                          <div className="flex flex-col">
+                                            <span className="font-medium text-sm">{partner.name}</span>
+                                            <span className="text-[10px] text-muted-foreground">{partner.type}</span>
+                                          </div>
+                                          {field.value === partner.name && <Check className="ml-auto h-4 w-4 text-primary" />}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
+              </div>
+
+              {/* 카테고리 선택: 아이콘 버튼 그리드 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">카테고리</Label>
+                  {form.watch('category') && (
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] px-2 py-0">
+                      {SIMPLE_EXPENSE_CATEGORY_LABELS[form.watch('category')]} 선택됨
+                    </Badge>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                  {[
+                    { id: SimpleExpenseCategory.MATERIAL, label: '자재비', icon: Flower2, color: 'text-rose-600', bg: 'bg-rose-50' },
+                    { id: SimpleExpenseCategory.MEAL, label: '식대', icon: Utensils, color: 'text-orange-600', bg: 'bg-orange-50' },
+                    { id: SimpleExpenseCategory.TRANSPORT, label: '운송비', icon: Truck, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { id: SimpleExpenseCategory.OFFICE, label: '사무비', icon: Coffee, color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { id: SimpleExpenseCategory.FIXED_COST, label: '고정비', icon: Building2, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                    { id: SimpleExpenseCategory.OTHER, label: '기타', icon: Package, color: 'text-gray-600', bg: 'bg-gray-50' },
+                  ].map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => {
+                        form.setValue('category', cat.id);
+                        form.setValue('subCategory', ''); // 카테고리 변경 시 서브는 초기화
+                      }}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-xl border transition-all gap-1.5",
+                        form.watch('category') === cat.id
+                          ? "ring-2 ring-primary ring-offset-1 border-primary bg-primary/5"
+                          : "border-gray-100 bg-white hover:border-gray-300 hover:shadow-sm"
+                      )}
+                    >
+                      <div className={cn("p-2 rounded-full", cat.bg)}>
+                        <cat.icon className={cn("h-5 w-5", cat.color)} />
+                      </div>
+                      <span className={cn("text-xs font-bold", form.watch('category') === cat.id ? "text-primary" : "text-gray-600")}>
+                        {cat.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* 세부 분류 버튼 그리드 (카테고리 선택 후에만 노출) */}
+                {form.watch('category') && getSubCategoryOptions(form.watch('category')).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200 bg-gray-50/50 p-2 rounded-xl border border-dashed border-gray-200">
+                    {getSubCategoryOptions(form.watch('category')).map(([key, label]) => {
+                      const isSelected = form.watch('subCategory') === key;
+                      const mainCat = form.watch('category');
+
+                      // 메인 카테고리에 따른 서브 버튼 강조 색상 결정
+                      let activeClass = "bg-primary text-white border-primary";
+                      if (mainCat === SimpleExpenseCategory.MATERIAL) activeClass = "bg-rose-600 text-white border-rose-600";
+                      else if (mainCat === SimpleExpenseCategory.MEAL) activeClass = "bg-orange-600 text-white border-orange-600";
+                      else if (mainCat === SimpleExpenseCategory.TRANSPORT) activeClass = "bg-blue-600 text-white border-blue-600";
+                      else if (mainCat === SimpleExpenseCategory.OFFICE) activeClass = "bg-amber-600 text-white border-amber-600";
+                      else if (mainCat === SimpleExpenseCategory.FIXED_COST) activeClass = "bg-indigo-600 text-white border-indigo-600";
+
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => form.setValue('subCategory', isSelected ? '' : key)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-full text-[10px] font-medium border transition-all",
+                            isSelected
+                              ? activeClass
+                              : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700 shadow-sm"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 
-              {/* 품목 목록 */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium">
-                      {SIMPLE_EXPENSE_CATEGORY_LABELS[form.watch('category')] || '카테고리'} 품목 ({fields.length}개)
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      같은 카테고리의 여러 품목을 추가할 수 있습니다.
-                    </p>
+              {/* 품목 입력 영역: 컴팩트 그리드 레이아웃 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1 border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">입력 품목</Label>
+                    <Badge variant="outline" className="text-[10px] h-4 font-normal text-gray-400 border-gray-200">
+                      총 {fields.length}개
+                    </Badge>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addItem}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    품목 추가
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={addItem}
+                    className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/5 p-1 px-2"
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    추가
                   </Button>
                 </div>
 
-                {fields.map((field, index) => (
-                  <Card key={field.id} className="p-4 border-2 border-dashed border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-medium text-blue-600">품목 {index + 1}</h4>
-                      {fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveItem(index)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  {/* 테두리 없는 컴팩트 로우 */}
+                  {fields.map((field, index) => (
+                    <div
+                      key={field.id}
+                      className="group relative grid grid-cols-12 gap-2 pr-8 animate-in fade-in slide-in-from-right-2 duration-200"
+                    >
                       {/* 품목명 */}
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.description`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>품목명</FormLabel>
-                            <FormControl>
-                              <Input placeholder="구매한 품목명" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="col-span-12 md:col-span-5">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.description`}
+                          render={({ field }) => (
+                            <div className="relative">
+                              <Input
+                                placeholder="품목명"
+                                {...field}
+                                className="h-9 text-sm border-gray-100 group-hover:border-gray-300 focus:border-primary bg-white/50 focus:bg-white transition-all"
+                              />
+                            </div>
+                          )}
+                        />
+                      </div>
+
+                      {/* 단가 */}
+                      <div className="col-span-5 md:col-span-3">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.unitPrice`}
+                          render={({ field }) => (
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                placeholder="단가"
+                                {...field}
+                                value={field.value || ""}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  field.onChange(val);
+                                  const qty = form.getValues(`items.${index}.quantity`) || 1;
+                                  form.setValue(`items.${index}.amount`, val * qty);
+                                }}
+                                className="h-9 text-sm border-gray-100 group-hover:border-gray-300 focus:border-primary bg-white/50 focus:bg-white text-right pr-6"
+                              />
+                              <span className="absolute right-2 top-2.5 text-[10px] text-gray-400 font-medium italic">₩</span>
+                            </div>
+                          )}
+                        />
+                      </div>
 
                       {/* 수량 */}
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.quantity`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>수량</FormLabel>
-                            <FormControl>
+                      <div className="col-span-3 md:col-span-1.5 flex flex-col justify-center">
+                        <FormField
+                          control={form.control}
+                          name={`items.${index}.quantity`}
+                          render={({ field }) => (
+                            <div className="relative">
                               <Input
                                 type="number"
                                 min="1"
                                 placeholder="1"
                                 {...field}
+                                value={field.value || ""}
                                 onChange={(e) => {
-                                  const newQuantity = Math.max(1, parseFloat(e.target.value) || 1);
-                                  field.onChange(newQuantity);
-                                  // 수량 변경 시 금액 자동 계산
-                                  const unitPrice = form.getValues(`items.${index}.unitPrice`) || 0;
-                                  const newAmount = newQuantity * unitPrice;
-                                  form.setValue(`items.${index}.amount`, newAmount);
+                                  const val = parseFloat(e.target.value) || 1;
+                                  field.onChange(val);
+                                  const price = form.getValues(`items.${index}.unitPrice`) || 0;
+                                  form.setValue(`items.${index}.amount`, price * val);
                                 }}
+                                className="h-9 text-xs border-gray-100 group-hover:border-gray-300 focus:border-primary bg-white/50 focus:bg-white text-center"
                               />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                            </div>
+                          )}
+                        />
+                      </div>
 
-                      {/* 단가 */}
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.unitPrice`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>단가</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                {...field}
-                                onChange={(e) => {
-                                  const newUnitPrice = parseFloat(e.target.value) || 0;
-                                  field.onChange(newUnitPrice);
-                                  // 단가 변경 시 금액 자동 계산
-                                  const quantity = form.getValues(`items.${index}.quantity`) || 1;
-                                  const newAmount = quantity * newUnitPrice;
-                                  form.setValue(`items.${index}.amount`, newAmount);
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {/* 합계 (읽기 전용 스타일) */}
+                      <div className="col-span-4 md:col-span-2.5">
+                        <div className="h-9 px-3 flex items-center justify-end bg-gray-50/50 rounded-md border border-gray-100/50 text-sm font-bold text-gray-700">
+                          {form.watch(`items.${index}.amount`)?.toLocaleString() || 0}
+                        </div>
+                      </div>
 
-
-
-                      {/* 금액 (자동 계산) */}
-                      <FormField
-                        control={form.control}
-                        name={`items.${index}.amount`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>금액 (자동 계산)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                {...field}
-                                // readOnly 제거하고 직접 입력 가능하게 변경 (필요시) - 여기서는 자동계산이지만 엔터키 입력을 위해
-                                // readOnly={true} 
-                                className="bg-gray-50"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    if (index === fields.length - 1) {
-                                      addItem();
-                                      // 새 항목으로 포커스 이동은 React Hook Form ref 처리 필요하나 
-                                      // 간단히 다음 렌더링 사이클에 처리되도록 함
-                                    }
-                                  }
-                                }}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </Card>
-                ))}
-              </div>
-
-              {/* 총 금액 표시 */}
-              <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-blue-800">총 금액:</span>
-                  <span className="text-lg font-bold text-blue-600">
-                    {totalAmount.toLocaleString()}원
-                  </span>
-                </div>
-                <p className="text-sm text-blue-600 mt-1">
-                  {fields.length}개 품목이 {SIMPLE_EXPENSE_CATEGORY_LABELS[form.watch('category')] || '선택된 카테고리'}에 등록됩니다.
-                </p>
-              </div>
-
-              {/* 영수증 첨부 */}
-              <div className="space-y-2">
-                <Label htmlFor="receipt-upload">영수증 첨부 (선택사항)</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                    id="receipt-upload"
-                  />
-                  <Label
-                    htmlFor="receipt-upload"
-                    className="flex items-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {selectedFile ? selectedFile.name : '영수증 선택'}
-                  </Label>
-                  {selectedFile && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        safeSetState(setSelectedFile, null);
-                        form.setValue('receiptFile', undefined);
-                      }}
-                    >
-                      제거
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* 자재요청 연동 섹션 */}
-              {selectedCategory === SimpleExpenseCategory.MATERIAL && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle className="text-lg">자재요청 연동</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      이 구매가 특정 자재요청과 관련이 있다면 요청 ID를 입력하세요. 자동으로 완료 처리됩니다.
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="relatedRequestId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>관련 자재요청 ID (선택사항)</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="예: REQ-20241206-123456"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* 재고 업데이트 섹션 */}
-              {selectedCategory === SimpleExpenseCategory.MATERIAL && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle className="text-lg">재고 업데이트</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      구매한 자재의 재고를 자동으로 업데이트할 수 있습니다.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="mb-4">
+                      {/* 삭제 버튼 (오른쪽 절대 위치) */}
                       <Button
                         type="button"
-                        variant="outline"
-                        onClick={() => {
-                          // 품목명 기반 자동 매칭
-                          const items = form.getValues('items');
-                          const suggestions: any[] = [];
-
-                          items.forEach(item => {
-                            // 자재에서 매칭 찾기
-                            const matchedMaterial = materials.find(m =>
-                              m.branch === selectedBranchName &&
-                              m.name.toLowerCase().includes(item.description.toLowerCase())
-                            );
-
-                            if (matchedMaterial) {
-                              suggestions.push({
-                                type: 'material',
-                                id: matchedMaterial.id,
-                                name: matchedMaterial.name,
-                                quantity: item.quantity,
-                                unitPrice: item.unitPrice
-                              });
-                            } else {
-                              // 상품에서 매칭 찾기 (지점별로 검색)
-                              const matchedProduct = products.find(p =>
-                                p.branch === selectedBranchName &&
-                                p.name.toLowerCase().includes(item.description.toLowerCase())
-                              );
-
-                              if (matchedProduct) {
-                                suggestions.push({
-                                  type: 'product',
-                                  id: matchedProduct.id,
-                                  name: matchedProduct.name,
-                                  quantity: item.quantity,
-                                  unitPrice: item.unitPrice
-                                });
-                              } else {
-                                // 다른 지점에서 같은 이름의 상품 찾기 (ID 재사용)
-                                const sameNameProduct = products.find(p =>
-                                  p.name.toLowerCase().includes(item.description.toLowerCase())
-                                );
-
-                                if (sameNameProduct) {
-                                  suggestions.push({
-                                    type: 'product',
-                                    id: sameNameProduct.id, // 같은 이름이면 같은 ID 사용
-                                    name: sameNameProduct.name,
-                                    quantity: item.quantity,
-                                    unitPrice: item.unitPrice
-                                  });
-                                }
-                              }
-                            }
-                          });
-
-                          // 기존 재고 업데이트 항목 제거하고 새로 추가
-                          form.setValue('inventoryUpdates', suggestions);
-
-                          toast({
-                            title: "자동 매칭 완료",
-                            description: `${suggestions.length}개 품목이 매칭되었습니다.`
-                          });
-                        }}
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveItem(index)}
+                        disabled={fields.length === 1}
+                        className="absolute -right-2 top-0 h-9 w-8 text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        품목명으로 자동 매칭
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                  ))}
+                </div>
 
-                    {inventoryFields.map((field, index) => (
-                      <div key={field.id} className="grid grid-cols-12 gap-2 items-end">
-                        <div className="col-span-2">
-                          <Label>유형</Label>
-                          <FormField
-                            control={form.control}
-                            name={`inventoryUpdates.${index}.type`}
-                            render={({ field }) => (
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="선택" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="material">자재</SelectItem>
-                                  <SelectItem value="product">상품</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                        </div>
-                        <div className="col-span-3">
-                          <Label>품목</Label>
-                          <FormField
-                            control={form.control}
-                            name={`inventoryUpdates.${index}.id`}
-                            render={({ field }) => (
-                              <Select onValueChange={(value) => {
-                                field.onChange(value);
-                                const selectedItem = [...materials, ...products].find(item => item.id === value);
-                                if (selectedItem) {
-                                  form.setValue(`inventoryUpdates.${index}.name`, selectedItem.name);
-                                }
-                              }}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="품목 선택" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {materials.filter(m => m.branch === selectedBranchName).map(material => (
-                                    <SelectItem key={material.id} value={material.id}>
-                                      {material.name}
-                                    </SelectItem>
-                                  ))}
-                                  {products.filter(p => p.branch === selectedBranchName).map(product => (
-                                    <SelectItem key={product.id} value={product.id}>
-                                      {product.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Label>수량</Label>
-                          <FormField
-                            control={form.control}
-                            name={`inventoryUpdates.${index}.quantity`}
-                            render={({ field }) => (
-                              <Input
-                                type="number"
-                                min="1"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            )}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Label>단가</Label>
-                          <FormField
-                            control={form.control}
-                            name={`inventoryUpdates.${index}.unitPrice`}
-                            render={({ field }) => (
-                              <Input
-                                type="number"
-                                min="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            )}
-                          />
-                        </div>
-                        <div className="col-span-1">
+                {/* 빠른 금액 추가 섹션 (자재비 입력 시 도움) */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <span className="text-[10px] text-gray-400 font-medium py-1">마지막 품목 단가 퀵수정:</span>
+                  {[5000, 10000, 30000, 50000, 100000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        const lastIdx = fields.length - 1;
+                        form.setValue(`items.${lastIdx}.unitPrice`, amt);
+                        const qty = form.getValues(`items.${lastIdx}.quantity`) || 1;
+                        form.setValue(`items.${lastIdx}.amount`, amt * qty);
+                      }}
+                      className="text-[10px] font-bold px-2 py-0.5 rounded border border-gray-200 bg-white hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-colors h-6"
+                    >
+                      +{(amt / 1000).toLocaleString()}k
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 푸터 합계 & 영수증 영역 */}
+              <div className="bg-primary/10 p-5 rounded-2xl border border-primary/20 space-y-4">
+                <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-primary tracking-widest uppercase">Total Amount</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-primary">₩{totalAmount.toLocaleString()}</span>
+                      <span className="text-sm font-bold text-primary/60">원</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2 text-right">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        id="receipt-upload"
+                      />
+                      <Label
+                        htmlFor="receipt-upload"
+                        className={cn(
+                          "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border",
+                          selectedFile
+                            ? "bg-primary/20 border-primary text-primary font-bold shadow-inner"
+                            : "bg-white border-primary/30 text-primary/70 hover:bg-primary/10 shadow-sm"
+                        )}
+                      >
+                        <Upload className="h-3.5 w-3.5" />
+                        <span className="text-xs">{selectedFile ? "영수증 OK" : "영수증 첨부"}</span>
+                      </Label>
+                      {selectedFile && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            safeSetState(setSelectedFile, null);
+                            form.setValue('receiptFile', undefined);
+                          }}
+                          className="text-xs text-red-500 hover:underline font-medium"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 지출 저장 버튼 */}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || totalAmount === 0}
+                  className="w-full h-12 text-base font-black shadow-xl shadow-primary/20 transition-transform active:scale-[0.98]"
+                >
+                  {isSubmitting ? (
+                    <RotateCcw className="h-5 w-5 mr-3 animate-spin" />
+                  ) : (
+                    <Save className="h-5 w-5 mr-3" />
+                  )}
+                  {fields.length}건의 지출 등록하기
+                </Button>
+              </div>
+
+              {/* 고급 설정 (자재연동, 재고업데이트) */}
+              <div className="space-y-4 pt-4 border-t border-dashed border-gray-100">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-1.5">
+                    <Info className="h-3 w-3 text-gray-400" />
+                    <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Advanced Settings</Label>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => safeSetState(setShowAdvanced, !showAdvanced)}
+                    className="h-6 text-[10px] text-gray-400 hover:text-primary transition-colors gap-1"
+                  >
+                    연동 설정 {showAdvanced ? '숨기기' : '보기'}
+                    <Plus className={cn("h-2.5 w-2.5 transition-transform", showAdvanced && "rotate-45")} />
+                  </Button>
+                </div>
+
+                {showAdvanced && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    {/* 자재요청 ID 연동 */}
+                    {selectedCategory === SimpleExpenseCategory.MATERIAL && (
+                      <FormField
+                        control={form.control}
+                        name="relatedRequestId"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5">
+                            <FormLabel className="text-xs font-semibold text-gray-600">관련 자재요청 ID</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Link className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input
+                                  placeholder="REQ-20241206-XXXXXX"
+                                  {...field}
+                                  className="h-9 pl-8 text-xs bg-white border-gray-200"
+                                />
+                              </div>
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {/* 재고 매칭 섹션 */}
+                    {selectedCategory === SimpleExpenseCategory.MATERIAL && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold text-gray-600">재고 연동 품목</Label>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => removeInventory(index)}
+                            className="h-7 text-[10px] border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                            onClick={() => {
+                              const items = form.getValues('items');
+                              const suggestions: any[] = [];
+                              items.forEach(item => {
+                                const matchedMaterial = materials.find(m =>
+                                  m.branch === selectedBranchName &&
+                                  m.name.toLowerCase().includes(item.description.toLowerCase())
+                                );
+                                if (matchedMaterial) {
+                                  suggestions.push({
+                                    type: 'material',
+                                    id: matchedMaterial.id,
+                                    name: matchedMaterial.name,
+                                    quantity: item.quantity,
+                                    unitPrice: item.unitPrice
+                                  });
+                                }
+                              });
+                              form.setValue('inventoryUpdates', suggestions);
+                              toast({ title: "매칭 완료", description: `${suggestions.length}개 품목을 찾았습니다.` });
+                            }}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            품목 자동 매칭
+                          </Button>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {inventoryFields.length > 0 ? (
+                            inventoryFields.map((f, i) => (
+                              <div key={f.id} className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-gray-100 shadow-sm text-[10px]">
+                                <Badge variant="outline" className="h-4 px-1 text-[8px] border-primary/20 text-primary">
+                                  {form.watch(`inventoryUpdates.${i}.type`) === 'material' ? '자재' : '상품'}
+                                </Badge>
+                                <span className="flex-1 font-medium truncate text-gray-700">{form.watch(`inventoryUpdates.${i}.name`)}</span>
+                                <span className="text-gray-400 font-bold">{form.watch(`inventoryUpdates.${i}.quantity`)}개</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeInventory(i)}
+                                  className="text-gray-300 hover:text-red-500 transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-center py-4 border border-dashed border-gray-100 rounded-lg">
+                              <p className="text-[10px] text-gray-400 font-medium">매칭된 재고 품목이 없습니다.</p>
+                            </div>
+                          )}
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="w-full h-8 text-[10px] text-gray-400 hover:text-primary transition-all"
+                            onClick={() => appendInventory({
+                              type: 'material',
+                              id: '',
+                              name: '',
+                              quantity: 1,
+                              unitPrice: 0
+                            })}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            수동으로 항목 추가
                           </Button>
                         </div>
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => appendInventory({
-                        type: 'material',
-                        id: '',
-                        name: '',
-                        quantity: 1,
-                        unitPrice: 0
-                      })}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      재고 업데이트 항목 추가
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+                    )}
 
-              {/* 버튼 그룹 */}
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" disabled={isSubmitting} className="flex-1">
-                  {isSubmitting ? (
-                    <RotateCcw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  {fields.length}개 품목 저장
-                </Button>
-                {continueMode && (
-                  <Button type="button" variant="outline" onClick={handleReset}>
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    초기화
-                  </Button>
+                    {/* 초기화 버튼 (필요시) */}
+                    {continueMode && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleReset}
+                        className="w-full h-8 text-[10px] text-gray-300 hover:text-red-400"
+                      >
+                        <RotateCcw className="h-2.5 w-2.5 mr-1" />
+                        입력 내용 전체 초기화
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </form>

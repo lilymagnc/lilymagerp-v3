@@ -149,7 +149,9 @@ export default function OrdersPage() {
             severity: 'low',
             branchId: order.branchId,
             relatedId: order.id,
-            relatedType: 'order'
+            relatedType: 'order',
+            isRead: false,
+            isArchived: false
           });
 
           // 3. 전광판 등록 (24시간 노출)
@@ -528,8 +530,10 @@ export default function OrdersPage() {
       );
 
     } else if (selectedBranch !== "all") {
-      filtered = filtered.filter(order => order.branchName === selectedBranch);
-
+      filtered = filtered.filter(order =>
+        order.branchName === selectedBranch ||
+        (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === selectedBranch)
+      );
     }
     // 검색어 필터링
     if (searchTerm) {
@@ -831,9 +835,11 @@ export default function OrdersPage() {
           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && order.transferInfo.processBranchName === userBranch));
       }
 
-      // 관리자의 경우: 선택된 지점에서 발주한 주문만 포함
+      // 관리자의 경우: 선택된 지점에서 발주한 주문 또는 수주한 주문 포함
       if (isAdmin && selectedBranch !== "all") {
-        return isToday && order.branchName === selectedBranch;
+        const isOriginal = order.branchName === selectedBranch;
+        const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === selectedBranch;
+        return isToday && (isOriginal || isProcess);
       }
 
       // 관리자가 전체 지점을 선택한 경우: 모든 지점에서 발주한 주문 포함
@@ -885,9 +891,11 @@ export default function OrdersPage() {
           (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && order.transferInfo.processBranchName === userBranch));
       }
 
-      // 관리자의 경우: 선택된 지점에서 발주한 주문만 포함
+      // 관리자의 경우: 선택된 지점에서 발주한 주문 또는 수주한 주문 포함
       if (isAdmin && selectedBranch !== "all") {
-        return isThisMonth && order.branchName === selectedBranch;
+        const isOriginal = order.branchName === selectedBranch;
+        const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === selectedBranch;
+        return isThisMonth && (isOriginal || isProcess);
       }
 
       // 관리자가 전체 지점을 선택한 경우: 모든 지점에서 발주한 주문 포함
@@ -1011,10 +1019,19 @@ export default function OrdersPage() {
 
     const getScheduleOrders = (type: 'today' | 'future') => {
       return orders.filter(order => {
-        // 권한 필터링 (자신의 지점 주문만)
-        if (!isAdmin && userBranch && order.branchName !== userBranch) return false;
-        // 지점 필터가 적용된 경우 해당 지점만
-        if (isAdmin && selectedBranch !== "all" && order.branchName !== selectedBranch) return false;
+        // 권한 필터링 (자신의 지점 주문만 + 이관받은 주문 포함)
+        if (!isAdmin && userBranch) {
+          const isOwnBranch = order.branchName === userBranch;
+          const isTransferredToMe = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch;
+          if (!isOwnBranch && !isTransferredToMe) return false;
+        }
+
+        // 지점 필터가 적용된 경우 해당 지점만 (+ 이관받은 주문 포함)
+        if (isAdmin && selectedBranch !== "all") {
+          const isSelectedBranch = order.branchName === selectedBranch;
+          const isTransferredToSelected = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === selectedBranch;
+          if (!isSelectedBranch && !isTransferredToSelected) return false;
+        }
 
         const schedule = order.pickupInfo || order.deliveryInfo;
         if (!schedule?.date || order.status === 'canceled' || order.status === 'completed') return false;

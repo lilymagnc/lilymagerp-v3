@@ -30,7 +30,7 @@ import {
 } from '@/types/simple-expense';
 export default function SimpleExpensesPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeTab, setActiveTab] = useState('list');
+  const [activeTab, setActiveTab] = useState('input');
   const [selectedBranchId, setSelectedBranchId] = useState<string>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>('current');
   const [isMounted, setIsMounted] = useState(false);
