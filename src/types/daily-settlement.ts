@@ -11,6 +11,7 @@ export interface DailySettlementRecord {
     deliveryCostCashToday?: number; // 당일 배송비 현금 지급 합계 (스냅샷)
     manualTransportCount?: number;   // 수동 입력 운송비 건수
     manualTransportAmount?: number;  // 수동 입력 운송비 금액
+    cashExpenseToday?: number;   // 기타 현금 지출 합계 (간편지출)
     memo?: string;
     createdAt: Timestamp;
     updatedAt: Timestamp;

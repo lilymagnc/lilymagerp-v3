@@ -61,13 +61,17 @@ export function ExpenseList({
   const [expenses, setExpenses] = useState<any[]>([]);
   const [filteredExpenses, setFilteredExpenses] = useState<any[]>([]);
   const today = format(new Date(), 'yyyy-MM-dd');
+  const startOfMonth = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd');
+
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
-  const [dateRange, setDateRange] = useState({ start: today, end: today });
-  const [displayLimit, setDisplayLimit] = useState(50);
+  // 기본값을 이번 달 1일 ~ 오늘로 설정
+  const [dateRange, setDateRange] = useState({ start: startOfMonth, end: today });
+  const [displayLimit, setDisplayLimit] = useState(50); // 이건 이제 한 번 로딩 단위와 맞추거나 제거 가능
   const [hasMore, setHasMore] = useState(true);
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastDoc, setLastDoc] = useState<any>(null); // 페이지네이션 커서
   const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<any>(null);
@@ -94,20 +98,51 @@ export function ExpenseList({
     }
   }, [isHeadquartersAdmin, branches.length, expenses.length]);
 
-  const loadExpenses = async () => {
+  // 데이터 로드
+  const loadExpenses = async (isLoadMore = false) => {
+    if (isLoading) return;
     setIsLoading(true);
-    try {
-      // 본사 관리 탭이거나 '전체' 선택 시 모든 데이터 로드 (분기 처리 단순화)
-      const shouldLoadAll = isHeadquarters || !selectedBranchId || selectedBranchId === 'all';
 
-      if (shouldLoadAll) {
-        // 모든 지점 데이터 로드
-        const allExpenses = await fetchExpensesData(selectedBranchId === 'all' ? undefined : selectedBranchId);
-        setExpenses(allExpenses);
-      } else {
-        // 특정 지점 선택
-        const branchExpenses = await fetchExpensesData(selectedBranchId);
-        setExpenses(branchExpenses);
+    try {
+      // 본사 관리 탭이거나 '전체' 선택 시 분기 처리
+      const targetBranchId = (isHeadquarters || !selectedBranchId || selectedBranchId === 'all')
+        ? undefined
+        : selectedBranchId;
+
+      const cursor = isLoadMore ? lastDoc : undefined;
+      const limitCount = 50; // 한 번에 가져올 개수
+
+      const result = await fetchExpenses({
+        branchId: targetBranchId,
+        dateFrom: dateRange.start ? startOfDay(new Date(dateRange.start)) : undefined,
+        dateTo: dateRange.end ? endOfDay(new Date(dateRange.end)) : undefined,
+        limit: limitCount,
+        startAfterDoc: cursor,
+        category: categoryFilter && categoryFilter !== 'all' ? (categoryFilter as any) : undefined
+      });
+
+      if (result) {
+        const { expenses: newExpenses, lastDoc: newLastDoc } = result;
+
+        // 지점 이름 보정
+        const processedExpenses = newExpenses.map((expense: any) => {
+          let branchName = expense.branchName;
+          if (!branchName && expense.branchId) {
+            branchName = branches.find(b => b.id === expense.branchId)?.name || '';
+          }
+          return { ...expense, branchName };
+        });
+
+        if (isLoadMore) {
+          setExpenses(prev => [...prev, ...processedExpenses]);
+          setFilteredExpenses(prev => [...prev, ...processedExpenses]); // 필터링된 목록에도 추가 (클라이언트 필터가 없으면 동일)
+        } else {
+          setExpenses(processedExpenses);
+          setFilteredExpenses(processedExpenses);
+        }
+
+        setLastDoc(newLastDoc);
+        setHasMore(newExpenses.length === limitCount); // 가져온 개수가 limit과 같으면 더 있을 가능성 있음
       }
     } catch (error) {
       console.error('지출 데이터 로드 오류:', error);
@@ -121,66 +156,29 @@ export function ExpenseList({
     }
   };
 
-  // 공통 지출 데이터 가져오기
-  const fetchExpensesData = async (branchId?: string) => {
-    try {
-      const expensesRef = collection(db, 'simpleExpenses');
-      // 사용자의 요청대로 해당 기간의 데이터를 한 번에 가져오되, 로딩 속도 개선을 위해 1000개로 제한
-      let q = query(expensesRef, orderBy('date', 'desc'), firestoreLimit(1000));
+  // 필터링된 결과 중 화면에 보여줄 갯수 조절 (무한 스크롤)
+  // 서버 페이지네이션을 하므로 여기서는 전체를 보여주되, 
+  // loadExpenses가 append 방식으로 동작함.
+  const displayedExpenses = filteredExpenses;
 
-      if (branchId && branchId !== 'all') {
-        q = query(q, where('branchId', '==', branchId));
-      }
+  // hasMoreToShow -> hasMore (서버 상태)
+  const hasMoreToShow = hasMore;
 
-      // 날짜 필터 적용
-      if (dateRange.start) {
-        const start = startOfDay(new Date(dateRange.start));
-        q = query(q, where('date', '>=', Timestamp.fromDate(start)));
-      }
-      if (dateRange.end) {
-        const end = endOfDay(new Date(dateRange.end));
-        q = query(q, where('date', '<=', Timestamp.fromDate(end)));
-      }
-
-      const snapshot = await getDocs(q);
-
-      // 서버에서 더 가져올 데이터 여부는 여기서 관리하지 않고 전체 로드 방식으로 변경
-      setHasMore(false);
-
-      const data = snapshot.docs.map(docSnapshot => {
-        const docData = docSnapshot.data();
-        // 지점 이름 보정 (없는 경우 branches에서 찾기)
-        let branchName = docData.branchName;
-        if (!branchName && docData.branchId) {
-          branchName = branches.find(b => b.id === docData.branchId)?.name || '';
-        }
-        return {
-          id: docSnapshot.id,
-          ...docData,
-          branchName
-        };
-      });
-
-      return data;
-    } catch (error) {
-      console.error('데이터 로드 오류:', error);
-      return [];
-    }
-  };
-
-  // 필터링된 결과 중 화면에 보여줄 갯수 조절
-  const displayedExpenses = useMemo(() => {
-    return filteredExpenses.slice(0, displayLimit);
-  }, [filteredExpenses, displayLimit]);
-
-  const hasMoreToShow = filteredExpenses.length > displayLimit;
-
-  // 지출 데이터 로드 (날짜나 지점이 바뀔 때만 서버 통신)
+  // 지출 데이터 로드 (조건 변경 시 리셋 및 재로딩)
   useEffect(() => {
-    loadExpenses();
-  }, [refreshTrigger, selectedBranchId, dateRange.start, dateRange.end]);
+    setExpenses([]);
+    setFilteredExpenses([]);
+    setLastDoc(null);
+    setHasMore(true);
 
-  // 필터링 (메모리 내의 데이터를 검색 및 분류)
+    // 상태 업데이트 후 로딩 호출 (setTimeout으로 상태 반영 보장)
+    const timer = setTimeout(() => {
+      loadExpenses(false);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [refreshTrigger, selectedBranchId, dateRange.start, dateRange.end, categoryFilter]);
+
+  // 클라이언트 사이드 검색 (이미 불러온 데이터 내에서 검색)
   useEffect(() => {
     let filtered = expenses;
 
@@ -193,31 +191,7 @@ export function ExpenseList({
       );
     }
 
-    // 카테고리 필터
-    if (categoryFilter && categoryFilter !== 'all') {
-      filtered = filtered.filter(expense => expense.category === categoryFilter);
-    }
-
-    // 날짜 범위 필터
-    if (dateRange.start || dateRange.end) {
-      filtered = filtered.filter(expense => {
-        if (!expense.date) return false;
-        const expenseDate = expense.date.toDate();
-        const start = dateRange.start ? startOfDay(new Date(dateRange.start)) : null;
-        const end = dateRange.end ? endOfDay(new Date(dateRange.end)) : null;
-
-        if (start && end) {
-          return expenseDate >= start && expenseDate <= end;
-        } else if (start) {
-          return expenseDate >= start;
-        } else if (end) {
-          return expenseDate <= end;
-        }
-        return true;
-      });
-    }
-
-    // 지점 필터 (본사 관리자만)
+    // 지점 필터 (본사 관리자만 - 이미 불러온 데이터 내에서 추가 필터)
     if (isHeadquarters && selectedBranches.length > 0) {
       filtered = filtered.filter(expense =>
         selectedBranches.includes(expense.branchId)
@@ -225,7 +199,7 @@ export function ExpenseList({
     }
 
     setFilteredExpenses(filtered);
-  }, [expenses, searchTerm, categoryFilter, dateRange, selectedBranches, isHeadquarters]);
+  }, [expenses, searchTerm, selectedBranches, isHeadquarters]);
 
   // 필터링이 변경될 때 선택된 항목들 초기화
   useEffect(() => {
@@ -786,7 +760,7 @@ export function ExpenseList({
             <div className="flex justify-center pt-4">
               <Button
                 variant="outline"
-                onClick={() => setDisplayLimit(prev => prev + 50)}
+                onClick={() => loadExpenses(true)}
                 disabled={isLoading}
                 className="w-full max-w-xs"
               >
@@ -798,17 +772,17 @@ export function ExpenseList({
                 ) : (
                   <div className="flex items-center gap-2">
                     <ChevronDown className="h-4 w-4" />
-                    다음 50개 더 보기 ({filteredExpenses.length - displayedExpenses.length}개 남음)
+                    더 보기
                   </div>
                 )}
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </CardContent >
+      </Card >
 
       {/* 상세보기/수정 다이얼로그 */}
-      <ExpenseDetailDialog
+      < ExpenseDetailDialog
         isOpen={isDetailDialogOpen}
         onOpenChange={setIsDetailDialogOpen}
         expense={selectedExpense}

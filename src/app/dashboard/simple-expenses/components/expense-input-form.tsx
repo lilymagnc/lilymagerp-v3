@@ -39,8 +39,11 @@ import {
   ChevronsUpDown,
   Trash2,
   Building2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Tag,
+  DollarSign
 } from 'lucide-react';
+import { DuplicateCheckDialog } from './duplicate-check-dialog';
 import { useSimpleExpenses } from '@/hooks/use-simple-expenses';
 import { usePartners } from '@/hooks/use-partners';
 import { useAuth } from '@/hooks/use-auth';
@@ -102,6 +105,7 @@ const expenseFormSchema = z.object({
   supplier: z.string().min(1, '구매처를 입력해주세요'),
   category: z.nativeEnum(SimpleExpenseCategory),
   subCategory: z.string().optional(),
+  paymentMethod: z.enum(['card', 'cash', 'transfer', 'other']),
   items: z.array(expenseItemSchema).min(1, '최소 1개의 품목을 입력해주세요'),
   receiptFile: z.any().optional(),
   inventoryUpdates: z.array(inventoryUpdateSchema).optional(),
@@ -136,6 +140,15 @@ export function ExpenseInputForm({
   const [isExcelUploading, setIsExcelUploading] = useState(false);
   const [uploadMode, setUploadMode] = useState<'manual' | 'excel'>('manual');
 
+  // 중복 확인 관련 상태
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    type: 'supplier' | 'material' | 'product';
+    inputName: string;
+    similarItems: { id: string; name: string }[];
+    resolve: (value: string | null) => void;
+  } | null>(null);
+
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
@@ -143,6 +156,7 @@ export function ExpenseInputForm({
       supplier: initialData?.supplier || '',
       category: initialData?.category || SimpleExpenseCategory.OTHER,
       subCategory: initialData?.subCategory || '',
+      paymentMethod: initialData?.paymentMethod || 'card',
       items: initialData?.items || [{
         description: '',
         quantity: 1,
@@ -162,7 +176,7 @@ export function ExpenseInputForm({
   const { materials } = useMaterials();
   const { products } = useProducts();
   const { branches, loading: branchesLoading } = useBranches();
-  
+
   // 중복 데이터 체크 함수
   const checkDuplicateData = useCallback(async (processedData: any[]) => {
     try {
@@ -249,6 +263,75 @@ export function ExpenseInputForm({
     };
   }, [form]);
 
+  // 유사도 검사 함수
+  const checkSimilarity = (str1: string, str2: string) => {
+    const s1 = str1.replace(/\s+/g, '').toLowerCase();
+    const s2 = str2.replace(/\s+/g, '').toLowerCase();
+
+    if (s1 === s2) return 1.0;
+    if (s1.includes(s2) || s2.includes(s1)) return 0.8;
+
+    // 간단한 레벤슈타인 거리 기반 유사도
+    const track = Array(s2.length + 1).fill(null).map(() =>
+      Array(s1.length + 1).fill(null));
+    for (let i = 0; i <= s1.length; i += 1) { track[0][i] = i; }
+    for (let j = 0; j <= s2.length; j += 1) { track[j][0] = j; }
+    for (let j = 1; j <= s2.length; j += 1) {
+      for (let i = 1; i <= s1.length; i += 1) {
+        const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1;
+        track[j][i] = Math.min(
+          track[j][i - 1] + 1,
+          track[j - 1][i] + 1,
+          track[j - 1][i - 1] + indicator,
+        );
+      }
+    }
+    const distance = track[s2.length][s1.length];
+    const maxLength = Math.max(s1.length, s2.length);
+    return 1 - distance / maxLength;
+  };
+
+  // 중복 확인 실행 함수
+  const performDuplicateCheck = async (
+    type: 'supplier' | 'material' | 'product',
+    name: string
+  ): Promise<string | null> => {
+    // 2자 미만은 검사 건너뜀
+    if (name.length < 2) return name;
+
+    let existingItems: { id: string; name: string }[] = [];
+
+    if (type === 'supplier') {
+      existingItems = partners.map(p => ({ id: p.id!, name: p.name }));
+    } else if (type === 'material') {
+      existingItems = materials
+        .filter(m => !selectedBranchName || m.branch === selectedBranchName)
+        .map(m => ({ id: m.id, name: m.name }));
+    } else { // product
+      existingItems = products
+        .map(p => ({ id: p.id, name: p.name }));
+    }
+
+    // 유사한 항목 찾기 (유사도 0.8 이상이지만 완전 일치는 아닌 경우)
+    const similarItems = existingItems.filter(item => {
+      const similarity = checkSimilarity(name, item.name);
+      return similarity >= 0.7 && item.name !== name; // 0.7 이상으로 완화
+    });
+
+    if (similarItems.length === 0) return name;
+
+    // 사용자 확인 필요
+    return new Promise((resolve) => {
+      setDuplicateInfo({
+        type,
+        inputName: name,
+        similarItems: similarItems.slice(0, 5), // 최대 5개만 표시
+        resolve
+      });
+      setDuplicateDialogOpen(true);
+    });
+  };
+
   // 지점 데이터 로딩 상태 확인
 
 
@@ -281,7 +364,7 @@ export function ExpenseInputForm({
   // 카테고리별 세부 분류 옵션 (민감한 항목 필터링 포함)
   const getSubCategoryOptions = useCallback((category: SimpleExpenseCategory) => {
     let options: [string, string][] = [];
-    
+
     switch (category) {
       case SimpleExpenseCategory.MATERIAL:
         options = Object.entries(MATERIAL_SUB_CATEGORY_LABELS);
@@ -313,18 +396,18 @@ export function ExpenseInputForm({
       default:
         options = [];
     }
-    
 
-    
+
+
     // 민감한 세부 분류 필터링 (본사 관리자가 아닌 경우)
     if (!isHeadOfficeAdmin() && !isHQManager()) {
       options = options.filter(([key, label]) => {
         return canViewSubCategory(category, key, userRole);
       });
     }
-    
 
-    
+
+
     return options;
   }, [isHeadOfficeAdmin, isHQManager, userRole]);
 
@@ -344,9 +427,9 @@ export function ExpenseInputForm({
       safeSetState(setSupplierOpen, true);
     } else {
       // 닫을 때는 즉시 상태 변경
-          safeSetState(setSupplierOpen, false);
-          safeSetState(setIsDirectInput, false);
-          safeSetState(setSupplierSearchValue, '');
+      safeSetState(setSupplierOpen, false);
+      safeSetState(setIsDirectInput, false);
+      safeSetState(setSupplierSearchValue, '');
     }
   }, [safeSetState]);
 
@@ -358,17 +441,17 @@ export function ExpenseInputForm({
     form.setValue('supplier', supplierName);
 
     // 즉시 상태 변경
-        safeSetState(setSupplierOpen, false);
-        safeSetState(setSupplierSearchValue, '');
-        safeSetState(setIsDirectInput, false);
+    safeSetState(setSupplierOpen, false);
+    safeSetState(setSupplierSearchValue, '');
+    safeSetState(setIsDirectInput, false);
   }, [form, safeSetState]);
 
   // 직접 입력 모드 활성화 개선
   const handleDirectInput = useCallback(() => {
     if (!isMountedRef.current) return;
 
-        safeSetState(setIsDirectInput, true);
-        safeSetState(setSupplierOpen, false);
+    safeSetState(setIsDirectInput, true);
+    safeSetState(setSupplierOpen, false);
   }, [safeSetState]);
 
   // 직접 입력 구매처 저장
@@ -458,12 +541,12 @@ export function ExpenseInputForm({
             // 지점명 검증 - 지점 데이터가 로딩 중이면 검증 건너뛰기
             const branchName = rowData['지점'].trim();
             if (!branchesLoading && branches.length > 0) {
-              const isValidBranch = branches.some(branch => 
-                branch.name === branchName || 
-                branch.name.includes(branchName) || 
+              const isValidBranch = branches.some(branch =>
+                branch.name === branchName ||
+                branch.name.includes(branchName) ||
                 branchName.includes(branch.name)
               );
-              
+
               if (!isValidBranch) {
                 const errorMessage = `행 ${index + 2}: 등록되지 않은 지점명 "${branchName}"입니다. 등록된 지점: ${branches.map(b => b.name).join(', ')}`;
                 throw new Error(errorMessage);
@@ -565,7 +648,7 @@ export function ExpenseInputForm({
             if (branch) {
               branchId = branch.id;
               finalBranchName = branchName;
-              } else {
+            } else {
               finalBranchName = selectedBranchName || '';
             }
           } else {
@@ -578,7 +661,7 @@ export function ExpenseInputForm({
           // 자재비 카테고리인 경우 자재 관리에 자동 업데이트
           if (item.category === 'material') {
             // 해당 지점의 기존 자재 검색
-            const existingMaterial = materials.find(m => 
+            const existingMaterial = materials.find(m =>
               m.name === item['품목명'] && m.branch === finalBranchName
             );
 
@@ -609,7 +692,7 @@ export function ExpenseInputForm({
           // 제품 카테고리인 경우 제품 관리에 자동 업데이트
           if (item.category === 'product') {
             // 같은 이름의 제품이 있는지 확인 (지점 무관)
-            const existingProduct = products.find(p => 
+            const existingProduct = products.find(p =>
               p.name === item['품목명']
             );
 
@@ -622,7 +705,7 @@ export function ExpenseInputForm({
                 quantity: item.quantity,
                 unitPrice: item.unitPrice
               });
-              } else {
+            } else {
               // 같은 이름의 제품이 없으면 새로 생성
               const productId = `P${String(Date.now()).slice(-5)}`;
               inventoryUpdates.push({
@@ -632,7 +715,7 @@ export function ExpenseInputForm({
                 quantity: item.quantity,
                 unitPrice: item.unitPrice
               });
-              }
+            }
           }
 
           const expenseData = {
@@ -718,22 +801,48 @@ export function ExpenseInputForm({
     try {
       safeSetState(setIsSubmitting, true);
 
-      // 각 품목을 개별 지출로 생성
+      // 구매처 중복/유사 확인
+      let finalSupplierName = values.supplier;
+      if (values.supplier) {
+        const checkedSupplier = await performDuplicateCheck('supplier', values.supplier);
+        if (checkedSupplier === null) {
+          safeSetState(setIsSubmitting, false);
+          return; // 취소됨
+        }
+        finalSupplierName = checkedSupplier;
+      }
+
+      // 각 품목을 개별 지출로 생성 및 품목명 유사 확인
       for (const item of values.items) {
         if (!isMountedRef.current) break;
 
+        let finalDescription = item.description;
+
+        // 자재/제품 카테고리인 경우 품목명 검사
+        if (values.category === SimpleExpenseCategory.MATERIAL) {
+          const checkedMaterial = await performDuplicateCheck('material', item.description);
+          if (checkedMaterial === null) {
+            safeSetState(setIsSubmitting, false);
+            return; // 취소됨
+          }
+          finalDescription = checkedMaterial;
+        } else if (values.category === SimpleExpenseCategory.OTHER) { // 기타(제품 등)
+          // 제품은 검사하지 않거나 필요시 추가
+        }
+
         const expenseData = {
           date: Timestamp.fromDate(new Date(values.date)),
-          supplier: values.supplier,
+          supplier: finalSupplierName, // 확인된 구매처명 사용
           category: values.category,
           subCategory: values.subCategory,
-          description: item.description,
+          paymentMethod: values.paymentMethod,
+          description: finalDescription, // 확인된 품목명 사용
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           amount: item.amount,
           receiptFile: selectedFile,
-          branchId: selectedBranchId || '', // 지점 ID 추가
-          branchName: selectedBranchName || '', // 지점 이름 추가
+          branchId: selectedBranchId || '',
+          branchName: selectedBranchName || '',
         };
 
         await addExpense(expenseData, selectedBranchId || '', selectedBranchName || '');
@@ -752,6 +861,7 @@ export function ExpenseInputForm({
             supplier: '',
             category: SimpleExpenseCategory.OTHER,
             subCategory: '',
+            paymentMethod: 'card',
             items: [{
               description: '',
               quantity: 1,
@@ -771,11 +881,11 @@ export function ExpenseInputForm({
         onSuccess?.();
       }
     } catch (error) {
-        toast({
-          title: "오류",
-          description: "지출 등록 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
+      toast({
+        title: "오류",
+        description: "지출 등록 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
     } finally {
       if (isMountedRef.current) {
         safeSetState(setIsSubmitting, false);
@@ -791,6 +901,7 @@ export function ExpenseInputForm({
         supplier: '',
         category: SimpleExpenseCategory.OTHER,
         subCategory: '',
+        paymentMethod: 'card',
         items: [{
           description: '',
           quantity: 1,
@@ -814,7 +925,7 @@ export function ExpenseInputForm({
       String(partner.type ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase()) ||
       String(partner.contactPerson ?? '').toLowerCase().includes(supplierSearchValue.toLowerCase())
     );
-    
+
     // 구매처명 오름차순으로 정렬
     return filtered.sort((a, b) => {
       const nameA = String(a.name ?? '').toLowerCase();
@@ -869,6 +980,33 @@ export function ExpenseInputForm({
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* 현금 결제 여부 (심플 버튼) */}
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col justify-end">
+                      <FormLabel className="sr-only">현금 결제 여부</FormLabel>
+                      <Button
+                        type="button"
+                        variant={field.value === 'cash' ? 'default' : 'outline'}
+                        className={cn(
+                          "w-full gap-2",
+                          field.value === 'cash' && "bg-green-600 hover:bg-green-700 text-white border-transparent"
+                        )}
+                        onClick={() => {
+                          // 토글: 현재 cash이면 card로, 아니면 cash로
+                          field.onChange(field.value === 'cash' ? 'card' : 'cash');
+                        }}
+                      >
+                        <DollarSign className="h-4 w-4" />
+                        {field.value === 'cash' ? '현금 결제 ON' : '현금 결제'}
+                      </Button>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1021,8 +1159,8 @@ export function ExpenseInputForm({
                                         </div>
                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                           <span>{partner.contactPerson || '담당자 없음'}</span>
-                                          {partner.contact && (
-                                            <span>• {partner.contact}</span>
+                                          {partner.phone && (
+                                            <span>• {partner.phone}</span>
                                           )}
                                           {partner.email && (
                                             <span>• {partner.email}</span>
@@ -1050,6 +1188,37 @@ export function ExpenseInputForm({
                   <p className="text-sm text-muted-foreground mb-4">
                     선택한 카테고리에 여러 품목을 추가할 수 있습니다.
                   </p>
+                </div>
+
+                {/* 빠른 태그 버튼 */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {[
+                    { label: '생화', category: SimpleExpenseCategory.MATERIAL, sub: 'fresh_flower' },
+                    { label: '분화', category: SimpleExpenseCategory.MATERIAL, sub: 'potted_plant' },
+                    { label: '화분', category: SimpleExpenseCategory.MATERIAL, sub: 'pot' },
+                    { label: '포장재', category: SimpleExpenseCategory.MATERIAL, sub: 'packaging' },
+                    { label: '식재재료', category: SimpleExpenseCategory.MATERIAL, sub: 'planting_material' },
+                  ].map((tag) => (
+                    <Button
+                      key={tag.label}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-1"
+                      onClick={() => {
+                        form.setValue('category', tag.category);
+                        // 약간의 지연 후 서브카테고리 설정 (렌더링 이슈 방지)
+                        setTimeout(() => {
+                          if (isMountedRef.current) {
+                            form.setValue('subCategory', tag.sub);
+                          }
+                        }, 50);
+                      }}
+                    >
+                      <Tag className="h-3 w-3" />
+                      {tag.label}
+                    </Button>
+                  ))}
                 </div>
 
                 {/* 전체 분류 */}
@@ -1241,6 +1410,8 @@ export function ExpenseInputForm({
                         )}
                       />
 
+
+
                       {/* 금액 (자동 계산) */}
                       <FormField
                         control={form.control}
@@ -1253,8 +1424,19 @@ export function ExpenseInputForm({
                                 type="number"
                                 placeholder="0"
                                 {...field}
-                                readOnly
+                                // readOnly 제거하고 직접 입력 가능하게 변경 (필요시) - 여기서는 자동계산이지만 엔터키 입력을 위해
+                                // readOnly={true} 
                                 className="bg-gray-50"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (index === fields.length - 1) {
+                                      addItem();
+                                      // 새 항목으로 포커스 이동은 React Hook Form ref 처리 필요하나 
+                                      // 간단히 다음 렌더링 사이클에 처리되도록 함
+                                    }
+                                  }
+                                }}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1377,38 +1559,38 @@ export function ExpenseInputForm({
                                 quantity: item.quantity,
                                 unitPrice: item.unitPrice
                               });
-                                        } else {
-              // 상품에서 매칭 찾기 (지점별로 검색)
-              const matchedProduct = products.find(p =>
-                p.branch === selectedBranchName &&
-                p.name.toLowerCase().includes(item.description.toLowerCase())
-              );
+                            } else {
+                              // 상품에서 매칭 찾기 (지점별로 검색)
+                              const matchedProduct = products.find(p =>
+                                p.branch === selectedBranchName &&
+                                p.name.toLowerCase().includes(item.description.toLowerCase())
+                              );
 
-              if (matchedProduct) {
-                suggestions.push({
-                  type: 'product',
-                  id: matchedProduct.id,
-                  name: matchedProduct.name,
-                  quantity: item.quantity,
-                  unitPrice: item.unitPrice
-                });
-              } else {
-                // 다른 지점에서 같은 이름의 상품 찾기 (ID 재사용)
-                const sameNameProduct = products.find(p =>
-                  p.name.toLowerCase().includes(item.description.toLowerCase())
-                );
+                              if (matchedProduct) {
+                                suggestions.push({
+                                  type: 'product',
+                                  id: matchedProduct.id,
+                                  name: matchedProduct.name,
+                                  quantity: item.quantity,
+                                  unitPrice: item.unitPrice
+                                });
+                              } else {
+                                // 다른 지점에서 같은 이름의 상품 찾기 (ID 재사용)
+                                const sameNameProduct = products.find(p =>
+                                  p.name.toLowerCase().includes(item.description.toLowerCase())
+                                );
 
-                if (sameNameProduct) {
-                  suggestions.push({
-                    type: 'product',
-                    id: sameNameProduct.id, // 같은 이름이면 같은 ID 사용
-                    name: sameNameProduct.name,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice
-                  });
-                }
-              }
-            }
+                                if (sameNameProduct) {
+                                  suggestions.push({
+                                    type: 'product',
+                                    id: sameNameProduct.id, // 같은 이름이면 같은 ID 사용
+                                    name: sameNameProduct.name,
+                                    quantity: item.quantity,
+                                    unitPrice: item.unitPrice
+                                  });
+                                }
+                              }
+                            }
                           });
 
                           // 기존 재고 업데이트 항목 제거하고 새로 추가
@@ -1676,6 +1858,32 @@ export function ExpenseInputForm({
           </div>
         )}
       </CardContent>
+      {/* 중복 확인 다이얼로그 */}
+      <DuplicateCheckDialog
+        open={duplicateDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && duplicateInfo) {
+            duplicateInfo.resolve(null); // 닫으면 취소로 처리
+            setDuplicateInfo(null);
+          }
+          setDuplicateDialogOpen(open);
+        }}
+        duplicates={duplicateInfo}
+        onConfirm={(name) => {
+          if (duplicateInfo) {
+            duplicateInfo.resolve(name);
+            setDuplicateInfo(null);
+            setDuplicateDialogOpen(false);
+          }
+        }}
+        onCancel={() => {
+          if (duplicateInfo) {
+            duplicateInfo.resolve(null);
+            setDuplicateInfo(null);
+            setDuplicateDialogOpen(false);
+          }
+        }}
+      />
     </Card>
   );
 }

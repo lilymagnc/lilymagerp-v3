@@ -11,6 +11,7 @@ import {
   where,
   orderBy,
   limit,
+  startAfter, // 추가
   Timestamp,
   serverTimestamp
 } from 'firebase/firestore';
@@ -46,9 +47,15 @@ export function useSimpleExpenses() {
     dateFrom?: Date;
     dateTo?: Date;
     limit?: number;
+    startAfterDoc?: any; // 커서 검사
   }) => {
     if (!user) return;
-    setLoading(true);
+
+    // 첫 페이지 로딩일 때만 전체 로딩 표시 (더 보기 시에는 별도 처리 가능하도록)
+    if (!filters?.startAfterDoc) {
+      setLoading(true);
+    }
+
     try {
       let q = query(
         collection(db, 'simpleExpenses'),
@@ -66,10 +73,16 @@ export function useSimpleExpenses() {
       if (filters?.dateTo) {
         q = query(q, where('date', '<=', Timestamp.fromDate(filters.dateTo)));
       }
+
+      if (filters?.startAfterDoc) {
+        q = query(q, startAfter(filters.startAfterDoc));
+      }
+
       if (filters?.limit) {
         q = query(q, limit(filters.limit));
       } else {
         // 기본적으로 최근 3000개까지만 조회하여 속도 개선 (사용자 요청)
+        // 페이지네이션 사용 시에는 호출 측에서 limit을 명시해야 함
         q = query(q, limit(3000));
       }
       const snapshot = await getDocs(q);
@@ -77,7 +90,17 @@ export function useSimpleExpenses() {
         id: doc.id,
         ...doc.data()
       })) as SimpleExpense[];
-      setExpenses(expenseList);
+
+      if (filters?.startAfterDoc) {
+        setExpenses(prev => [...prev, ...expenseList]);
+      } else {
+        setExpenses(expenseList);
+      }
+
+      return {
+        expenses: expenseList,
+        lastDoc: snapshot.docs[snapshot.docs.length - 1]
+      };
     } catch (error) {
       console.error('지출 목록 조회 오류:', error);
       toast({
@@ -85,6 +108,7 @@ export function useSimpleExpenses() {
         title: "오류",
         description: "지출 목록을 불러오는데 실패했습니다."
       });
+      return { expenses: [], lastDoc: null };
     } finally {
       setLoading(false);
     }

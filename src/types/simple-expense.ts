@@ -15,11 +15,14 @@ export enum SimpleExpenseCategory {
 // 자재비 세부 분류 - 꽃집 특화
 export enum MaterialSubCategory {
   FRESH_FLOWER = 'fresh_flower',      // 생화
-  POTTED_PLANT = 'potted_plant',      // 화분
+  POTTED_PLANT = 'potted_plant',      // 분화
+  POT = 'pot',                        // 화분(식재용)
+  PLANTING_MATERIAL = 'planting_material', // 식재재료
   PACKAGING = 'packaging',            // 포장재 (리본, 포장지, 상자)
   DECORATION = 'decoration',          // 장식용품 (장식품, 액세서리)
   TOOL = 'tool',                      // 도구 (가위, 칼, 정리도구)
   PRESERVATIVE = 'preservative',      // 보존제 (꽃보존제, 영양제)
+  OUTSOURCE = 'outsource',            // 외부발주
   MATERIAL_REQUEST = 'material_request' // 자재요청
 }
 // 고정비 세부 분류
@@ -251,11 +254,14 @@ export const FIXED_COST_SUB_CATEGORY_LABELS: Record<FixedCostSubCategory, string
 };
 export const MATERIAL_SUB_CATEGORY_LABELS: Record<MaterialSubCategory, string> = {
   [MaterialSubCategory.FRESH_FLOWER]: '생화',
-  [MaterialSubCategory.POTTED_PLANT]: '화분',
+  [MaterialSubCategory.POTTED_PLANT]: '분화',
+  [MaterialSubCategory.POT]: '화분(식재용)',
+  [MaterialSubCategory.PLANTING_MATERIAL]: '식재재료',
   [MaterialSubCategory.PACKAGING]: '포장재',
   [MaterialSubCategory.DECORATION]: '장식용품',
   [MaterialSubCategory.TOOL]: '도구',
   [MaterialSubCategory.PRESERVATIVE]: '보존제',
+  [MaterialSubCategory.OUTSOURCE]: '외부발주',
   [MaterialSubCategory.MATERIAL_REQUEST]: '자재요청'
 };
 export const UTILITY_SUB_CATEGORY_LABELS: Record<UtilitySubCategory, string> = {

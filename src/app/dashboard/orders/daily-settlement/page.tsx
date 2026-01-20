@@ -436,16 +436,29 @@ export default function DailySettlementPage() {
         // 주문 데이터 기반과 지출 데이터 기반 중 더 큰 값 사용 (지출 데이터가 더 정확하므로 우선권)
         const deliveryCostCash = Math.max(stats?.deliveryCostCashToday || 0, deliveryCostCashFromExpenses);
 
+
+        // 기타 현금 지출 (운송비 제외, 순수 현금/계좌이체 아닌 현금) 집계
+        // 조건: 날짜 일치 AND 운송비 아님 AND (결제수단이 'cash' OR 설명에 '현금' 포함)
+        const otherCashExpensesList = expenses.filter(e => {
+            const expenseDate = e.date instanceof Date ? e.date : e.date.toDate();
+            const isInDate = format(expenseDate, 'yyyy-MM-dd') === reportDate;
+            const isNotTransport = e.category !== SimpleExpenseCategory.TRANSPORT;
+            const isCash = e.paymentMethod === 'cash' || e.description.includes('현금');
+            return isInDate && isNotTransport && isCash;
+        });
+        const otherCashExpenses = otherCashExpensesList.reduce((sum, e) => sum + e.amount, 0);
+
         // 이전 잔액 결정: 수동 입력값이 있으면 우선
         const prevBalance = manualPreviousBalance || (prevSettlementRecord ?
-            (prevSettlementRecord.previousVaultBalance + (prevSettlementRecord.cashSalesToday || 0) - prevSettlementRecord.vaultDeposit - (prevSettlementRecord.deliveryCostCashToday || 0))
+            (prevSettlementRecord.previousVaultBalance + (prevSettlementRecord.cashSalesToday || 0) - prevSettlementRecord.vaultDeposit - (prevSettlementRecord.deliveryCostCashToday || 0) - (prevSettlementRecord.cashExpenseToday || 0))
             : 0);
-        const remaining = prevBalance + cashSales - vaultDeposit - deliveryCostCash;
+        const remaining = prevBalance + cashSales - vaultDeposit - deliveryCostCash - otherCashExpenses;
 
         return {
             prevBalance,
             cashSales,
             deliveryCostCash,
+            otherCashExpenses,
             vaultDeposit,
             remaining
         };
@@ -462,6 +475,8 @@ export default function DailySettlementPage() {
             previousVaultBalance: vaultCash.prevBalance,
             cashSalesToday: vaultCash.cashSales,
             deliveryCostCashToday: vaultCash.deliveryCostCash,
+            cashExpenseToday: vaultCash.otherCashExpenses,
+            vaultDeposit: vaultDeposit,
             vaultDeposit: vaultDeposit,
             createdAt: settlementRecord?.createdAt || undefined
         });
@@ -583,6 +598,13 @@ export default function DailySettlementPage() {
                                         ₩{vaultCash.deliveryCostCash.toLocaleString()}
                                     </div>
                                     <p className="text-[10px] text-red-500 font-medium">기사님께 현금으로 직접 지급한 배송비</p>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs text-red-700 font-bold">기타 현금 지출 (간편지출) (-)</Label>
+                                    <div className="h-9 px-3 flex items-center bg-red-50 rounded-md border border-red-100 font-bold text-red-600">
+                                        ₩{vaultCash.otherCashExpenses.toLocaleString()}
+                                    </div>
+                                    <p className="text-[10px] text-red-500 font-medium">간편지출에 등록된 일반 현금 영수증/지출</p>
                                 </div>
                                 <div className="space-y-1.5 col-span-2">
                                     <Label className="text-xs text-primary font-bold">금고상 잔여 현금 (=)</Label>

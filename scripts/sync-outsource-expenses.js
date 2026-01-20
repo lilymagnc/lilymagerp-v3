@@ -44,7 +44,7 @@ async function syncOutsourceToExpenses() {
                 date: order.orderDate,
                 amount: partnerPrice,
                 category: 'material',
-                subCategory: '생화/자재',
+                subCategory: 'outsource',
                 description: description,
                 supplier: order.outsourceInfo.partnerName || "미지정 파트너",
                 quantity: totalQuantity,
