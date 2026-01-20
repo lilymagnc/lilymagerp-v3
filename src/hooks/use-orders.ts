@@ -175,10 +175,17 @@ export function useOrders() {
         where("payment.completedAt", ">=", startDate)
       );
 
+      // 4. 이관 수락 날짜 기준 쿼리 (오래된 주문이 오늘 이관된 경우 대비)
+      const qTransferUpdate = query(
+        ordersCollection,
+        where("transferInfo.acceptedAt", ">=", startDate)
+      );
+
       const results = await Promise.allSettled([
         Promise.race([getDocs(qDate), timeoutPromise]),
         Promise.race([getDocs(qDeliveryUpdate), timeoutPromise]),
-        Promise.race([getDocs(qPaymentUpdate), timeoutPromise])
+        Promise.race([getDocs(qPaymentUpdate), timeoutPromise]),
+        Promise.race([getDocs(qTransferUpdate), timeoutPromise])
       ]);
 
       const combinedDocs: any[] = [];

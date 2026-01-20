@@ -559,25 +559,35 @@ export default function OrdersPage() {
         return true;
       });
     }
-    // 날짜 범위 필터링
     if (startDate || endDate) {
       filtered = filtered.filter(order => {
-        if (!order.orderDate) return false;
-        const orderDate = (order.orderDate as Timestamp).toDate();
-        const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
+        const orderDate = order.orderDate ? (order.orderDate as Timestamp).toDate() : null;
 
-        if (startDate && endDate) {
-          const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-          const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-          return orderDateOnly >= startDateOnly && orderDateOnly <= endDateOnly;
-        } else if (startDate) {
-          const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-          return orderDateOnly >= startDateOnly;
-        } else if (endDate) {
-          const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-          return orderDateOnly <= endDateOnly;
-        }
-        return true;
+        // 수령 방식에 따른 정확한 일정 정보 추출
+        const scheduleInfo = order.receiptType === 'delivery_reservation' ? order.deliveryInfo : order.pickupInfo;
+        const scheduleDateStr = scheduleInfo?.date;
+        const scheduleDate = scheduleDateStr ? new Date(scheduleDateStr) : null;
+
+        const isDateInRange = (date: Date | null) => {
+          if (!date) return false;
+          const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+          if (startDate && endDate) {
+            const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+            const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+            return dateOnly >= startDateOnly && dateOnly <= endDateOnly;
+          } else if (startDate) {
+            const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+            return dateOnly >= startDateOnly;
+          } else if (endDate) {
+            const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+            return dateOnly <= endDateOnly;
+          }
+          return true;
+        };
+
+        // 주문일 또는 수령일 중 하나라도 기간 내에 있으면 포함
+        return isDateInRange(orderDate) || isDateInRange(scheduleDate);
       });
     }
     // 이관 주문만 보기 필터
@@ -829,10 +839,11 @@ export default function OrdersPage() {
       const orderDateOnly = new Date(orderDate.getFullYear(), orderDate.getMonth(), orderDate.getDate());
       const isToday = orderDateOnly.getTime() === todayStart.getTime();
 
-      // 지점 사용자의 경우: 자신의 지점에서 발주한 주문 + 수주받은 주문 (건수만)
+      // 지점 사용자의 경우: 자신의 지점 주문 또는 수주한 주문 포함
       if (!isAdmin && userBranch) {
-        return isToday && (order.branchName === userBranch ||
-          (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && order.transferInfo.processBranchName === userBranch));
+        const isOriginal = order.branchName === userBranch;
+        const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch;
+        return isToday && (isOriginal || isProcess);
       }
 
       // 관리자의 경우: 선택된 지점에서 발주한 주문 또는 수주한 주문 포함
@@ -885,10 +896,11 @@ export default function OrdersPage() {
       const isThisMonth = orderDate.getMonth() === today.getMonth() &&
         orderDate.getFullYear() === today.getFullYear();
 
-      // 지점 사용자의 경우: 자신의 지점에서 발주한 주문 + 수주받은 주문 (건수만)
+      // 지점 사용자의 경우: 자신의 지점 주문 또는 수주한 주문 포함
       if (!isAdmin && userBranch) {
-        return isThisMonth && (order.branchName === userBranch ||
-          (order.transferInfo?.isTransferred && order.transferInfo?.processBranchName && order.transferInfo.processBranchName === userBranch));
+        const isOriginal = order.branchName === userBranch;
+        const isProcess = order.transferInfo?.isTransferred && order.transferInfo?.processBranchName === userBranch;
+        return isThisMonth && (isOriginal || isProcess);
       }
 
       // 관리자의 경우: 선택된 지점에서 발주한 주문 또는 수주한 주문 포함
@@ -1033,7 +1045,7 @@ export default function OrdersPage() {
           if (!isSelectedBranch && !isTransferredToSelected) return false;
         }
 
-        const schedule = order.pickupInfo || order.deliveryInfo;
+        const schedule = order.receiptType === 'delivery_reservation' ? order.deliveryInfo : order.pickupInfo;
         if (!schedule?.date || order.status === 'canceled' || order.status === 'completed') return false;
 
         if (type === 'today') {
@@ -1341,10 +1353,20 @@ export default function OrdersPage() {
                         <span className="text-muted-foreground truncate flex-1 mr-2">{getProductNames(order)}</span>
                         <div className="flex gap-1">
                           {order.transferInfo?.isTransferred && (
-                            <span className="bg-purple-50 text-purple-600 border border-purple-100 px-1 rounded">이관</span>
+                            <span className={cn(
+                              "px-1 rounded border whitespace-nowrap",
+                              order.branchName === (selectedBranch === 'all' ? userBranch : selectedBranch)
+                                ? "bg-blue-50 text-blue-600 border-blue-100"
+                                : "bg-purple-50 text-purple-600 border-purple-100"
+                            )}>
+                              {order.branchName === (selectedBranch === 'all' ? userBranch : selectedBranch)
+                                ? `이관발주 → ${order.transferInfo.processBranchName}`
+                                : `이관수주 ← ${order.branchName}`
+                              }
+                            </span>
                           )}
                           {order.outsourceInfo?.isOutsourced && (
-                            <span className="bg-orange-50 text-orange-600 border border-orange-100 px-1 rounded">외부:{order.outsourceInfo.partnerName}</span>
+                            <span className="bg-orange-50 text-orange-600 border border-orange-100 px-1 rounded whitespace-nowrap">외부:{order.outsourceInfo.partnerName}</span>
                           )}
                         </div>
                       </div>
@@ -1393,10 +1415,20 @@ export default function OrdersPage() {
                         <span className="text-muted-foreground truncate flex-1 mr-2">{getProductNames(order)}</span>
                         <div className="flex gap-1">
                           {order.transferInfo?.isTransferred && (
-                            <span className="bg-purple-50 text-purple-600 border border-purple-100 px-1 rounded">이관</span>
+                            <span className={cn(
+                              "px-1 rounded border whitespace-nowrap",
+                              order.branchName === (selectedBranch === 'all' ? userBranch : selectedBranch)
+                                ? "bg-blue-50 text-blue-600 border-blue-100"
+                                : "bg-purple-50 text-purple-600 border-purple-100"
+                            )}>
+                              {order.branchName === (selectedBranch === 'all' ? userBranch : selectedBranch)
+                                ? `이관발주 → ${order.transferInfo.processBranchName}`
+                                : `이관수주 ← ${order.branchName}`
+                              }
+                            </span>
                           )}
                           {order.outsourceInfo?.isOutsourced && (
-                            <span className="bg-orange-50 text-orange-600 border border-orange-100 px-1 rounded">외부:{order.outsourceInfo.partnerName}</span>
+                            <span className="bg-orange-50 text-orange-600 border border-orange-100 px-1 rounded whitespace-nowrap">외부:{order.outsourceInfo.partnerName}</span>
                           )}
                         </div>
                       </div>
