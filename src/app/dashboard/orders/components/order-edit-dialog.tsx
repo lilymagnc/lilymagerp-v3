@@ -194,11 +194,9 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
         return;
       }
 
-      const driverAffiliationVal = driverAffiliation; // UI 상태 사용
+      const supplierName = driverAffiliation || '운송업체';
       const driverName = order.deliveryInfo?.driverName;
       const driverContact = order.deliveryInfo?.driverContact;
-
-      const supplierName = driverAffiliationVal || '운송업체';
 
       // 배송기사 소속을 거래처에 자동 등록
       await ensurePartnerExists(
