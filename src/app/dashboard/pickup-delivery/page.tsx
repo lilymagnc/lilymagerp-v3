@@ -190,10 +190,12 @@ export default function PickupDeliveryPage() {
       };
       if (editingDriverInfo.actualDeliveryCost?.trim()) {
         const actualCost = parseInt(editingDriverInfo.actualDeliveryCost);
-        updateData.actualDeliveryCost = actualCost;
-        updateData.deliveryCostStatus = 'completed';
-        updateData.deliveryProfit = (order.summary?.deliveryFee || 0) - actualCost;
-        await createDeliveryExpense(order, actualCost);
+        if (!isNaN(actualCost)) {
+          updateData.actualDeliveryCost = actualCost;
+          updateData.deliveryCostStatus = 'completed';
+          updateData.deliveryProfit = (order.summary?.deliveryFee || 0) - actualCost;
+          await createDeliveryExpense(order, actualCost);
+        }
       }
       updateOrder(editingDriverInfo.orderId, updateData);
       toast({ title: '완료', description: '정보가 업데이트되었습니다.' });
@@ -228,6 +230,10 @@ export default function PickupDeliveryPage() {
     }
     try {
       const actualCost = parseInt(deliveryCost);
+      if (isNaN(actualCost)) {
+        toast({ variant: 'destructive', title: '오류', description: '유효한 숫자를 입력해주세요.' });
+        return;
+      }
       await updateOrder(selectedOrderForCost.id, {
         actualDeliveryCost: actualCost,
         deliveryCostStatus: 'completed',

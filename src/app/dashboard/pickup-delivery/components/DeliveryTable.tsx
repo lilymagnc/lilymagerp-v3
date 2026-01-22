@@ -96,7 +96,7 @@ export function DeliveryTable({
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    {order.actualDeliveryCost ? (
+                                    {order.actualDeliveryCost !== undefined ? (
                                         <div className="text-[11px]">
                                             <div className="font-bold">₩{order.actualDeliveryCost.toLocaleString()}</div>
                                             {order.deliveryProfit !== undefined && (
@@ -207,7 +207,7 @@ export function DeliveryTable({
                             </div>
                         </div>
 
-                        {order.actualDeliveryCost && (
+                        {order.actualDeliveryCost !== undefined && (
                             <div className="flex justify-between items-center mb-4 p-2 bg-slate-50 rounded-lg text-xs">
                                 <span className="text-slate-500">배송 비용</span>
                                 <div className="text-right">

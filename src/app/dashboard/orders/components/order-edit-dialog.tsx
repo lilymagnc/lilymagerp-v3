@@ -15,6 +15,7 @@ import { Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useOrders } from "@/hooks/use-orders";
 import { useSettings } from "@/hooks/use-settings";
+import { useAuth } from "@/hooks/use-auth";
 import { useSimpleExpenses } from "@/hooks/use-simple-expenses";
 import { usePartners } from "@/hooks/use-partners";
 import { useBranches } from "@/hooks/use-branches";
@@ -55,6 +56,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
   const { toast } = useToast();
   const { updateOrder } = useOrders();
   const { settings } = useSettings();
+  const { user } = useAuth();
   const { addExpense } = useSimpleExpenses();
   const { partners, addPartner } = usePartners();
   const { branches } = useBranches();
@@ -361,6 +363,53 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
         return;
       }
 
+      // 숫자 필드 유효성 검사
+      if (formData.receiptType === 'delivery_reservation' && isNaN(editableDeliveryFee)) {
+        toast({
+          title: "오류",
+          description: "배송비는 유효한 숫자여야 합니다.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (formData.receiptType === 'delivery_reservation' && isNaN(actualDeliveryCost)) {
+        toast({
+          title: "오류",
+          description: "실제 배송비는 유효한 숫자여야 합니다.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (formData.receiptType === 'delivery_reservation' && isNaN(actualDeliveryCostCash)) {
+        toast({
+          title: "오류",
+          description: "기사 현금 결제액은 유효한 숫자여야 합니다.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      for (const item of formData.items) {
+        if (isNaN(item.quantity) || item.quantity <= 0) {
+          toast({
+            title: "오류",
+            description: `상품 '${item.name || '이름 없음'}'의 수량이 올바르지 않습니다.`,
+            variant: "destructive"
+          });
+          return;
+        }
+        if (isNaN(item.price)) {
+          toast({
+            title: "오류",
+            description: `상품 '${item.name || '이름 없음'}'의 가격이 올바르지 않습니다.`,
+            variant: "destructive"
+          });
+          return;
+        }
+      }
+
 
 
       const updatedOrder = {
@@ -395,34 +444,74 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
           total: calculateTotal().total
         },
         pickupInfo: (formData.receiptType === 'store_pickup' || formData.receiptType === 'pickup_reservation') ? {
-          date: formData.pickupDate,
-          time: formData.pickupTime,
-          pickerName: formData.recipient.name,
-          pickerContact: formData.recipient.contact
+          date: formData.pickupDate || '',
+          time: formData.pickupTime || '',
+          pickerName: formData.recipient.name || '',
+          pickerContact: formData.recipient.contact || ''
         } : null,
         deliveryInfo: formData.receiptType === 'delivery_reservation' ? {
-          date: formData.pickupDate,
-          time: formData.pickupTime,
-          recipientName: formData.recipient.name,
-          recipientContact: formData.recipient.contact,
-          address: formData.address,
-          district: '',
-          driverAffiliation: driverAffiliation
+          date: formData.pickupDate || '',
+          time: formData.pickupTime || '',
+          recipientName: formData.recipient.name || '',
+          recipientContact: formData.recipient.contact || '',
+          address: formData.address || '',
+          district: '', // 원래부터 빈 값이었으므로 유지
+          driverAffiliation: driverAffiliation || ''
         } : null,
-        actualDeliveryCost: (formData.receiptType === 'delivery_reservation' && actualDeliveryCost > 0) ? actualDeliveryCost : order.actualDeliveryCost,
-        actualDeliveryCostCash: (formData.receiptType === 'delivery_reservation' && actualDeliveryCostCash > 0) ? actualDeliveryCostCash : order.actualDeliveryCostCash,
-        deliveryCostStatus: (formData.receiptType === 'delivery_reservation' && (actualDeliveryCost > 0 || actualDeliveryCostCash > 0)) ? 'completed' : order.deliveryCostStatus,
-        deliveryCostUpdatedAt: (actualDeliveryCost !== order.actualDeliveryCost || actualDeliveryCostCash !== order.actualDeliveryCostCash) ? new Date() : order.deliveryCostUpdatedAt,
-        deliveryCostUpdatedBy: (actualDeliveryCost !== order.actualDeliveryCost || actualDeliveryCostCash !== order.actualDeliveryCostCash) ? (user?.email || 'unknown') : order.deliveryCostUpdatedBy,
-        deliveryProfit: (formData.receiptType === 'delivery_reservation') ? (calculateTotal().deliveryFee - actualDeliveryCost) : order.deliveryProfit
+        // 중요: undefined 값이 전달되지 않도록 null 병합 연산자 사용 혹은 0으로 기본값 설정
+        // 배송비 관련 필드는 배송 예약일 때만 업데이트하거나, 기존 값을 유지하되 undefined가 아니어야 함
+        actualDeliveryCost: (formData.receiptType === 'delivery_reservation')
+          ? (actualDeliveryCost > 0 ? actualDeliveryCost : (order.actualDeliveryCost ?? null))
+          : (order.actualDeliveryCost ?? null),
+
+        actualDeliveryCostCash: (formData.receiptType === 'delivery_reservation')
+          ? (actualDeliveryCostCash > 0 ? actualDeliveryCostCash : (order.actualDeliveryCostCash ?? null))
+          : (order.actualDeliveryCostCash ?? null),
+
+        deliveryCostStatus: (formData.receiptType === 'delivery_reservation' && (actualDeliveryCost > 0 || actualDeliveryCostCash > 0))
+          ? ('completed' as const)
+          : (order.deliveryCostStatus ?? null),
+
+        deliveryCostUpdatedAt: (actualDeliveryCost !== order.actualDeliveryCost || actualDeliveryCostCash !== order.actualDeliveryCostCash)
+          ? new Date()
+          : (order.deliveryCostUpdatedAt ?? null),
+
+        deliveryCostUpdatedBy: (actualDeliveryCost !== order.actualDeliveryCost || actualDeliveryCostCash !== order.actualDeliveryCostCash)
+          ? (user?.email || 'unknown')
+          : (order.deliveryCostUpdatedBy ?? null),
+
+        deliveryProfit: (formData.receiptType === 'delivery_reservation')
+          ? (calculateTotal().deliveryFee - actualDeliveryCost)
+          : (order.deliveryProfit ?? null)
       };
+
+      console.log("Updating order with:", updatedOrder);
+
+      // Firestore 저장을 위한 데이터 정제 함수 (undefined -> null 변환)
+      const sanitizeForFirestore = (obj: any): any => {
+        if (obj === undefined) return null;
+        if (obj === null) return null;
+        if (obj instanceof Date) return obj;
+        if (obj instanceof Timestamp) return obj;
+        if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
+        if (typeof obj === 'object') {
+          const newObj: any = {};
+          for (const key in obj) {
+            newObj[key] = sanitizeForFirestore(obj[key]);
+          }
+          return newObj;
+        }
+        return obj;
+      };
+
+      const finalOrderData = sanitizeForFirestore(updatedOrder);
 
       // 실제 배송비 정보가 입력되었으면 지출 내역 생성/업데이트 (무조건 실행하여 싱크 맞춤)
       if (formData.receiptType === 'delivery_reservation' && (actualDeliveryCost > 0 || actualDeliveryCostCash > 0)) {
         await createDeliveryExpense(order, actualDeliveryCost, actualDeliveryCostCash);
       }
 
-      await updateOrder(order.id, updatedOrder);
+      await updateOrder(order.id, finalOrderData);
 
       toast({
         title: "성공",
@@ -430,10 +519,11 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
       });
 
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Order update error:", error);
       toast({
-        title: "오류",
-        description: "주문 수정 중 오류가 발생했습니다.",
+        title: "오류 발생",
+        description: error?.message || "주문 수정 중 알 수 없는 오류가 발생했습니다.",
         variant: "destructive"
       });
     } finally {
