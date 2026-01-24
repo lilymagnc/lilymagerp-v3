@@ -479,7 +479,16 @@ export default function PickupDeliveryPage() {
               orders={pickupOrders}
               onComplete={handleCompletePickup}
               onRowClick={(order) => { setSelectedOrder(order); setIsDialogOpen(true); }}
-              formatDateTime={(d, t) => `${format(new Date(d), 'MM/dd')} ${t}`}
+              formatDateTime={(d, t) => {
+                if (!d) return t || '-';
+                try {
+                  const date = new Date(d);
+                  if (isNaN(date.getTime())) return `${d} ${t}`;
+                  return `${format(date, 'MM/dd')} ${t}`;
+                } catch (e) {
+                  return `${d} ${t}`;
+                }
+              }}
               getStatusBadge={(s) => s === 'processing' ? <Badge variant="secondary" className="bg-amber-100 text-amber-700 border-none h-5 px-2 text-[10px]">처리중</Badge> : <Badge className="bg-green-100 text-green-700 border-none h-5 px-2 text-[10px]">완료</Badge>}
             />
           </TabsContent>
@@ -500,7 +509,16 @@ export default function PickupDeliveryPage() {
                 setIsDriverDialogOpen(true);
               }}
               onRowClick={(order) => { setSelectedOrder(order); setIsDialogOpen(true); }}
-              formatDateTime={(d, t) => `${format(new Date(d), 'MM/dd')} ${t}`}
+              formatDateTime={(d, t) => {
+                if (!d) return t || '-';
+                try {
+                  const date = new Date(d);
+                  if (isNaN(date.getTime())) return `${d} ${t}`;
+                  return `${format(date, 'MM/dd')} ${t}`;
+                } catch (e) {
+                  return `${d} ${t}`;
+                }
+              }}
               getStatusBadge={(s) => s === 'processing' ? <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-none h-5 px-2 text-[10px]">배송전</Badge> : <Badge className="bg-green-100 text-green-700 border-none h-5 px-2 text-[10px]">완료</Badge>}
             />
           </TabsContent>

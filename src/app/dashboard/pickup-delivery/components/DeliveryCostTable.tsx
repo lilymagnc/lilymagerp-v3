@@ -63,14 +63,14 @@ export function DeliveryCostTable({ orders, onCostInput }: DeliveryCostTableProp
                 ₩{(order.summary?.deliveryFee || 0).toLocaleString()}
               </TableCell>
               <TableCell className="text-sm font-bold">
-                {order.actualDeliveryCost !== undefined ? (
+                {(order.actualDeliveryCost !== undefined && order.actualDeliveryCost !== null) ? (
                   `₩${order.actualDeliveryCost.toLocaleString()}`
                 ) : (
                   <span className="text-slate-300 font-normal italic">미입력</span>
                 )}
               </TableCell>
               <TableCell>
-                {order.deliveryProfit !== undefined ? (
+                {(order.deliveryProfit !== undefined && order.deliveryProfit !== null) ? (
                   <Badge variant="outline" className={`border-none px-0 font-bold ${order.deliveryProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {order.deliveryProfit >= 0 ? '+' : ''}₩{order.deliveryProfit.toLocaleString()}
                   </Badge>
