@@ -500,12 +500,49 @@ export function useOrders() {
 
 
       // 일별 통계 업데이트 (주문 추가 시)
+      // 매출(Revenue)은 주문일 기준, 정산(Settled)은 결제일(오늘) 기준
+      const totalAmount = finalOrderPayload.summary.total;
+      const isSettled = (finalOrderPayload.payment.status === 'paid' || finalOrderPayload.payment.status === 'completed');
+
+      // 이관 여부 및 지분 계산 (만약 초기 생성 시부터 이관 정보가 있는 경우 대비)
+      const isTransferred = (finalOrderPayload as any).transferInfo?.isTransferred;
+      const split = (finalOrderPayload as any).transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+      const orderBranchShare = isTransferred ? Math.round(totalAmount * (split.orderBranch / 100)) : totalAmount;
+      const processBranchShare = totalAmount - orderBranchShare;
+
+      // 1. 발주지점 매출/건수 합산
       await updateDailyStats(orderDate, orderData.branchName, {
-        revenueDelta: orderData.summary.total,
+        revenueDelta: orderBranchShare,
         orderCountDelta: 1,
-        settledAmountDelta: (finalOrderPayload.payment.status === 'paid' || finalOrderPayload.payment.status === 'completed')
-          ? orderData.summary.total : 0
+        settledAmountDelta: 0
       });
+
+      // 2. 수주지점 매출 합산 (이관된 경우)
+      if (isTransferred) {
+        await updateDailyStats(orderDate, (finalOrderPayload as any).transferInfo.processBranchName, {
+          revenueDelta: processBranchShare,
+          orderCountDelta: 0,
+          settledAmountDelta: 0
+        });
+      }
+
+      // 3. 결제 완료된 건이면 정산액 합산 (오늘 기준)
+      if (isSettled) {
+        const now = new Date();
+        await updateDailyStats(now, orderData.branchName, {
+          revenueDelta: 0,
+          orderCountDelta: 0,
+          settledAmountDelta: orderBranchShare
+        });
+
+        if (isTransferred) {
+          await updateDailyStats(now, (finalOrderPayload as any).transferInfo.processBranchName, {
+            revenueDelta: 0,
+            orderCountDelta: 0,
+            settledAmountDelta: processBranchShare
+          });
+        }
+      }
 
       return orderDocRef.id; // 주문 ID 반환
     } catch (error) {
@@ -530,12 +567,50 @@ export function useOrders() {
 
       // 일별 통계 업데이트 (취소 시)
       if (newStatus === 'canceled' && orderData.status !== 'canceled') {
+        const totalAmount = orderData.summary.total;
+        const isSettled = (orderData.payment.status === 'paid' || orderData.payment.status === 'completed');
+
+        // 이관된 주문인 경우 지분 계산
+        const isTransferred = orderData.transferInfo?.isTransferred &&
+          (orderData.transferInfo?.status === 'accepted' || orderData.transferInfo?.status === 'completed');
+        const split = orderData.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+
+        const orderBranchShare = isTransferred ? Math.round(totalAmount * (split.orderBranch / 100)) : totalAmount;
+        const processBranchShare = totalAmount - orderBranchShare;
+
+        // 1. 발주지점 매출/건수 차감 (주문일 기준)
         await updateDailyStats(orderData.orderDate, orderData.branchName, {
-          revenueDelta: -orderData.summary.total,
+          revenueDelta: -orderBranchShare,
           orderCountDelta: -1,
-          settledAmountDelta: (orderData.payment.status === 'paid' || orderData.payment.status === 'completed')
-            ? -orderData.summary.total : 0
+          settledAmountDelta: 0
         });
+
+        // 2. 수주지점 매출 차감 (주문일 기준)
+        if (isTransferred) {
+          await updateDailyStats(orderData.orderDate, orderData.transferInfo.processBranchName, {
+            revenueDelta: -processBranchShare,
+            orderCountDelta: 0,
+            settledAmountDelta: 0
+          });
+        }
+
+        // 3. 결제 완료된 건이면 정산액 차감 (오늘 기준)
+        if (isSettled) {
+          const now = new Date();
+          await updateDailyStats(now, orderData.branchName, {
+            revenueDelta: 0,
+            orderCountDelta: 0,
+            settledAmountDelta: -orderBranchShare
+          });
+
+          if (isTransferred) {
+            await updateDailyStats(now, orderData.transferInfo.processBranchName, {
+              revenueDelta: 0,
+              orderCountDelta: 0,
+              settledAmountDelta: -processBranchShare
+            });
+          }
+        }
       }
 
       // 주문이 완료되면 해당하는 캘린더 이벤트 상태를 'completed'로 변경
@@ -661,26 +736,53 @@ export function useOrders() {
       // 일별 통계 업데이트 (결제 상태 변경 시)
       const isNewSettled = newStatus === 'paid' || newStatus === 'completed';
       const wasSettled = orderData?.payment?.status === 'paid' || orderData?.payment?.status === 'completed';
+      const isCanceled = orderData?.status === 'canceled';
 
-      if (isNewSettled && !wasSettled) {
-        // 결제 완료 시: '오늘' 날짜 통계에 결제 금액 합산
-        await updateDailyStats(new Date(), orderData.branchName, {
-          revenueDelta: 0,
-          orderCountDelta: 0,
-          settledAmountDelta: orderData.summary.total
-        });
-      } else if (!isNewSettled && wasSettled) {
-        // 결제 취소 시: 기존에 기록된 결제일(completedAt) 기준으로 차감해야 하나, 
-        // 간단히 처리하기 위해 일단 현재 기준 또는 데이터의 완료일 기준 처리
-        const settlementDate = orderData.payment?.completedAt
-          ? (orderData.payment.completedAt as any).toDate()
-          : new Date();
+      if (!isCanceled) {
+        const totalAmount = orderData.summary.total;
 
-        await updateDailyStats(settlementDate, orderData.branchName, {
-          revenueDelta: 0,
-          orderCountDelta: 0,
-          settledAmountDelta: -orderData.summary.total
-        });
+        // 이관된 주문인지 확인하여 지분 계산
+        const isTransferred = orderData.transferInfo?.isTransferred &&
+          (orderData.transferInfo?.status === 'accepted' || orderData.transferInfo?.status === 'completed');
+        const split = orderData.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+
+        const orderBranchShare = isTransferred ? Math.round(totalAmount * (split.orderBranch / 100)) : totalAmount;
+        const processBranchShare = totalAmount - orderBranchShare;
+
+        if (isNewSettled && !wasSettled) {
+          // 결제 완료 시: '오늘' 날짜 통계에 결제 금액 합산 (지분별)
+          const now = new Date();
+          await updateDailyStats(now, orderData.branchName, {
+            revenueDelta: 0,
+            orderCountDelta: 0,
+            settledAmountDelta: orderBranchShare
+          });
+
+          if (isTransferred) {
+            await updateDailyStats(now, orderData.transferInfo.processBranchName, {
+              revenueDelta: 0,
+              orderCountDelta: 0,
+              settledAmountDelta: processBranchShare
+            });
+          }
+        } else if (!isNewSettled && wasSettled) {
+          // 결제 취소(미결로 변경) 시: '오늘' 날짜 또는 완료일 기준으로 합계에서 차감
+          const settlementDate = new Date(); // 수금 취소 행위 자체를 오늘 정산에 반영
+
+          await updateDailyStats(settlementDate, orderData.branchName, {
+            revenueDelta: 0,
+            orderCountDelta: 0,
+            settledAmountDelta: -orderBranchShare
+          });
+
+          if (isTransferred) {
+            await updateDailyStats(settlementDate, orderData.transferInfo.processBranchName, {
+              revenueDelta: 0,
+              orderCountDelta: 0,
+              settledAmountDelta: -processBranchShare
+            });
+          }
+        }
       }
 
       toast({
@@ -737,11 +839,51 @@ export function useOrders() {
       await setDoc(orderDocRef, data, { merge: true });
 
       if (revenueDelta !== 0 || settledDelta !== 0) {
-        await updateDailyStats(oldOrder.orderDate, oldOrder.branchName, {
-          revenueDelta,
-          orderCountDelta: 0,
-          settledAmountDelta: settledDelta
-        });
+        // 이관된 주문인 경우 지분 계산
+        const isTransferred = oldOrder.transferInfo?.isTransferred &&
+          (oldOrder.transferInfo?.status === 'accepted' || oldOrder.transferInfo?.status === 'completed');
+        const split = oldOrder.transferInfo?.amountSplit || { orderBranch: 100, processBranch: 0 };
+
+        // 매출 변화분 지분 계산 (주문일 기준 업데이트)
+        if (revenueDelta !== 0) {
+          const orderBranchRevDelta = isTransferred ? Math.round(revenueDelta * (split.orderBranch / 100)) : revenueDelta;
+          const processBranchRevDelta = revenueDelta - orderBranchRevDelta;
+
+          await updateDailyStats(oldOrder.orderDate, oldOrder.branchName, {
+            revenueDelta: orderBranchRevDelta,
+            orderCountDelta: 0,
+            settledAmountDelta: 0
+          });
+
+          if (isTransferred) {
+            await updateDailyStats(oldOrder.orderDate, oldOrder.transferInfo.processBranchName, {
+              revenueDelta: processBranchRevDelta,
+              orderCountDelta: 0,
+              settledAmountDelta: 0
+            });
+          }
+        }
+
+        // 정산 변화분 지분 계산 (오늘 기준 업데이트)
+        if (settledDelta !== 0) {
+          const now = new Date();
+          const orderBranchSettledDelta = isTransferred ? Math.round(settledDelta * (split.orderBranch / 100)) : settledDelta;
+          const processBranchSettledDelta = settledDelta - orderBranchSettledDelta;
+
+          await updateDailyStats(now, oldOrder.branchName, {
+            revenueDelta: 0,
+            orderCountDelta: 0,
+            settledAmountDelta: orderBranchSettledDelta
+          });
+
+          if (isTransferred) {
+            await updateDailyStats(now, oldOrder.transferInfo.processBranchName, {
+              revenueDelta: 0,
+              orderCountDelta: 0,
+              settledAmountDelta: processBranchSettledDelta
+            });
+          }
+        }
       }
 
       toast({ title: "성공", description: "주문 정보가 수정되었습니다." });

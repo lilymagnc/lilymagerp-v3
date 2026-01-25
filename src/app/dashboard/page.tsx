@@ -21,6 +21,8 @@ import { ko } from "date-fns/locale";
 import { getWeatherInfo, getWeatherEmoji, WeatherInfo } from "@/lib/weather-service";
 import BulletinBoard from '@/components/dashboard/bulletin-board';
 import { fetchDailyStats } from "@/lib/stats-utils";
+import { DeliveryExpenseFix } from "@/components/maintenance/delivery-expense-fix";
+import { DailyStatsSync } from "@/components/maintenance/daily-stats-sync";
 
 
 interface DashboardStats {
@@ -792,6 +794,8 @@ export default function DashboardPage() {
         title={getDashboardTitle()}
         description={getDashboardDescription()}
       />
+      <DeliveryExpenseFix />
+      <DailyStatsSync />
       <BulletinBoard />
 
       {/* 통계 데이터 없음 알림 */}

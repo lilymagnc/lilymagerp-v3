@@ -127,9 +127,19 @@ export default function PickupDeliveryPage() {
         order.deliveryInfo?.driverContact
       );
 
+      // 배송일/픽업일 추출 (지출 날짜로 사용)
+      const deliveryDateRaw = order.deliveryInfo?.date || order.pickupInfo?.date;
+      let expenseDate = Timestamp.now();
+      if (deliveryDateRaw) {
+        const dateObj = new Date(deliveryDateRaw + (typeof deliveryDateRaw === 'string' && !deliveryDateRaw.includes('T') ? 'T00:00:00' : ''));
+        if (!isNaN(dateObj.getTime())) {
+          expenseDate = Timestamp.fromDate(dateObj);
+        }
+      }
+
       const driverInfo = order.deliveryInfo?.driverName ? `, 배송기사: ${order.deliveryInfo.driverName}` : '';
       await addExpense({
-        date: Timestamp.now(),
+        date: expenseDate, // 배송일 기준
         category: SimpleExpenseCategory.TRANSPORT,
         subCategory: 'DELIVERY',
         description: `배송비-${order.orderer.name}${driverInfo}`,
@@ -194,7 +204,12 @@ export default function PickupDeliveryPage() {
           updateData.actualDeliveryCost = actualCost;
           updateData.deliveryCostStatus = 'completed';
           updateData.deliveryProfit = (order.summary?.deliveryFee || 0) - actualCost;
-          await createDeliveryExpense(order, actualCost);
+
+          // 값이 변경된 경우에만 지출 내역 생성/업데이트
+          if (actualCost !== order.actualDeliveryCost ||
+            editingDriverInfo.driverAffiliation !== (order.deliveryInfo?.driverAffiliation || '')) {
+            await createDeliveryExpense(order, actualCost);
+          }
         }
       }
       updateOrder(editingDriverInfo.orderId, updateData);
@@ -243,7 +258,10 @@ export default function PickupDeliveryPage() {
         deliveryProfit: (selectedOrderForCost.summary?.deliveryFee || 0) - actualCost,
       });
 
-      await createDeliveryExpense(selectedOrderForCost, actualCost);
+      // 값이 변경된 경우에만 지출 내역 생성/업데이트
+      if (actualCost !== selectedOrderForCost.actualDeliveryCost) {
+        await createDeliveryExpense(selectedOrderForCost, actualCost);
+      }
       toast({ title: '완료', description: '배송비가 입력되었습니다.' });
       setIsDeliveryCostDialogOpen(false);
       setSelectedOrderForCost(null);
@@ -452,7 +470,7 @@ export default function PickupDeliveryPage() {
       {viewMode === 'calendar' ? (
         <CalendarView
           orders={orders}
-          onDateSelect={(date) => {
+          onDateClick={(date) => {
             setStartDate(startOfDay(date));
             setEndDate(endOfDay(date));
             setViewMode('list');
@@ -538,7 +556,6 @@ export default function PickupDeliveryPage() {
           order={selectedOrder}
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
-          onOrderUpdate={() => { }} // Hook handles real-time updates
         />
       )}
 

@@ -71,7 +71,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
     orderer: {
       name: '',
       contact: '',
-      companyName: '',
+      company: '',
       email: ''
     },
     receiptType: 'store_pickup' as 'store_pickup' | 'pickup_reservation' | 'delivery_reservation',
@@ -102,12 +102,12 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
       const rawDate = order.pickupInfo?.date || order.deliveryInfo?.date;
 
       if (rawDate) {
-        if (rawDate instanceof Timestamp) {
-          initialDate = format(rawDate.toDate(), 'yyyy-MM-dd');
-        } else if (rawDate instanceof Date) {
-          initialDate = format(rawDate, 'yyyy-MM-dd');
+        if ((rawDate as any) instanceof Timestamp) {
+          initialDate = format((rawDate as any).toDate(), 'yyyy-MM-dd');
+        } else if ((rawDate as any) instanceof Date) {
+          initialDate = format(rawDate as any, 'yyyy-MM-dd');
         } else {
-          initialDate = rawDate;
+          initialDate = rawDate as any;
         }
       }
 
@@ -200,6 +200,16 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
       const driverName = order.deliveryInfo?.driverName;
       const driverContact = order.deliveryInfo?.driverContact;
 
+      // 배송일/픽업일 추출 (지출 날짜로 사용)
+      const orderDateRaw = formData.pickupDate || order.deliveryInfo?.date || order.pickupInfo?.date;
+      let expenseDate = Timestamp.now();
+      if (orderDateRaw) {
+        const dateObj = new Date(orderDateRaw + (typeof orderDateRaw === 'string' && !orderDateRaw.includes('T') ? 'T00:00:00' : ''));
+        if (!isNaN(dateObj.getTime())) {
+          expenseDate = Timestamp.fromDate(dateObj);
+        }
+      }
+
       // 배송기사 소속을 거래처에 자동 등록
       await ensurePartnerExists(
         supplierName,
@@ -210,7 +220,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
       // 1. 전체 배송비 지출 생성 (기존 로직) -> 비현금 부분만 기록 (중복 방지)
       const nonCashAmount = Math.max(0, actualCost - actualCostCash);
       const expenseData = {
-        date: Timestamp.now(),
+        date: expenseDate, // 배송일 기준
         category: SimpleExpenseCategory.TRANSPORT,
         subCategory: 'DELIVERY',
         description: `배송비-${formData.orderer.name}`,
@@ -226,12 +236,14 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now()
       };
+
+      // addExpense 내부적으로 relatedOrderId 기반 중복 확인 및 업데이트 로직이 있음
       await addExpense(expenseData, orderBranch.id, orderBranch.name);
 
       // 2. 기사 현금 지급액이 있는 경우 별도 지출 생성 (사용자 요청: 시재 차감용)
       if (actualCostCash > 0) {
         const cashExpenseData = {
-          date: Timestamp.now(),
+          date: expenseDate, // 배송일 기준
           category: SimpleExpenseCategory.TRANSPORT,
           subCategory: 'DELIVERY_CASH', // 구분용 서브카테고리
           description: `배송비-${supplierName} 현금${actualCostCash.toLocaleString()}원`,
@@ -417,7 +429,7 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
           ...order.orderer,
           name: formData.orderer.name,
           contact: formData.orderer.contact,
-          company: formData.orderer.companyName,
+          company: formData.orderer.company,
           email: formData.orderer.email
         },
         receiptType: formData.receiptType,
@@ -506,8 +518,16 @@ export function OrderEditDialog({ isOpen, onOpenChange, order }: OrderEditDialog
 
       const finalOrderData = sanitizeForFirestore(updatedOrder);
 
-      // 실제 배송비 정보가 입력되었으면 지출 내역 생성/업데이트 (무조건 실행하여 싱크 맞춤)
-      if (formData.receiptType === 'delivery_reservation' && (actualDeliveryCost > 0 || actualDeliveryCostCash > 0)) {
+      // 배송비 관련 필드가 변경되었는지 확인
+      const deliveryCostFieldsChanged = (
+        actualDeliveryCost !== (order.actualDeliveryCost || 0) ||
+        actualDeliveryCostCash !== (order.actualDeliveryCostCash || 0) ||
+        driverAffiliation !== (order.deliveryInfo?.driverAffiliation || '') ||
+        formData.pickupDate !== (order.deliveryInfo?.date || order.pickupInfo?.date || '')
+      );
+
+      // 실제 배송비 정보가 입력되었거나 변경되었으면 지출 내역 생성/업데이트
+      if (formData.receiptType === 'delivery_reservation' && deliveryCostFieldsChanged && (actualDeliveryCost > 0 || actualDeliveryCostCash > 0)) {
         await createDeliveryExpense(order, actualDeliveryCost, actualDeliveryCostCash);
       }
 
