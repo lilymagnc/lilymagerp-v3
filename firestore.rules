@@ -7,6 +7,14 @@ service cloud.firestore {
       return request.auth != null;
     }
     
+    // 이메일을 통해 사용자가 본사 관리자인지 확인하는 함수
+    function isHQManager() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == '본사 관리자' ||
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'hq_manager' ||
+         get(/databases/$(database)/documents/users/$(request.auth.token.email)).data.role == 'admin');
+    }
+    
     // 주문 컬렉션 규칙
     match /orders/{orderId} {
       allow read, write: if isAuthenticated();
@@ -15,33 +23,25 @@ service cloud.firestore {
     // 사용자 역할 컬렉션 규칙
     match /userRoles/{roleId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isHQManager();
     }
     
     // 사용자 컬렉션 규칙
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated(); // 자기 정보 수정 가능
+    }
+    
+    // 일별 통계 컬렉션 규칙 (추가됨)
+    match /dailyStats/{date} {
+      allow read: if isAuthenticated();
+      allow write: if isHQManager();
     }
     
     // 지점 컬렉션 규칙
     match /branches/{branchId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    // 제품 컬렉션 규칙
-    match /products/{productId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    // 재료 컬렉션 규칙
-    match /materials/{materialId} {
-      allow read, write: if isAuthenticated();
-    }
-    
-    // 고객 컬렉션 규칙
-    match /customers/{customerId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isHQManager();
     }
     
     // 일정 관리 컬렉션 규칙
@@ -49,11 +49,15 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update, delete: if isAuthenticated() && 
-        (resource.data.createdBy == request.auth.uid || 
-         get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role == '본사 관리자');
+        (resource.data.createdBy == request.auth.uid || isHQManager());
     }
     
-    // 기타 컬렉션들에 대한 기본 규칙
+    // 고객 컬렉션 규칙
+    match /customers/{customerId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 기본 규칙: 기타 모든 컬렉션
     match /{document=**} {
       allow read, write: if isAuthenticated();
     }
