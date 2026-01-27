@@ -25,6 +25,7 @@ import { DeliveryExpenseFix } from "@/components/maintenance/delivery-expense-fi
 import { DailyStatsSync } from "@/components/maintenance/daily-stats-sync";
 
 
+
 interface DashboardStats {
   totalRevenue: number;
   newCustomers: number;
@@ -192,6 +193,7 @@ export default function DashboardPage() {
 
   // 사용자가 볼 수 있는 지점 목록
   const availableBranches = useMemo(() => {
+
     if (isAdmin) {
       return branches.filter(b => b.type !== '본사'); // 본사 관리자는 모든 지점 (본사 제외)
     } else {
@@ -797,6 +799,7 @@ export default function DashboardPage() {
       <DeliveryExpenseFix />
       <DailyStatsSync />
       <BulletinBoard />
+
 
       {/* 통계 데이터 없음 알림 */}
       {statsEmpty && (

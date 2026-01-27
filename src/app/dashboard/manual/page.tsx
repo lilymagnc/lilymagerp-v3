@@ -110,58 +110,40 @@ export default function ManualPage() {
     }
   };
 
-  // --- Menu Structure Definition ---
   const menuSections = [
-    {
-      title: "매장 운영 핵심 메뉴",
-      items: [
-        { id: "ch1-dashboard", label: "대시보드 및 정산", icon: LayoutDashboard },
-        { id: "ch2-calendar", label: "전사 일정 관리", icon: Calendar },
-        { id: "ch3-checklist", label: "체크리스트 관리", icon: ClipboardList },
-        { id: "ch4-sample", label: "샘플앨범(포트폴리오)", icon: Images },
-      ]
-    },
-    {
-      title: "주문 및 배송 관리",
-      items: [
-        { id: "ch5-orders-new", label: "주문 접수 (PC/모바일)", icon: ShoppingCart },
-        { id: "ch6-orders-list", label: "주문 현황 및 내역", icon: ClipboardList },
-        { id: "ch7-outsource", label: "외부 발주(파트너)", icon: ExternalLink },
-        { id: "ch8-pickup", label: "픽업/배송예약관리", icon: Truck },
-        { id: "ch9-recipients", label: "수령자/배송지 관리", icon: MapPin },
-      ]
-    },
-    {
-      title: "CRM 및 인사 관리",
-      items: [
-        { id: "ch10-customers", label: "고객 CRM/포인트", icon: BookUser },
-        { id: "ch11-partners", label: "거래처/매입처 관리", icon: Briefcase },
-        { id: "ch12-quotations", label: "견적서 생성/관리", icon: FileText },
-        { id: "ch13-hr-requests", label: "인사 서류 신청", icon: UserPlus },
-      ]
-    },
-    ...(isHQ ? [{
-      title: "본사 관리자 전용 메뉴",
-      items: [
-        { id: "ch14-products", label: "통합 상품 마스터", icon: Boxes },
-        { id: "ch15-materials", label: "자재 및 재고 관리", icon: Hammer },
-        { id: "ch16-mat-req-admin", label: "지점 자재요청 승인", icon: Package },
-        { id: "ch17-purchase", label: "본사 구매/매입 관리", icon: ShoppingCart },
-        { id: "ch18-expenses", label: "비용 결재 및 관리", icon: DollarSign },
-        { id: "ch19-simple-expenses", label: "지점 간편지출/마감", icon: Receipt },
-        { id: "ch20-branches", label: "전국 지점/조직 관리", icon: Store },
-        { id: "ch21-reports", label: "리포트/성과 분석", icon: BarChart3 },
-        { id: "ch22-hr-admin", label: "인사/사용자/권한설정", icon: UserCog },
-      ]
-    }] : [{
-      title: "지점 사용자 편의 기능",
-      items: [
-        { id: "ch-mat-req-branch", label: "자재 요청 (보충)", icon: Package },
-        { id: "ch-mat-branch", label: "지점 자재 재고", icon: Hammer },
-        { id: "ch-exp-branch", label: "일일 지출 입력", icon: Receipt },
-      ]
-    }])
+    { id: "ch1-dashboard", label: "대시보드", icon: LayoutDashboard },
+    { id: "ch2-calendar", label: "전사 일정 관리", icon: Calendar },
+    { id: "ch3-checklist", label: "체크리스트 관리", icon: ClipboardList },
+    { id: "ch4-sample", label: "샘플앨범 (Portfolio)", icon: Images },
+    { id: "ch5-orders-new", label: "주문 접수 (PC/Mobile)", icon: ShoppingCart },
+    { id: "ch6-orders-list", label: "주문 현황 및 내역", icon: ClipboardList },
+    { id: "ch7-outsource", label: "외부 발주 관리", icon: ExternalLink },
+    { id: "ch8-pickup", label: "픽업/배송 관리", icon: Truck },
+    { id: "ch9-recipients", label: "수령자/배송지 관리", icon: MapPin },
+    { id: "ch10-customers", label: "고객 CRM 관리", icon: BookUser },
+    { id: "ch11-partners", label: "거래처 및 파트너", icon: Briefcase },
+    { id: "ch12-quotations", label: "견적서 관리", icon: FileText },
+    { id: "ch13-hr-requests", label: "인사 서류 신청", icon: UserPlus },
+    // 역할별 섹션
+    ...(isHQ ? [
+      { id: "ch14-products", label: "통합 상품 관리", icon: Boxes },
+      { id: "ch15-materials", label: "자재 및 재고 관리", icon: Hammer },
+      { id: "ch16-mat-req-admin", label: "자재 요청 승인", icon: Package },
+      { id: "ch17-purchase", label: "구매 및 매입 관리", icon: ShoppingCart },
+      { id: "ch18-expenses", label: "비용 및 예산 관리", icon: DollarSign },
+      { id: "ch19-simple-expenses", label: "간편 지출 관리", icon: Receipt },
+      { id: "ch20-branches", label: "전국 지점 관리", icon: Store },
+      { id: "ch21-reports", label: "리포트 성과 분석", icon: BarChart3 },
+      { id: "ch22-hr-admin", label: "인사 및 시스템 설정", icon: UserCog },
+    ] : [
+      { id: "ch-mat-req-branch", label: "자재 보충 요청", icon: Package },
+      { id: "ch-mat-branch", label: "지점 자재 관리", icon: Hammer },
+      { id: "ch-exp-branch", label: "지출 및 정산 마감", icon: Receipt },
+    ]),
   ];
+
+  const filteredSections = menuSections;
+
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
@@ -186,35 +168,37 @@ export default function ManualPage() {
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}><X /></Button>
             </div>
 
-            {menuSections.map((section, idx) => (
-              <div key={idx}>
-                <h4 className="font-bold text-slate-900 mb-3 px-2 text-sm uppercase tracking-wide">{section.title}</h4>
-                <nav className="space-y-0.5">
-                  {section.items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => scrollToSection(item.id)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all text-left",
-                        activeHash === item.id
-                          ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      )}
-                    >
-                      <item.icon className={cn("h-4 w-4", activeHash === item.id ? "text-blue-600" : "text-slate-400")} />
-                      <span className="truncate">{item.label}</span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-            ))}
+            <div className="p-6 border-b bg-slate-50/50 hidden lg:block">
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                <BookOpen className="h-6 w-6 text-blue-600" />
+                시스템 사용 매뉴얼
+              </h1>
+              <p className="text-xs text-slate-500 mt-2">사이드바 메뉴 순서와 동일합니다.</p>
+            </div>
+            <nav className="p-4 space-y-1">
+              {filteredSections.map((section) => (
+                <button
+                  key={section.id}
+                  onClick={() => scrollToSection(section.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left",
+                    activeHash === section.id
+                      ? "bg-blue-600 text-white shadow-md shadow-blue-100 scale-[1.02]"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  )}
+                >
+                  <section.icon className={cn("h-4 w-4", activeHash === section.id ? "text-white" : "text-slate-400")} />
+                  <span className="truncate">{section.label}</span>
+                </button>
+              ))}
+            </nav>
           </div>
         </aside>
 
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 space-y-16 pb-24">
           <div className="space-y-4">
-            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">LilyMag ERP 사용자 매뉴얼</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">LilyMag ERP Official User Manual</h1>
             <div className="text-slate-500 text-lg leading-relaxed max-w-3xl">
               LilyMag Flowers ERP 시스템의 기능을 체계적으로 안내합니다.
               현재 <Badge variant="outline" className="ml-1 font-bold text-blue-600 border-blue-200 bg-blue-50 leading-none py-1">{isHQ ? "본사 관리자" : "지점 사용자"}</Badge> 권한으로 접속 중이며, 권한에 최적화된 콘텐츠가 표시됩니다.
@@ -225,58 +209,39 @@ export default function ManualPage() {
 
           {/* 제 1장. 대시보드 */}
           <section id="ch1-dashboard" ref={el => { if (el) observerRefs.current["ch1-dashboard"] = el; }} className="scroll-mt-24 space-y-10">
-            <div className="border-b-2 border-slate-100 pb-4">
-              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+            <div className="border-b-2 border-slate-100 pb-4 text-center sm:text-left">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900 justify-center sm:justify-start">
                 <LayoutDashboard className="h-8 w-8 text-blue-600" />
-                제 1장. 대시보드 및 정산 (Dashboard)
+                제 1장. 통합 대시보드 (Dashboard)
               </h2>
             </div>
 
             <div className="space-y-8">
-              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed font-medium">
-                <p>시스템 로그인 시 가장 먼저 만나는 화면으로, 매장의 핵심 지표와 실시간 현황을 제공합니다.</p>
-              </div>
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">실시간 매출 현황, 일정, 공지사항을 한눈에 파악하는 시스템의 메인 화면입니다. 권한별로 최적화된 통계 및 바로가기 서비스를 제공합니다.</p>
 
-              {/* 주요 버튼 설명 추가 */}
               <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
-                <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">
+                <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-blue-900">
                   <Settings className="h-5 w-5 text-blue-600" />
-                  주요 버튼 및 클릭 시 동작
+                  주요 핵심 버튼 가이드
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
-                      <DollarSign className="h-4 w-4" /> [오늘의 매출/정산] 버튼
-                    </div>
-                    <p className="text-sm text-slate-600">오늘 발생한 현금/카드/이체 매출을 합산하여 실제 시재와 맞추는 <strong>마감 팝업</strong>을 엽니다.</p>
+                  <div className="bg-white p-4 rounded-xl border border-blue-50 shadow-sm">
+                    <div className="font-bold text-blue-700 mb-2">[일정관리] 바로가기</div>
+                    <p className="text-xs text-slate-500">캘린더 페이지(/dashboard/calendar)로 즉시 이동하여 오늘 제작/배송 예정인 전체 일정을 확인합니다.</p>
                   </div>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
-                      <LayoutDashboard className="h-4 w-4" /> [지점 선택] 드롭다운 (본사 전용)
-                    </div>
-                    <p className="text-sm text-slate-600">특정 지점을 선택하면 해당 지점의 데이터로 대시보드 전체가 실시간 필터링됩니다.</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
-                      <Plus className="h-4 w-4" /> [새 주문] 버튼
-                    </div>
-                    <p className="text-sm text-slate-600">주문 접수(PC) 페이지로 즉시 이동하여 신규 고객 주문을 생성합니다.</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
-                      <Calendar className="h-4 w-4" /> [일정 상세보기] 버튼
-                    </div>
-                    <p className="text-sm text-slate-600">대시보드 우측 일정 위젯에서 해당 건을 클릭하면 주문의 상세 내역 팝업이 바로 뜹니다.</p>
+                  <div className="bg-white p-4 rounded-xl border border-blue-50 shadow-sm">
+                    <div className="font-bold text-blue-700 mb-2">[체크리스트] 바로가기</div>
+                    <p className="text-xs text-slate-500">오픈/마감 등 루틴 업무 점검을 위해 체크리스트 페이지로 이동합니다.</p>
                   </div>
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6 text-sm">
-                <FeatureCard title="핵심 요약 지표 카드" icon={Target}>
-                  <p className="mb-2 text-slate-500">년 매출, 등록 고객, 주간 주문, 처리 대기 등 목표 달성 현황을 상단 카드에서 확인하세요.</p>
-                </FeatureCard>
                 <FeatureCard title="매출 분석 차트" icon={BarChart3}>
-                  <p className="mb-2 text-slate-500">일별/주간/월별 매출 추이를 그래프로 시각화하여 변화 흐름을 한눈에 파악합니다.</p>
+                  <p>일별/주간/월별 매출 추이를 그래프로 시각화하여 변화 흐름을 한눈에 파악합니다.</p>
+                </FeatureCard>
+                <FeatureCard title="지점별 실시간 현황" icon={Building}>
+                  <p>전체 또는 선택한 지점의 주문량, 취소량, 정산 완료 여부를 실시간으로 모니터링합니다.</p>
                 </FeatureCard>
               </div>
 
@@ -284,7 +249,10 @@ export default function ManualPage() {
                 <div className="p-6 bg-white space-y-6">
                   <div className="flex justify-between items-center px-2">
                     <div className="h-8 w-32 bg-slate-100 rounded animate-pulse" />
-                    <div className="h-8 w-32 bg-blue-600 rounded-md text-white text-[10px] flex items-center justify-center font-bold">오늘의 매출/정산</div>
+                    <div className="flex gap-2">
+                      <div className="h-8 w-20 bg-slate-100 rounded border border-orange-200 text-orange-600 text-[8px] flex items-center justify-center font-bold">일정관리</div>
+                      <div className="h-8 w-20 bg-slate-100 rounded border border-blue-200 text-blue-600 text-[8px] flex items-center justify-center font-bold">체크리스트</div>
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 gap-4">
                     {[1, 2, 3, 4].map(i => <div key={i} className="bg-slate-50 p-4 border rounded-lg h-20" />)}
@@ -607,8 +575,8 @@ export default function ManualPage() {
                 <FeatureCard title="주문 이관 (Transfer)" icon={ExternalLink}>
                   <p>타 지점으로 주문을 넘기거나(발주) 받는 업무입니다. 거리에 따른 적정 지점 선정 시 <strong>주문 이관 시스템</strong>을 통해 실시간 업무 공유가 가능합니다.</p>
                 </FeatureCard>
-                <FeatureCard title="일일 매출 정산" icon={DollarSign}>
-                  <p>상단 <strong>[오늘의 매출/정산]</strong> 버튼을 통해 카드, 현금, 이체 내역별 매출을 합산하고 실제 시재와 대조하여 마감을 수행합니다.</p>
+                <FeatureCard title="일일 마감 정산" icon={DollarSign}>
+                  <p><strong>[주문 현황]</strong> 페이지 상단의 <strong>[일일 마감 정산]</strong> 버튼을 통해 카드, 현금, 이체 내역별 수금액을 확인하고 실제 시재와 대조하여 마감을 수행합니다.</p>
                 </FeatureCard>
               </div>
             </div>
@@ -1185,7 +1153,7 @@ export default function ManualPage() {
                     <div>
                       <h5 className="font-bold text-blue-900 text-sm">신입 사원 팁: 정산 마감과의 연동</h5>
                       <p className="text-xs text-blue-700 mt-1 leading-relaxed">
-                        여기서 입력한 지출 총액은 대시보드의 <Highlight>오늘의 정산</Highlight> 마감 시 지출액 항목으로 자동 로드됩니다.
+                        여기서 입력한 지출 총액은 <strong>[일일 마감 정산]</strong> 화면의 지출액 항목으로 자동 로드됩니다.
                         따라서 정산 마감 전 반드시 모든 영수증 처리를 완료해야 합니다.
                       </p>
                     </div>
