@@ -16,7 +16,7 @@ import {
   Store, DollarSign, Target, BarChart3,
   Users, UserCog, Settings, Search, Menu, X,
   Camera, Plus, Copy, Building, AlertCircle,
-  Boxes, Images, TrendingUp, Calendar
+  Boxes, Images, TrendingUp, Calendar, ArrowRightLeft, Download, Eye, Info
 } from "lucide-react";
 
 // --- UI Mockup Components (Visual Aids) ---
@@ -113,45 +113,52 @@ export default function ManualPage() {
   // --- Menu Structure Definition ---
   const menuSections = [
     {
-      title: "공통 메뉴",
+      title: "매장 운영 핵심 메뉴",
       items: [
-        { id: "dashboard", label: "1. 대시보드", icon: LayoutDashboard },
-        { id: "sample-albums", label: "2. 샘플앨범", icon: Images },
-        { id: "orders-new", label: "3. 주문 접수 (PC)", icon: ShoppingCart },
-        { id: "orders-mobile", label: "4. 주문 접수 (Mobile)", icon: ShoppingCart },
-        { id: "orders-list", label: "5. 주문 현황", icon: ClipboardList },
-        { id: "outsource", label: "6. 외부 발주 관리", icon: ExternalLink },
-        { id: "pickup-delivery", label: "7. 픽업/배송예약관리", icon: Truck },
-        { id: "recipients", label: "8. 수령자 관리", icon: MapPin },
-        { id: "customers", label: "9. 고객 관리", icon: BookUser },
-        { id: "partners", label: "10. 거래처 관리", icon: Briefcase },
-        { id: "quotations", label: "11. 견적서 관리", icon: ClipboardList },
-        { id: "hr-requests", label: "12. 인사 서류 신청", icon: Briefcase },
+        { id: "ch1-dashboard", label: "대시보드 및 정산", icon: LayoutDashboard },
+        { id: "ch2-calendar", label: "전사 일정 관리", icon: Calendar },
+        { id: "ch3-checklist", label: "체크리스트 관리", icon: ClipboardList },
+        { id: "ch4-sample", label: "샘플앨범(포트폴리오)", icon: Images },
+      ]
+    },
+    {
+      title: "주문 및 배송 관리",
+      items: [
+        { id: "ch5-orders-new", label: "주문 접수 (PC/모바일)", icon: ShoppingCart },
+        { id: "ch6-orders-list", label: "주문 현황 및 내역", icon: ClipboardList },
+        { id: "ch7-outsource", label: "외부 발주(파트너)", icon: ExternalLink },
+        { id: "ch8-pickup", label: "픽업/배송예약관리", icon: Truck },
+        { id: "ch9-recipients", label: "수령자/배송지 관리", icon: MapPin },
+      ]
+    },
+    {
+      title: "CRM 및 인사 관리",
+      items: [
+        { id: "ch10-customers", label: "고객 CRM/포인트", icon: BookUser },
+        { id: "ch11-partners", label: "거래처/매입처 관리", icon: Briefcase },
+        { id: "ch12-quotations", label: "견적서 생성/관리", icon: FileText },
+        { id: "ch13-hr-requests", label: "인사 서류 신청", icon: UserPlus },
       ]
     },
     ...(isHQ ? [{
-      title: "본사 관리자 전용",
+      title: "본사 관리자 전용 메뉴",
       items: [
-        { id: "products", label: "13. 상품 관리", icon: Boxes },
-        { id: "materials", label: "14. 자재 관리", icon: Hammer },
-        { id: "stock-history", label: "15. 재고 변동 기록", icon: History },
-        { id: "material-request", label: "16. 자재 요청 (관리)", icon: Package },
-        { id: "purchase", label: "17. 구매 관리", icon: ShoppingCart },
-        { id: "simple-expenses", label: "18. 간편 지출관리", icon: Receipt },
-        { id: "branches", label: "19. 지점 관리", icon: Store },
-        { id: "expenses", label: "20. 비용 관리", icon: DollarSign },
-        { id: "budgets", label: "21. 예산 관리", icon: Target },
-        { id: "reports", label: "22. 리포트 분석", icon: BarChart3 },
-        { id: "hr-management", label: "23. 인사 관리/신청서", icon: Users },
-        { id: "users", label: "24. 사용자 관리", icon: UserCog },
-        { id: "settings", label: "25. 시스템 설정", icon: Settings },
+        { id: "ch14-products", label: "통합 상품 마스터", icon: Boxes },
+        { id: "ch15-materials", label: "자재 및 재고 관리", icon: Hammer },
+        { id: "ch16-mat-req-admin", label: "지점 자재요청 승인", icon: Package },
+        { id: "ch17-purchase", label: "본사 구매/매입 관리", icon: ShoppingCart },
+        { id: "ch18-expenses", label: "비용 결재 및 관리", icon: DollarSign },
+        { id: "ch19-simple-expenses", label: "지점 간편지출/마감", icon: Receipt },
+        { id: "ch20-branches", label: "전국 지점/조직 관리", icon: Store },
+        { id: "ch21-reports", label: "리포트/성과 분석", icon: BarChart3 },
+        { id: "ch22-hr-admin", label: "인사/사용자/권한설정", icon: UserCog },
       ]
     }] : [{
-      title: "지점 사용자 전용",
+      title: "지점 사용자 편의 기능",
       items: [
-        { id: "material-request", label: "자재 요청", icon: Package },
-        { id: "materials", label: "자재 관리", icon: Hammer },
-        { id: "simple-expenses", label: "간편 지출관리", icon: Receipt },
+        { id: "ch-mat-req-branch", label: "자재 요청 (보충)", icon: Package },
+        { id: "ch-mat-branch", label: "지점 자재 재고", icon: Hammer },
+        { id: "ch-exp-branch", label: "일일 지출 입력", icon: Receipt },
       ]
     }])
   ];
@@ -207,515 +214,983 @@ export default function ManualPage() {
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 space-y-16 pb-24">
           <div className="space-y-4">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">사용자 매뉴얼</h1>
-            <div className="text-slate-500 text-lg">
-              LilyMag ERP v3.0 시스템 사용을 위한 상세 가이드입니다.<br />
-              현재 로그인하신 <Badge variant="outline" className="ml-1 font-bold">{isHQ ? "본사 관리자" : "지점 사용자"}</Badge> 권한에 맞는 기능만 표시됩니다.
+            <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">LilyMag ERP 사용자 매뉴얼</h1>
+            <div className="text-slate-500 text-lg leading-relaxed max-w-3xl">
+              LilyMag Flowers ERP 시스템의 기능을 체계적으로 안내합니다.
+              현재 <Badge variant="outline" className="ml-1 font-bold text-blue-600 border-blue-200 bg-blue-50 leading-none py-1">{isHQ ? "본사 관리자" : "지점 사용자"}</Badge> 권한으로 접속 중이며, 권한에 최적화된 콘텐츠가 표시됩니다.
             </div>
           </div>
 
           <Separator />
 
-          {/* 1. Dashboard */}
-          <section id="dashboard" ref={el => { if (el) observerRefs.current["dashboard"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><LayoutDashboard className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">1. 대시보드</h2>
+          {/* 제 1장. 대시보드 */}
+          <section id="ch1-dashboard" ref={el => { if (el) observerRefs.current["ch1-dashboard"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <LayoutDashboard className="h-8 w-8 text-blue-600" />
+                제 1장. 대시보드 및 정산 (Dashboard)
+              </h2>
             </div>
-            <div className="prose max-w-none text-slate-600">
-              <p>로그인 후 가장 먼저 만나는 화면입니다. 매장의 매출 현황, 일정, 공지사항 및 게시판을 한눈에 파악할 수 있는 통합 컨트롤 패널입니다.</p>
+
+            <div className="space-y-8">
+              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed font-medium">
+                <p>시스템 로그인 시 가장 먼저 만나는 화면으로, 매장의 핵심 지표와 실시간 현황을 제공합니다.</p>
+              </div>
+
+              {/* 주요 버튼 설명 추가 */}
+              <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
+                <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">
+                  <Settings className="h-5 w-5 text-blue-600" />
+                  주요 버튼 및 클릭 시 동작
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
+                      <DollarSign className="h-4 w-4" /> [오늘의 매출/정산] 버튼
+                    </div>
+                    <p className="text-sm text-slate-600">오늘 발생한 현금/카드/이체 매출을 합산하여 실제 시재와 맞추는 <strong>마감 팝업</strong>을 엽니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
+                      <LayoutDashboard className="h-4 w-4" /> [지점 선택] 드롭다운 (본사 전용)
+                    </div>
+                    <p className="text-sm text-slate-600">특정 지점을 선택하면 해당 지점의 데이터로 대시보드 전체가 실시간 필터링됩니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
+                      <Plus className="h-4 w-4" /> [새 주문] 버튼
+                    </div>
+                    <p className="text-sm text-slate-600">주문 접수(PC) 페이지로 즉시 이동하여 신규 고객 주문을 생성합니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <div className="font-bold text-blue-700 flex items-center gap-2 mb-1">
+                      <Calendar className="h-4 w-4" /> [일정 상세보기] 버튼
+                    </div>
+                    <p className="text-sm text-slate-600">대시보드 우측 일정 위젯에서 해당 건을 클릭하면 주문의 상세 내역 팝업이 바로 뜹니다.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6 text-sm">
+                <FeatureCard title="핵심 요약 지표 카드" icon={Target}>
+                  <p className="mb-2 text-slate-500">년 매출, 등록 고객, 주간 주문, 처리 대기 등 목표 달성 현황을 상단 카드에서 확인하세요.</p>
+                </FeatureCard>
+                <FeatureCard title="매출 분석 차트" icon={BarChart3}>
+                  <p className="mb-2 text-slate-500">일별/주간/월별 매출 추이를 그래프로 시각화하여 변화 흐름을 한눈에 파악합니다.</p>
+                </FeatureCard>
+              </div>
 
               <BrowserFrame url="/dashboard">
-                <div className="p-6 grid gap-6">
-                  {/* Stats Cards */}
+                <div className="p-6 bg-white space-y-6">
+                  <div className="flex justify-between items-center px-2">
+                    <div className="h-8 w-32 bg-slate-100 rounded animate-pulse" />
+                    <div className="h-8 w-32 bg-blue-600 rounded-md text-white text-[10px] flex items-center justify-center font-bold">오늘의 매출/정산</div>
+                  </div>
                   <div className="grid grid-cols-4 gap-4">
-                    {['오늘 매출', '신규 고객', '주간 주문', '미결제 주문'].map((t, i) => (
-                      <div key={i} className="bg-white p-4 rounded border shadow-sm h-24 flex flex-col justify-between">
-                        <span className="text-xs text-gray-500 font-medium">{t}</span>
-                        <div className="flex items-end justify-between">
-                          <span className="text-2xl font-bold text-slate-800">{i === 0 ? '₩125,000' : 10 + i * 5}</span>
-                          <TrendingUp className="h-4 w-4 text-green-500 mb-1" />
-                        </div>
-                      </div>
-                    ))}
+                    {[1, 2, 3, 4].map(i => <div key={i} className="bg-slate-50 p-4 border rounded-lg h-20" />)}
                   </div>
-                  {/* Main Visuals: Chart & Schedule */}
-                  <div className="grid grid-cols-3 gap-4 h-64">
-                    <div className="col-span-2 bg-white border rounded p-4 flex flex-col gap-4">
-                      <div className="text-sm font-bold">매출 추이 (최근 14일)</div>
-                      <div className="flex-1 flex items-end gap-2 px-2 pb-2">
-                        {[40, 60, 45, 70, 85, 50, 90].map((h, i) => (
-                          <div key={i} className="flex-1 bg-blue-500/20 rounded-t hover:bg-blue-500/40 transition-colors" style={{ height: `${h}%` }} />
-                        ))}
+                  <div className="h-40 bg-blue-50/50 border border-blue-100 rounded-xl flex items-center justify-center">
+                    <BarChart3 className="h-10 w-10 text-blue-200" />
+                  </div>
+                </div>
+              </BrowserFrame>
+            </div>
+          </section>
+
+          <Separator className="my-12" />
+
+          {/* 제 2장. 일정 관리 */}
+          <section id="ch2-calendar" ref={el => { if (el) observerRefs.current["ch2-calendar"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <Calendar className="h-8 w-8 text-emerald-600" />
+                제 2장. 전사 일정 관리 (Calendar)
+              </h2>
+            </div>
+
+            <div className="space-y-8">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">전사 또는 지점의 모든 일정을 월/주/일 단위로 모니터링합니다.</p>
+
+              <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100">
+                <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-emerald-800">
+                  <Settings className="h-5 w-5 text-emerald-600" />
+                  주요 버튼 및 액션
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-4 bg-white p-3 rounded-xl border border-emerald-50">
+                    <Badge className="bg-emerald-100 text-emerald-800 h-6 shrink-0">[새 일정추가]</Badge>
+                    <p className="text-sm text-slate-600">달력의 빈 날짜를 클릭하거나 우측 상단 버튼을 눌러 매장 공지나 개인 일정을 등록합니다.</p>
+                  </div>
+                  <div className="flex items-start gap-4 bg-white p-3 rounded-xl border border-emerald-50">
+                    <Badge className="bg-emerald-100 text-emerald-800 h-6 shrink-0">[날짜 드래그]</Badge>
+                    <p className="text-sm text-slate-600">등록된 일정 블록을 다른 날짜로 드래그하면 <strong>일정이 즉시 수정</strong>됩니다. (자동 저장)</p>
+                  </div>
+                  <div className="flex items-start gap-4 bg-white p-3 rounded-xl border border-emerald-50">
+                    <Badge className="bg-emerald-100 text-emerald-800 h-6 shrink-0">[필터: 지점별]</Badge>
+                    <p className="text-sm text-slate-600">좌측 체크박스를 통해 전체 지점의 일정을 합쳐 보거나 내 지점 일정만 걸러 볼 수 있습니다.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed">
+                <p>전사 또는 각 지점의 일정을 통합 관리합니다. 특히 주문 관리와 완벽히 연동되어 <Highlight>배송 및 픽업 예약</Highlight>이 달력에 자동으로 표시되므로 중복 작업이나 일정 누락을 방지합니다.</p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6 text-sm">
+                <FeatureCard title="주문 데이터 자동 연동" icon={History}>
+                  <p>상품 주문 시 설정한 배송일/픽업일이 캘린더에 즉시 반영됩니다. 주문 상세 조회에서 수정된 내용도 실시간으로 연동됩니다.</p>
+                </FeatureCard>
+                <FeatureCard title="유연한 일정 관리" icon={Plus}>
+                  <p>매장 회의, 휴무일, 행사 등 수동 일정 추가가 가능하며 드래그 앤 드롭으로 간편하게 날짜를 조정할 수 있습니다.</p>
+                </FeatureCard>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold text-slate-800">1. 주요 활용 방법</h3>
+                <StepGuide steps={[
+                  "대시보드 또는 바로가기 메뉴를 통해 [일정 관리] 페이지로 이동합니다.",
+                  "우측 상단 탭에서 월/주/일 보기를 선택하여 스케줄을 확인합니다.",
+                  "배송예약 일정(파란색)을 클릭하여 해당 주문의 상세 정보를 확인합니다.",
+                  "본사 공용 일정과 지점별 개인 일정을 필터링하여 조회할 수 있습니다."
+                ]} />
+              </div>
+            </div>
+          </section>
+
+          <Separator className="my-12" />
+
+          {/* 제 3장. 체크리스트 */}
+          <section id="ch3-checklist" ref={el => { if (el) observerRefs.current["ch3-checklist"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <ClipboardList className="h-8 w-8 text-purple-600" />
+                제 3장. 체크리스트 관리
+              </h2>
+            </div>
+
+            <div className="space-y-8">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">오픈/마감 등 루틴 업무를 표준화하여 관리합니다.</p>
+              <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                <h4 className="font-bold mb-3 text-indigo-900 flex items-center gap-2"><Settings className="h-5 w-5" /> 주요 조작 가이드</h4>
+                <ul className="list-disc list-inside space-y-2 text-sm text-indigo-800">
+                  <li><strong>[체크 항목 클릭]</strong>: 업무 완료 여부를 토글합니다. 완료 시 <Highlight>완료 시간과 담당자</Highlight>가 자동 기록됩니다.</li>
+                  <li><strong>[초기화]</strong>: 모든 체크 항목을 해제하여 새로운 업무 주기를 시작합니다.</li>
+                  <li><strong>[템플릿 적용] (본사 전용)</strong>: 전사 공통 업무 리스트를 일괄적으로 내보냅니다.</li>
+                </ul>
+              </div>
+              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed">
+                <p>매장의 업무 프로세스를 표준화하고 완료 여부를 이력으로 관리하는 도구입니다. 관리자가 미리 설정한 <Highlight>템플릿</Highlight>을 통해 전문적인 매장 운영을 지원합니다.</p>
+              </div>
+
+              <div className="bg-slate-50 border-l-4 border-indigo-400 p-6 rounded-r-xl space-y-4 text-sm">
+                <h4 className="font-bold flex items-center gap-2 text-slate-800"><Settings className="h-5 w-5 text-slate-500" /> 업무 표준화 가이드 (템플릿)</h4>
+                <div className="text-slate-600 space-y-2">
+                  <p>반복되는 루틴 업무를 목록화하여 누락 없는 운영을 가능하게 합니다.</p>
+                  <ul className="list-disc list-inside pl-2 space-y-1 text-xs">
+                    <li><span className="font-semibold text-slate-700">오픈 점검:</span> 청소상태 확인, 물갈이, 자재 확인 등</li>
+                    <li><span className="font-semibold text-slate-700">마감 점검:</span> 매출 정산 마감, 시재 확인, 보안 설정 등</li>
+                  </ul>
+                  <p className="mt-2 text-xs text-blue-600 font-bold italic">※ 템플릿의 생성 및 수정은 본사 관리자만 가능하여 전 지점 동일 기준이 적용됩니다.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* 제 4장. 샘플앨범 */}
+          <section id="ch4-sample" ref={el => { if (el) observerRefs.current["ch4-sample"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <Images className="h-8 w-8 text-pink-600" />
+                제 4장. 샘플앨범 (Portfolio)
+              </h2>
+            </div>
+
+            <div className="space-y-8">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">고객 상담 시 실제 제작 사례를 보여줄 수 있는 고화질 포트폴리오 창고입니다. 태그를 사용하여 고객의 요구(색상, 목적, 가격대)에 맞는 상품을 즉시 제안할 수 있습니다.</p>
+              <div className="bg-pink-50 p-6 rounded-2xl border border-pink-200">
+                <h4 className="font-bold mb-4 text-pink-900">샘플앨범 내 주요 버튼</h4>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-pink-100">
+                    <span className="font-bold text-pink-600 block mb-1">[태그 필터]</span>
+                    <p className="text-xs text-slate-600">#장미 #꽃다발 등 태그를 누르면 해당 태그가 포함된 포트폴리오만 즉시 소팅됩니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-pink-100">
+                    <span className="font-bold text-pink-600 block mb-1">[새 사진 등록]</span>
+                    <p className="text-xs text-slate-600">지점 단말기에서 직접 사진을 찍어 올리거나 PC에서 업로드하여 포트폴리오를 추가합니다.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6 text-sm">
+                <FeatureCard title="스마트 태그 검색" icon={Search}>
+                  <p>#레드 #꽃다발 #기념일 등 멀티 태그를 선택하여 정교한 검색이 가능합니다. 자주 사용하는 검색 조건은 즐겨찾기에 추가하세요.</p>
+                </FeatureCard>
+                <FeatureCard title="제작 완료 사진 연동" icon={Camera}>
+                  <p>주문 처리 과정에서 업로드한 실제 결과물 사진을 즉시 샘플앨범으로 등록하여 매장의 포트폴리오를 실시간으로 확장합니다.</p>
+                </FeatureCard>
+              </div>
+
+              <BrowserFrame url="/dashboard/sample-albums">
+                <div className="p-4 bg-white grid grid-cols-3 gap-2">
+                  {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} className="aspect-square bg-slate-100 rounded-md flex items-center justify-center relative overflow-hidden group">
+                      <Images className="h-6 w-6 text-slate-300" />
+                      <div className="absolute bottom-1 left-1 flex gap-1">
+                        <Badge className="text-[8px] h-3 px-1">#장미</Badge>
                       </div>
                     </div>
-                    <div className="bg-white border rounded p-4 flex flex-col gap-3">
-                      <div className="text-sm font-bold flex items-center gap-2"><Calendar className="h-4 w-4 text-blue-600" /> 오늘/내일 일정</div>
-                      <div className="space-y-2 overflow-y-auto">
-                        <div className="text-[10px] p-2 bg-slate-50 border-l-2 border-orange-400 rounded">14:00 픽업 (홍길동)</div>
-                        <div className="text-[10px] p-2 bg-slate-50 border-l-2 border-blue-400 rounded">16:30 배송 (이영희)</div>
+                  ))}
+                </div>
+              </BrowserFrame>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* 제 5장. 주문 접수 (Entry) */}
+          <section id="ch5-orders-new" ref={el => { if (el) observerRefs.current["ch5-orders-new"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <ShoppingCart className="h-8 w-8 text-emerald-600" />
+                제 5장. 주문 접수 (PC/Mobile)
+              </h2>
+            </div>
+
+            <div className="space-y-8">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">PC와 모바일 각각의 환경에 최적화된 주문 접수 기능을 제공합니다.</p>
+
+              <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100">
+                <h4 className="text-lg font-bold mb-5 flex items-center gap-2 text-slate-800">
+                  <Settings className="h-5 w-5 text-emerald-600" />
+                  주요 입력 및 액션 버튼
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <div className="font-bold text-emerald-700 mb-2">[고객번호 조회]</div>
+                    <p className="text-xs text-slate-500">전화번호 입력 후 돋보기 버튼을 누르면 고객의 등급과 포인트를 가져옵니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <div className="font-bold text-emerald-700 mb-2">[수령 방식 선택]</div>
+                    <p className="text-xs text-slate-500">배송/픽업 버튼을 눌러 관련 정보(주소 등)를 입력하고 배송비를 자동 산정합니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                    <div className="font-bold text-emerald-700 mb-2">[접수 완료] 버튼</div>
+                    <p className="text-xs text-slate-500">최종 결제를 처리하고 주문서를 생성합니다. 완료 즉시 알림톡 버튼이 활성화됩니다.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed">
+                <p>다양한 환경에서 빠르고 정확하게 주문을 생성할 수 있도록 최적화된 인터페이스를 제공합니다. PC 버전은 <Highlight>디테일한 상세 입력</Highlight>에, 모바일 버전은 <Highlight>현장 즉시 상담 및 간편 결제</Highlight>에 특화되어 있습니다.</p>
+              </div>
+
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Building className="h-5 w-5" /> 5.1. PC 버전: 상세 주문 접수</h3>
+                <div className="grid md:grid-cols-3 gap-4 text-xs">
+                  <div className="bg-white p-4 rounded-lg border shadow-sm space-y-2">
+                    <div className="font-bold border-b pb-1">고객 및 수령 정보</div>
+                    <p className="text-slate-500">회원 검색을 통해 등급별 할인 및 포인트를 자동 적용합니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border shadow-sm space-y-2">
+                    <div className="font-bold border-b pb-1">상품 배정 및 메시지</div>
+                    <p className="text-slate-500">상품별 옵션과 리본/카드 정보를 출력 양식에 맞춰 입력합니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border shadow-sm space-y-2">
+                    <div className="font-bold border-b pb-1">결제 및 증빙발행</div>
+                    <p className="text-slate-500">현금영수증, 세금계산서 및 디지털 영수증 알림톡 발송을 지원합니다.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2"><Menu className="h-5 w-5" /> 5.2. 모바일/태블릿 버전: 퀵 오더</h3>
+                <div className="grid md:grid-cols-2 gap-6 items-center border rounded-2xl p-6 bg-slate-50/50">
+                  <div className="space-y-4">
+                    <FeatureCard title="카테고리 퀵 선택" icon={Menu}>
+                      <p className="text-xs">이미지 위주의 메뉴판 구성을 통해 터치만으로 장바구니에 담을 수 있습니다.</p>
+                    </FeatureCard>
+                    <FeatureCard title="현장 카드 결제 연동" icon={DollarSign}>
+                      <p className="text-xs">블루투스 단말기를 연동하여 현장에서 즉시 카드 결제를 완료할 수 있습니다.</p>
+                    </FeatureCard>
+                  </div>
+                  <div className="bg-white border-8 border-slate-200 rounded-[3rem] aspect-[9/16] h-[300px] mx-auto shadow-2xl relative flex flex-col overflow-hidden">
+                    <div className="h-6 bg-slate-100 w-full flex justify-center py-1 gap-1"><div className="w-12 h-1 bg-slate-300 rounded-full" /></div>
+                    <div className="flex-1 p-3 space-y-3">
+                      <div className="h-4 w-20 bg-slate-100 rounded" />
+                      <div className="grid grid-cols-2 gap-2">
+                        {[1, 2, 3, 4].map(i => <div key={i} className="aspect-square bg-slate-50 border rounded flex items-center justify-center"><Images className="h-4 w-4 text-slate-200" /></div>)}
                       </div>
+                      <div className="h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">주문 담기 (2)</div>
                     </div>
                   </div>
-                  {/* Bulletin Board Widget */}
-                  <div className="bg-white border rounded p-4">
-                    <div className="text-sm font-bold mb-3 flex items-center justify-between">
-                      <span>최신 공지 및 자유 게시판</span>
-                      <Button variant="ghost" className="h-6 text-[10px]">더보기</Button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* 제 6장. 주문 현황 관리 */}
+          <section id="ch6-orders-list" ref={el => { if (el) observerRefs.current["ch6-orders-list"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <ClipboardList className="h-8 w-8 text-violet-600" />
+                제 6장. 주문 현황 및 내역 관리
+              </h2>
+            </div>
+
+            <div className="space-y-8">
+              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed font-medium">
+                <p>현재 진행 중인 모든 주문을 한눈에 관리하고, 각 단계별 액션을 수행합니다.</p>
+              </div>
+
+              {/* 주요 버튼 설명: 이관, 인쇄, 엑셀 등 */}
+              <div className="bg-violet-50 rounded-2xl p-6 border border-violet-100">
+                <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-violet-900">
+                  <Settings className="h-5 w-5 text-violet-600" />
+                  대표적인 액션 버튼 가이드
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-violet-50">
+                    <div className="p-2 bg-blue-100 rounded text-blue-600"><ArrowRightLeft className="h-5 w-5" /></div>
+                    <div className="flex-1">
+                      <div className="font-bold text-slate-800">[주문 이관] 버튼</div>
+                      <p className="text-xs text-slate-500">다른 전 지점으로 주문을 넘기기 위해 이관 요청 창을 띄웁니다.</p>
                     </div>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between border-b pb-1"><span>[공지] 이번 주말 영업 시간 안내...</span><span className="text-slate-400">05/20</span></div>
-                      <div className="flex justify-between border-b pb-1"><span>서초점 자재 여유분 나눔합니다.</span><span className="text-slate-400">05/19</span></div>
+                  </div>
+                  <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-violet-50">
+                    <div className="p-2 bg-indigo-100 rounded text-indigo-600"><FileText className="h-5 w-5" /></div>
+                    <div className="flex-1">
+                      <div className="font-bold text-slate-800">[메시지 인쇄] 버튼</div>
+                      <p className="text-xs text-slate-500">리본/카드 출력 양식을 설정하고 프린터로 바로 전송합니다.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-violet-50">
+                    <div className="p-2 bg-emerald-100 rounded text-emerald-600"><Download className="h-5 w-5" /></div>
+                    <div className="flex-1">
+                      <div className="font-bold text-slate-800">[엑셀 내려받기] 버튼</div>
+                      <p className="text-xs text-slate-500">필터링된 현재 주문 목록을 엑셀 파일로 추출하여 보고용으로 사용합니다.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <BrowserFrame url="/dashboard/orders">
+                <div className="p-4 bg-white space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex gap-1">
+                      {['전체', '신규', '제작중', '배송중'].map(t => <div key={t} className="h-6 w-12 bg-slate-100 rounded text-[8px] flex items-center justify-center font-bold">{t}</div>)}
+                    </div>
+                    <div className="h-7 w-20 bg-violet-600 rounded text-white text-[8px] flex items-center justify-center font-bold">엑셀 다운로드</div>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden text-[10px]">
+                    <div className="bg-slate-50 border-b p-2 font-bold grid grid-cols-6 items-center">
+                      <span>수령일</span><span>주문자</span><span>상품</span><span>금액</span><span>상태</span><span>작업</span>
+                    </div>
+                    <div className="p-2 border-b grid grid-cols-6 items-center hover:bg-slate-50">
+                      <span className="font-bold">05/20</span>
+                      <span>홍길동</span>
+                      <span className="truncate">작약 꽃다발</span>
+                      <span>₩85,000</span>
+                      <span><Badge className="bg-amber-100 text-amber-700 h-4 px-1 text-[8px]">제작 중</Badge></span>
+                      <div className="flex gap-1 text-slate-400">
+                        <ArrowRightLeft className="h-3 w-3" /><FileText className="h-3 w-3" /><Truck className="h-3 w-3" />
+                      </div>
                     </div>
                   </div>
                 </div>
               </BrowserFrame>
 
-              <div className="grid md:grid-cols-2 gap-6 mt-6">
-                <FeatureCard title="통계 및 실시간 정보" icon={TrendingUp}>
-                  <p>상단 카드에서 <strong>실시간 매출 및 미결/미처리 주문 건수</strong>를 확인하세요. 날씨 위젯을 통해 배송 환경(비/눈 등)을 미리 대비할 수 있습니다.</p>
+              <div className="grid md:grid-cols-2 gap-6 text-sm">
+                <FeatureCard title="주문 이관 (Transfer)" icon={ExternalLink}>
+                  <p>타 지점으로 주문을 넘기거나(발주) 받는 업무입니다. 거리에 따른 적정 지점 선정 시 <strong>주문 이관 시스템</strong>을 통해 실시간 업무 공유가 가능합니다.</p>
                 </FeatureCard>
-                <FeatureCard title="통합 게시판 (Bulletin)" icon={ClipboardList}>
-                  <p>지점 간 소통과 본사 공지 확인을 위한 공간입니다. 댓글 기능을 통해 실시간으로 업무 피드백을 주고받을 수 있습니다.</p>
+                <FeatureCard title="일일 매출 정산" icon={DollarSign}>
+                  <p>상단 <strong>[오늘의 매출/정산]</strong> 버튼을 통해 카드, 현금, 이체 내역별 매출을 합산하고 실제 시재와 대조하여 마감을 수행합니다.</p>
                 </FeatureCard>
               </div>
             </div>
           </section>
 
-          <Separator />
+          <Separator className="my-12" />
 
-          {/* 2. Sample Albums */}
-          <section id="sample-albums" ref={el => { if (el) observerRefs.current["sample-albums"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-pink-100 rounded-lg text-pink-600"><Images className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">2. 샘플앨범</h2>
+          {/* 제 7장. 외부 발주 관리 */}
+          <section id="ch7-outsource" ref={el => { if (el) observerRefs.current["ch7-outsource"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <ExternalLink className="h-8 w-8 text-orange-600" />
+                제 7장. 외부 발주 관리 (Outsource)
+              </h2>
             </div>
-            <p className="text-slate-600">고객 상담 시 실제 제작 사례를 보여줄 수 있는 고화질 포트폴리오입니다. 태그를 사용하여 고객의 요구에 맞는 상품을 즉시 제안하세요.</p>
-
-            <div className="grid md:grid-cols-2 gap-4 my-4">
-              <div className="border p-4 rounded-lg bg-white">
-                <h4 className="font-bold flex items-center gap-2 mb-2"><Search className="h-4 w-4" /> 스마트 태그 검색</h4>
-                <p className="text-sm text-slate-600">#레드 #꽃다발 #축하 등 멀티 태그를 선택하여 정교한 검색이 가능합니다. 자주 사용하는 검색 조건은 즐겨찾기 할 수 있습니다.</p>
-              </div>
-              <div className="border p-4 rounded-lg bg-white">
-                <h4 className="font-bold flex items-center gap-2 mb-2"><Camera className="h-4 w-4" /> 제작 완료 사진 연동</h4>
-                <p className="text-sm text-slate-600">주문 처리 과정에서 업로드한 제작 완료 사진을 바로 샘플앨범으로 등록하여 포트폴리오를 자동으로 확장할 수 있습니다.</p>
+            <div className="space-y-6">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">직접 제작이 불가능한 원거리 배송이나 특정 상품을 외부 협력사(파트너)에 발주하고 이력을 관리하는 기능입니다.</p>
+              <div className="bg-amber-50 border border-amber-200 p-5 rounded-xl flex gap-4">
+                <AlertCircle className="h-6 w-6 text-amber-600 shrink-0" />
+                <div className="text-sm text-amber-800 leading-relaxed">
+                  <p className="font-bold mb-1">파트너 자동 알림 기능</p>
+                  <p>발주 완료 시 등록된 협력사 정보로 <strong>카카오 알림톡/문자 발주서</strong>가 자동 전송됩니다. 해당 파트너의 접수 확인 여부를 시스템에서 즉시 확인할 수 있습니다.</p>
+                </div>
               </div>
             </div>
           </section>
 
-          <Separator />
+          <Separator className="my-12" />
 
-          {/* 3. Orders (PC) */}
-          <section id="orders-new" ref={el => { if (el) observerRefs.current["orders-new"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-green-100 rounded-lg text-green-600"><ShoppingCart className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">3. 주문 접수 (PC)</h2>
+          {/* 제 8장. 픽업/배송 관리 */}
+          <section id="ch8-pickup" ref={el => { if (el) observerRefs.current["ch8-pickup"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <Truck className="h-8 w-8 text-blue-600" />
+                제 8장. 픽업/배송 관리 (Logs)
+              </h2>
             </div>
-            <p className="text-slate-600">체계적이고 상세한 주문 정보를 단계별로 입력하는 표준 접수 화면입니다.</p>
-
-            <div className="bg-slate-50 p-6 rounded-lg border space-y-6">
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded border shadow-sm">
-                  <div className="font-bold text-sm mb-2 border-b pb-1">주문자/수령인</div>
-                  <p className="text-xs text-slate-500 leading-relaxed">회원 번호로 검색 시 포인트 및 등급 정보가 자동 연동됩니다.</p>
-                </div>
-                <div className="bg-white p-4 rounded border shadow-sm">
-                  <div className="font-bold text-sm mb-2 border-b pb-1">수령 방식 선택</div>
-                  <p className="text-xs text-slate-500 leading-relaxed">매장픽업, 배송, 택배를 선택하며 배송 지역에 따른 배송비가 자동 계산됩니다.</p>
-                </div>
-                <div className="bg-white p-4 rounded border shadow-sm">
-                  <div className="font-bold text-sm mb-2 border-b pb-1">상품 및 메시지</div>
-                  <p className="text-xs text-slate-500 leading-relaxed">상품별 포장 타입, 카드/리본 메시지를 출력 양식에 맞게 입력합니다.</p>
+            <div className="space-y-8">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">배송 현황을 시각적으로 모니터링하고, 기사 배정 및 사진 전송 업무를 수행합니다.</p>
+              <div className="bg-white border-2 border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 bg-slate-50 border-b font-bold text-sm flex items-center gap-2"><Truck className="h-4 w-4 text-slate-400" /> 실시간 배송 현황판</div>
+                <div className="grid grid-cols-4 divide-x">
+                  <div className="p-6 text-center hover:bg-slate-50 transition-colors"><div className="text-xs text-slate-400 mb-1">미배정</div><div className="text-3xl font-bold text-slate-700">3</div></div>
+                  <div className="p-6 text-center hover:bg-slate-50 transition-colors"><div className="text-xs text-slate-400 mb-1">배차완료</div><div className="text-3xl font-bold text-slate-700">5</div></div>
+                  <div className="p-6 text-center bg-blue-50/50 hover:bg-blue-50 transition-colors"><div className="text-xs text-blue-500 mb-1 font-bold">배송중</div><div className="text-3xl font-bold text-blue-600">2</div></div>
+                  <div className="p-6 text-center hover:bg-slate-50 transition-colors"><div className="text-xs text-slate-400 mb-1">완료</div><div className="text-3xl font-bold text-slate-700">12</div></div>
                 </div>
               </div>
-              <div className="p-4 bg-teal-50 border border-teal-100 rounded text-xs text-teal-800">
-                <strong>[영수증 자동 발행]:</strong> 접수 완료와 동시에 디지털 영수증 링크가 생성되어 고객에게 알림톡으로 전송 가능합니다.
+              <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl text-sm italic text-slate-500 flex items-center gap-3">
+                <Camera className="h-5 w-5 text-pink-500" />
+                배송 완료 시 현장 사진을 업로드하면 고객에게 알림톡과 함께 사진이 전송되며, 즉시 샘플앨범 등록이 가능합니다.
               </div>
             </div>
           </section>
 
-          <Separator />
+          <Separator className="my-12" />
 
-          {/* 4. Orders (Mobile) */}
-          <section id="orders-mobile" ref={el => { if (el) observerRefs.current["orders-mobile"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><ShoppingCart className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">4. 주문 접수 (Mobile)</h2>
+          {/* 제 9장. 수령자/배송지 관리 */}
+          <section id="ch9-recipients" ref={el => { if (el) observerRefs.current["ch9-recipients"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <MapPin className="h-8 w-8 text-rose-600" />
+                제 9장. 수령자/배송지 관리
+              </h2>
             </div>
-            <p className="text-slate-600">바쁜 현장이나 태블릿 상담에 최적화된 터치 중심의 인터페이스입니다.</p>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <FeatureCard title="카테고리 퀵 선택" icon={Menu}>
-                  <p className="text-sm">이미지 위주의 메뉴판 구성을 통해 상담 시간을 단축합니다. 각 지점의 추천 상품이 상단에 배치됩니다.</p>
-                </FeatureCard>
-                <FeatureCard title="현장 카드 결제 연동" icon={DollarSign}>
-                  <p className="text-sm">포터블 결제 단말기와 블루투스 연동하여 현장에서 즉시 결제 승인을 처리할 수 있습니다.</p>
-                </FeatureCard>
+            <div className="space-y-8">
+              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed font-medium">
+                <p>반복적으로 배송이 이루어지는 수령 주소(전시장, 웨딩홀, 사무실 등)를 미리 저장하여 주문 접수 시 주소 검색 시간을 단축합니다. <Highlight>단골 수령지</Highlight> 관리는 오배송 방지의 핵심입니다.</p>
               </div>
-              <div className="bg-slate-200 rounded-xl aspect-[3/4] flex items-center justify-center text-slate-400 font-bold border-4 border-slate-300 shadow-inner">Mobile UI Preview</div>
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                <h4 className="font-bold mb-3 text-slate-800 flex items-center gap-2"><Settings className="h-5 w-5" /> 조작 가이드 및 연동 버튼</h4>
+                <div className="space-y-2 text-sm text-slate-600 leading-relaxed">
+                  <p>1. 주문 접수 화면의 <strong>수령자 정보</strong> 섹션 우측 [수령자 찾기] 버튼을 누릅니다.</p>
+                  <p>2. 검색창에서 상호명이나 이름을 입력하면 자동 완성됩니다.</p>
+                  <p>3. 선택 시 주소와 연락처가 폼에 자동 입력됩니다.</p>
+                </div>
+              </div>
             </div>
           </section>
 
-          <Separator />
+          <Separator className="my-12" />
 
-          {/* 5. Order List */}
-          <section id="orders-list" ref={el => { if (el) observerRefs.current["orders-list"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-violet-100 rounded-lg text-violet-600"><ClipboardList className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">5. 주문 현황</h2>
+          {/* 제 10장. 고객 CRM 관리 */}
+          <section id="ch10-customers" ref={el => { if (el) observerRefs.current["ch10-customers"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <BookUser className="h-8 w-8 text-pink-600" />
+                제 10장. 고객 CRM 관리 (CRM)
+              </h2>
             </div>
-            <p className="text-slate-600">실시간으로 인입되는 주문을 관리하고, 제작/배송 프로세스를 제어하는 핵심 화면입니다.</p>
 
-            <BrowserFrame url="/dashboard/orders">
-              <div className="p-4">
-                <div className="flex gap-2 mb-4">
-                  <Badge className="bg-blue-600">전체 (42)</Badge>
-                  <Badge variant="outline">신규 접수 (3)</Badge>
-                  <Badge variant="outline">제작 중 (5)</Badge>
-                  <Badge variant="outline">배송 대기 (2)</Badge>
-                </div>
-                <div className="border rounded-lg overflow-hidden bg-white text-xs">
-                  <div className="bg-slate-50 border-b p-3 font-bold grid grid-cols-6 items-center">
-                    <div>수령일시</div><div>주문자</div><div>상품</div><div>금액</div><div>상태</div><div>작업</div>
+            <div className="space-y-8">
+              <div className="prose max-w-none text-slate-600 text-lg leading-relaxed">
+                <p>단순한 연락처 관리를 넘어, 고객의 구매 패턴을 분석하고 로열티를 관리하는 강력한 CRM 기능을 제공합니다.</p>
+              </div>
+
+              <div className="bg-pink-50 rounded-2xl p-6 border border-pink-100">
+                <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-pink-900">
+                  <Settings className="h-5 w-5 text-pink-600" />
+                  고객 관리 핵심 기능
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-pink-50">
+                    <div className="font-bold text-pink-700 mb-1">[포인트 수동 조정]</div>
+                    <p className="text-xs text-slate-500">고객의 불만 처리나 이벤트 등으로 포인트를 직접 지급/차감할 수 있습니다.</p>
                   </div>
-                  <div className="p-3 border-b grid grid-cols-6 items-center">
-                    <div className="font-bold">05/20 14:00</div>
-                    <div>김철수<br /><span className="text-[10px] text-slate-400">서초점</span></div>
-                    <div className="truncate">작약 꽃바구니 외 1</div>
-                    <div className="font-mono">₩85,000</div>
-                    <div><Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[9px]">제작 중</Badge></div>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="outline" className="h-7 w-7"><ExternalLink className="h-3 w-3" /></Button>
-                      <Button size="icon" variant="outline" className="h-7 w-7"><Truck className="h-3 w-3" /></Button>
-                    </div>
+                  <div className="bg-white p-4 rounded-xl border border-pink-50">
+                    <div className="font-bold text-pink-700 mb-1">[상담 메모 추가]</div>
+                    <p className="text-xs text-slate-500">선호하는 꽃, 주의사항 등을 기록하여 다음 상담 시 활용합니다.</p>
                   </div>
                 </div>
               </div>
-            </BrowserFrame>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <FeatureCard title="주문 이관 (Transfer)" icon={ExternalLink}>
-                <p className="text-sm">타 지점으로 주문을 넘기거나(발주) 받는 업무입니다. 거리에 따른 지점 선정 시 <strong>주문 이관 다이얼로그</strong>가 팝업됩니다.</p>
-              </FeatureCard>
-              <FeatureCard title="일일 정산" icon={DollarSign}>
-                <p className="text-sm">상단 <strong>[오늘의 매출/정산]</strong> 버튼을 통해 카드, 현금, 이체 내역별 매출을 합산하고 시재 확인 후 마감합니다.</p>
-              </FeatureCard>
-            </div>
-          </section>
-
-          <Separator />
-
-          {/* 6. Outsource */}
-          <section id="outsource" ref={el => { if (el) observerRefs.current["outsource"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-orange-100 rounded-lg text-orange-600"><ExternalLink className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">6. 외부 발주 관리</h2>
-            </div>
-            <p className="text-slate-600">직접 제작이 불가능한 원거리 배송이나 특정 상품을 외부 협력사(파트너)에 발주하는 기능입니다.</p>
-            <FeatureCard title="파트너 자동 전송" icon={Settings}>
-              <p className="text-sm">버튼 클릭 시 등록된 협력사 정보와 주문 내역이 <strong>카카오 알림톡/문자 발주서</strong> 형태로 자동 전송됩니다. 파트너의 접수 확인 여부를 실시간으로 모니터링하세요.</p>
-            </FeatureCard>
-          </section>
-
-          <Separator />
-
-          {/* 7. Pickup/Delivery */}
-          <section id="pickup-delivery" ref={el => { if (el) observerRefs.current["pickup-delivery"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><Truck className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">7. 픽업/배송예약관리</h2>
-            </div>
-            <p className="text-slate-600">배송 현황을 시각적으로 파악하고, 기사 배정 및 사진 전송 업무를 수행합니다.</p>
-            <div className="bg-white border rounded-xl overflow-hidden">
-              <div className="p-4 bg-slate-50 border-b font-bold text-sm">배송 현황판</div>
-              <div className="grid grid-cols-4 divide-x h-32">
-                <div className="p-3 text-center"><div className="text-xs text-slate-500 mb-2">미배정</div><div className="text-2xl font-bold">3</div></div>
-                <div className="p-3 text-center"><div className="text-xs text-slate-500 mb-2">배차완료</div><div className="text-2xl font-bold">5</div></div>
-                <div className="p-3 text-center bg-blue-50/50"><div className="text-xs text-blue-600 mb-2 font-bold">배송중</div><div className="text-2xl font-bold text-blue-600">2</div></div>
-                <div className="p-3 text-center"><div className="text-xs text-slate-500 mb-2">배송완료</div><div className="text-2xl font-bold">12</div></div>
+              <div className="grid md:grid-cols-2 gap-6 text-sm">
+                <FeatureCard title="고객 이력 및 포인트" icon={TrendingUp}>
+                  <p>고객별 총 구매액, 방문 횟수, 잔여 포인트를 관리합니다. 과거 상담 내역과 선호하는 스타일(색상, 꽃 종류)을 기록하여 맞춤형 응대를 지원합니다.</p>
+                </FeatureCard>
+                <FeatureCard title="등급별 자동 혜택" icon={Target}>
+                  <p>주문 금액에 따라 고객 등급(일반, 우수, VIP)을 자동 분류하고, 결제 시 등급별 포인트 적립 또는 할인율을 자동으로 적용합니다.</p>
+                </FeatureCard>
               </div>
             </div>
-            <p className="text-sm text-slate-500 italic mt-2">• 배송 완료 시 현장 사진을 업로드하면 고객에게 배송 완료 알림톡과 함께 사진이 전송됩니다.</p>
           </section>
 
-          <Separator />
+          <Separator className="my-12" />
 
-          {/* 8. Recipients */}
-          <section id="recipients" ref={el => { if (el) observerRefs.current["recipients"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-slate-100 rounded-lg text-slate-600"><MapPin className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">8. 수령자 관리</h2>
+          {/* 제 11장. 거래처 및 파트너 */}
+          <section id="ch11-partners" ref={el => { if (el) observerRefs.current["ch11-partners"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <Briefcase className="h-8 w-8 text-amber-600" />
+                제 11장. 거래처 및 파트너 (Partners)
+              </h2>
             </div>
-            <p className="text-slate-600">반복적으로 배송이 이루어지는 수령 주소(전시장, 웨딩홀, 사무실 등)를 미리 저장하여 주문 접수 효율을 높입니다.</p>
+            <div className="space-y-6">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">거래하는 모든 업체의 정보를 관리합니다.</p>
+              <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
+                <h4 className="font-bold mb-3 text-amber-900 flex items-center gap-2"><Settings className="h-5 w-5" /> 주요 필드 및 버튼</h4>
+                <p className="text-sm text-slate-600"><Highlight>정산 계좌</Highlight> 정보를 등록해두면 본사에서 매입 대금을 지급할 때 활용됩니다.</p>
+              </div>
+            </div>
           </section>
 
-          <Separator />
+          <Separator className="my-12" />
 
-          {/* 9. Customers */}
-          <section id="customers" ref={el => { if (el) observerRefs.current["customers"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-pink-100 rounded-lg text-pink-600"><BookUser className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">9. 고객 관리</h2>
+          {/* 제 12장. 견적서 관리 */}
+          <section id="ch12-quotations" ref={el => { if (el) observerRefs.current["ch12-quotations"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <FileText className="h-8 w-8 text-indigo-600" />
+                제 12장. 견적서 관리 (Quotation)
+              </h2>
             </div>
-            <FeatureCard title="고객 CRM 및 포인트" icon={TrendingUp}>
-              <p className="text-sm">고객별 누적 구매액, 선호 스타일, 포인트 적립 현황을 관리합니다. 특정 고객의 <strong>과거 주문 내역</strong>을 즉시 조회하여 맞춤형 상담을 진행하세요.</p>
-            </FeatureCard>
+            <div className="space-y-8">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">기업 거래나 대량 주문 시 필요한 공식 견적 문서를 생성합니다. 생성된 견적은 PDF 파일로 즉시 변환되어 이메일이나 카카오톡으로 발송할 수 있습니다.</p>
+              <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
+                <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-indigo-900">
+                  <Settings className="h-5 w-5 text-indigo-600" />
+                  문서 관리 버튼 가이드
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-xl border border-indigo-50 shadow-sm">
+                    <div className="font-bold text-indigo-700 mb-2">[PDF 저장] 버튼</div>
+                    <p className="text-xs text-slate-500">입력된 견적 내용을 바탕으로 공식 인발 양식의 PDF 파일을 즉시 생성합니다.</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-indigo-50 shadow-sm">
+                    <div className="font-bold text-indigo-700 mb-2">[주문 전환] 버튼</div>
+                    <p className="text-xs text-slate-500">견적 확정 시 해당 데이터를 <Highlight>주문 접수</Highlight> 화면으로 그대로 복사합니다.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-5 rounded-xl text-xs text-slate-500 flex items-center gap-3 italic">
+                <AlertCircle className="h-5 w-5 text-indigo-500" />
+                견적서에서 바로 '주문으로 전환' 버튼을 클릭하면, 입력된 항목들이 주문 접수 화면으로 자동 자동 연동됩니다. (재입력 방지)
+              </div>
+            </div>
           </section>
 
-          <Separator />
+          <Separator className="my-12" />
 
-          {/* 10. Partners */}
-          <section id="partners" ref={el => { if (el) observerRefs.current["partners"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-amber-100 rounded-lg text-amber-600"><Briefcase className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">10. 거래처 관리</h2>
+          {/* 제 13장. 인사 서류 신청 */}
+          <section id="ch13-hr-requests" ref={el => { if (el) observerRefs.current["ch13-hr-requests"] = el; }} className="scroll-mt-24 space-y-10">
+            <div className="border-b-2 border-slate-100 pb-4">
+              <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                <UserPlus className="h-8 w-8 text-rose-500" />
+                제 13장. 인사 서류 신청 (HR)
+              </h2>
             </div>
-            <p className="text-slate-600">꽃 매입처, 도매상, 외부 발주 파트너의 정보를 통합 관리합니다. 사업자 정보 및 담당자 연락처를 항상 최신으로 유지하세요.</p>
-          </section>
-
-          <Separator />
-
-          {/* 11. Quotations */}
-          <section id="quotations" ref={el => { if (el) observerRefs.current["quotations"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600"><ClipboardList className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">11. 견적서 관리</h2>
-            </div>
-            <p className="text-slate-600">대량 주문이나 기업용 견적서(Quotation)를 생성하고 관리합니다. PDF 내보내기를 통해 공식 문서를 이메일로 즉시 발송할 수 있습니다.</p>
-          </section>
-
-          <Separator />
-
-          {/* 12. HR Requests */}
-          <section id="hr-requests" ref={el => { if (el) observerRefs.current["hr-requests"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-rose-100 rounded-lg text-rose-600"><Briefcase className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">12. 인사 서류 신청</h2>
-            </div>
-            <p className="text-slate-600">휴가 신청(연차/반차), 재직증명서 발급 등 인사 관련 요청을 본사에 신청하는 창구입니다.</p>
-            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 text-xs text-amber-800">
-              <strong>상태 추적:</strong> 내 신청건의 승인/반려 상태를 실시간으로 확인하고, 승인 완료된 증명서는 직접 PDF 다운로드가 가능합니다.
+            <div className="space-y-8">
+              <p className="text-slate-600 text-lg leading-relaxed font-medium">휴가 신청, 재직증명서 발급 등 인사 관련 모든 요청을 본사에 비대면으로 신청하는 창구입니다.</p>
+              <div className="bg-rose-50 p-6 rounded-2xl border border-rose-100">
+                <h4 className="font-bold mb-3 text-rose-900 flex items-center gap-2"><Settings className="h-5 w-5" /> 신청 프로세스</h4>
+                <p className="text-sm text-slate-600"><Highlight>신규 신청</Highlight> 버튼을 눌러 서류 종류를 선택하고 제출하면 본사 관리자에게 실시간 알림이 전송됩니다.</p>
+              </div>
+              <StepGuide steps={[
+                "[인사 서류 신청] 메뉴에서 [신규 신청] 버튼을 누릅니다.",
+                "신청 목적(연차, 경력증명서 등)과 희망 일자를 선택합니다.",
+                "본사 관리자의 실시간 승인 여부를 '내 신청함' 탭에서 확인합니다.",
+                "승인 완료된 증명서는 즉시 PDF로 다운로드 받거나 모바일로 공유 가능합니다."
+              ]} />
             </div>
           </section>
 
           <Separator className="h-2 bg-slate-100 my-12" />
-          <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 text-center">
-            <h3 className="text-xl font-bold text-blue-800 mb-2">여기서부터는 역할별 상세 기능입니다</h3>
-            <p className="text-blue-600">현재 <strong>{isHQ ? "본사 관리자" : "지점 사용자"}</strong> 화면에 맞춰 설명이 표시됩니다.</p>
+          <div className="bg-blue-50 p-8 rounded-2xl border border-blue-100 text-center space-y-2">
+            <h3 className="text-2xl font-bold text-blue-800">역할별 상세 기능 가이드</h3>
+            <p className="text-blue-600 font-medium text-lg">현재 <Highlight className="bg-white px-2 py-0.5 shadow-sm">{isHQ ? "본사 관리자" : "지점 사용자"}</Highlight> 권한에 최적화된 매뉴얼이 표시됩니다.</p>
           </div>
 
-
-          {/* 13. Products (HQ Only) */}
-          {isHQ && (
-            <section id="products" ref={el => { if (el) observerRefs.current["products"] = el; }} className="scroll-mt-24 space-y-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600"><Boxes className="h-6 w-6" /></div>
-                <h2 className="text-2xl font-bold">13. 상품 관리</h2>
-              </div>
-              <p className="text-slate-600">전 지점에서 판매될 상품군을 등록하고 관리합니다. 상품명, 가격, 옵션(포장/메시지카드 등)을 설정할 수 있습니다.</p>
-              <FeatureCard title="지점별 판매 제어" icon={Target}>
-                <p className="text-sm">특정 꽃 자재의 수급 문제 발생 시, 해당 자재가 포함된 모든 상품을 <strong>일괄 품절 처리</strong>하거나 특정 지점에서만 미노출되도록 제어할 수 있습니다.</p>
-              </FeatureCard>
-              <Separator />
-            </section>
-          )}
-
-          {/* 14. Materials & 15. Stock History */}
-          <section id="materials" ref={el => { if (el) observerRefs.current["materials"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-amber-100 rounded-lg text-amber-600"><Hammer className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">{isHQ ? "14. 자재 관리" : "자재 관리 (지점)"}</h2>
-            </div>
-            <p className="text-slate-600">포장지, 리본, 화기 등 부자재의 마스터 정보와 재고를 관리합니다.</p>
-            {isHQ ? (
-              <p className="text-sm">본사 창고의 실재고를 관리하고 입고 처리를 수행합니다. 최소 유지 재고 이하로 떨어지면 대시보드에서 알림을 줍니다.</p>
-            ) : (
-              <p className="text-sm">지점에서 보유한 부자재 수량을 확인하고, 실제 수량과 차이가 날 경우 재고 조정을 통해 전산 재고를 맞춥니다.</p>
-            )}
-
-            {isHQ && (
-              <div id="stock-history" ref={el => { if (el) observerRefs.current["stock-history"] = el; }} className="pt-8 space-y-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-slate-100 rounded-lg text-slate-600"><History className="h-5 w-5" /></div>
-                  <h3 className="text-xl font-bold">15. 재고 변동 기록</h3>
+          {/* --- HQ ONLY SECTIONS --- */}
+          {isHQ ? (
+            <div className="space-y-24">
+              {/* 제 14장. 통합 상품 관리 */}
+              <section id="ch14-products" ref={el => { if (el) observerRefs.current["ch14-products"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Boxes className="h-8 w-8 text-indigo-600" />
+                    제 14장. 통합 상품 관리
+                  </h2>
                 </div>
-                <p className="text-sm text-slate-600">입고, 지점 출고, 소진 등 모든 재고 변화의 로그를 추적합니다. 특정 시점에 재고가 어떠한 이유로 변동되었는지 상세 사유와 담당자를 확인할 수 있습니다.</p>
-              </div>
-            )}
-          </section>
+                <div className="space-y-8">
+                  <p className="text-slate-600 text-lg leading-relaxed font-medium">전 지점에서 판매될 상품의 마스터 정보를 관리합니다. 상품명, 가격, 옵션 등을 일괄 제어할 수 있습니다.</p>
 
-          <Separator />
-
-          {/* 16. Material Request */}
-          <section id="material-request" ref={el => { if (el) observerRefs.current["material-request"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-orange-100 rounded-lg text-orange-600"><Package className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">{isHQ ? "16. 자재 요청 관리" : "자재 요청"}</h2>
-            </div>
-            {isHQ ? (
-              <FeatureCard title="승인 및 배송 처리" icon={Truck}>
-                <p className="text-sm">지점에서 올린 요청 건을 검토하여 <strong>승인/반려</strong>합니다. 승인 시 본사 재고가 차감되며 지점 배송 상태로 전환됩니다.</p>
-              </FeatureCard>
-            ) : (
-              <StepGuide steps={[
-                "필요한 자재를 카테고리에서 찾아 장바구니에 담습니다.",
-                "최종 수량을 확인한 후 [본사 요청] 버튼을 누릅니다.",
-                "본사 승인 후 배송 현황을 탭에서 실시간으로 확인합니다."
-              ]} />
-            )}
-          </section>
-
-          <Separator />
-
-          {/* 17. Purchase (HQ Only) */}
-          {isHQ && (
-            <section id="purchase" ref={el => { if (el) observerRefs.current["purchase"] = el; }} className="scroll-mt-24 space-y-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><ShoppingCart className="h-6 w-6" /></div>
-                <h2 className="text-2xl font-bold">17. 구매 관리</h2>
-              </div>
-              <p className="text-slate-600">거래처에 발주를 넣고 세금계산서 대조 및 매입액을 관리합니다. 발주서(PO)를 생성하여 이메일이나 카카오톡으로 전송하세요.</p>
-              <Separator />
-            </section>
-          )}
-
-          {/* 18. Simple Expenses */}
-          <section id="simple-expenses" ref={el => { if (el) observerRefs.current["simple-expenses"] = el; }} className="scroll-mt-24 space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-teal-100 rounded-lg text-teal-600"><Receipt className="h-6 w-6" /></div>
-              <h2 className="text-2xl font-bold">{isHQ ? "18. 간편 지출관리" : "간편 지출관리"}</h2>
-            </div>
-            <Tabs defaultValue="input" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-4">
-                <TabsTrigger value="input">지출 입력</TabsTrigger>
-                <TabsTrigger value="fixed">고정비</TabsTrigger>
-                <TabsTrigger value="history">내역 조회</TabsTrigger>
-                <TabsTrigger value="charts">분석 차트</TabsTrigger>
-              </TabsList>
-              <TabsContent value="input" className="space-y-4">
-                <p className="text-sm text-slate-600">일일 발생하는 소액 지출을 기록합니다. 영수증 사진을 첨부하여 증빙을 남길 수 있으며, 금액만 직접 입력도 가능합니다.</p>
-                <div className="bg-slate-50 p-4 rounded border text-xs">
-                  <strong>지점 마감 팁:</strong> 당일 입력한 지출 합계가 [오늘의 매출/정산] 화면에 자동으로 차감 반영됩니다.
-                </div>
-              </TabsContent>
-              <TabsContent value="fixed" className="space-y-4">
-                <p className="text-sm text-slate-600">월세, 정수기렌탈료 등 매달 반복되는 지출을 템플릿으로 저장합니다. 매월 클릭 한 번으로 일괄 등록하세요.</p>
-              </TabsContent>
-              {isHQ && (
-                <div className="mt-4 p-4 bg-blue-50 rounded border border-blue-100 text-xs text-blue-700">
-                  <strong>본사 관리 탭:</strong> 본사 관리자는 모든 지점의 지출 내역을 취합하여 보고서를 생성하고 엑셀로 추출할 수 있습니다.
-                </div>
-              )}
-            </Tabs>
-          </section>
-
-          {isHQ && (
-            <div className="space-y-12">
-              <Separator />
-
-              {/* 19. Branches */}
-              <section id="branches" ref={el => { if (el) observerRefs.current["branches"] = el; }} className="scroll-mt-24 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-slate-100 rounded-lg text-slate-600"><Store className="h-6 w-6" /></div>
-                  <h2 className="text-2xl font-bold">19. 지점 관리</h2>
-                </div>
-                <p className="text-slate-600">전국 지점의 마스터 정보를 관리합니다. 신규 지점 개설 시 지점 코드, 주소, 담당자 및 배송 가능 지역을 설정합니다.</p>
-                <div className="bg-slate-50 p-4 rounded border text-xs">
-                  <strong>권한 설정:</strong> 각 지점의 사용자가 자신의 지점 데이터만 볼 수 있도록 하는 '데이터 격리'의 기준이 됩니다.
-                </div>
-              </section>
-
-              <Separator />
-
-              {/* 20. Expenses */}
-              <section id="expenses" ref={el => { if (el) observerRefs.current["expenses"] = el; }} className="scroll-mt-24 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-red-100 rounded-lg text-red-600"><DollarSign className="h-6 w-6" /></div>
-                  <h2 className="text-2xl font-bold">20. 비용 관리</h2>
-                </div>
-                <p className="text-slate-600">정식 결재 프로세스가 필요한 대규모 지출이나 법인카드 내역을 관리합니다.</p>
-                <ul className="list-disc pl-5 text-sm space-y-2 text-slate-700">
-                  <li><strong>비용 신청:</strong> 영수증과 함께 지출 목적을 적어 결재를 올립니다.</li>
-                  <li><strong>승인 관리:</strong> 관리자는 신청 내역을 검토하여 [승인] 또는 [반려] 처리합니다.</li>
-                  <li><strong>분석:</strong> 부서별/프로젝트별 비용 집행 현황을 대시보드에서 확인합니다.</li>
-                </ul>
-              </section>
-
-              <Separator />
-
-              {/* 21. Budgets */}
-              <section id="budgets" ref={el => { if (el) observerRefs.current["budgets"] = el; }} className="scroll-mt-24 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><Target className="h-6 w-6" /></div>
-                  <h2 className="text-2xl font-bold">21. 예산 관리</h2>
-                </div>
-                <p className="text-slate-600">지점별 또는 분기별 예산을 편성합니다. 실제 집행된 비용(Expenses)과 대조하여 <strong>예산 대비 집행률</strong>을 실시간으로 추적합니다.</p>
-              </section>
-
-              <Separator />
-
-              {/* 22. Reports */}
-              <section id="reports" ref={el => { if (el) observerRefs.current["reports"] = el; }} className="scroll-mt-24 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600"><BarChart3 className="h-6 w-6" /></div>
-                  <h2 className="text-2xl font-bold">22. 리포트 분석</h2>
-                </div>
-                <p className="text-slate-600">사업의 성과를 데이터로 증명하는 공간입니다. 다양한 시각화 리포트를 제공합니다.</p>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FeatureCard title="매출 분석" icon={TrendingUp}>
-                    <p>기간별, 지점별, 상품 카테고리별 매출 비중을 분석합니다. 전년 동기 대비 성장률을 확인하세요.</p>
-                  </FeatureCard>
-                  <FeatureCard title="고객 분석" icon={Users}>
-                    <p>신규 고객 유입률, 재방문 주기, 고객 등급별 기여도를 분석하여 마케팅 전략을 수립합니다.</p>
-                  </FeatureCard>
-                </div>
-              </section>
-
-              <Separator />
-
-              {/* 23. HR Management */}
-              <section id="hr-management" ref={el => { if (el) observerRefs.current["hr-management"] = el; }} className="scroll-mt-24 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-rose-100 rounded-lg text-rose-600"><Users className="h-6 w-6" /></div>
-                  <h2 className="text-2xl font-bold">23. 인사 관리/신청서</h2>
-                </div>
-                <p className="text-slate-600">전 직원의 근태와 인사 서류 신청 현황을 관리합니다.</p>
-                <div className="bg-white border rounded-lg overflow-hidden">
-                  <div className="p-4 bg-slate-50 border-b flex justify-between items-center font-bold text-sm">
-                    신청서 관리 (본사 승인용)
-                    <Badge className="bg-orange-500">대기 5건</Badge>
-                  </div>
-                  <div className="p-4 text-xs text-slate-500 leading-relaxed italic border-b">"직원들이 신청한 연차, 증명서 발급 요청을 여기서 한꺼번에 검토하고 승인합니다."</div>
-                  <div className="p-4 space-y-3">
-                    <div className="flex justify-between items-center text-xs border-b pb-2">
-                      <span>[서초점] 김지수 - 연차 신청 (5/25)</span>
-                      <div className="flex gap-1"><Button size="sm" className="h-6 text-[10px] bg-blue-600">승인</Button><Button size="sm" variant="outline" className="h-6 text-[10px]">반려</Button></div>
+                  <div className="bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
+                    <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-indigo-900">
+                      <Settings className="h-5 w-5 text-indigo-600" />
+                      상품 관리 도구 및 버튼
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-4 bg-white p-3 rounded-xl border border-indigo-50">
+                        <Badge className="bg-indigo-100 text-indigo-800 h-6 shrink-0">[판매 상태 토글]</Badge>
+                        <p className="text-sm text-slate-600">스위치 버튼을 통해 특정 상품을 <strong>판매중 / 품절 / 숨김</strong> 상태로 즉시 변경합니다.</p>
+                      </div>
+                      <div className="flex items-start gap-4 bg-white p-3 rounded-xl border border-indigo-50">
+                        <Badge className="bg-indigo-100 text-indigo-800 h-6 shrink-0">[가격 일괄 조정]</Badge>
+                        <p className="text-sm text-slate-600">명절이나 시즌 이슈 발생 시 여러 상품의 가격을 한 번에 % 또는 정액으로 수정합니다.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </section>
 
-              <Separator />
+              <Separator className="my-12" />
 
-              {/* 24. Users */}
-              <section id="users" ref={el => { if (el) observerRefs.current["users"] = el; }} className="scroll-mt-24 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-slate-100 rounded-lg text-slate-600"><UserCog className="h-6 w-6" /></div>
-                  <h2 className="text-2xl font-bold">24. 사용자 관리</h2>
+              {/* 제 15장. 자재/재고/기록 */}
+              <section id="ch15-materials" ref={el => { if (el) observerRefs.current["ch15-materials"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Hammer className="h-8 w-8 text-amber-600" />
+                    제 15장. 자재 및 재고 관리
+                  </h2>
                 </div>
-                <p className="text-slate-600">시스템 접속 계정을 관리합니다. 각 사용자별로 <strong>본사 관리자 / 지점 관리자 / 지점 스태프</strong> 등 역할(Role)을 부여하여 메뉴 접근 권한을 제어합니다.</p>
+                <div className="space-y-8">
+                  <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
+                    <h4 className="text-lg font-bold mb-4 flex items-center gap-2 text-amber-900">
+                      <History className="h-5 w-5 text-amber-600" />
+                      재고 상세 조정 액션
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white p-4 rounded-xl shadow-sm border border-amber-50">
+                        <div className="font-bold text-amber-700 mb-1">[강제 재고수정] 버튼</div>
+                        <p className="text-xs text-slate-500">전산과 실재고가 다를 때 사유(파손, 기부 등)를 입력하고 고칩니다.</p>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl shadow-sm border border-amber-50">
+                        <div className="font-bold text-amber-700 mb-1">[바코드 인쇄]</div>
+                        <p className="text-xs text-slate-500">라벨 프린터가 연결된 경우 자재 식별용 바코드를 출력합니다.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </section>
 
-              <Separator />
+              <Separator className="my-12" />
 
-              {/* 25. Settings */}
-              <section id="settings" ref={el => { if (el) observerRefs.current["settings"] = el; }} className="scroll-mt-24 space-y-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-slate-100 rounded-lg text-slate-600"><Settings className="h-6 w-6" /></div>
-                  <h2 className="text-2xl font-bold">25. 시스템 설정</h2>
+              {/* 제 16장. 자재 요청 승인 */}
+              <section id="ch16-mat-req-admin" ref={el => { if (el) observerRefs.current["ch16-mat-req-admin"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Package className="h-8 w-8 text-orange-600" />
+                    제 16장. 자재 요청 승인 관리
+                  </h2>
                 </div>
-                <p className="text-slate-600">ERP 전반에 적용되는 기초 설정을 수행합니다. 포인트 적립률, 공지사항 알림 설정, API 연동 키 관리 등이 포함됩니다.</p>
+                <div className="space-y-6">
+                  <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100">
+                    <h4 className="font-bold mb-3 text-orange-900 flex items-center gap-2"><Settings className="h-5 w-5" /> 승인 처리 가이드</h4>
+                    <div className="space-y-3">
+                      <p className="text-sm text-slate-700 leading-relaxed font-medium">지점에서 요청한 목록을 확인한 후 우측의 <strong>[승인]</strong> 버튼을 누르면 본사 재고가 차감되고 출고 정보가 생성됩니다.</p>
+                      <div className="p-3 bg-white rounded-lg border border-orange-100 italic text-[11px] text-orange-600">※ 재고가 부족할 경우 '반려' 버튼을 누르고 사유를 남기면 지점 알림으로 전송됩니다.</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              {/* 제 17장. 구매/매입 관리 */}
+              <section id="ch17-purchase" ref={el => { if (el) observerRefs.current["ch17-purchase"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <ShoppingCart className="h-8 w-8 text-emerald-600" />
+                    제 17장. 구매 및 매입 관리
+                  </h2>
+                </div>
+                <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+                  <h4 className="font-bold mb-3 text-emerald-900 flex items-center gap-2"><Plus className="h-5 w-5" /> [신규 발주서 작성] 버튼</h4>
+                  <p className="text-sm text-slate-700 leading-relaxed">거래처(농장/부자재상)에 보낼 발주 품목을 담아 이메일 또는 FAX로 발송하는 양식을 생성합니다.</p>
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              {/* 제 18장. 비용/예산 관리 */}
+              <section id="ch18-expenses" ref={el => { if (el) observerRefs.current["ch18-expenses"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <DollarSign className="h-8 w-8 text-red-600" />
+                    제 18장. 비용 및 예산 관리
+                  </h2>
+                </div>
+                <div className="bg-red-50 p-6 rounded-2xl border border-red-100">
+                  <h4 className="font-bold mb-3 text-red-900 flex items-center gap-2"><Settings className="h-5 w-5" /> 결재 프로세스 동작</h4>
+                  <p className="text-sm text-slate-700 leading-relaxed">지점에서 올린 비용 신청 건을 검토하여 <strong>[결재 승인]</strong> 시 해당 월의 지점 예산 잔액이 자동차감 반영됩니다.</p>
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              {/* 제 19장. 간편 지출/마감 */}
+              <section id="ch19-simple-expenses" ref={el => { if (el) observerRefs.current["ch19-simple-expenses"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Receipt className="h-8 w-8 text-teal-600" />
+                    제 19장. 간편 지출 및 마감 관리 (HQ)
+                  </h2>
+                </div>
+                <div className="space-y-8">
+                  <p className="text-slate-600 text-lg leading-relaxed font-medium">
+                    지점에서 발생하는 모든 현금/카드 지출을 본사에서 통합 모니터링합니다.
+                    신입 관리자는 이 메뉴를 통해 지점의 일일 정산이 정확하게 이루어지는지 확인할 수 있습니다.
+                  </p>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <FeatureCard title="지점별 데이터 필터링" icon={Building}>
+                      <p className="text-sm">우측 상단의 <strong>[지점 선택]</strong> 드롭다운을 통해 특정 지점의 내역만 보거나 전 지점 합계를 조회할 수 있습니다.</p>
+                    </FeatureCard>
+                    <FeatureCard title="월별 리포트 추출" icon={Download}>
+                      <p className="text-sm"><strong>[엑셀 다운로드]</strong> 버튼을 사용하면 선택한 기간의 모든 지출 내역이 지점별 시트로 구분된 통합 보고서로 생성됩니다.</p>
+                    </FeatureCard>
+                  </div>
+
+                  <div className="bg-teal-50 p-6 rounded-2xl border border-teal-100">
+                    <h4 className="font-bold mb-4 text-teal-900 flex items-center gap-2 font-bold"><Settings className="h-5 w-5" /> 본사 관리자 핵심 버튼 가이드</h4>
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-xl shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge>[본사 관리] 탭</Badge>
+                          <span className="font-bold text-slate-800">지점 마감 현황 확인</span>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          각 지점 관리자가 당일 업무를 마치고 누르는 '데이터 마감' 상태를 실시간으로 확인합니다.
+                          미마감 지점이 있을 경우 해당 지점에 연락하여 정산 확인을 독촉할 수 있습니다.
+                        </p>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline">[일괄 삭제]</Badge>
+                          <span className="font-bold text-slate-800">오데이터 정리</span>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          지점에서 중복 입력하거나 실수로 잘못 올린 데이터들을 다중 선택하여 한 번에 삭제 처리할 수 있습니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              {/* 제 20장. 전국 지점 관리 */}
+              <section id="ch20-branches" ref={el => { if (el) observerRefs.current["ch20-branches"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Store className="h-8 w-8 text-slate-600" />
+                    제 20장. 전국 지점 및 조직 관리
+                  </h2>
+                </div>
+                <div className="space-y-6 text-slate-600">
+                  <p className="text-lg font-medium leading-relaxed">프랜차이즈 네트워크의 기반이 되는 각 지점의 기본 정보를 관리합니다.</p>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                      <h4 className="font-bold mb-3 text-slate-800 flex items-center gap-2"><Plus className="h-5 w-5" /> [신규 지점 추가]</h4>
+                      <p className="text-sm">지점명, 코드, 사업자 정보, 그리고 가장 중요한 <strong>'지점 권한'</strong>을 설정하여 해당 지점 관리자 계정을 활성화합니다.</p>
+                    </div>
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                      <h4 className="font-bold mb-3 text-slate-800 flex items-center gap-2"><MapPin className="h-5 w-5" /> [배송 가능 지역]</h4>
+                      <p className="text-sm">해당 지점이 담당하는 행정동 구역을 설정합니다. 고객 주문 접수 시 주소를 기반으로 지점이 자동 배정되는 기준이 됩니다.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              {/* 제 21장. 리포트 성과 분석 */}
+              <section id="ch21-reports" ref={el => { if (el) observerRefs.current["ch21-reports"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <BarChart3 className="h-8 w-8 text-blue-600" />
+                    제 21장. 리포트 및 성과 분석
+                  </h2>
+                </div>
+                <div className="space-y-8">
+                  <p className="text-slate-600 text-lg leading-relaxed font-medium">데이터에 기반한 경영 의사결정을 위해 전 지점의 실적을 다각도로 분석합니다.</p>
+
+                  <div className="bg-blue-50 p-8 rounded-2xl border border-blue-100">
+                    <h4 className="text-xl font-bold mb-6 flex items-center gap-2 text-blue-900"><TrendingUp className="h-6 w-6" /> 핵심 분석 리포트 가이드</h4>
+                    <div className="grid md:grid-cols-2 gap-6 text-sm">
+                      <div className="bg-white p-5 rounded-xl shadow-sm space-y-3">
+                        <div className="font-bold text-blue-800 flex items-center gap-2"><BarChart3 className="h-4 w-4" /> 매출 실적 분석</div>
+                        <p className="text-slate-600 leading-relaxed"><strong>[차트 보기]</strong> 클릭 시 전년 대비 성장률, 지점별 매출 비중, 요일별 매출 패턴 등을 시각적으로 확인합니다.</p>
+                      </div>
+                      <div className="bg-white p-5 rounded-xl shadow-sm space-y-3">
+                        <div className="font-bold text-blue-800 flex items-center gap-2"><Users className="h-4 w-4" /> 고객 행동 분석</div>
+                        <p className="text-slate-600 leading-relaxed"><strong>[목록 추출]</strong> 클릭 시 VIP 고객의 주문 빈도 변화, 신규 고객 유입 경로 등을 엑셀 데이터로 가공할 수 있습니다.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center gap-3 text-xs text-slate-500 italic">
+                    <Info className="h-4 w-4 text-blue-400" />
+                    모든 리포트는 오른쪽 상단의 필터를 통해 기간, 지점, 상품 카테고리를 자유롭게 조합하여 조회할 수 있습니다.
+                  </div>
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              {/* 제 22장. 인사/사용자/설정 */}
+              <section id="ch22-hr-admin" ref={el => { if (el) observerRefs.current["ch22-hr-admin"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <UserCog className="h-8 w-8 text-slate-700" />
+                    제 22장. 인사, 사용자 및 시스템 설정
+                  </h2>
+                </div>
+                <div className="space-y-6">
+                  <div className="bg-slate-100 border border-slate-200 p-6 rounded-2xl">
+                    <h4 className="font-bold mb-4 flex items-center gap-2"><Settings className="h-5 w-5" /> 관리 데이터 제어판</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div className="bg-white p-3 rounded-lg border">
+                        <strong>[계정 생성]</strong>: 신규 직원용 ID/PW를 발급합니다.
+                      </div>
+                      <div className="bg-white p-3 rounded-lg border">
+                        <strong>[공지 등록]</strong>: 대시보드 메인 공지사항을 작성합니다.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          ) : (
+            /* --- BRANCH ONLY SECTIONS --- */
+            <div className="space-y-24">
+              <section id="ch-mat-req-branch" ref={el => { if (el) observerRefs.current["ch-mat-req-branch"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Package className="h-8 w-8 text-orange-600" />
+                    자재 요청 (지점용 보충 버튼)
+                  </h2>
+                </div>
+                <div className="space-y-6">
+                  <p className="text-slate-600 text-lg leading-relaxed">필요한 소모품을 본사에 실시간으로 신청합니다.</p>
+                  <StepGuide steps={[
+                    "자재 목록 우측의 [장바구니 담기] 버튼을 누릅니다.",
+                    "화면 상단 장바구니 아이콘을 눌러 수량을 검토합니다.",
+                    "최종 [본사 요청 보내기] 버튼을 눌러 승인을 대기합니다."
+                  ]} />
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              <section id="ch-mat-branch" ref={el => { if (el) observerRefs.current["ch-mat-branch"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Hammer className="h-8 w-8 text-amber-600" />
+                    지점 자재 재고 관리
+                  </h2>
+                </div>
+                <div className="space-y-6">
+                  <p className="text-slate-600 text-lg leading-relaxed font-medium">우리 지점이 보유한 실제 꽃과 부자재의 재고를 관리합니다. 주기적인 실무 조사가 필요합니다.</p>
+
+                  <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100 space-y-4">
+                    <h4 className="font-bold text-amber-900 flex items-center gap-2"><Settings className="h-5 w-5" /> 재고 현행화 버튼 가이드</h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="bg-white p-4 rounded-xl border border-amber-50 shadow-sm">
+                        <div className="font-bold text-amber-700 mb-1">[강제 재고수정] 버튼</div>
+                        <p className="text-xs text-slate-600">파손이나 로스(Loss) 발생 시 전산상의 숫자를 실제와 맞추기 위해 사용합니다. 반드시 사유를 입력하세요.</p>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-amber-50 shadow-sm">
+                        <div className="font-bold text-amber-700 mb-1">[바코드 출력] 도구</div>
+                        <p className="text-xs text-slate-600">자재 관리 선반에 부착할 식별용 바코드 라벨을 출력합니다. (라벨 프린터 필요)</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <Separator className="my-12" />
+
+              <section id="ch-exp-branch" ref={el => { if (el) observerRefs.current["ch-exp-branch"] = el; }} className="scroll-mt-24 space-y-10">
+                <div className="border-b-2 border-slate-100 pb-4">
+                  <h2 className="text-3xl font-bold flex items-center gap-3 text-slate-900">
+                    <Receipt className="h-8 w-8 text-teal-600" />
+                    일일 지출 입력 및 정산 마감 가이드
+                  </h2>
+                </div>
+
+                <div className="space-y-8">
+                  <p className="text-slate-600 text-lg leading-relaxed font-medium">
+                    매장에서 발생하는 소액 지출(식대, 주유비, 소모품 구입 등)을 누락 없이 입력하여 일일 정산 금액을 맞추는 메뉴입니다.
+                  </p>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <Card className="p-4 border-teal-100 bg-teal-50/30">
+                      <h5 className="font-bold text-teal-900 mb-2 flex items-center gap-2"><Plus className="h-4 w-4" /> 지출 입력</h5>
+                      <p className="text-xs text-slate-600">영수증 발생 시 즉시 입력하는 기본 메뉴입니다.</p>
+                    </Card>
+                    <Card className="p-4 border-amber-100 bg-amber-50/30">
+                      <h5 className="font-bold text-amber-900 mb-2 flex items-center gap-2"><Calendar className="h-4 w-4" /> 고정비 관리</h5>
+                      <p className="text-xs text-slate-600">월세, 관리비 등 매달 나가는 항목을 한 번에 입력합니다.</p>
+                    </Card>
+                    <Card className="p-4 border-blue-100 bg-blue-50/30">
+                      <h5 className="font-bold text-blue-900 mb-2 flex items-center gap-2"><BarChart3 className="h-4 w-4" /> 차트 분석</h5>
+                      <p className="text-xs text-slate-600">지점의 지출 비중을 시각적으로 확인합니다.</p>
+                    </Card>
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <h4 className="font-bold mb-4 text-slate-800 flex items-center gap-2 font-bold"><Settings className="h-5 w-5" /> 주요 기능별 버튼 상세 설명</h4>
+                    <div className="space-y-6">
+                      <div className="border-l-4 border-teal-500 pl-4">
+                        <div className="font-bold text-teal-800">[신규 지출 등록] - 수동 입력</div>
+                        <ul className="text-sm text-slate-600 mt-2 space-y-2 list-disc ml-4">
+                          <li><span className="font-semibold text-slate-800">[장바구니 담기]</span>: 여러 품목을 한 영수증으로 처리할 때 품목을 추가합니다.</li>
+                          <li><span className="font-semibold text-slate-800">[재고 자동 업데이트]</span>: '자재비' 분류 선택 시, 입력한 수량만큼 지점 재고가 자동으로 증가합니다.</li>
+                        </ul>
+                      </div>
+                      <div className="border-l-4 border-amber-500 pl-4">
+                        <div className="font-bold text-amber-800">[템플릿 저장 & 일괄 입력] - 고정비</div>
+                        <ul className="text-sm text-slate-600 mt-2 space-y-2 list-disc ml-4">
+                          <li>매월 반복되는 항목을 설정해두고 <span className="font-semibold text-slate-800">[일괄 입력]</span> 버튼만 누르면 하루치 정산에 모두 반영됩니다.</li>
+                        </ul>
+                      </div>
+                      <div className="border-l-4 border-slate-500 pl-4">
+                        <div className="font-bold text-slate-800">[엑셀 일괄 업로드] - 대량 데이터</div>
+                        <ul className="text-sm text-slate-600 mt-2 space-y-2 list-disc ml-4">
+                          <li>많은 양의 지출을 한 번에 올릴 때 <span className="font-semibold text-slate-800">[템플릿 다운로드]</span> 후 정해진 양식대로 채워 업로드하면 몇 초 만에 처리됩니다.</li>
+                        </ul>
+                      </div>
+                      <div className="border-l-4 border-blue-500 pl-4">
+                        <div className="font-bold text-blue-800">[지출 내역] - 확인 및 수정</div>
+                        <ul className="text-sm text-slate-600 mt-2 space-y-2 list-disc ml-4">
+                          <li>잘못 입력한 내역은 <Eye className="h-3 w-3 inline text-blue-500" /> 아이콘을 눌러 수정하거나 삭제할 수 있습니다.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 flex items-start gap-3">
+                    <Info className="h-6 w-6 text-blue-500 shrink-0" />
+                    <div>
+                      <h5 className="font-bold text-blue-900 text-sm">신입 사원 팁: 정산 마감과의 연동</h5>
+                      <p className="text-xs text-blue-700 mt-1 leading-relaxed">
+                        여기서 입력한 지출 총액은 대시보드의 <Highlight>오늘의 정산</Highlight> 마감 시 지출액 항목으로 자동 로드됩니다.
+                        따라서 정산 마감 전 반드시 모든 영수증 처리를 완료해야 합니다.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </section>
             </div>
           )}
