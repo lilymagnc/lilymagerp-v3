@@ -509,6 +509,51 @@ export function useSimpleExpenses() {
       setLoading(false);
     }
   }, [user]);
+
+  // 주문 ID와 특정 서브카테고리에 해당하는 지출 삭제
+  const deleteOrderRelatedExpense = useCallback(async (
+    orderId: string,
+    subCategory: string
+  ): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      // 1. relatedOrderId로 먼저 조회 (인덱스 문제 회피 및 정밀 제어)
+      const q = query(
+        collection(db, 'simpleExpenses'),
+        where('relatedOrderId', '==', orderId)
+      );
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        // 2. 메모리에서 필터링
+        // subCategory가 일치하거나, 
+        // DELIVERY_CASH 삭제 요청인 경우: 실제 subCategory가 DELIVERY_CASH이거나, paymentMethod가 cash인 경우도 포함 (오분류 대응)
+        const targets = snapshot.docs.filter(doc => {
+          const data = doc.data();
+          if (data.subCategory === subCategory) return true;
+
+          if (subCategory === 'DELIVERY_CASH') {
+            // 요청은 현금지출 삭제인데, 데이터에 subCategory가 다르게 저장되었더라도 
+            // 실제로 '현금' 성격이면 삭제 대상에 포함 (DailySettlementPage 로직과 일치시킴)
+            const isCash = data.paymentMethod === 'cash' || (data.description && data.description.includes('현금'));
+            const isTransport = data.category === SimpleExpenseCategory.TRANSPORT;
+            return isTransport && isCash;
+          }
+          return false;
+        });
+
+        if (targets.length > 0) {
+          const deletePromises = targets.map(doc => deleteDoc(doc.ref));
+          await Promise.all(deletePromises);
+          console.log(`주문(${orderId}) 관련 지출(${subCategory}) 삭제 완료: ${targets.length}건`);
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('주문 관련 지출 삭제 오류:', error);
+      return false;
+    }
+  }, [user]);
   // 구매처 자동완성 데이터 업데이트
   const updateSupplierSuggestion = useCallback(async (
     supplierName: string,
@@ -776,6 +821,7 @@ export function useSimpleExpenses() {
     saveFixedCostTemplate,
     addFixedCosts,
     calculateStats,
-    addMaterialRequestExpense
+    addMaterialRequestExpense,
+    deleteOrderRelatedExpense
   };
 }
